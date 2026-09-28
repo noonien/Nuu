@@ -2,12 +2,12 @@ local _, ns = ...
 
 local Kit = ns.Kit or {}
 ns.Kit = Kit
-Kit.UI1 = Kit.UI1 or {}
-local UI = Kit.UI1
+Kit.UI = Kit.UI or {}
+local UI = Kit.UI
 
 -- What widgets draw with: plates, 9-slices, tiles and glyphs. Each is a small
 -- table with shared methods (a metatable), made once when its widget is
--- built. The same calls as UI/Base/UI.lua.
+-- built.
 
 -- Plates: the box behind a widget ---------------------------------------------------
 

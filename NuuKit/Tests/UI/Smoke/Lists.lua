@@ -167,7 +167,7 @@ field.kitOnType("guide 2", field)
 assertTrue(typed == "guide 2" and #list:GetView() == 11, "and its typing filters it, after its own kitOnType")
 field.kitOnType("", field)
 assertTrue(#list:GetView() == 40 and not list.emptyText:IsShown(), "cleared, all again")
-if ctx.loaded["UI-Test1/Controls/Fields.lua"] and listBody.Search then
+if ctx.loaded["UI/Controls/Fields.lua"] and listBody.Search then
     local search = listBody:Search{ placeholder = "Search guides" }
     local searched = listBody:List{ rows = 4, make = makeGuide, draw = drawGuide, search = search }
     searched:SetItems(GUIDES)

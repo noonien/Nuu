@@ -22,12 +22,9 @@ local suites = {
     { "recorder", "Tests/Core/RecorderTests.lua" },
     { "bug report", "Tests/Core/BugReportTests.lua" },
     { "ui theme", "Tests/UI/ThemeTests.lua" },
-    { "ui base", "Tests/UI/BaseTests.lua" },
     { "ui display", "Tests/UI/DisplayTests.lua" },
     -- Last: it stands in for the client's frame API in _G.
     { "ui smoke", "Tests/UI/Smoke/Run.lua" },
-    -- UI-Test1, on a fresh stand-in of its own.
-    { "ui-test1 smoke", "Tests/UI1/Run.lua" },
 }
 for _, suite in ipairs(suites) do
     local ok, err = pcall(dofile, suite[2])

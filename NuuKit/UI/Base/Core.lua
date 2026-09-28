@@ -2,16 +2,15 @@ local _, ns = ...
 
 local Kit = ns.Kit or {}
 ns.Kit = Kit
-Kit.UI1 = Kit.UI1 or {}
-local UI = Kit.UI1
-local Old = Kit.UI
+Kit.UI = Kit.UI or {}
+local UI = Kit.UI
 
--- UI-Test1: the kit's widgets on a second architecture, loaded beside UI/
--- so the two can be compared in the client. `ns.UI = ns.Kit.NewUI1(ns, look)`.
+-- The UI kit's core. One UI per addon: `ns.UI = ns.Kit.NewUI(ns, look)`.
 --
 -- A widget is a frame with shared methods: each widget type is declared
--- once with UI.Define, and making one copies the type's functions onto the
--- frame (no closure per widget). A type splits its work in three:
+-- once with UI.Define, and its methods reach every frame of that type
+-- through one shared class (no closure per widget). A type splits its work
+-- in three:
 --   Build(w)        once per frame: regions, scripts (shared functions)
 --   Init(w, spec)   each time it is made, from the pool too: every piece of
 --                   state set again from the spec
@@ -21,10 +20,9 @@ local Old = Kit.UI
 -- Widgets are made two ways, the same spec behind both:
 --   ui:Button(parent, { "Save", tone = "accent" })  -- placed by the caller
 --   column:Button{ "Save", tone = "accent" }        -- made in the column and stacked
--- A cleared widget goes back to its type's pool and is made again from it.
---
--- The colours, looks, text styles and money code are Theme/ from UI/:
--- nothing in them depends on how widgets are built.
+-- A cleared widget goes back to its type's pool and is made again from it;
+-- the addon never sees the pools. Theme/ holds the colours, looks, text
+-- styles and money code, which nothing here depends on.
 
 UI.Widget = UI.Widget or {}   -- what every widget has
 UI.Makers = UI.Makers or {}   -- a constructor per type, on stacks and on widgets that hold one
@@ -33,13 +31,6 @@ UI.Proto = UI.Proto or {}     -- the methods of a UI
 local Widget, Makers, types, Proto = UI.Widget, UI.Makers, UI.types, UI.Proto
 -- Every UI made, for what reaches all widgets (a change of pixel scale).
 UI.uis = UI.uis or setmetatable({}, { __mode = "k" })
-
--- The pure look code, shared with UI/.
-UI.Color, UI.Mix, UI.Alpha, UI.ColorCode = Old.Color, Old.Mix, Old.Alpha, Old.ColorCode
-UI.ResolveLook, UI.ClassColor, UI.TokenColor, UI.ToneColor = Old.ResolveLook, Old.ClassColor, Old.TokenColor, Old.ToneColor
-UI.ButtonColors, UI.MediaPath, UI.AddTheme, UI.ShortKey = Old.ButtonColors, Old.MediaPath, Old.AddTheme, Old.ShortKey
-UI.themes, UI.themeOrder, UI.accents, UI.status = Old.themes, Old.themeOrder, Old.accents, Old.status
-UI.textStyles, UI.textSizes, UI.defaultLook, UI.tones = Old.textStyles, Old.textSizes, Old.defaultLook, Old.tones
 
 -- Tokens ----------------------------------------------------------------------------------
 
@@ -50,10 +41,11 @@ function UI.FontFile(face)
     return file or (face == "number" and "Fonts\\ARIALN.TTF" or "Fonts\\FRIZQT__.TTF")
 end
 
--- UI/'s tokens, plus what painting needs worked out once per look: the font
--- files, each text style's size, and a cache for derived colours.
+-- A look's colours (UI.LookTokens, Theme/Look.lua), plus what painting
+-- needs worked out once per look: the font files, each text style's size,
+-- and a cache for derived colours.
 function UI.Tokens(look)
-    local t = Old.Tokens(look)
+    local t = UI.LookTokens(look)
     t.fonts = { text = UI.FontFile(), number = UI.FontFile("number") }
     t.sizes = {}
     for style, spec in pairs(UI.textStyles) do
@@ -64,7 +56,7 @@ function UI.Tokens(look)
 end
 
 -- Derived colours, made once per look and kept in its tokens, so painting
--- allocates nothing. Each answers what UI/'s function of the same idea does.
+-- allocates nothing. Each caches the Theme/Look.lua function of the same idea.
 
 -- A token name ("muted") or a colour ("#rrggbb", a table): TokenColor.
 function UI.Colour(t, value)
@@ -152,7 +144,7 @@ end
 
 -- One per addon. It holds the look, the tokens made from it, every widget it
 -- made (to repaint them) and the pools.
-function Kit.NewUI1(owner, look)
+function Kit.NewUI(owner, look)
     local ui = setmetatable({
         owner = owner,
         widgets = setmetatable({}, { __mode = "k" }),
@@ -666,7 +658,9 @@ function UI.StringWidth(label)
     return label:GetStringWidth() or 0
 end
 
--- Whether a texture really took its file (see UI/Base/UI.lua).
+-- Whether a texture really took its file. Some clients answer SetTexture
+-- with false for a path they do not have, others take it and leave the
+-- texture empty; either way the caller draws flat instead.
 function UI.LoadTexture(texture, path, wrapH, wrapV)
     local ok, set
     if wrapH then
@@ -701,7 +695,9 @@ function UI.Now()
     return type(GetTime) == "function" and GetTime() or 0
 end
 
--- Takes the typing focus from the kit's own fields (see UI/Base/UI.lua).
+-- WoW keeps a field focused through a click anywhere else, so keys go on
+-- landing in it; taking the focus away lets a field commit before the click
+-- that follows acts. Only the kit's own fields: a chat line stays open.
 function UI.ClearTypingFocus(except)
     if type(GetCurrentKeyBoardFocus) ~= "function" then return end
     local focus = GetCurrentKeyBoardFocus()
@@ -710,8 +706,11 @@ end
 
 -- Screen pixels ---------------------------------------------------------------------------------
 
--- As in UI/Base/UI.lua, every place, size and line is put on whole screen
--- pixels. The pixels in a unit are read once, and again when the UI scale
+-- WoW lays the UI out in units, not screen pixels: one unit is
+-- GetEffectiveScale() x (physical screen height / 768) pixels, 1.67 at 1440p
+-- with a UI scale of 0.89. An edge at a fraction of a pixel is rounded when
+-- drawn, so a 1 unit line comes out 1 or 2 pixels wide. So every place,
+-- size and line is put on whole screen pixels. The pixels in a unit are read once, and again when the UI scale
 -- or the resolution changes: the kit never scales its own frames, so every
 -- frame under UIParent has UIParent's scale.
 local pixelScale
@@ -728,7 +727,8 @@ local function readScale()
     return scale
 end
 
--- Screen pixels in one unit. `frame` is ignored; kept for UI/'s signature.
+-- Screen pixels in one unit. `frame` is ignored: every kit frame has
+-- UIParent's scale.
 function UI.PixelsPerUnit() return pixelScale or readScale() end
 
 function UI.Snap(_, value)

@@ -12,14 +12,13 @@ local C = dofile(BENCH .. "Common.lua")
 local ITEMS = 60
 
 local archs = {
-    { key = "A", name = "A closures (today)", file = "A.lua" },
+    { key = "A", name = "A closures (first kit)", file = "A.lua" },
     { key = "B", name = "B shared methods", file = "B.lua" },
     { key = "B+pool", name = "B + pooling", file = "B.lua", opts = { pool = true } },
     { key = "C", name = "C props schema", file = "C.lua", base = "B.lua" },
     { key = "D", name = "D declarative", file = "D.lua", base = "B.lua" },
     { key = "E", name = "E widget objects", file = "E.lua" },
-    { key = "K", name = "K real kit", file = "K.lua", screenFile = "A.lua", kit = true },
-    { key = "T1", name = "T1 UI-Test1 as built", file = "T1.lua", screenFile = "B.lua", kit1 = true },
+    { key = "UI", name = "UI the kit as built", file = "Kit.lua", screenFile = "B.lua", kit = true },
 }
 local only = arg and arg[1]
 for index = #archs, 1, -1 do
@@ -197,7 +196,6 @@ row("  screen code, tokens", W, function(_, arch) local _, t = screenOf(arch); r
 row("  manual update calls", W, function(_, arch) local _, _, u = screenOf(arch); return u end)
 row("  architecture code, lines", W, function(_, arch)
     if arch.kit then return kitLines() end
-    if arch.kit1 then return kitLines("UI%-Test1/") end
     local _, _, _, own = source(arch.file)
     if arch.base then own = own + select(4, source(arch.base)) end
     return own

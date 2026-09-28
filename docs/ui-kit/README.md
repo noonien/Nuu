@@ -3,7 +3,9 @@
 - **Mockups:** <https://claude.ai/artifact/2b8Q697XdKeYNaHMsn96QX> (a design canvas, pinned in the claude.ai sidebar)
 - **Plan:** [PLAN.md](PLAN.md)
 - **Status and next steps:** [NuuKit/UI/status.md](../../NuuKit/UI/status.md); the API in use:
-  [NuuKit/UI/examples.lua](../../NuuKit/UI/examples.lua); in game, `/nuukit ui` opens the widget gallery
+  [NuuKit/UI/examples.lua](../../NuuKit/UI/examples.lua); writing widgets:
+  [NuuKit/UI/README.md](../../NuuKit/UI/README.md); in game, `/nuukit ui` opens the widget gallery and
+  `/nuukit report` measures the kit
 
 ## Reading the mockups
 

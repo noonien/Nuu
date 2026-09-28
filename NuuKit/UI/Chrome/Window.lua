@@ -5,7 +5,6 @@ ns.Kit = Kit
 Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 local Proto = UI.Proto
-local Container = UI.Container
 
 -- Windows and in-play panels.
 --
@@ -15,11 +14,21 @@ local Container = UI.Container
 -- the window is made in the body, and a column, panes or tabs made straight
 -- on it fill it.
 --
+-- Windows are few and never pooled, so they are made here directly rather
+-- than through UI.Define; they answer as a holder does (kitInner is the
+-- body, the makers and UI.Holder's methods are on the window). A window is
+-- painted through ui:Paint, so a look change repaints it (Paint); the
+-- cursor on its band or grip changes colours only (PaintState).
+--
 -- With `place` (a table the addon keeps) and `key`, its position, size and
 -- collapsed state go into place[key]; the kit writes nothing else.
+--
+-- The focus functions (Base/Focus.lua) and UI.DragFrame (Base/Drag.lua) are
+-- the Base's; this file only uses them.
 
 local BAND, STATUS, GRIP = 30, 24, 14
 local ART_CORNER, ART_INSET = 24, 17
+local NO_LAYOUT = {}
 
 local function frameName(ui, key)
     if not key then return nil end
@@ -27,6 +36,8 @@ local function frameName(ui, key)
     return (tostring(owner) .. "_" .. tostring(key) .. "_Window"):gsub("[^%w_]", "")
 end
 
+-- Writes the window's place into the addon's table, and anchors it by its
+-- top-left corner, so a change of size leaves it put.
 local function save(win)
     local place, key = win.kitPlace, win.kitKey
     if not place or not key then return end
@@ -38,71 +49,8 @@ local function save(win)
     entry.h = UI.Snap(win, win.kitCollapsed and win.kitExpandedHeight or win:GetHeight())
     entry.collapsed = win.kitCollapsed or nil
     place[key] = entry
-    -- Anchored by its top-left corner, so a change of size leaves it put.
     win:ClearAllPoints()
     win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", entry.x, entry.y)
-end
-
--- Dragging by hand ------------------------------------------------------------------
-
--- Moves or sizes `frame` while `handle` is held, ported from OpenRoad's
--- tracker grip rather than left to StartMoving / StartSizing: each frame the
--- frame is put where it was when the button went down plus how far the
--- cursor has gone since, so no motion is lost and the point grabbed stays
--- under the cursor. `mode`: "move", "size" (the right and bottom edges) or
--- "width". `opts`: can() false refuses a drag, bounds a table of minW, minH,
--- maxW, maxH, onStop(frame) when let go.
-function UI.DragFrame(handle, frame, mode, opts)
-    opts = opts or {}
-    local driver = CreateFrame("Frame", nil, handle)
-    driver:Hide()
-    local from
-    local function cursor()
-        local x, y = GetCursorPosition()
-        local scale = frame:GetEffectiveScale() or 1
-        return x / scale, y / scale
-    end
-    local function clamp(value, low, high)
-        if low and value < low then value = low end
-        if high and value > high then value = high end
-        return value
-    end
-    local function stop()
-        if not from then return end
-        from = nil
-        driver:Hide()
-        if opts.onStop then opts.onStop(frame) end
-    end
-    driver:SetScript("OnUpdate", function()
-        if not from then driver:Hide(); return end
-        -- The release may land off the handle, which then never hears it.
-        if type(IsMouseButtonDown) == "function" and not IsMouseButtonDown("LeftButton") then stop(); return end
-        local x, y = cursor()
-        local dx, dy = x - from.x, y - from.y
-        if mode == "move" then
-            frame:ClearAllPoints()
-            frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, from.left + dx), UI.Snap(frame, from.top + dy))
-        else
-            local b = opts.bounds or {}
-            frame:SetWidth(UI.Snap(frame, clamp(from.w + dx, b.minW, b.maxW)))
-            if mode == "size" then frame:SetHeight(UI.Snap(frame, clamp(from.h - dy, b.minH, b.maxH))) end
-        end
-    end)
-    handle:HookScript("OnMouseDown", function(_, button)
-        if button ~= "LeftButton" or type(GetCursorPosition) ~= "function" then return end
-        if opts.can and not opts.can() then return end
-        local left, top = frame:GetLeft(), frame:GetTop()
-        if not left or not top then return end
-        local x, y = cursor()
-        from = { x = x, y = y, left = left, top = top, w = frame:GetWidth(), h = frame:GetHeight() }
-        -- Held by its top-left corner, so sizing grows it right and down.
-        left, top = UI.Snap(frame, left), UI.Snap(frame, top)
-        frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
-        driver:Show()
-    end)
-    handle:HookScript("OnMouseUp", function(_, button) if button == "LeftButton" then stop() end end)
-    handle:HookScript("OnHide", stop)
 end
 
 local function setBounds(win, opts)
@@ -122,35 +70,120 @@ end
 -- is snapped relative to the body, so the body must sit on the grid too, or
 -- each edge in it is rounded at draw time and can round differently when
 -- the body's height changes (a status line coming or going).
-local function arrange(win)
-    local snap = function(v) return UI.Snap(win, v) end
-    local inset = snap(win.kitInset or 1)
+-- The band's marks (close, fold) and the addon's header row, at their
+-- distance from the band's right end, centred on it: on whole pixels.
+local function placeMarks(win)
     local band = win.band
-    local bandHeight = band:IsShown() and snap(BAND) or 0
+    for _, mark in ipairs({ win.closeButton, win.collapseButton }) do
+        if mark then
+            local height = mark.kitPH or mark:GetHeight() or 0
+            mark:ClearAllPoints()
+            mark:SetPoint("TOPRIGHT", band, "TOPRIGHT", UI.Snap(win, mark.kitFromRight), -UI.Snap(win, (BAND - height) / 2))
+        end
+    end
+    -- The header: from past the subtitle to the marks, the band's height.
+    local header = win.header
+    if header and header.kitFromRight then
+        local inset = UI.Snap(win, win.kitInset or 1)
+        local bandWidth = (win.kitPW or win:GetWidth() or 0) - 2 * inset
+        local words = 12 + UI.StringWidth(win.title) + 8 + UI.StringWidth(win.subtitle) + 8
+        local width = math.max(1, UI.Snap(win, bandWidth + header.kitFromRight - words))
+        header:ClearAllPoints()
+        header:SetPoint("TOPRIGHT", band, "TOPRIGHT", UI.Snap(win, header.kitFromRight), 0)
+        header:SetSize(width, UI.Snap(win, BAND))
+    end
+end
+
+local function arrange(win)
+    placeMarks(win)
+    local inset = UI.Snap(win, win.kitInset or 1)
+    local band = win.band
+    local bandHeight = band:IsShown() and UI.Snap(win, BAND) or 0
     band:ClearAllPoints()
     band:SetPoint("TOPLEFT", win, "TOPLEFT", inset, -inset)
     band:SetPoint("TOPRIGHT", win, "TOPRIGHT", -inset, -inset)
-    band:SetHeight(snap(BAND))
+    band:SetHeight(UI.Snap(win, BAND))
     local status = win.statusStrip
     local bottom = inset
     if status and status:IsShown() and not win.kitCollapsed then
         status:ClearAllPoints()
         status:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", inset, inset)
         status:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -inset, inset)
-        status:SetHeight(snap(STATUS))
-        bottom = inset + snap(STATUS)
+        status:SetHeight(UI.Snap(win, STATUS))
+        bottom = inset + UI.Snap(win, STATUS)
     end
     win.body:ClearAllPoints()
     win.body:SetPoint("TOPLEFT", win, "TOPLEFT", inset, -(inset + bandHeight))
     win.body:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -inset, bottom)
     if win.grip then
         win.grip:ClearAllPoints()
-        local corner = snap(math.max(1, inset - 6))
+        local corner = UI.Snap(win, math.max(1, inset - 6))
         win.grip:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -corner, corner)
     end
     UI.Invalidate(win.body)
+    UI.Invalidate(win.header)
 end
 
+-- Wherever it was placed (centred, say), it opens on whole screen pixels,
+-- so the pixel-snapped layout inside it lands on the grid too; and again
+-- whenever the UI scale or the resolution changes.
+-- Where on UIParent a point of a frame `width` x `height` lands when
+-- anchored `point` to UIParent's `relative`, offset x, y: its top left.
+local H = { LEFT = 0, CENTER = 0.5, RIGHT = 1 }
+local V = { TOP = 1, CENTER = 0.5, BOTTOM = 0 }
+local function split(point)
+    point = point or "CENTER"
+    local v = point:match("^TOP") and "TOP" or (point:match("^BOTTOM") and "BOTTOM" or "CENTER")
+    local h = point:match("LEFT$") and "LEFT" or (point:match("RIGHT$") and "RIGHT" or "CENTER")
+    return H[h], V[v]
+end
+local function topLeftOn(point, relative, x, y, width, height)
+    local sw, sh = UIParent:GetWidth() or 0, UIParent:GetHeight() or 0
+    local rh, rv = split(relative)
+    local ph, pv = split(point)
+    local px, py = sw * rh + (x or 0), sh * rv + (y or 0)
+    return px - width * ph, py + height * (1 - pv)
+end
+
+-- Anchors `win` by its top left, on whole pixels, from an anchor to UIParent
+-- worked out here: the client may not know the window's place yet (on its
+-- first show GetLeft answers nil), so it is not asked.
+local function pin(win, point)
+    local width, height = win:GetWidth() or 0, win:GetHeight() or 0
+    local left, top = topLeftOn(point[1], point[3] or point[1], point[4], point[5], width, height)
+    win:ClearAllPoints()
+    win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(win, left), UI.Snap(win, top))
+end
+
+local function settle(win)
+    win:SetSize(UI.Snap(win, win:GetWidth() or 0), UI.Snap(win, win:GetHeight() or 0))
+    arrange(win)
+    local left, top = win:GetLeft(), win:GetTop()
+    if not left or not top then
+        -- Not placed yet: again on the next frame.
+        if C_Timer and C_Timer.After and not win.kitSettleWaiting then
+            win.kitSettleWaiting = true
+            C_Timer.After(0, function() win.kitSettleWaiting = nil; settle(win) end)
+        end
+        return
+    end
+    local x, y = UI.Snap(win, left), UI.Snap(win, top)
+    if math.abs(x - left) < 0.001 and math.abs(y - top) < 0.001 then return end
+    win:ClearAllPoints()
+    win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
+end
+
+-- Painting ---------------------------------------------------------------------------
+
+local function paintStrip(win, t)
+    local strip = win.statusStrip
+    if not strip then return end
+    UI.TexColor(strip.bg, win.kitInPlay and t.raisedBg or t.bandBg)
+    UI.TexColor(strip.line, t.hairline)
+    UI.ApplyStyle(strip.text, "label", t)
+end
+
+-- The look: background, frame, band art, fonts.
 local function paintWindow(win, t)
     local art = (not win.kitInPlay) and t.art or nil
     -- The background: an art theme's tile, or the flat plane.
@@ -165,7 +198,10 @@ local function paintWindow(win, t)
     if art and art.frame then
         if win.nineSpec ~= art.frame then
             if win.nine then win.nine:Hide() end
-            win.nine = UI.NineSlice(win, "BORDER", art.frame, ART_CORNER, false)
+            -- One frame per art theme, kept for when it comes back.
+            win.nines = win.nines or {}
+            win.nine = win.nines[art.frame] or UI.NineSlice(win, "BORDER", art.frame, ART_CORNER, false)
+            win.nines[art.frame] = win.nine
             win.nineSpec = art.frame
         end
         framed = win.nine.loaded
@@ -181,174 +217,96 @@ local function paintWindow(win, t)
         win.kitInset = inset
         arrange(win)
     end
+    win.kitBanded = art and art.band and UI.Tile(win.bandBg, art.band) or false
+    UI.ApplyStyle(win.title, "window", t)
+    UI.ApplyStyle(win.subtitle, "label", t)
+    paintStrip(win, t)
+    win:PaintState(t)
+end
 
-    -- The band: the art band, the flat band, or for an in-play panel a
-    -- faint plate that shows while the cursor is on it.
-    local banded = art and art.band and UI.Tile(win.bandBg, art.band)
-    if banded then
+-- Colours only: the band (an in-play panel's shows while the cursor is on
+-- it) and the grip.
+local function paintWindowState(win, t)
+    if win.kitBanded then
         win.bandBg:SetVertexColor(1, 1, 1, 1)
     elseif win.kitInPlay then
         UI.TexColor(win.bandBg, win.band.hover and t.raisedBg or nil)
     else
         UI.TexColor(win.bandBg, t.bandBg)
     end
-    UI.ApplyStyle(win.title, "window", t)
-    UI.ApplyStyle(win.subtitle, "label", t)
-    if win.statusStrip then
-        UI.TexColor(win.statusStrip.bg, win.kitInPlay and t.raisedBg or t.bandBg)
-        UI.TexColor(win.statusStrip.line, t.hairline)
-        UI.ApplyStyle(win.statusStrip.text, "label", t)
-    end
-    if win.focusRing then win.focusRing.plate:Flat(nil, t.accent) end
+    if win.grip then win.grip.glyph:SetColor(win.grip.hover and t.accent or t.muted) end
 end
 
--- Makes the window shell shared by Window and Panel.
-local function shell(ui, opts, inPlay)
-    local name = (not inPlay or opts.escape) and frameName(ui, opts.key) or nil
-    local win = CreateFrame("Frame", name, opts.parent or UIParent)
-    win.kitIsWindow, win.kitInPlay, win.ui = true, inPlay, ui
-    win.kitKey, win.kitPlace = opts.key, opts.place
-    win:SetFrameStrata(opts.strata or (inPlay and "MEDIUM" or "HIGH"))
-    if win.SetToplevel then win:SetToplevel(true) end
-    win:SetClampedToScreen(true)
-    win:SetMovable(true)
-    win:EnableMouse(true)
-    win:SetSize(UI.Snap(win, opts.width or 400), UI.Snap(win, opts.height or 300))
+-- Scripts (shared; each finds its window through the frame) ---------------------------
 
-    win.bg = win:CreateTexture(nil, "BACKGROUND", nil, -8)
-    win.bg:SetAllPoints()
-    win.bg:Hide()
-    win.plate = UI.NewPlate(win, "BACKGROUND", -6)
+local function clearTyping() UI.ClearTypingFocus(nil) end
 
-    -- The band: title, subtitle, room for the addon's own controls, then the
-    -- collapse and close marks. It is what the player drags.
-    local band = CreateFrame("Frame", nil, win)
-    band:SetHeight(BAND)
-    win.band = band
-    win.bandBg = band:CreateTexture(nil, "BACKGROUND")
-    win.bandBg:SetAllPoints()
-    band:EnableMouse(true)
-    band:SetScript("OnEnter", function() band.hover = true; win:Repaint() end)
-    band:SetScript("OnLeave", function() band.hover = false; win:Repaint() end)
-    band:SetScript("OnMouseDown", function() UI.ClearTypingFocus(nil) end)
-    UI.DragFrame(band, win, "move", { can = function() return not win.kitLocked end, onStop = save })
+-- A locked window does not move.
+local function canMove(win) return not win.kitLocked end
 
-    win.title = UI.NewText(band)
-    win.title:SetPoint("LEFT", band, "LEFT", 12, 0)
-    win.title:SetText(opts.title or "")
-    win.subtitle = UI.NewText(band)
-    win.subtitle:SetPoint("LEFT", win.title, "RIGHT", 8, 0)
-    win.subtitle:SetText(opts.subtitle or "")
+local function closeClicked(button) button.kitOwner:Hide() end
 
-    local right = -6
-    if opts.close ~= false and not inPlay then
-        win.closeButton = ui:GlyphButton(band, "close", { size = 22, glyphSize = 9, boxed = true, bright = true,
-            tooltip = nil, onClick = function() win:Hide() end })
-        win.closeButton:SetPoint("RIGHT", band, "RIGHT", right, 0)
-        right = right - 26
-    end
-    if opts.collapsible then
-        win.collapseButton = ui:GlyphButton(band, "up", { size = 22, glyphSize = 9, onClick = function() win:SetCollapsed(not win.kitCollapsed) end })
-        win.collapseButton:SetPoint("RIGHT", band, "RIGHT", right, 0)
-        -- Both marks made once; the folded one points down.
-        win.collapseButton.kitUp = win.collapseButton.glyph
-        win.collapseButton.kitDown = UI.NewGlyph(win.collapseButton, "down", 9, 1.6)
-        win.collapseButton.kitDown:SetShown(false)
-        right = right - 24
-    end
-    -- The addon's own controls in the band, right of the title.
-    local header = CreateFrame("Frame", nil, band)
-    header:SetHeight(BAND)
-    UI.MakeContainer(ui, header, "row", { gap = 4, align = "right" })
-    header:SetPoint("TOPRIGHT", band, "TOPRIGHT", right, 0)
-    header:SetPoint("BOTTOMLEFT", win.subtitle, "BOTTOMRIGHT", 8, -((BAND - 12) / 2))
-    win.header = header
+-- The player folds it: onCollapse hears it. SetCollapsed from code does not.
+local function collapseClicked(button)
+    local win = button.kitOwner
+    win:SetCollapsed(not win.kitCollapsed)
+    if win.kitOnCollapse then win.kitOnCollapse(win.kitCollapsed, win) end
+end
 
-    if inPlay and not opts.title and not opts.collapsible then band:Hide() end
+local function undoClicked(link)
+    local strip = link.kitStrip
+    link:Hide()
+    local undo = strip.kitUndo
+    strip.kitUndo = nil
+    if undo then undo() end
+end
 
-    -- The body: a column that fills the window.
-    local body = CreateFrame("Frame", nil, win)
-    -- What does not fit is cut at the window's edge, not drawn over the world;
-    -- a screen that can outgrow the window holds its content in a ScrollArea.
-    if body.SetClipsChildren then pcall(body.SetClipsChildren, body, true) end
-    UI.MakeContainer(ui, body, "column", { gap = opts.gap or 0, padding = opts.padding or 0 })
-    body.kitWindow = win
-    body.kitParentContainer = nil
-    win.body = body
-    for method, fn in pairs(Container) do win[method] = fn end
-    win.kitInner = body
-    win.kitFillChildren = true
-    body.kitFillChildren = true
+local function windowShown(win)
+    settle(win)
+    -- Laid out now, so it never shows a frame late.
+    UI.LayoutNow()
+end
 
-    -- A click on the bare window takes the focus from a field.
-    win:SetScript("OnMouseDown", function() UI.ClearTypingFocus(nil) end)
-    -- Wherever it was placed (centred, say), it opens on whole screen pixels,
-    -- so the pixel-snapped layout inside it lands on the grid too; and again
-    -- whenever the UI scale or the resolution changes.
-    local function settle(w)
-        w:SetSize(UI.Snap(w, w:GetWidth() or 0), UI.Snap(w, w:GetHeight() or 0))
-        arrange(w)
-        local left, top = w:GetLeft(), w:GetTop()
-        if not left or not top then return end
-        local x, y = UI.Snap(w, left), UI.Snap(w, top)
-        if math.abs(x - left) < 0.001 and math.abs(y - top) < 0.001 then return end
-        w:ClearAllPoints()
-        w:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
-    end
-    win:HookScript("OnShow", settle)
-    UI.OnPixelScale(win, settle)
-    win:HookScript("OnHide", function()
-        UI.ClearTypingFocus(nil)
-        if ui.CloseMenu then ui:CloseMenu() end
-    end)
+local function windowHidden(win)
+    UI.ClearTypingFocus(nil)
+    if win.ui.CloseMenu then win.ui:CloseMenu() end
+end
 
-    if opts.resizable then
-        win:SetResizable(true)
-        setBounds(win, opts)
-        local grip = CreateFrame("Button", nil, win)
-        grip:SetSize(GRIP, GRIP)
-        grip:SetFrameLevel(win:GetFrameLevel() + 20)
-        grip.glyph = UI.NewGlyph(grip, "grip", 9, 1.3)
-        UI.DragFrame(grip, win, opts.resizable == "width" and "width" or "size", { bounds = win.kitBounds, onStop = save })
-        grip:SetScript("OnEnter", function() grip.hover = true; win:Repaint() end)
-        grip:SetScript("OnLeave", function() grip.hover = false; win:Repaint() end)
-        win.grip = grip
-    end
+-- The body follows the window's size; the client tells the body itself, the
+-- window's own change is heard here too.
+-- A new size: the body lays out again, and the header spans the new band.
+local function windowSized(win)
+    placeMarks(win)
+    UI.Invalidate(win.body)
+end
 
-    -- Where it was, or where the addon asks.
-    local placed = opts.place and opts.key and opts.place[opts.key]
-    if placed and placed.x and placed.y then
-        win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", placed.x, placed.y)
-        if opts.resizable and placed.w and placed.h then
-            win:SetSize(placed.w, opts.resizable == "width" and (opts.height or placed.h) or placed.h)
-        end
-    else
-        local point = opts.point or { "CENTER", UIParent, "CENTER", 0, 0 }
-        win:SetPoint(point[1], point[2] or UIParent, point[3] or point[1], point[4] or 0, point[5] or 0)
-    end
-
-    if name and not inPlay and opts.escape ~= false and type(UISpecialFrames) == "table" then
-        table.insert(UISpecialFrames, name)
-    end
-
-    ui:Finish(win, opts, function(w, t)
-        paintWindow(w, t)
-        if w.grip then w.grip.glyph:SetColor(w.grip.hover and t.accent or t.muted) end
-    end)
-    arrange(win)
-    if placed and placed.collapsed then win:SetCollapsed(true) end
-    if opts.shown == false or opts.hidden then win:Hide() end
-    return win
+local function keyDown(win, key)
+    if not win.kitKeyboard then return end
+    local handled = UI.WindowKey(win, key)
+    if win.SetPropagateKeyboardInput then pcall(win.SetPropagateKeyboardInput, win, not handled) end
 end
 
 -- Window methods ----------------------------------------------------------------------
 
 local Window = {}
 
-function Window:SetTitle(text) self.title:SetText(text or "") end
-function Window:SetSubtitle(text) self.subtitle:SetText(text or "") end
+function Window:Paint(t) paintWindow(self, t) end
+function Window:PaintState(t) paintWindowState(self, t) end
+function Window:Repaint() paintWindow(self, self.ui.tokens) end
 
-function Window:Toggle()
+function Window:SetTitle(text)
+    self.title:SetText(text or "")
+    placeMarks(self)
+end
+function Window:SetSubtitle(text)
+    self.subtitle:SetText(text or "")
+    placeMarks(self)
+end
+
+-- Shows or hides it. `win:Toggle{ ... }` (a spec) is the Toggle maker: a
+-- toggle made in the body, as on any holder.
+function Window:Toggle(spec)
+    if spec ~= nil and UI.Makers.Toggle then return UI.Makers.Toggle(self, spec) end
     self:SetShown(not self:IsShown())
 end
 
@@ -362,7 +320,7 @@ function Window:SetCollapsed(collapsed)
         self.body:Hide()
         if self.statusStrip then self.statusStrip:Hide() end
         if self.grip then self.grip:Hide() end
-        self:SetHeight(BAND + 2 * (self.kitInset or 1))
+        self:SetHeight(UI.Snap(self, BAND + 2 * (self.kitInset or 1)))
     else
         self.kitCollapsed = false
         self.body:Show()
@@ -370,17 +328,10 @@ function Window:SetCollapsed(collapsed)
         if self.grip then self.grip:Show() end
         self:SetHeight(self.kitExpandedHeight or self:GetHeight())
     end
-    local fold = self.collapseButton
-    if fold then
-        fold.kitUp:SetShown(not collapsed)
-        fold.kitDown:SetShown(collapsed)
-        fold.glyph = collapsed and fold.kitDown or fold.kitUp
-        fold.kitPressParts = { fold.glyph }
-        fold:Repaint()
-    end
+    -- The fold mark points down while folded.
+    if self.collapseButton then self.collapseButton:SetGlyph(collapsed and "down" or "up") end
     arrange(self)
     save(self)
-    if self.kitOnCollapse then self.kitOnCollapse(collapsed) end
 end
 
 function Window:IsCollapsed() return self.kitCollapsed or false end
@@ -392,7 +343,6 @@ function Window:IsCollapsed() return self.kitCollapsed or false end
 -- comes or goes. A body that changes size redraws what scrolls in it, and
 -- the client can draw its edges a pixel differently each time.
 function Window:Status(text, opts)
-    opts = opts or {}
     local strip = self.statusStrip
     if not strip then
         strip = CreateFrame("Frame", nil, self)
@@ -406,19 +356,18 @@ function Window:Status(text, opts)
         UI.Hairline(strip.line, "height")
         strip.text = UI.NewText(strip)
         strip.text:SetPoint("LEFT", strip, "LEFT", 12, 0)
-        strip.undo = self.ui:Link(strip, "Undo", {})
+        strip.undo = self.ui:Link(strip, { "Undo", onClick = undoClicked })
+        strip.undo.kitStrip = strip
         strip.undo:SetPoint("LEFT", strip.text, "RIGHT", 8, 0)
         self.statusStrip = strip
-        self:Repaint()
+        paintStrip(self, self.ui.tokens)
     end
+    local undo = opts and opts.undo
     strip.kitHasText = text ~= nil or self.kitStatusKept
     strip.text:SetText(text or self.kitStatusHint or "")
-    strip.undo:SetShown(opts.undo ~= nil)
-    strip.undo.kitClick = function()
-        strip.undo:Hide()
-        if opts.undo then opts.undo() end
-    end
-    local shown = strip.kitHasText and not self.kitCollapsed
+    strip.kitUndo = undo
+    strip.undo:SetShown(undo ~= nil)
+    local shown = strip.kitHasText and not self.kitCollapsed and true or false
     if shown ~= strip:IsShown() then
         strip:SetShown(shown)
         arrange(self)
@@ -444,113 +393,159 @@ function Window:TakeKeyboard(on)
     pcall(self.EnableKeyboard, self, self.kitKeyboard)
     if not self.kitKeysHooked then
         self.kitKeysHooked = true
-        self:SetScript("OnKeyDown", function(win, key)
-            if not win.kitKeyboard then return end
-            local handled = UI.WindowKey(win, key)
-            if win.SetPropagateKeyboardInput then pcall(win.SetPropagateKeyboardInput, win, not handled) end
-        end)
+        self:SetScript("OnKeyDown", keyDown)
     end
     if not self.kitKeyboard then UI.FocusWidget(self, nil) end
 end
 
 function Window:SetLocked(locked) self.kitLocked = locked and true or false end
 
--- Keyboard focus -------------------------------------------------------------------------
+-- The shell ------------------------------------------------------------------------------
 
--- Every widget that can take the keyboard's focus, in the order it was made.
-local serial = 0
-function UI.RegisterFocusable(ui, widget, isField)
-    serial = serial + 1
-    widget.kitSerial = serial
-    widget.kitFocusable = true
-    widget.kitIsField = isField
-    ui.focusables = ui.focusables or setmetatable({}, { __mode = "k" })
-    ui.focusables[widget] = true
-end
+-- A window is never released to a pool.
+local function keepWindow() end
 
-local function reachable(widget)
-    if not widget:IsVisible() then return false end
-    if widget.IsEnabled and not widget:IsEnabled() then return false end
-    return true
-end
+-- Makes the window shell shared by Window and Panel.
+local function shell(ui, opts, inPlay)
+    local name = (not inPlay or opts.escape) and frameName(ui, opts.key) or nil
+    local win = CreateFrame("Frame", name, opts.parent or UIParent)
+    -- What a widget has (Changed, Repaint, OnRightClick...), but a window
+    -- is never released to a pool; a holder: what is made on the window
+    -- goes in the body.
+    UI.Adopt(win, "Window", { UI.Widget, UI.Makers, UI.Holder, Window }, { Release = keepWindow })
+    win.ui, win.kitLayout = ui, NO_LAYOUT
+    win.kitIsWindow, win.kitInPlay = true, inPlay
+    win.kitKey, win.kitPlace = opts.key, opts.place
+    win.kitOnCollapse = opts.onCollapse
+    win:SetFrameStrata(opts.strata or (inPlay and "MEDIUM" or "HIGH"))
+    if win.SetToplevel then pcall(win.SetToplevel, win, true) end
+    win:SetClampedToScreen(true)
+    win:SetMovable(true)
+    win:EnableMouse(true)
+    win:SetSize(UI.Snap(win, opts.width or 400), UI.Snap(win, opts.height or 300))
 
--- The fields (or, with full keyboard control, every focusable) of a window,
--- in order.
-function UI.FocusOrder(win, fieldsOnly)
-    if win.kitTabOrder then return win.kitTabOrder end
-    local list = {}
-    for widget in pairs(win.ui.focusables or {}) do
-        if (not fieldsOnly or widget.kitIsField) and UI.WindowOf(widget) == win then list[#list + 1] = widget end
+    win.bg = win:CreateTexture(nil, "BACKGROUND", nil, -8)
+    win.bg:SetAllPoints()
+    win.bg:Hide()
+    win.plate = UI.NewPlate(win, "BACKGROUND", -6)
+
+    -- The band: title, subtitle, room for the addon's own controls, then the
+    -- collapse and close marks. It is what the player drags.
+    local band = CreateFrame("Frame", nil, win)
+    band:SetHeight(BAND)
+    win.band = band
+    win.bandBg = band:CreateTexture(nil, "BACKGROUND")
+    win.bandBg:SetAllPoints()
+    band:EnableMouse(true)
+    UI.Hover(band, win)
+    band:SetScript("OnMouseDown", clearTyping)
+    UI.DragFrame(band, win, "move", { can = canMove, onStop = save })
+
+    win.title = UI.NewText(band)
+    win.title:SetPoint("LEFT", band, "LEFT", 12, 0)
+    win.title:SetText(opts.title or "")
+    win.subtitle = UI.NewText(band)
+    win.subtitle:SetPoint("LEFT", win.title, "RIGHT", 8, 0)
+    win.subtitle:SetText(opts.subtitle or "")
+
+    local right = -6
+    if opts.close ~= false and not inPlay then
+        local close = ui:GlyphButton(band, { "close", size = 22, glyphSize = 9, boxed = true, bright = true,
+            onClick = closeClicked })
+        close.kitOwner = win
+        close.kitFromRight = right
+        win.closeButton = close
+        right = right - 26
     end
-    table.sort(list, function(a, b) return a.kitSerial < b.kitSerial end)
-    return list
-end
+    if opts.collapsible then
+        local fold = ui:GlyphButton(band, { "up", size = 22, glyphSize = 9, onClick = collapseClicked })
+        fold.kitOwner = win
+        fold.kitFromRight = right
+        win.collapseButton = fold
+        right = right - 24
+    end
+    -- The addon's own controls in the band, right of the title:
+    -- `win.header:Button{ ... }`.
+    -- `arrange` below places and sizes it.
+    local header = UI.Part(ui, band, "row", { gap = 4, align = "right" })
+    header.kitWindow = win
+    header.kitFromRight = right
+    win.header = header
 
--- From `current`, the next reachable entry of the window's order.
-function UI.NextFocus(win, current, step, fieldsOnly)
-    local list = UI.FocusOrder(win, fieldsOnly)
-    local count = #list
-    if count == 0 then return nil end
-    local at = 0
-    for index, widget in ipairs(list) do if widget == current then at = index end end
-    for offset = 1, count do
-        local candidate = list[((at - 1 + step * offset) % count) + 1]
-        if candidate ~= current and reachable(candidate) then return candidate end
-    end
-    return nil
-end
+    if inPlay and not opts.title and not opts.collapsible then band:Hide() end
 
--- Moves the focus ring (full keyboard control) to `widget`, or away.
-function UI.FocusWidget(win, widget)
-    win.kitFocused = widget
-    local ring = win.focusRing
-    if not widget then
-        if ring then ring:Hide() end
-        return
-    end
-    if not ring then
-        ring = CreateFrame("Frame", nil, win)
-        ring.plate = UI.NewPlate(ring, "OVERLAY")
-        win.focusRing = ring
-        win:Repaint()
-    end
-    ring:SetFrameLevel((widget:GetFrameLevel() or 1) + 5)
-    ring:ClearAllPoints()
-    local gap = UI.Snap(win, 3)
-    ring:SetPoint("TOPLEFT", widget, "TOPLEFT", -gap, gap)
-    ring:SetPoint("BOTTOMRIGHT", widget, "BOTTOMRIGHT", gap, -gap)
-    ring:Show()
-    if widget.kitIsField and widget.SetFocus then widget:SetFocus() end
-end
+    -- The body: a column that fills the window.
+    local body = CreateFrame("Frame", nil, win)
+    -- What does not fit is cut at the window's edge, not drawn over the world;
+    -- a screen that can outgrow the window holds its content in a ScrollArea.
+    if body.SetClipsChildren then pcall(body.SetClipsChildren, body, true) end
+    UI.MakeStack(ui, body, "column", { gap = opts.gap or 0, padding = opts.padding or 0 })
+    body.kitWindow = win
+    body.kitFillChildren = true
+    win.body = body
+    win.kitInner = body
+    win.kitFillChildren = true
 
--- A key in a window under full keyboard control; true when the kit used it.
-function UI.WindowKey(win, key)
-    local shift = type(IsShiftKeyDown) == "function" and IsShiftKeyDown()
-    local focused = win.kitFocused
-    if key == "TAB" then
-        UI.FocusWidget(win, UI.NextFocus(win, focused, shift and -1 or 1, false))
-        return true
-    elseif key == "ESCAPE" then
-        win:Hide()
-        return true
-    elseif focused and (key == "ENTER" or key == "SPACE") then
-        if focused.kitKeyPress then focused:kitKeyPress(key) elseif focused.Click then focused:Click() end
-        return true
-    elseif focused and focused.kitKeyArrow and (key == "LEFT" or key == "RIGHT" or key == "UP" or key == "DOWN") then
-        focused:kitKeyArrow(key)
-        return true
+    -- A click on the bare window takes the focus from a field.
+    win:SetScript("OnMouseDown", clearTyping)
+    win:HookScript("OnShow", windowShown)
+    win:HookScript("OnHide", windowHidden)
+    win:HookScript("OnSizeChanged", windowSized)
+    UI.OnPixelScale(win, settle)
+
+    if opts.resizable then
+        if win.SetResizable then win:SetResizable(true) end
+        setBounds(win, opts)
+        local grip = CreateFrame("Button", nil, win)
+        grip:SetSize(GRIP, GRIP)
+        grip:SetFrameLevel(win:GetFrameLevel() + 20)
+        grip.glyph = UI.NewGlyph(grip, "grip", 9, 1.3)
+        UI.DragFrame(grip, win, opts.resizable == "width" and "width" or "size", { bounds = win.kitBounds, onStop = save })
+        UI.Hover(grip, win)
+        win.grip = grip
     end
-    return false
+
+    -- Where it was, or where the addon asks.
+    local placed = opts.place and opts.key and opts.place[opts.key]
+    if placed and placed.x and placed.y then
+        win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", placed.x, placed.y)
+        if opts.resizable and placed.w and placed.h then
+            win:SetSize(placed.w, opts.resizable == "width" and (opts.height or placed.h) or placed.h)
+        end
+    else
+        local point = opts.point or { "CENTER", UIParent, "CENTER", 0, 0 }
+        if (point[2] or UIParent) == UIParent then
+            pin(win, point)
+        else
+            win:SetPoint(point[1], point[2], point[3] or point[1], point[4] or 0, point[5] or 0)
+        end
+    end
+
+    if name and not inPlay and opts.escape ~= false and type(UISpecialFrames) == "table" then
+        table.insert(UISpecialFrames, name)
+    end
+
+    -- Painted now and on every look change. Not in ui.widgets: a window is
+    -- no stack of its own to lay out, and never pooled.
+    ui:Paint(win, function(t) paintWindow(win, t) end)
+    arrange(win)
+    if placed and placed.collapsed then win:SetCollapsed(true) end
+    if opts.shown == false or opts.hidden then win:Hide() end
+    return win
 end
 
 -- Constructors ---------------------------------------------------------------------------
 
--- `opts.status`: true (or a hint to show while it is empty) keeps the status
+-- Spec: title, subtitle, key and place (where it is kept), width, height,
+-- point, parent, strata, resizable (true, or "width"), minWidth, minHeight,
+-- maxWidth, maxHeight, collapsible, onCollapse(collapsed, win) (the
+-- player's fold), close (false: no close mark), escape (false: Escape does
+-- not close it), gap and padding of the body, hidden (or shown = false).
+-- `status`: true (or a hint to show while it is empty) keeps the status
 -- strip at the foot always, rather than only while it has a message.
 function Proto:Window(opts)
     opts = opts or {}
     local win = shell(self, opts, false)
-    for method, fn in pairs(Window) do win[method] = fn end
     if opts.status then
         win.kitStatusKept = true
         win.kitStatusHint = type(opts.status) == "string" and opts.status or nil
@@ -560,10 +555,9 @@ function Proto:Window(opts)
 end
 
 -- A frame over the world: always flat and translucent, following the look's
--- opacity, with a band only when it has a title or folds.
+-- opacity, with a band only when it has a title or folds. The same spec as
+-- a window; it has no close mark and does not close on Escape (`escape`
+-- only gives its frame a name).
 function Proto:Panel(opts)
-    opts = opts or {}
-    local win = shell(self, opts, true)
-    for method, fn in pairs(Window) do win[method] = fn end
-    return win
+    return shell(self, opts or {}, true)
 end

@@ -6,12 +6,9 @@ Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 local Proto = UI.Proto
 
--- Tooltips are Blizzard's GameTooltip, as in OpenRoad: it matches the game's
--- own item and recipe tooltips the kit chains under it. Ported from
--- OpenRoad's Theme:Tooltip.
+-- Tooltips are Blizzard's GameTooltip, with the game's own item or recipe
+-- tooltip chained under it, as OpenRoad's Theme:Tooltip did.
 
--- The game's own tooltip of what a tooltip is about, under it: a GameTooltip
--- of its own, so the addon's lines stay apart from the game's.
 local linkTips = {}
 
 local function hideLinkTips()
@@ -59,11 +56,11 @@ local function drawLinks(links)
     frame:Show()
 end
 
--- `filler` is a string (wrapped) or `fn(GameTooltip)` for text that depends
--- on the moment. `opts.anchor` is an ANCHOR_ name, or a window to stand
--- beside, level with the widget; the cursor otherwise. `opts.links` is
--- { item = id, spell = id } for the game's own tooltip under it. `opts.reason`
--- adds a line in the danger colour: why a control is disabled.
+-- `filler` is a string (wrapped) or `fn(GameTooltip)`. `opts.anchor` is an
+-- ANCHOR_ name, or a window to stand beside, level with the widget; the
+-- cursor otherwise. `opts.links` is { item = id, spell = id } for the
+-- game's own tooltip under it. `opts.reason` adds a line in the danger
+-- colour: why a control is disabled.
 function Proto:Tooltip(owner, filler, opts)
     opts = opts or {}
     if not GameTooltip or not owner or (filler == nil and not opts.reason) then return end
@@ -103,27 +100,36 @@ function Proto:HideTooltip()
 end
 
 -- A widget's own tooltip: `widget.tooltip` (string or function), plus
--- `widget.kitReason` while it is disabled. Above the widget, where it covers
--- nothing the cursor is about to reach.
-function UI.HookTooltip(widget)
-    if widget.kitTooltipHooked or not widget.HookScript then return end
-    widget.kitTooltipHooked = true
-    widget:HookScript("OnEnter", function(w)
-        local reason = w.kitReason
-        local item = w.kitLinks and w.kitLinks.item
-        if w.tooltip == nil and not reason and item and GameTooltip then
-            -- An item and nothing to add: the game's own tooltip of it.
-            GameTooltip:SetOwner(w, w.kitTooltipAnchor or "ANCHOR_TOP")
-            if pcall(GameTooltip.SetItemByID, GameTooltip, item) then GameTooltip:Show() end
-            return
-        end
-        if w.tooltip == nil and not reason then return end
-        w.ui:Tooltip(w, w.tooltip, { anchor = w.kitTooltipAnchor or "ANCHOR_TOP", reason = reason, links = w.kitLinks })
-    end)
-    widget:HookScript("OnLeave", function(w)
-        if w.tooltip ~= nil or w.kitReason or w.kitLinks then w.ui:HideTooltip() end
-    end)
+-- `widget.kitReason` while it is disabled, or the game's tooltip of
+-- `widget.kitLinks.item`. Above the widget.
+local function tipEnter(w)
+    local reason = w.kitReason
+    local item = w.kitLinks and w.kitLinks.item
+    if w.tooltip == nil and not reason and item and GameTooltip then
+        GameTooltip:SetOwner(w, w.kitTooltipAnchor or "ANCHOR_TOP")
+        if pcall(GameTooltip.SetItemByID, GameTooltip, item) then GameTooltip:Show() end
+        return
+    end
+    if w.tooltip == nil and not reason then return end
+    w.ui:Tooltip(w, w.tooltip, { anchor = w.kitTooltipAnchor or "ANCHOR_TOP", reason = reason, links = w.kitLinks })
+end
+
+local function tipLeave(w)
+    if w.tooltip ~= nil or w.kitReason or w.kitLinks then w.ui:HideTooltip() end
+end
+
+UI.TipEnter, UI.TipLeave = tipEnter, tipLeave
+
+-- A clickable widget (`kitTipInline`) calls them from its own OnEnter and
+-- OnLeave; anything else has them hooked.
+function UI.HookTooltip(w)
+    if w.kitTooltipHooked or not w.HookScript then return end
+    w.kitTooltipHooked = true
+    if not w.kitTipInline then
+        w:HookScript("OnEnter", tipEnter)
+        w:HookScript("OnLeave", tipLeave)
+    end
     -- A disabled button is sent no hover without this, and its tooltip is
     -- where it says why it is disabled.
-    if widget.SetMotionScriptsWhileDisabled then pcall(widget.SetMotionScriptsWhileDisabled, widget, true) end
+    if w.SetMotionScriptsWhileDisabled then pcall(w.SetMotionScriptsWhileDisabled, w, true) end
 end

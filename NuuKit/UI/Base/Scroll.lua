@@ -2,11 +2,11 @@ local _, ns = ...
 
 local Kit = ns.Kit or {}
 ns.Kit = Kit
-Kit.UI1 = Kit.UI1 or {}
-local UI = Kit.UI1
+Kit.UI = Kit.UI or {}
+local UI = Kit.UI
 
--- The slim scroll bar and the scroll frame it serves, as in UI/Display/Lists.lua:
--- the bar sits inside its owner's right edge and hides when the content
+-- The slim scroll bar and the scroll frame it serves, ported from OpenRoad's
+-- Theme:ScrollFrame: the bar sits inside its owner's right edge and hides when the content
 -- fits. Callers keep UI.SCROLLBAR clear at the right of their content.
 UI.SCROLLBAR = 10
 UI.SCROLL_STEP = 40

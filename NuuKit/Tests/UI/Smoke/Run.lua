@@ -1,47 +1,88 @@
--- Builds every widget against a stand-in for the client's frame API and runs
--- the layouts, look changes and the common interactions. It proves nothing
--- about how things look; it catches calls to missing functions, typos and
--- arithmetic on nil in the frame code, which the pure tests never reach.
+-- Smoke tests for the UI kit, on a stand-in for the client's frame API
+-- (Tests/Support/Frames.lua). From NuuKit/:
+--   nix-shell -p lua5_1 --run "lua Tests/UI/Smoke/Run.lua"
+-- `lua Tests/UI/Smoke/Run.lua Base Buttons` runs only those parts;
+-- `--copy` runs them with methods copied onto frames.
+--
+-- Each part is Tests/UI/Smoke/<Part>.lua, called with a context; it builds
+-- what it tests in a window of its own and checks it.
 
 local frames = dofile("Tests/Support/Frames.lua")
-local objects, tick, assertTrue = frames.objects, frames.tick, frames.assertTrue
+local assertTrue, objects, tick = frames.assertTrue, frames.objects, frames.tick
 
-local ns = _G.LoadKit("NuuKit")
+-- Text measured from its font size (the shared stand-in answers 12 for any):
+-- about 6 units a letter and 2 of leading at size 12.
+local Object = frames.Object
+function Object:SetFont(_, size) self.fontSize = size; return true end
+function Object:GetFont() return "Fonts\\FRIZQT__.TTF", self.fontSize or 11, "" end
+function Object:GetStringHeight() return (self.fontSize or 12) + 2 end
+function Object:GetStringWidth() return #(self.text or "") * 6 * (self.fontSize or 12) / 12 end
+function Object:GetUnboundedStringWidth() return self:GetStringWidth() end
+-- A font string made from a template (GameFontNormal) has its font.
+local createFontString = Object.CreateFontString
+function Object:CreateFontString(name, layer, template)
+    local text = createFontString(self, name, layer, template)
+    if template then text.fontSize = 12 end
+    return text
+end
+-- As the client: no text on a font string before it has a font.
+local setText = Object.SetText
+function Object:SetText(text)
+    if self.kind == "FontString" and not self.fontSize then error("FontString:SetText(): Font not set", 2) end
+    return setText(self, text)
+end
+
+-- The kit as the client loads it: every file in NuuKit.toc but the
+-- development global, galleries and report included.
+local ns, loaded = {}, {}
+for line in io.lines("NuuKit.toc") do
+    local file = line:match("^%s*([^#%s][^%s]*%.lua)%s*$")
+    if file and file ~= "NuuKit.lua" then
+        assert(loadfile(file))("NuuKit", ns)
+        loaded[file] = true
+    end
+end
+
+local PARTS = { "Base", "Buttons", "Chrome", "Fields", "Menus", "Lists", "Display", "Pooling", "Gallery", "Examples", "Report" }
+
+-- Named parts run alone; none, all of them. `--copy` runs with methods
+-- copied onto frames: the path a client that refuses frames a metatable
+-- takes.
+local wanted, copyMode = {}, false
+for _, name in ipairs(arg or {}) do
+    if name == "--copy" then copyMode = true else wanted[name] = true end
+end
+
 local Kit = ns.Kit
 local UI = Kit.UI
+if copyMode then UI.sharedMethods = false end
 
-assertTrue(type(SlashCmdList.NUUKIT) == "function", "the gallery registers /nuukit")
-SlashCmdList.NUUKIT("ui")
-tick()
-local g = UI.gallery
-assertTrue(g and g.win, "the gallery opens")
-UI.LayoutNow()
-assertTrue(UI.LayoutSettled(), "the layout settles: laying a container out does not queue it again")
+-- A window of its own for a part, and the body to build in.
+local function testWindow(ui, width, height)
+    local win = ui:Window({ width = width or 600, height = height or 500 })
+    win:Show()
+    return win, win.kitInner
+end
 
 local function find(test)
     for _, o in ipairs(objects) do if test(o) then return o end end
 end
 
--- Shows a gallery tab. The client tells a frame its anchors resized it; the
--- stand-in only tells on SetSize, so a scroll area's content is told here.
-local tabs = find(function(o) return o.tabs and o.Select end)
-local function show(key)
-    tabs.tabs[key]:Click()
-    tick()
-    for _, o in ipairs(objects) do
-        if o.kind == "ScrollFrame" and o:IsVisible() then o:Fire("OnSizeChanged", o:GetWidth(), o:GetHeight()) end
+local ctx = {
+    Kit = Kit, UI = UI, objects = objects, Object = frames.Object, tick = tick, find = find,
+    assertTrue = assertTrue, testWindow = testWindow, loaded = loaded,
+    layout = function() UI.LayoutNow(); assertTrue(UI.LayoutSettled(), "the layout settles") end,
+}
+
+local ran = {}
+for _, name in ipairs(PARTS) do
+    if next(wanted) == nil or wanted[name] then
+        ctx.ui = Kit.NewUI({ name = "Test" .. name }, nil)
+        assert(loadfile("Tests/UI/Smoke/" .. name .. ".lua"))(ctx)
+        ctx.layout()
+        ran[#ran + 1] = name
     end
-    tick()
 end
-
--- One part of the kit at a time, in this order, on the one gallery.
-local ctx = { Kit = Kit, UI = UI, g = g, objects = objects, Object = frames.Object, tick = tick, find = find,
-    show = show, tabs = tabs, assertTrue = assertTrue }
-for _, part in ipairs({ "Theme", "Chrome", "Base", "Display", "Controls", "Keyboard" }) do
-    assert(loadfile("Tests/UI/Smoke/" .. part .. ".lua"))(ctx)
-end
-g.win:Hide()
-tick()
-assert(loadfile("Tests/UI/Smoke/Examples.lua"))(ctx)
-
-print("NuuKit UI smoke tests passed (" .. #objects .. " objects)")
+assertTrue(UI.sharedMethods == not copyMode, "methods shared through metatables unless copied on purpose")
+print("NuuKit UI smoke tests passed" .. (copyMode and " (methods copied)" or "") .. ": " .. table.concat(ran, ", ")
+    .. " (" .. #objects .. " objects)")

@@ -85,15 +85,17 @@ assertEquals(near(fill[4], 0.14), true, "a soft button is a wash of any colour")
 fill, edge, ink = UI.ButtonColors(t, "success", nil, "disabled")
 assertEquals(near(ink[4], 0.4), true, "a disabled toned button fades its tone")
 
--- Layout sums.
-local placed = UI.Distribute({ { size = 20 }, { grow = 1 }, { size = 30 } }, 100, 5)
-assertEquals(placed[2].size, 40, "a growing child takes what is left")
-assertEquals(placed[3].offset, 70, "and the next child follows it")
-placed = UI.Distribute({ { grow = 1 }, { grow = 3 } }, 100, 0)
-assertEquals(placed[1].size, 25, "growth is shared by weight")
-assertEquals(placed[2].size, 75, "")
-placed = UI.Distribute({ { size = 80 }, { grow = 1, min = 30 } }, 100, 0)
-assertEquals(placed[2].size, 30, "a minimum holds a squeezed child open")
+-- Layout sums: UI.Distribute(count, sizes, grows, mins, available, gap,
+-- offsets, out) fills offsets and out (the sizes).
+local offsets, out = {}, {}
+UI.Distribute(3, { 20, 0, 30 }, { nil, 1, nil }, {}, 100, 5, offsets, out)
+assertEquals(out[2], 40, "a growing child takes what is left")
+assertEquals(offsets[3], 70, "and the next child follows it")
+UI.Distribute(2, { 0, 0 }, { 1, 3 }, {}, 100, 0, offsets, out)
+assertEquals(out[1], 25, "growth is shared by weight")
+assertEquals(out[2], 75, "")
+UI.Distribute(2, { 80, 0 }, { nil, 1 }, { nil, 30 }, 100, 0, offsets, out)
+assertEquals(out[2], 30, "a minimum holds a squeezed child open")
 assertEquals(UI.AlignStart("right", 100, 40), 60, "right packs to the end")
 assertEquals(UI.AlignStart("center", 100, 40), 30, "centre splits the rest")
 assertEquals(UI.AlignStart(nil, 100, 40), 0, "left is the default")

@@ -1,6 +1,5 @@
--- T1: the real UI-Test1, loaded from NuuKit.toc's kit files (UI/ for the
--- look code it shares, then UI-Test1/), running B's sample screen: UI-Test1
--- has B's API. What B is to a sketch, T1 is to the kit as built.
+-- The kit as built, loaded from NuuKit.toc, running B's sample screen (the
+-- kit has B's API): what B is to a sketch, this is to the real thing.
 
 local M = {}
 
@@ -12,13 +11,13 @@ for line in io.lines("NuuKit.toc") do
     end
 end
 local Kit = ns.Kit
-local UI = Kit.UI1
-assert(UI and UI.types.Toggle, "UI-Test1 is not in NuuKit.toc yet, or has no Toggle")
+local UI = Kit.UI
+assert(UI and UI.types.Toggle, "the kit did not load from NuuKit.toc")
 
 local function look(l) return { theme = l.theme, textSize = l.textScale > 1 and "large" or "normal" } end
 
 function M.NewUI(l, opts)
-    local ui = Kit.NewUI1(ns, look(l))
+    local ui = Kit.NewUI(ns, look(l))
     ui.track = {}
     ui.pool = not (opts and opts.pool == false)
     return ui
@@ -34,7 +33,7 @@ function M.Window(ui, width, height)
     return win
 end
 
--- Clearing puts every widget back in its pool (UI-Test1 always pools).
+-- Clearing puts every widget back in its pool.
 function M.Clear(ui, win) win:Clear() end
 
 local screen = dofile(BENCH .. "B.lua").Screen

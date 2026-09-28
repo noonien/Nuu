@@ -42,6 +42,8 @@ Once everything has moved over and OpenRoad is retired, remove this section.
 - The kit's UI (widgets, themes, window chrome) follows `docs/ui-kit/PLAN.md`; the mockups are linked from
   `docs/ui-kit/README.md`. The kit ships reusable parts only; each addon builds its own windows from them.
 - Captions and labels are sentence case, never all capitals.
-- Where the kit stands and what to do next: `NuuKit/UI/status.md`. Client results go in `docs/api-compatibility.md`.
+- Where the kit stands and what to do next: `NuuKit/UI/status.md`. How widgets are written (and the costs a change
+  must keep): `NuuKit/UI/README.md`. Client results go in `docs/api-compatibility.md`; `/nuukit report` measures the
+  kit in the client.
 - Tests: from `NuuKit/`, `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"`. `NuuKit.lua`, `Dev/`, `Tests/`
   and `Tools/` are never shipped.

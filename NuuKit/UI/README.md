@@ -1,19 +1,17 @@
-# UI-Test1
+# Writing kit widgets
 
-The kit's widgets rebuilt on the architecture the bench chose (`Tests/Bench/`, "B + pooling"): shared methods,
-colour-only hover, colours and fonts worked out once per look, cached measurements, a layout pass that stops where
-sizes stop changing, placement that skips edges that did not move, and a pool per widget type. It loads beside `UI/`
-under `Kit.UI1` / `Kit.NewUI1`, so both can be compared in the client (`/nuukit ui` and `/nuukit ui1`).
-Development only for now.
+How the UI kit is built, for whoever adds or changes a widget. Using the kit is shown in `examples.lua`; where it
+stands is in `status.md`.
+
+The design was chosen by measurement (`Tests/Bench/`): widgets are frames whose methods come from one shared class
+per type; hover and other state changes repaint colours only; colours and fonts are worked out once per look;
+natural sizes are cached, and a layout pass measures again only what changed, going up only while sizes change and
+placing only edges that moved; every edge sits on whole screen pixels; and a pool per widget type makes a cleared
+screen's rebuild take its frames back instead of making new ones.
 
 Read `Base/Core.lua` (the widget model) and `Base/Layout.lua` (stacks and the pass) first; `Base/Text.lua` and
-`Controls/Buttons.lua` are the reference widgets.
-
-## Porting a file from UI/
-
-Port every widget and every behaviour of the old file; keep its comments' voice (plain English, what and why), ASCII
-only, sentence-case captions. Keep a behaviour unless it conflicts with the rules below, and say so in a comment when
-it changes.
+`Controls/Buttons.lua` are the reference widgets. Comments in the kit's voice (plain English, what and why), ASCII
+only, sentence-case captions.
 
 ### A widget type
 
@@ -65,29 +63,21 @@ UI.Define("Tag", {
   (`Base/Scroll.lua`), `UI.DragFrame` (`Base/Drag.lua`), plates, 9-slices, tiles, glyphs (`Base/Draw.lua`),
   tooltips (`Base/Tooltip.lua`), `UI.WireButton` / `UI.ClickableType` / `UI.InitClickable` (`Controls/Buttons.lua`).
 
-## The API, changed from UI/
+## The API's rules
 
-| UI/ | UI-Test1 |
-| --- | --- |
-| `col:Button("Save", { tone = "accent" })` | `col:Button{ "Save", tone = "accent" }`: one spec table; its `[1]` is the caption, text, kind or list |
-| `ui:Button(parent, "Save", opts)` | `ui:Button(parent, { "Save", ... })` |
-| `col:Text("Hi", "title", { wrap = true })` | `col:Text{ "Hi", style = "title", wrap = true }`; `col:Text"Hi"` also works |
-| `col:Toggle("Sell back", opts)`, `col:Section("Route", opts)`, `col:Tag("3", opts)`, `col:Notice(text, opts)` | `[1]` is the caption or text |
-| `col:GlyphButton("close", opts)` | `col:GlyphButton{ "close", ... }` |
-| `col:Tabs(entries, opts)` | `col:Tabs{ entry, entry, ..., value = "plan", onChange = fn }`: the entries are the array part |
-| `col:Choices(list, opts)`, `col:Figures(list)`, `win:SplitPanes(panes, opts)` | the list is the array part of the spec |
-| `section:LookPicker(look, fn)` | `section:LookPicker{ look = db.look, onChange = fn }` |
-| `SetValue(v, silent)`; some setters called onChange | Code never calls `onChange`. `SetValue(v)` from code is always silent; `onChange(value, widget)` is only for the player's changes |
-| `Input` `GetText` / `SetText`, `onCommit(text)` | also `GetValue` / `SetValue`; `onChange(text, w)` on commit, `onType(text, w)` live |
-| `Tabs:Select(key)` | also `Tabs:SetValue(key)` / `GetValue()` |
-| `button.kitClick = fn` (gallery) | `button:SetOnClick(fn)` |
-| a part's size in `height` (TextArea box, ProgressBar bar, SegmentBar bar) | `boxHeight`, `barHeight`: `width`, `height`, `grow`, `minWidth`, `minHeight`, `align`, `valign`, `stretch` are layout only |
-| `width` of a select's button, a MoneyInput's or NumberInput's box | `boxWidth`; `width` is the whole widget's |
-| List / Tree / Table `Select(item)` called onPick; Pager `SetAt` called onChange | from code they are silent; clicks and keys call them |
-| `win:Toggle()`, `tabs:Select(key)` | still show/hide and select; with a spec table (`win:Toggle{...}`, `tabs:Select{...}`) they make a toggle or a select |
-| Disclosure `onToggle(open)`, window collapse | `onToggle(open, w)`; new `onCollapse(collapsed, win)`, both only for the player's clicks |
-| `kitStretch`, `kitRowStretch`, `kitRowAlign` flags | the def's `stretch`, the spec's `stretch` / `valign` |
-| nothing | `bind = { table, key }` on value widgets (below) |
+Every widget follows these; `examples.lua` shows them in use.
+
+- **One spec table per widget.** Its `[1]` is the caption, text, kind or list (`col:Button{ "Save", tone = "accent" }`,
+  `col:Text"Hi"`); everything else is named. A list the widget is made of (tabs' entries, choices, figures, panes) is
+  the spec's array part. Placed by hand: `ui:Button(parent, { "Save" })`.
+- **Layout keys are layout only**: `width`, `height`, `grow`, `minWidth`, `minHeight`, `align`, `valign`,
+  `stretch`. A part's own size has its own name (`boxWidth`, `boxHeight`, `barHeight`).
+- **Callbacks are for the player.** `onClick(widget)`, `onChange(value, widget)`, `onPick(item)`; code that sets a
+  value (`SetValue`, `Select`, `SetAt`) never calls them.
+- **Value widgets** answer `GetValue` / `SetValue` and take `bind`, `default`, `Reset()` and `IsStored()` (below).
+- **Clearing deletes.** `Clear`, `Remove` and `Release` take widgets away for good (into the pools, which the addon
+  never sees); the addon does not use a widget after it clears it, and does not put its own scripts or regions on
+  kit widgets (it uses callbacks, or a frame of its own).
 
 ### `bind`, on every value widget
 
@@ -113,10 +103,11 @@ Use `UI.InitValue(w, spec)` in Init and `UI.Commit(w, value)` after a change by 
 
 ## Tests
 
-`nix-shell -p lua5_1 --run "lua Tests/UI1/Run.lua"`, from `NuuKit/`, runs every part whose files exist. Named parts
-(`... Run.lua Fields`) load only the core (`Base/`, Text, Buttons) and those parts' own files, so another file
-half-written does not stop them; a part checks `ctx.loaded[file]` before using a widget from a file outside its own,
-and `ctx.testWindow` falls back to a plain column while `Chrome/Window.lua` is not loaded.
-Each part is `Tests/UI1/Smoke/<Part>.lua` and builds what it checks in `ctx.testWindow(ui, w, h)`. Cover every widget,
-its methods, its callbacks, and at least one clear-and-rebuild from the pool with different specs (see `Pooling.lua`).
-`Tests/UI/Smoke/` has the old kit's checks, to carry over.
+`nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"` from `NuuKit/` runs everything; the kit's parts alone are
+`lua Tests/UI/Smoke/Run.lua [Part ...] [--copy]` (`--copy`: methods copied onto frames, the path a client that
+refuses frames a metatable takes). Each part is `Tests/UI/Smoke/<Part>.lua` and builds what it checks in
+`ctx.testWindow(ui, w, h)`. Cover every widget, its methods and callbacks, and a clear-and-rebuild from the pool with
+different specs (see `Pooling.lua`).
+
+A change to the kit keeps its measured cost: compare the client calls of `lua Tests/Bench/Run.lua UI` (the bench
+screen) and `lua Tests/Bench/Gallery.lua` (the whole gallery) before and after; in the client, `/nuukit report`.

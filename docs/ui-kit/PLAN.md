@@ -24,17 +24,22 @@ kit reads and writes only what it is handed.
 ## Easy to use: the rules
 
 1. **One object per addon.** `ns.UI = ns.Kit.NewUI(ns, look)` in `Core.lua`, once. Everything else hangs off it.
-2. **One call per widget.** Positional arguments only for what every call needs (the caption); everything else is
-   an options table with defaults, so the common case is one short line.
-3. **Containers place what they make.** `col:Button("Save")` creates the button in `col` and stacks it. No
-   `SetPoint` for ordinary layouts; `UI:Button(parent, "Save")` and `SetPoint` still work for anything custom.
+2. **One call per widget, one spec table.** `col:Button{ "Save", tone = "accent" }`: the spec's `[1]` is what every
+   call needs (the caption, the text), everything else is named with defaults, so the common case is one short line.
+3. **Containers place what they make.** `col:Button{ "Save" }` creates the button in `col` and stacks it. No
+   `SetPoint` for ordinary layouts; `UI:Button(parent, { "Save" })` and `SetPoint` still work for anything custom.
 4. **Plain frames.** A widget is a WoW frame with a few added methods. No classes, mixins, XML, templates, or
-   registration calls to learn.
+   registration calls to learn (the kit shares each type's methods through one class inside; the addon never sees
+   it).
 5. **Theme changes cost the addon nothing.** Every widget repaints itself when the look changes.
-6. **The same callback names everywhere.** `onClick()` for actions, `onChange(value)` for anything with a value,
-   `onPick(item)` for lists and menus.
+6. **The same callback names everywhere.** `onClick(widget)` for actions, `onChange(value, widget)` for anything
+   with a value, `onPick(item)` for lists and menus; they are for the player's changes, never called when code sets
+   a value. `bind = { table, key }` ties a value to the addon's own table, with `default`, `Reset()`, `IsStored()`.
 7. **Fail soft.** A missing texture or client API gives the flat look or a plain fallback, never an error.
 8. **OpenRoad names where they exist**, so ports from OpenRoad are mostly mechanical.
+9. **Clearing deletes.** `container:Clear()`, `Remove(w)` and `w:Release()` take widgets away for good; the kit
+   reuses their frames for the next widgets made (WoW never frees a frame), so a screen rebuilt again and again
+   costs no more memory. The addon does not use a widget after it clears it.
 
 `NuuKit/UI/examples.lua` shows the API in use, one example per area. Beyond the sections below it settles:
 
@@ -61,31 +66,34 @@ local UI = ns.UI
 local win = UI:Window({ key = "browser", title = "Choose a guide", width = 520, height = 560,
     place = NuuRoadDB.windows, resizable = true })
 
-local body = win:Column({ gap = 8 })
-body:Search({ placeholder = "Search guides", onChange = Filter })
-local list = body:List({ grow = true, rowHeight = 30, draw = DrawGuideRow, onPick = PickGuide })
+local body = win:Column{ gap = 8 }
+local search = body:Search{ placeholder = "Search guides" }
+local list = body:List{ grow = true, rowHeight = 30, search = search, draw = DrawGuideRow, onPick = PickGuide }
 
-local buttons = body:Row({ align = "right" })
-buttons:Button("Cancel", { onClick = function() win:Hide() end })
-buttons:Button("Start guide", { tone = "accent", onClick = StartGuide })
+local buttons = body:Row{ align = "right" }
+buttons:Button{ "Cancel", onClick = function() win:Hide() end }
+buttons:Button{ "Start guide", tone = "accent", onClick = StartGuide }
 
 list:SetItems(guides)
 
+-- A setting tied to the addon's own table.
+body:Toggle{ "Show on map", bind = { NuuRoadDB, "showOnMap" }, default = true }
+
 -- The options window's Appearance section: the picker reports a change, the addon keeps it.
-section:LookPicker(NuuRoadDB.look, function(look)
+section:LookPicker{ look = NuuRoadDB.look, onChange = function(look)
     NuuRoadDB.look = look
     ns.UI:SetLook(look)  -- every open NuuRoad window repaints
-end)
+end }
 ```
 
 ## How it works
 
 ### One UI per addon
 
-`Kit.NewUI(ns, look)` returns a table holding that addon's look, its computed tokens, and a weak-keyed list of the
-widgets it made. In development both addons share one kit but each gets its own UI, so NuuRoad and NuuProfessions
-can wear different looks. Constructors live on the UI (`UI:Button(parent, ...)`) and on every container
-(`col:Button(...)`), which passes itself as the parent and stacks the result.
+`Kit.NewUI(ns, look)` returns a table holding that addon's look, its computed tokens, the widgets it made and their
+pools. In development both addons share one kit but each gets its own UI, so NuuRoad and NuuProfessions can wear
+different looks. Constructors live on the UI (`UI:Button(parent, spec)`) and on every container (`col:Button{...}`),
+which passes itself as the parent and stacks the result.
 
 ### Looks, themes and tokens
 
@@ -104,9 +112,10 @@ can wear different looks. Constructors live on the UI (`UI:Button(parent, ...)`)
 
 ### Painting
 
-Each widget has one `Paint(t)` that sets every colour from the tokens `t`, plus its own state (hover, pressed,
-active, disabled). Creating a widget registers it and paints it once; a state change calls `widget:Repaint()`.
-`UI:SetLook(look)` recomputes the tokens and repaints every registered widget. Widgets never keep a colour from
+Each widget has a `Paint(t)` that sets its fonts, art and colours from the tokens `t`, and a `PaintState(t)` that
+sets only the colours its state changes (hover, pressed, active, disabled), from colours cached per look, so a
+hover allocates nothing and sets no font. Creating a widget paints it once; a state change calls `PaintState`.
+`UI:SetLook(look)` recomputes the tokens and repaints every widget. Widgets never keep a colour from
 creation, which is why OpenRoad cannot switch themes live (its surfaces, glows and a hardcoded hover blue are set
 once).
 
@@ -127,12 +136,13 @@ as OpenRoad's `CloseOnEscape`). With `place` and `key` its position and size go 
 ### Layout
 
 `Column` and `Row` stack their children with a gap and padding, align them, and hand spare room to children marked
-`grow`. Hidden children take no space. They lay out again when their size changes. Anything else uses `SetPoint`
-directly.
+`grow`. Hidden children take no space. Natural sizes are kept between passes; a change is measured again deepest
+first and goes up only while a size really changes, and a child is placed again only where its edges moved, always
+on whole screen pixels. Anything else uses `SetPoint` directly.
 
 ### Text
 
-`UI:Text(parent, text, style)` with the styles from the type board: `title`, `window`, `heading`, `body`, `label`,
+`col:Text{ text, style = "..." }` with the styles from the type board: `title`, `window`, `heading`, `body`, `label`,
 `link`, `fine`, `number`, `key`. The faces come from the client's own font objects (`GameFontNormal`,
 `NumberFontNormal`, falling back to `Fonts\FRIZQT__.TTF` and `Fonts\ARIALN.TTF`), the sizes from the look's
 `textSize`. Game fonts have one weight, so the hierarchy is size and colour. Sentence case only, ASCII only.
@@ -166,31 +176,35 @@ All under `NuuKit/`, added to `NuuKit.toc` in this order, before `NuuKit.lua`.
 | File | Holds |
 | --- | --- |
 | `UI/Theme/Themes.lua` | theme data, `Kit.UI.AddTheme` |
-| `UI/Theme/Look.lua` | colour maths and tokens; money parse and format (pure Lua) |
-| `UI/Base/UI.lua` | `Kit.NewUI`, the widget list, `SetLook`, shared bits (click sound, focus clearing, texture loading) |
-| `UI/Base/Layout.lua` | `Column`, `Row` |
-| `UI/Base/Text.lua` | text styles, `Section`, `Tag`, `Notice`, `Card` |
-| `UI/Chrome/Window.lua` | `Window`, `Panel`, `NineSlice`, chrome, move / resize / collapse / place / Escape |
-| `UI/Controls/Buttons.lua` | `Button` (tones and styles), `GlyphButton`, `ResetButton`, `ConfirmButton`, `Attract` |
-| `UI/Controls/Fields.lua` | `Input`, `Search`, `TextArea`, `MoneyInput`, `NumberInput`, `Toggle`, `Slider`, `TabChain` |
+| `UI/Theme/Look.lua` | colour maths and a look's colours; money parse and format (pure Lua) |
+| `UI/Base/Core.lua` | `Kit.NewUI`, `UI.Define` / `UI.Make`, widget classes and pools, `SetLook`, the per-look colour cache, `bind`, pixels |
+| `UI/Base/Draw.lua` | plates, `NineSlice`, tiles, glyphs |
+| `UI/Base/Layout.lua` | `Column`, `Row`, `Spacer`, `Rule`, the layout pass, loading / empty / error states |
+| `UI/Base/Scroll.lua`, `Focus.lua`, `Drag.lua` | the slim scroll bar, keyboard focus, moving and sizing by hand |
+| `UI/Base/Tooltip.lua` | `Tooltip`, `HideTooltip` |
+| `UI/Base/Text.lua` | `Text`, `Section`, `Tag`, `Notice`, `Card` |
+| `UI/Controls/Buttons.lua` | `Button` (tones and styles), `ConfirmButton`, `Link`, `ResetButton`, `GlyphButton`, `Attract` |
+| `UI/Chrome/Window.lua` | `Window`, `Panel`, chrome, move / resize / collapse / place / Escape, status strip with Undo |
 | `UI/Chrome/Tabs.lua` | `Tabs`, `Disclosure` |
+| `UI/Controls/Fields.lua` | `Input`, `Search`, `TextArea`, `MoneyInput`, `NumberInput`, `Toggle`, `Slider`, `TabChain` |
 | `UI/Controls/Menus.lua` | the one menu frame; `Select`, `SearchSelect`, `MultiSelect`, context menus, submenus |
 | `UI/Display/Lists.lua` | `ScrollArea`, `List`, `Tree`, `SplitPanes` |
-| `UI/Display/Feedback.lua` | `ProgressBar`, `SegmentBar`, `EmptyState`, `Loading`, `ErrorState`, `StatusStrip` (with Undo) |
+| `UI/Display/Feedback.lua` | `ProgressBar`, `SegmentBar` |
 | `UI/Display/Tables.lua` | `Table`, `Pager`, `Figures` |
 | `UI/Controls/Forms.lua` | `Setting`, `Choices` |
 | `UI/Display/Slots.lua` | `StripPanel`, `Slot` (quality edge, count, key hint, quest mark, raid marker, cooldown) |
-| `UI/Base/Tooltip.lua` | `Tooltip`, `HideTooltip` |
-| `UI/Theme/LookPicker.lua` | the Appearance picker (theme cards, accent swatches, class colour, chrome, opacity) |
+| `UI/Theme/LookPicker.lua` | the Appearance picker (theme cards, accent swatches, class colour, opacity, text size, motion) |
 | `Media/<theme>/*.tga` | art textures |
 | `Tools/Textures.py` | the texture generator (moved from `docs/ui-kit/mockups/textures/gen.py`), writing TGA |
-| `Dev/Gallery.lua` | development only, never shipped: every widget in every state, for checking in game |
+| `Dev/Gallery.lua`, `Dev/Report.lua` | development only, never shipped: every widget in every state; the in-client report |
 
-`Dev/Gallery.lua` opens from a developer-only `/nuukit ui` command, alongside the other diagnostics.
+`Dev/Gallery.lua` opens from a developer-only `/nuukit ui` command; `/nuukit report` measures the kit in the client
+and gives the result as text to copy.
 
 ## Phases
 
-Each phase ends with something visible in the gallery. Where it helps, one addon uses it straight away, and the
+All six phases are done (`NuuKit/UI/status.md`); the kit was then rebuilt on a measured architecture, keeping every
+widget. Each phase ended with something visible in the gallery. Where it helps, one addon uses it straight away, and the
 client results go into the API compatibility record.
 
 1. **Look and paint.** `Themes`, `Look`, `UI`, `Text`, and a gallery that shows the text styles on a flat panel.
@@ -215,15 +229,15 @@ client results go into the API compatibility record.
 | --- | --- | --- |
 | `Theme.colors`, `fontSizes` | `Themes.lua`, `Look.lua`, text styles | per-look tokens; art themes |
 | `Surface`, `Text` | `Panel`, `UI:Text` | repaints; named text styles |
-| `Button(parent, caption, width, primary, tooltip)` | `Button(caption, opts)` | tones x styles; `primary` becomes `tone = "accent"` |
+| `Button(parent, caption, width, primary, tooltip)` | `Button{ caption, ... }` | tones x styles; `primary` becomes `tone = "accent"` |
 | `GlyphButton`, `ResetButton`, `ConfirmButton` | same names | glow built from tokens, not captured at creation |
-| `Toggle`, `DropButton`, `Select` | same names | `onChange(value)` |
+| `Toggle`, `DropButton`, `Select` | same names | `onChange(value, widget)`, `bind` |
 | `Input`, `TabChain`, `ClearFocusOnClick` | `Input`, `TabChain`, built into `Window` | commit behaviour kept |
 | `ScrollFrame` | `ScrollArea` | same slim bar |
 | `Slider` | `Slider` | |
 | `Menu`, `OpenMenu`, `CloseMenu` | `Menus.lua` | adds submenus, search, multi-select, headers; one frame per UI |
 | `Disclosure` | `Disclosure`, `Section` | `Section` is the folding header with a rule |
-| `StripPanel(key, rail)` | `StripPanel(opts)` | placement from `place`, not `ns.modules.Config` |
+| `StripPanel(key, rail)` | `StripPanel(spec)` | placement from `place`, not `ns.modules.Config` |
 | `SlotChrome`, `ShortKey` | `Slot`, text style `key` | |
 | `Tooltip`, `HideTooltip`, `CloseOnEscape` | same, `CloseOnEscape` built into `Window` | |
 
@@ -233,10 +247,11 @@ written).
 ## Testing
 
 - **Unit tests** (`Tests/`, run by `Tests/TestRunner.lua` under Lua 5.1): tokens for every theme and a sample of
-  accents (derived colours, light-theme darkening, opacity), art falling back to flat when a theme has no
-  texture, money parsing and formatting (no zero coins: `96s`, not `0g 96s`), and the layout sums for `Column` and
-  `Row`.
-- **In game:** the gallery, phase by phase. Each client API the kit relies on (tiled textures, `SetTexCoord`
+  accents (derived colours, opacity), art falling back to flat when a theme has no texture, money parsing and
+  formatting (no zero coins: `96s`, not `0g 96s`), and the layout sums for `Column` and `Row`.
+- **Smoke tests** (`Tests/UI/Smoke/`): every widget built on a stand-in for the client's frame API, its behaviour,
+  pooling, and the costs that matter; benches (`Tests/Bench/`) count client calls to compare before and after.
+- **In game:** the gallery, and `/nuukit report` for what can be measured. Each client API the kit relies on (tiled textures, `SetTexCoord`
   9-slices, animation groups, `EnableKeyboard` with `SetPropagateKeyboardInput`, cooldown frames, TGA loading)
   gets a row in a Nuu `docs/api-compatibility.md` with build, date and fallback, the way OpenRoad keeps its own.
 
@@ -251,5 +266,4 @@ written).
    orange difficulty. Drop those accents, or shift the status colours when one is picked?
 4. **Themed tooltips.** Keep Blizzard's tooltip (it matches the chained item tooltip), or theme ours and leave the
    chained one as Blizzard's?
-5. **Texture format.** TGA (uncompressed, as OpenRoad's arrow notes suggest) unless the client takes BLP; the
-   Forever client's PNG support is unknown.
+5. ~~**Texture format.**~~ Settled: the client loads the kit's uncompressed TGA (build 70009, 2026-09-28).

@@ -2,15 +2,15 @@ local _, ns = ...
 
 local Kit = ns.Kit or {}
 ns.Kit = Kit
-Kit.UI1 = Kit.UI1 or {}
-local UI = Kit.UI1
+Kit.UI = Kit.UI or {}
+local UI = Kit.UI
 
--- Moves or sizes `frame` while `handle` is held, as in UI/Chrome/Window.lua:
--- each frame the frame is put where it was when the button went down plus
--- how far the cursor has gone since, so no motion is lost and the point
--- grabbed stays under the cursor. `mode`: "move", "size" (the right and
--- bottom edges) or "width". `opts`: can(frame) false refuses a drag, bounds
--- { minW, minH, maxW, maxH }, onStop(frame) when let go.
+-- Moves or sizes `frame` while `handle` is held: each frame the frame is put
+-- where it was when the button went down plus how far the cursor has gone
+-- since, so no motion is lost and the point grabbed stays under the cursor.
+-- `mode`: "move", "size" (the right and bottom edges) or "width". `opts`:
+-- can(frame) false refuses a drag, bounds { minW, minH, maxW, maxH },
+-- onStop(frame) when let go.
 
 local function cursor(frame)
     local x, y = GetCursorPosition()

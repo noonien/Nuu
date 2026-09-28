@@ -2,16 +2,15 @@ local _, ns = ...
 
 local Kit = ns.Kit or {}
 ns.Kit = Kit
-Kit.UI1 = Kit.UI1 or {}
-local UI = Kit.UI1
+Kit.UI = Kit.UI or {}
+local UI = Kit.UI
 
--- Keyboard focus in a window, as in UI/Chrome/Window.lua. What can take the
--- focus registers as it is made (UI.RegisterFocusable, in Core). By default
--- Tab moves through a window's text fields; with full keyboard control
--- (window:TakeKeyboard) it reaches buttons, toggles, tabs, selects and
--- sliders too, and a ring shows where it is. A focused widget may answer
--- `w:kitKeyPress(key)` (Enter, Space; else it is clicked) and
--- `w:kitKeyArrow(key)` (the arrows).
+-- Keyboard focus in a window. What can take the focus registers as it is
+-- made (UI.RegisterFocusable, in Core). By default Tab moves through a
+-- window's text fields; with full keyboard control (window:TakeKeyboard) it
+-- reaches buttons, toggles, tabs, selects and sliders too, and a ring shows
+-- where it is. A focused widget may answer `w:kitKeyPress(key)` (Enter,
+-- Space; else it is clicked) and `w:kitKeyArrow(key)` (the arrows).
 
 local function reachable(w)
     if w.kitPooled or not w:IsVisible() then return false end

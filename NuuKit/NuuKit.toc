@@ -11,8 +11,12 @@ Core/Recorder.lua
 Core/BugReport.lua
 UI/Theme/Themes.lua
 UI/Theme/Look.lua
-UI/Base/UI.lua
+UI/Base/Core.lua
+UI/Base/Draw.lua
 UI/Base/Layout.lua
+UI/Base/Scroll.lua
+UI/Base/Focus.lua
+UI/Base/Drag.lua
 UI/Base/Tooltip.lua
 UI/Base/Text.lua
 UI/Controls/Buttons.lua
@@ -26,29 +30,8 @@ UI/Display/Tables.lua
 UI/Controls/Forms.lua
 UI/Display/Slots.lua
 UI/Theme/LookPicker.lua
-# UI-Test1: the kit rebuilt on the benchmarked architecture, beside UI/ to compare. Development only for now.
-UI-Test1/Base/Core.lua
-UI-Test1/Base/Draw.lua
-UI-Test1/Base/Layout.lua
-UI-Test1/Base/Scroll.lua
-UI-Test1/Base/Focus.lua
-UI-Test1/Base/Drag.lua
-UI-Test1/Base/Tooltip.lua
-UI-Test1/Base/Text.lua
-UI-Test1/Controls/Buttons.lua
-UI-Test1/Chrome/Window.lua
-UI-Test1/Chrome/Tabs.lua
-UI-Test1/Controls/Fields.lua
-UI-Test1/Controls/Menus.lua
-UI-Test1/Display/Lists.lua
-UI-Test1/Display/Feedback.lua
-UI-Test1/Display/Tables.lua
-UI-Test1/Controls/Forms.lua
-UI-Test1/Display/Slots.lua
-UI-Test1/Theme/LookPicker.lua
-# Development only: the widget galleries (/nuukit ui, /nuukit ui1) and the report (/nuukit report). Never shipped.
+# Development only: the widget gallery (/nuukit ui) and the report (/nuukit report). Never shipped.
 Dev/Gallery.lua
-Dev/Gallery1.lua
 Dev/Report.lua
 # Development only: publishes _G.NuuKit. Never shipped; must stay last.
 NuuKit.lua

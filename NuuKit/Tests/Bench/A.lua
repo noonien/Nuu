@@ -1,8 +1,8 @@
--- A: the kit as it is. Per-instance closures for every method and script, a
--- painters table of closures, a full repaint (font, colours, fit) on hover,
--- colours made fresh on every paint, invalidation up to the window, sizes
--- measured again on every pass, and pixel snapping that asks the client for
--- its scale on every edge.
+-- A: the first kit, before its rebuild, in miniature. Per-instance closures
+-- for every method and script, a painters table of closures, a full repaint
+-- (font, colours, fit) on hover, colours made fresh on every paint,
+-- invalidation up to the window, sizes measured again on every pass, and
+-- pixel snapping that asks the client for its scale on every edge.
 
 local C = dofile(BENCH .. "Common.lua")
 local M = {}

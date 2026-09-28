@@ -10,7 +10,8 @@ local UI = Kit.UI
 --
 -- A colour is { r, g, b, a } with each part in 0..1. A look is what an addon
 -- keeps: { theme, accent, opacity, textSize, reduceMotion }. Tokens are what
--- widgets paint with, made from a look by UI.Tokens.
+-- widgets paint with, made from a look by UI.LookTokens (UI.Tokens in
+-- Base/Core.lua adds fonts and a colour cache to them).
 
 -- Colours --------------------------------------------------------------------
 
@@ -100,7 +101,7 @@ end
 -- as given (accentRaw, and opaque as accent), as a button fill and its
 -- hover, as a wash for selected rows, and as 65% and 80% edges. Every theme
 -- is dark: pale text with a hard shadow on dark planes.
-function UI.Tokens(look)
+function UI.LookTokens(look)
     look = UI.ResolveLook(look)
     local theme = UI.themes[look.theme]
     local o = look.opacity

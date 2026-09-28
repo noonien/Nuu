@@ -2,13 +2,13 @@ local addonName, ns = ...
 
 local Kit = ns.Kit
 
--- Development only, never shipped: `/nuukit report` (or the Report button on
--- the UI-Test1 gallery's Pooling tab) runs in the client what the UI kits
--- need measured there, and shows the result as text to copy.
+-- Development only, never shipped: `/nuukit report` (or the report button on
+-- the gallery's Pooling tab) runs in the client what the UI kit needs
+-- measured there, and shows the result as text to copy.
 --
--- It reports the client and its scale; how UI-Test1 gives widgets their
+-- It reports the client and its scale; how the kit gives widgets their
 -- methods; the client features docs/api-compatibility.md lists; and the
--- benchmark of Tests/Bench on both kits, with the client's own costs: a
+-- benchmark of Tests/Bench, with the client's own costs: a
 -- screen of 60 rows (name, count, "+1") and three toggles, built, hovered,
 -- clicked, repainted, resized and rebuilt. It runs one step a frame so the
 -- game does not stall, and catches every error with its stack.
@@ -76,32 +76,10 @@ local function newItems()
     return items
 end
 
--- The two kits, driven the same way ------------------------------------------------
+-- The kit, driven as the bench drives it ----------------------------------------------
 
--- The screen in UI/'s API.
-local function screenOld(ui, win, db, items, plus)
-    local body = win:Column({ gap = 6, padding = 10 })
-    local head = body:Row({ gap = 8 })
-    head:Text("Settings", "title")
-    head:Spacer()
-    local toggles, counts = {}, {}
-    head:Button("Reset", { onClick = function()
-        for _, key in ipairs(KEYS) do db[key] = nil; toggles[key]:SetValue(false) end
-        for i, item in ipairs(items) do item.count = 0; counts[i]:SetText(0) end
-    end })
-    for _, key in ipairs(KEYS) do
-        toggles[key] = body:Toggle(key, { value = db[key], onChange = function(on) db[key] = on end })
-    end
-    for i, item in ipairs(items) do
-        local row = body:Row({ gap = 8 })
-        row:Text(item.name, "body", { grow = true })
-        counts[i] = row:Text(item.count, "number")
-        plus[i] = row:Button("+1", { onClick = function() item.count = item.count + 1; counts[i]:SetText(item.count) end })
-    end
-end
-
--- The screen in UI-Test1's API.
-local function screenNew(ui, win, db, items, plus)
+-- The bench's screen.
+local function screen(ui, win, db, items, plus)
     local body = win:Column{ gap = 6, padding = 10 }
     local head = body:Row{ gap = 8 }
     head:Text{ "Settings", style = "title" }
@@ -120,21 +98,16 @@ local function screenNew(ui, win, db, items, plus)
     end
 end
 
+-- Each kit measured gets a column: the kit, and any variant being compared
+-- with it (a copy with one part changed).
 local KITS = {
     {
-        name = "UI (current)",
+        name = "UI",
         make = function(look) return Kit.NewUI({ name = "NuuKitReport" }, look) end,
         flush = function() Kit.UI.LayoutNow() end,
         -- What the client's size event would do a frame later.
-        resized = function(win) Kit.UI.Invalidate(win.body) end,
-        screen = screenOld,
-    },
-    {
-        name = "UI-Test1",
-        make = function(look) return Kit.NewUI1({ name = "NuuKitReport1" }, look) end,
-        flush = function() Kit.UI1.LayoutNow() end,
-        resized = function(win) Kit.UI1.Invalidate(win.kitInner) end,
-        screen = screenNew,
+        resized = function(win) Kit.UI.Invalidate(win.kitInner) end,
+        screen = screen,
     },
 }
 
@@ -160,7 +133,7 @@ step("client", function()
     local width, height = 0, 0
     if type(GetPhysicalScreenSize) == "function" then width, height = GetPhysicalScreenSize() end
     addf("screen %dx%d, UIParent scale %.3f, pixels per unit %.4f", width or 0, height or 0,
-        UIParent:GetEffectiveScale(), Kit.UI1 and Kit.UI1.PixelsPerUnit() or 0)
+        UIParent:GetEffectiveScale(), Kit.UI and Kit.UI.PixelsPerUnit() or 0)
 end)
 
 step("features", function()
@@ -282,9 +255,9 @@ end
 
 step("results", function()
     add("")
-    -- Known once the benchmark has made UI-Test1 widgets.
-    local shared = Kit.UI1 and Kit.UI1.sharedMethods
-    addf("UI-Test1 methods: %s", shared == true and "shared through metatables"
+    -- Known once the benchmark has made widgets.
+    local shared = Kit.UI and Kit.UI.sharedMethods
+    addf("Kit methods: %s", shared == true and "shared through metatables"
         or (shared == false and "COPIED onto frames (the client refused a metatable)" or "not decided (no widget made)"))
     add("")
     addf("Benchmark: %d rows, the client's own costs (ms = milliseconds, us = microseconds)", ROWS)
@@ -311,15 +284,15 @@ step("results", function()
     row("rebuild, memory kept KB", "%.0f", function(r) return r.rebuildKept end)
 end)
 
--- Whole pixels: every shown widget of the open UI-Test1 gallery.
+-- Whole pixels: every shown widget of the open gallery.
 step("pixels", function()
     add("")
-    local gallery = Kit.UI1 and Kit.UI1.gallery
+    local gallery = Kit.UI and Kit.UI.gallery
     if not (gallery and gallery.ui and gallery.win and gallery.win:IsShown()) then
-        add("Pixels: open /nuukit ui1 first to check the gallery's edges.")
+        add("Pixels: open /nuukit ui first to check the gallery's edges.")
         return
     end
-    local scale = Kit.UI1.PixelsPerUnit()
+    local scale = Kit.UI.PixelsPerUnit()
     local checked, off, example = 0, 0, nil
     local function fraction(value)
         local pixels = value * scale

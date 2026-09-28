@@ -1,4 +1,4 @@
--- The whole UI-Test1 gallery on the smoke tests' stand-in, counting calls
+-- The whole gallery on the smoke tests' stand-in, counting calls
 -- into the client's API: a guard for work on every widget, where the bench
 -- screen covers only text, buttons, toggles and stacks. From NuuKit/:
 --   nix-shell -p lua5_1 --run "lua Tests/Bench/Gallery.lua"
@@ -7,7 +7,7 @@
 local frames = dofile("Tests/Support/Frames.lua")
 local Object, objects = frames.Object, frames.objects
 
--- Text measured from its font size, as Tests/UI1/Run.lua does.
+-- Text measured from its font size, as Tests/UI/Smoke/Run.lua does.
 function Object:SetFont(_, size) self.fontSize = size; return true end
 function Object:GetStringHeight() return (self.fontSize or 12) + 2 end
 function Object:GetStringWidth() return #(self.text or "") * 6 * (self.fontSize or 12) / 12 end
@@ -39,7 +39,7 @@ for line in io.lines("NuuKit.toc") do
     if file and file ~= "NuuKit.lua" then assert(loadfile(file))("NuuKit", ns) end
 end
 local Kit = ns.Kit
-local UI = Kit.UI1
+local UI = Kit.UI
 
 local results = {}
 local function measure(label, fn)
@@ -60,7 +60,7 @@ end
 
 local g
 measure("open the gallery", function()
-    SlashCmdList.NUUKIT("ui1")
+    SlashCmdList.NUUKIT("ui")
     UI.LayoutNow()
     g = UI.gallery
 end)

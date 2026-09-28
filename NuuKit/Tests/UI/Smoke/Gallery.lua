@@ -1,4 +1,4 @@
--- The UI-Test1 gallery: /nuukit ui1 builds every widget in every state; every
+-- The gallery: /nuukit ui builds every widget in every state; every
 -- tab lays out, every theme repaints, and the Pooling tab rebuilds without
 -- making frames.
 
@@ -6,10 +6,10 @@ local ctx = ...
 local Kit, UI, assertTrue, layout, tick, objects = ctx.Kit, ctx.UI, ctx.assertTrue, ctx.layout, ctx.tick, ctx.objects
 
 assertTrue(type(SlashCmdList.NUUKIT) == "function", "the gallery registers /nuukit")
-SlashCmdList.NUUKIT("ui1")
+SlashCmdList.NUUKIT("ui")
 tick()
 local g = UI.gallery
-assertTrue(g and g.win and g.win:IsShown(), "/nuukit ui1 opens the gallery")
+assertTrue(g and g.win and g.win:IsShown(), "/nuukit ui opens the gallery")
 layout()
 
 for _, key in ipairs({ "look", "controls", "lists", "tables", "inplay", "pooling" }) do
