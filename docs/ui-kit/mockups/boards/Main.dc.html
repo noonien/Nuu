@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Appearance options and kit widgets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button{font-family:inherit}
+.kb:hover:not(:disabled){background:var(--k-raised) !important;border-color:var(--k-accent65) !important;color:var(--k-text) !important}
+.kb.pri:hover{background:var(--k-fillhover) !important;border-color:var(--k-accent) !important;color:var(--k-onfill) !important}
+.kb.act:hover{border-color:var(--k-accent) !important;color:var(--k-accent) !important}
+.kg:hover{color:var(--k-accent) !important}
+.kt:hover{color:var(--k-text) !important}
+.mrow:hover{background:var(--k-wash) !important}
+.card:hover{border-color:var(--k-accent65) !important}
+.sw:hover{transform:translateY(-1px)}
+</style>
+</helmet>
+<div style="width: 1440px; height: 960px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: #9db7c9; --k-raised: {{t.raised}}; --k-accent65: {{t.accent65}}; --k-text: {{t.text}}; --k-fillhover: {{t.accentFillHover}}; --k-accent: {{t.accent}}; --k-onfill: {{t.onFill}}; --k-wash: {{t.accentWash}}">
+
+<svg width="1440" height="960" viewBox="0 0 1440 960" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect x="0" y="0" width="1440" height="960" fill="#9db7c9"></rect>
+<polygon points="0,420 140,300 260,360 420,220 560,330 700,250 860,360 1000,200 1160,320 1300,260 1440,340 1440,960 0,960" fill="#c6d3dc"></polygon>
+<polygon points="380,262 420,220 462,262 440,272 420,254 400,274" fill="#f5f8fa"></polygon>
+<polygon points="958,244 1000,200 1044,244 1022,254 1000,236 978,256" fill="#f5f8fa"></polygon>
+<polygon points="0,560 220,470 420,540 640,460 880,540 1120,470 1440,540 1440,960 0,960" fill="#5d7a4e"></polygon>
+<polygon points="0,700 300,640 600,690 900,630 1200,690 1440,650 1440,960 0,960" fill="#34472d"></polygon>
+<path d="M600 960 C 690 830, 760 760, 840 690" stroke="#b59c6c" stroke-width="54" fill="none"></path>
+</svg>
+
+<section aria-label="NuuRoad options" style="position: absolute; left: 56px; top: 64px; width: 620px; height: 836px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.windowBg}}; border: {{win.border}}; box-shadow: {{win.shadow}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+
+<sc-if value="{{framed}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: -12px; top: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+<div style="position: absolute; right: -12px; bottom: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+<div style="position: absolute; left: -12px; bottom: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+<div style="position: absolute; left: 50%; top: -22px; transform: translateX(-50%); z-index: 2; padding: 4px 36px; white-space: nowrap; background: {{t.band}}; border: 4px ridge {{f.mid}}; font-size: 17px; font-weight: 600; color: {{f.title}}">NuuRoad Options</div>
+<button aria-label="Close" style="position: absolute; right: -16px; top: -16px; z-index: 2; width: 30px; height: 30px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #7d1a14; border: 3px ridge {{f.light}}; color: #ffe9d6; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="2"></path></svg></button>
+</sc-if>
+
+<sc-if value="{{flat}}" hint-placeholder-val="{{ true }}">
+<div style="height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 20px; background: {{t.bandBg}}">
+<div style="font-size: 20px; font-weight: 600; color: {{t.text}}">NuuRoad</div>
+<div style="font-size: 16px; color: {{t.muted}}">Options</div>
+<div style="flex-grow: 1"></div>
+<button class="kg" aria-label="Close" style="width: 32px; height: 32px; padding: 0; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+</sc-if>
+<sc-if value="{{framed}}" hint-placeholder-val="{{ false }}">
+<div style="height: 26px; flex-shrink: 0; background: {{t.bandBg}}"></div>
+</sc-if>
+
+<div role="tablist" aria-label="Options pages" style="flex-shrink: 0; display: flex; align-items: flex-end; gap: {{tabGap}}px; padding: 0 16px; background: {{t.bandBg}}; border-bottom: 1px solid {{tabLine}}">
+<sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5">
+<button class="kt" role="tab" aria-selected="{{tb.selected}}" style="height: {{tb.h}}px; margin-bottom: -1px; padding: 0 16px; font-size: 14.5px; font-weight: {{tb.fw}}; cursor: pointer; text-shadow: {{t.shadow}}; background: {{tb.bg}}; color: {{tb.color}}; border-top: {{tb.bt}}; border-left: {{tb.bs}}; border-right: {{tb.bs}}; border-bottom: {{tb.bb}}">{{tb.caption}}</button>
+</sc-for>
+</div>
+
+<div style="flex-grow: 1; padding: 18px 20px 0; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="height: 24px; display: flex; align-items: center; gap: 10px">
+<button class="kt" onClick="{{sec.theme.toggle}}" aria-expanded="{{sec.theme.expanded}}" style="display: flex; align-items: center; gap: 6px; padding: 0; background: transparent; border: 0; cursor: pointer; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}"><path d="{{sec.theme.chevron}}" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<span style="font-size: 15.5px; font-weight: 600">Theme</span>
+<span style="font-size: 13px; color: {{t.muted}}">every window repaints at once</span>
+</button>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+<sc-if value="{{sec.theme.open}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="4">
+<button class="card" onClick="{{th.pick}}" aria-pressed="{{th.pressed}}" style="display: flex; flex-direction: column; gap: 7px; padding: 8px; text-align: left; border-radius: 0; cursor: pointer; background: {{t.surface}}; border: 1px solid {{th.edge}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="height: 48px; display: flex; flex-direction: column; background: {{th.p.window}}; border: 1px solid {{th.p.hairline}}">
+<div style="height: 10px; background: {{th.p.band}}; border-bottom: 1px solid {{th.p.hairline}}"></div>
+<div style="flex-grow: 1; padding: 5px 6px; display: flex; flex-direction: column; gap: 4px">
+<div style="width: 60%; height: 4px; background: {{th.p.text}}"></div>
+<div style="width: 40%; height: 4px; background: {{th.p.muted}}"></div>
+<div style="width: 30%; height: 7px; background: {{th.p.accentFill}}; border: 1px solid {{th.p.accent}}"></div>
+</div>
+</div>
+<div style="font-size: 14.5px; font-weight: 600; color: {{th.nameColor}}">{{th.name}}</div>
+</button>
+</sc-for>
+</div>
+<div style="font-size: 13px; color: {{t.muted}}">{{themeDesc}}</div>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="height: 24px; display: flex; align-items: center; gap: 10px">
+<button class="kt" onClick="{{sec.accent.toggle}}" aria-expanded="{{sec.accent.expanded}}" style="display: flex; align-items: center; gap: 6px; padding: 0; background: transparent; border: 0; cursor: pointer; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}"><path d="{{sec.accent.chevron}}" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<span style="font-size: 15.5px; font-weight: 600">Accent</span>
+<span style="font-size: 13px; color: {{t.muted}}">selection, focus, the call to action</span>
+</button>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+<sc-if value="{{accentStored}}" hint-placeholder-val="{{ false }}">
+<button class="kg" onClick="{{resetAccent}}" style="height: 24px; padding: 0 2px; font-size: 12.5px; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer">reset</button>
+</sc-if>
+</div>
+<sc-if value="{{sec.accent.open}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; gap: 12px; align-items: flex-start">
+<sc-for list="{{swatches}}" as="sw" hint-placeholder-count="6">
+<button class="sw" onClick="{{sw.pick}}" aria-label="{{sw.name}}" aria-pressed="{{sw.pressed}}" style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 56px; padding: 0; background: transparent; border: 0; cursor: pointer; opacity: {{sw.dim}}">
+<div style="width: 36px; height: 36px; box-sizing: border-box; padding: 3px; border: 2px solid {{sw.ring}}">
+<div style="width: 100%; height: 100%; background: {{sw.hex}}"></div>
+</div>
+<div style="font-size: 12.5px; color: {{sw.labelColor}}; text-shadow: {{t.shadow}}">{{sw.name}}</div>
+</button>
+</sc-for>
+</div>
+<button onClick="{{toggleClass}}" aria-pressed="{{useClass}}" style="align-self: flex-start; display: flex; align-items: center; gap: 8px; padding: 2px 0; background: transparent; border: 0; cursor: pointer; text-shadow: {{t.shadow}}">
+<div style="width: 18px; height: 18px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.accent}}">
+<sc-if value="{{useClass}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"></path></svg></sc-if>
+</div>
+<div style="font-size: 14px; color: {{classCaption}}">Use my class colour</div>
+<div style="width: 12px; height: 12px; background: #f48cba"></div>
+<div style="font-size: 13px; color: {{t.muted}}">Paladin</div>
+</button>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="height: 24px; display: flex; align-items: center; gap: 10px">
+<button class="kt" onClick="{{sec.chrome.toggle}}" aria-expanded="{{sec.chrome.expanded}}" style="display: flex; align-items: center; gap: 6px; padding: 0; background: transparent; border: 0; cursor: pointer; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}"><path d="{{sec.chrome.chevron}}" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<span style="font-size: 15.5px; font-weight: 600">Window chrome</span>
+<span style="font-size: 13px; color: {{t.muted}}">in-play frames stay flat</span>
+</button>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+<sc-if value="{{sec.chrome.open}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<button class="card" onClick="{{pickFlat}}" aria-pressed="{{flatPressed}}" style="display: flex; gap: 12px; align-items: center; padding: 8px; text-align: left; border-radius: 0; cursor: pointer; background: {{t.surface}}; border: 1px solid {{flatEdge}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="width: 72px; height: 48px; flex-shrink: 0; box-sizing: border-box; background: {{t.window}}; border: 1px solid {{t.border}}"><div style="height: 10px; background: {{t.band}}"></div></div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 14.5px; font-weight: 600; color: {{flatName}}">Flat</div>
+<div style="font-size: 12.5px; color: {{t.muted}}">Backdrop colours, hairline edges</div>
+</div>
+</button>
+<button class="card" onClick="{{pickFramed}}" aria-pressed="{{framedPressed}}" style="display: flex; gap: 12px; align-items: center; padding: 8px; text-align: left; border-radius: 0; cursor: pointer; background: {{t.surface}}; border: 1px solid {{framedEdge}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="width: 72px; height: 48px; flex-shrink: 0; box-sizing: border-box; position: relative; background: {{t.window}}; border: 4px ridge {{f.mid}}">
+<div style="position: absolute; left: 50%; top: -7px; transform: translateX(-50%); width: 30px; height: 8px; background: {{t.band}}; border: 2px ridge {{f.mid}}"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 14.5px; font-weight: 600; color: {{framedName}}">Framed</div>
+<div style="font-size: 12.5px; color: {{t.muted}}">Border art, title plaque, art close</div>
+</div>
+</button>
+</div>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="height: 24px; display: flex; align-items: center; gap: 10px">
+<button class="kt" onClick="{{sec.windows.toggle}}" aria-expanded="{{sec.windows.expanded}}" style="display: flex; align-items: center; gap: 6px; padding: 0; background: transparent; border: 0; cursor: pointer; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}"><path d="{{sec.windows.chevron}}" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<span style="font-size: 15.5px; font-weight: 600">Windows</span>
+</button>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+<sc-if value="{{sec.windows.open}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: 170px minmax(0, 1fr); column-gap: 16px; row-gap: 12px; align-items: center">
+<label for="opacity" style="font-size: 14px; color: {{t.muted}}">Background opacity</label>
+<div style="display: flex; align-items: center; gap: 12px">
+<input id="opacity" type="range" min="40" max="100" step="5" value="{{opacity}}" onChange="{{setOpacity}}" style="width: 240px; accent-color: {{t.accentRaw}}">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: {{t.text}}">{{opacity}}%</div>
+</div>
+<div style="font-size: 14px; color: {{t.muted}}">Text size</div>
+<button class="kb" style="justify-self: start; width: 160px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Normal<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+<div style="font-size: 14px; color: {{t.muted}}">NuuProfessions</div>
+<button style="justify-self: start; display: flex; align-items: center; gap: 8px; padding: 0; background: transparent; border: 0; cursor: pointer; text-shadow: {{t.shadow}}">
+<div style="width: 18px; height: 18px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.accent}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"></path></svg></div>
+<div style="font-size: 14px; color: {{t.accent}}">Use this look there too</div>
+</button>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div style="height: 36px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 20px; background: {{t.bandBg}}; border-top: 1px solid {{t.hairline}}; font-size: 13px; color: {{t.muted}}">
+<div style="width: 6px; height: 6px; background: {{t.done}}"></div>
+{{t.name}}, {{chromeName}} chrome. Changes apply as you choose them; nothing to save.
+</div>
+</section>
+
+<section aria-label="Kit widgets" style="position: absolute; left: 716px; top: 40px; width: 668px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid {{t.hairline}}">
+<div style="font-size: 16px; font-weight: 600">Kit widgets</div>
+<div style="font-size: 13px; color: {{t.muted}}">every control repaints on theme change</div>
+</div>
+<div style="padding: 14px 16px; display: grid; grid-template-columns: 96px minmax(0, 1fr); column-gap: 16px; row-gap: 14px; align-items: center; font-size: 13px">
+
+<div style="color: {{t.muted}}">Tabs</div>
+<div role="tablist" aria-label="Tabs demo" style="display: flex; align-items: flex-end; gap: 4px; border-bottom: 1px solid {{t.hairline}}">
+<button class="kt" role="tab" aria-selected="true" style="height: 32px; margin-bottom: -1px; padding: 0 14px; font-size: 14px; font-weight: 600; background: transparent; border: 0; border-bottom: 2px solid {{t.accent}}; color: {{t.text}}; text-shadow: {{t.shadow}}; cursor: pointer">Plan</button>
+<button class="kt" role="tab" aria-selected="false" style="height: 32px; margin-bottom: -1px; padding: 0 14px; font-size: 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: {{t.muted}}; text-shadow: {{t.shadow}}; cursor: pointer">Recipes</button>
+<button class="kt" role="tab" aria-selected="false" style="height: 32px; margin-bottom: -1px; padding: 0 14px; font-size: 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: {{t.muted}}; text-shadow: {{t.shadow}}; cursor: pointer">Materials<span style="margin-left: 6px; padding: 0 5px; font-size: 11.5px; background: {{t.raised}}; color: {{t.estimate}}">3</span></button>
+<button class="kt" role="tab" aria-selected="false" disabled style="height: 32px; margin-bottom: -1px; padding: 0 14px; font-size: 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: {{t.muted45}}; text-shadow: {{t.shadow}}">Options</button>
+</div>
+
+<div style="color: {{t.muted}}">Section</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="height: 22px; display: flex; align-items: center; gap: 10px">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<span style="font-size: 15px; font-weight: 600">Prices</span>
+<span style="color: {{t.muted}}">3 guessed</span>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+<span style="color: {{t.muted}}">reset</span>
+</div>
+<div style="padding-left: 18px; color: {{t.muted}}">Content sits under the rule; the header folds it.</div>
+</div>
+
+<div style="color: {{t.muted}}">Button</div>
+<div style="display: flex; gap: 8px; align-items: center">
+<button class="kb pri" style="height: 30px; padding: 0 16px; font-size: 14px; font-weight: 600; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.accentFill}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}">Start guide</button>
+<button class="kb" style="height: 30px; padding: 0 14px; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}">Skip</button>
+<button class="kb" style="height: 30px; padding: 0 14px; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.raised}}; border: 1px solid {{t.accent65}}; color: {{t.text}}">Hovered</button>
+<button class="kb act" aria-pressed="true" style="height: 30px; padding: 0 14px; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.raised}}; border: 1px solid {{t.accent80}}; color: {{t.accent}}">Active</button>
+<button disabled style="height: 30px; padding: 0 14px; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border50}}; color: {{t.muted45}}">Disabled</button>
+<button style="height: 30px; padding: 0 12px; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.raised}}; border: 1px solid {{t.danger}}; color: {{t.danger}}">Click again</button>
+</div>
+
+<div style="color: {{t.muted}}">Glyph</div>
+<div style="display: flex; gap: 2px; align-items: center">
+<button class="kg" aria-label="Back" style="width: 30px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 12 12"><path d="M7.5 3 L4.5 6 L7.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: {{t.text}}; padding: 0 4px">12 / 148</div>
+<button aria-label="Skip" style="width: 30px; height: 30px; padding: 0; background: {{t.accentWash}}; border: 0; color: {{t.accent}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<button class="kg" aria-label="Menu" style="width: 30px; height: 30px; padding: 0; margin-left: 6px; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer"><svg width="14" height="14" viewBox="0 0 12 12"><path d="M2 3 H10 M2 6 H10 M2 9 H10" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></button>
+<div style="font-size: 12.5px; color: {{t.muted}}; margin-left: 10px">highlighted = press next (breathes)</div>
+</div>
+
+<div style="color: {{t.muted}}">Toggle</div>
+<div style="display: flex; gap: 22px; align-items: center">
+<button style="display: flex; align-items: center; gap: 8px; padding: 0; background: transparent; border: 0; cursor: pointer; text-shadow: {{t.shadow}}">
+<div style="width: 18px; height: 18px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.accent}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"></path></svg></div>
+<div style="font-size: 14px; color: {{t.accent}}">Show finished steps</div>
+</button>
+<button style="display: flex; align-items: center; gap: 8px; padding: 0; background: transparent; border: 0; cursor: pointer; text-shadow: {{t.shadow}}">
+<div style="width: 18px; height: 18px; box-sizing: border-box; background: {{t.surface}}; border: 1px solid {{t.border}}"></div>
+<div style="font-size: 14px; color: {{t.muted}}">Only my faction</div>
+</button>
+</div>
+
+<div style="color: {{t.muted}}">Input</div>
+<div style="display: flex; gap: 8px; align-items: center">
+<label style="display: flex"><span style="position: absolute; left: -9999px">Search guides</span><input placeholder="Search guides" style="width: 170px; height: 30px; box-sizing: border-box; padding: 0 8px; font-family: inherit; font-size: 14px; border-radius: 0; outline: none; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}"></label>
+<label style="display: flex"><span style="position: absolute; left: -9999px">Price</span><input value="12c" style="width: 110px; height: 30px; box-sizing: border-box; padding: 0 8px; font-family: inherit; font-size: 14px; border-radius: 0; outline: none; background: {{t.raised}}; border: 1px solid {{t.accent}}; color: {{t.text}}"></label>
+<label style="display: flex"><span style="position: absolute; left: -9999px">Level</span><input value="6o" style="width: 80px; height: 30px; box-sizing: border-box; padding: 0 8px; font-family: inherit; font-size: 14px; border-radius: 0; outline: none; background: {{t.surface}}; border: 1px solid {{t.danger}}; color: {{t.text}}"></label>
+<div style="font-size: 12.5px; color: {{t.muted}}">rest / focus / invalid</div>
+</div>
+
+<div style="color: {{t.muted}}">Select</div>
+<div style="display: flex; gap: 8px; align-items: center; position: relative">
+<button class="kb" style="width: 170px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Cheapest<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+<button class="kb" style="width: 170px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.accent80}}; color: {{t.text}}">Fewest crafts<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 7.5 L6 4.5 L9 7.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+<div style="font-size: 12.5px; color: {{t.muted}}">default / player-set (open)</div>
+<div role="listbox" aria-label="Route by" style="position: absolute; left: 178px; top: 34px; width: 280px; z-index: 2; display: flex; flex-direction: column; padding: 4px 0; background: {{t.raised}}; border: 1px solid {{t.border}}; box-shadow: 0 6px 18px rgba(0,0,0,0.45)">
+<sc-for list="{{menu}}" as="m" hint-placeholder-count="4">
+<sc-if value="{{m.sep}}" hint-placeholder-val="{{ false }}"><div style="height: 1px; margin: 4px 10px; background: {{t.hairline}}"></div></sc-if>
+<sc-if value="{{m.row}}" hint-placeholder-val="{{ true }}">
+<div class="mrow" role="option" aria-selected="{{m.checked}}" style="display: flex; gap: 8px; padding: 5px 10px; background: {{m.bg}}">
+<div style="width: 12px; padding-top: 2px; color: {{t.accent}}"><sc-if value="{{m.checked}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"></path></svg></sc-if></div>
+<div style="display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 14px; color: {{m.color}}">{{m.caption}}</div>
+<div style="font-size: 12px; color: {{m.descColor}}">{{m.desc}}</div>
+</div>
+</div>
+</sc-if>
+</sc-for>
+</div>
+</div>
+
+<div style="color: {{t.muted}}">Slider</div>
+<div style="display: flex; gap: 12px; align-items: center">
+<div style="width: 170px; height: 16px; position: relative">
+<div style="position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: {{t.border}}"></div>
+<div style="position: absolute; left: 0; width: 104px; top: 7px; height: 2px; background: {{t.accent}}"></div>
+<div style="position: absolute; left: 98px; top: 1px; width: 10px; height: 14px; background: {{t.raised}}; border: 1px solid {{t.accent}}"></div>
+</div>
+<div style="font-size: 14px; color: {{t.text}}">Undercut 5%</div>
+</div>
+
+<div style="color: {{t.muted}}">Disclosure</div>
+<div style="display: flex; gap: 8px; align-items: center">
+<button class="kb" style="height: 30px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>Ways around</button>
+<button class="kb act" style="height: 30px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.raised}}; border: 1px solid {{t.accent80}}; color: {{t.accent}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>Materials</button>
+</div>
+
+<div style="color: {{t.muted}}">Status</div>
+<div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap">
+<sc-for list="{{status}}" as="s" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 6px"><div style="width: 10px; height: 10px; background: {{s.color}}"></div><div style="font-size: 13.5px; color: {{s.color}}">{{s.name}}</div></div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section aria-label="Tracker preview" style="position: absolute; left: 934px; top: 718px; width: 450px; box-sizing: border-box; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="height: 36px; display: flex; align-items: center; gap: 4px; padding: 0 4px 0 12px">
+<div style="font-size: 15px; font-weight: 600">Northshire Valley</div>
+<div style="font-size: 13px; color: {{t.muted}}; margin-left: 4px">1-6</div>
+<div style="flex-grow: 1"></div>
+<button class="kg" aria-label="Back" style="width: 26px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M7.5 3 L4.5 6 L7.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px">12/148</div>
+<button class="kg" aria-label="Skip" style="width: 26px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<button class="kg" aria-label="Menu" style="width: 26px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}; cursor: pointer"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 3 H10 M2 6 H10 M2 9 H10" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></button>
+</div>
+<div style="margin: 0 12px; height: 15px; display: flex; gap: 1px; position: relative">
+<div style="flex-grow: 3; background: {{t.raisedBg}}"></div>
+<div style="flex-grow: 4; background: {{t.surfaceBg}}"></div>
+<div style="flex-grow: 5; background: {{t.raisedBg}}"></div>
+<div style="position: absolute; left: 0; bottom: 0; width: 8%; height: 5px; background: {{t.accent}}"></div>
+</div>
+<div style="margin: 8px 12px 12px; padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; background: {{t.raisedBg}}; border: 1px solid {{t.hairline}}; font-size: 13px">
+<div style="display: flex; align-items: center; gap: 8px; height: 19px"><div style="width: 12px; height: 12px; background: {{t.warning}}"></div><div style="flex-grow: 1">Kill <span style="color: {{t.danger}}">Kobold Vermin</span></div><div style="color: {{t.warning}}">6/10</div><div style="width: 50px; text-align: right; color: {{t.muted}}">38 yd</div></div>
+<div style="display: flex; align-items: center; gap: 8px; height: 19px"><div style="width: 12px; height: 12px; background: {{t.done}}"></div><div style="flex-grow: 1">Loot <span style="color: {{t.text}}">Tough Wolf Meat</span></div><div style="color: {{t.done}}">8/8</div><div style="width: 50px"></div></div>
+<div style="display: flex; align-items: center; gap: 8px; height: 19px"><div style="width: 12px; height: 12px; background: {{t.danger}}"></div><div style="flex-grow: 1">Turn in to <span style="color: {{t.accent}}">Eagan Peltskinner</span></div><div style="width: 50px; text-align: right; color: {{t.muted}}">112 yd</div></div>
+</div>
+</section>
+
+<div style="position: absolute; left: 56px; top: 34px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #f3efe6; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Example: NuuRoad's options window. NuuRoad builds it; the kit only paints it.</div>
+<div style="position: absolute; left: 716px; top: 12px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit widgets</div>
+<div style="position: absolute; left: 934px; top: 692px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #f3efe6; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Example: NuuRoad's tracker</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"],"default":"#4dc9f0"},"chrome":{"editor":"enum","options":["flat","framed"],"default":"flat"},"opacity":{"editor":"range","min":40,"max":100,"step":5,"default":100},"$preview":{"width":1440,"height":960}}'>
+var THEMES = {
+  midnight: { name: 'Midnight', desc: 'Midnight: OpenRoad today. Cool near-black glass.', light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', raisedA: 0.78, border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3',
+    frame: { mid: '#5d6878', dark: '#1a1e24', light: '#a4afbd', title: '#ebf0f7' } },
+  slate: { name: 'Slate', desc: 'Slate: softer grey, lower contrast for long sessions.', light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', raisedA: 0.85, border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1',
+    frame: { mid: '#747c89', dark: '#25292f', light: '#b3bac5', title: '#e4e7ec' } },
+  obsidian: { name: 'Obsidian', desc: 'Obsidian: high contrast. Black plates, white text.', light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', raisedA: 0.9, border: '#58616e', text: '#ffffff', muted: '#bcc5d1',
+    frame: { mid: '#8a6d2f', dark: '#2a1f08', light: '#d9b35c', title: '#ffd100' } },
+  parchment: { name: 'Parchment', desc: 'Parchment: light and warm, like a quest log page.', light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', raisedA: 0.96, border: '#ad9a70', text: '#2a2114', muted: '#6a593e',
+    frame: { mid: '#9c7a3c', dark: '#4d3813', light: '#dcbd76', title: '#2a2114' } }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', gain: '#66d1c7', estimate: '#cca8fa', pattern: '#fa85c7' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', gain: '#1d7a72', estimate: '#6d4bb0', pattern: '#a83674' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + Math.round(a * 100) / 100 + ')'; }
+function makeTokens(key, accent, opacity) {
+  var th = THEMES[key] || THEMES.midnight;
+  var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+  var o = (opacity == null ? 100 : opacity) / 100;
+  var accentText = th.light ? mix(accent, '#000000', 0.45) : accent;
+  return {
+    key: key, name: th.name, light: th.light,
+    window: th.window, band: th.band, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+    windowBg: rgba(th.window, 0.97 * o), bandBg: rgba(th.band, o), surfaceBg: rgba(th.surface, th.surfaceA * o), raisedBg: rgba(th.raised, th.raisedA * o),
+    border50: rgba(th.border, 0.5), muted45: rgba(th.muted, 0.45),
+    accentRaw: accent, accent: accentText,
+    accentFill: th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68),
+    accentFillHover: th.light ? mix(accent, '#000000', 0.24) : mix(accent, th.window, 0.52),
+    onFill: th.light ? '#ffffff' : th.text,
+    accent65: rgba(accentText, 0.65), accent80: rgba(accentText, 0.8), accentWash: rgba(accent, th.light ? 0.22 : 0.16),
+    shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+    danger: st.danger, done: st.done, warning: st.warning, gain: st.gain, estimate: st.estimate, pattern: st.pattern
+  };
+}
+function makeTabs(t, f, framed, captions, active) {
+  return captions.map(function (c, i) {
+    var on = i === active;
+    if (!framed) {
+      return { caption: c, selected: on ? 'true' : 'false', h: 36, fw: on ? 600 : 400, bg: 'transparent', color: on ? t.text : t.muted,
+        bt: '0', bs: '0', bb: '2px solid ' + (on ? t.accent : 'transparent') };
+    }
+    return { caption: c, selected: on ? 'true' : 'false', h: on ? 34 : 28, fw: on ? 600 : 400,
+      bg: on ? t.window : t.band, color: on ? f.title : t.muted,
+      bt: on ? '2px solid ' + f.light : '1px solid ' + f.dark, bs: '1px solid ' + (on ? f.mid : f.dark), bb: '1px solid ' + (on ? t.window : f.mid) };
+  });
+}
+var ACCENTS = [
+  { key: 'cyan', name: 'Cyan', hex: '#4dc9f0' }, { key: 'azure', name: 'Azure', hex: '#6f9dff' },
+  { key: 'violet', name: 'Violet', hex: '#b08cff' }, { key: 'gold', name: 'Gold', hex: '#e8c35a' },
+  { key: 'rose', name: 'Rose', hex: '#f27fa2' }, { key: 'ember', name: 'Ember', hex: '#ff8a4c' }
+];
+var CLASS_HEX = '#f48cba';
+var DOWN = 'M3 4.5 L6 7.5 L9 4.5', RIGHT = 'M4.5 3 L7.5 6 L4.5 9';
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    var start = null;
+    for (var i = 0; i < ACCENTS.length; i++) if (ACCENTS[i].hex === (props.accent || '#4dc9f0')) start = ACCENTS[i].key;
+    this.state = { theme: props.theme || 'midnight', accentKey: start || 'custom', custom: props.accent || '#4dc9f0', useClass: false,
+      opacity: props.opacity || 100, chrome: props.chrome || 'flat', folded: {} };
+  }
+  renderVals() {
+    var self = this, s = this.state;
+    var chosen = s.custom;
+    for (var i = 0; i < ACCENTS.length; i++) if (ACCENTS[i].key === s.accentKey) chosen = ACCENTS[i].hex;
+    var accent = s.useClass ? CLASS_HEX : chosen;
+    var t = makeTokens(s.theme, accent, s.opacity);
+    var f = (THEMES[s.theme] || THEMES.midnight).frame;
+    var framed = s.chrome === 'framed';
+    var themes = Object.keys(THEMES).map(function (k) {
+      var p = makeTokens(k, accent, 100), on = k === s.theme;
+      return { name: THEMES[k].name, p: p, pressed: on ? 'true' : 'false', edge: on ? t.accent : t.border, nameColor: on ? t.accent : t.text,
+        pick: function () { self.setState({ theme: k }); } };
+    });
+    var swatches = ACCENTS.map(function (a) {
+      var on = !s.useClass && a.key === s.accentKey;
+      return { name: a.name, hex: a.hex, pressed: on ? 'true' : 'false', ring: on ? t.text : 'transparent', labelColor: on ? t.text : t.muted, dim: s.useClass ? 0.45 : 1,
+        pick: function () { self.setState({ accentKey: a.key, useClass: false }); } };
+    });
+    var sec = {};
+    ['theme', 'accent', 'chrome', 'windows'].forEach(function (k) {
+      var open = !s.folded[k];
+      sec[k] = { open: open, expanded: open ? 'true' : 'false', chevron: open ? DOWN : RIGHT,
+        toggle: function () { var fo = Object.assign({}, self.state.folded); fo[k] = !fo[k]; self.setState({ folded: fo }); } };
+    });
+    var rows = [
+      { caption: 'Cheapest', desc: 'Least gold spent, counting what you sell back.', checked: false },
+      { caption: 'Fewest crafts', desc: 'Fewer clicks; may cost more.', checked: true },
+      { caption: 'Least farming', desc: 'Buy what you would otherwise gather.', checked: false, hover: true },
+      { sep: true },
+      { caption: 'From my bags only', desc: 'Needs a bank scan first.', checked: false, disabled: true }
+    ];
+    var menu = rows.map(function (r) {
+      if (r.sep) return { sep: true, row: false };
+      return { row: true, sep: false, caption: r.caption, desc: r.desc, checked: r.checked, bg: r.hover ? t.accentWash : 'transparent',
+        color: r.disabled ? t.muted45 : (r.checked ? t.accent : t.text), descColor: r.disabled ? t.muted45 : t.muted };
+    });
+    var status = [
+      { name: 'danger', color: t.danger }, { name: 'done', color: t.done }, { name: 'warning', color: t.warning },
+      { name: 'gain', color: t.gain }, { name: 'estimate', color: t.estimate }, { name: 'pattern', color: t.pattern }
+    ];
+    return {
+      t: t, f: f, framed: framed, flat: !framed, chromeName: framed ? 'framed' : 'flat',
+      win: framed ? { border: '6px ridge ' + f.mid, shadow: '0 0 0 1px ' + f.dark + ', 0 10px 30px rgba(0,0,0,0.5)' } : { border: '1px solid ' + t.hairline, shadow: 'none' },
+      tabs: makeTabs(t, f, framed, ['General', 'Tracker', 'Appearance', 'Keys', 'Debug'], 2),
+      tabGap: framed ? 2 : 4, tabLine: framed ? f.mid : t.hairline,
+      themes: themes, themeDesc: (THEMES[s.theme] || THEMES.midnight).desc, swatches: swatches, menu: menu, status: status, sec: sec,
+      useClass: s.useClass, classCaption: s.useClass ? t.accent : t.muted,
+      accentStored: s.useClass || s.accentKey !== 'cyan',
+      opacity: s.opacity,
+      flatPressed: framed ? 'false' : 'true', framedPressed: framed ? 'true' : 'false',
+      flatEdge: framed ? t.border : t.accent, framedEdge: framed ? t.accent : t.border,
+      flatName: framed ? t.text : t.accent, framedName: framed ? t.accent : t.text,
+      pickFlat: function () { self.setState({ chrome: 'flat' }); },
+      pickFramed: function () { self.setState({ chrome: 'framed' }); },
+      toggleClass: function () { self.setState({ useClass: !s.useClass }); },
+      resetAccent: function () { self.setState({ accentKey: 'cyan', useClass: false }); },
+      setOpacity: function (e) { self.setState({ opacity: Number(e.target.value) }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

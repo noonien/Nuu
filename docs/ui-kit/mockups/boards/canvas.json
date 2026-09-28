@@ -1,0 +1,112 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "ArtThemes.dc.html": {
+      "h": 1000,
+      "title": "Kit: art themes (on an example window)",
+      "w": 1480,
+      "x": 0,
+      "y": 3280
+    },
+    "Buttons.dc.html": {
+      "h": 1000,
+      "is_interactive": true,
+      "title": "Kit: button tones and attention",
+      "w": 1280,
+      "x": 0,
+      "y": 1080
+    },
+    "Lists.dc.html": {
+      "h": 1100,
+      "title": "Kit: lists, text, tooltips, slots, window handling",
+      "w": 1440,
+      "x": 0,
+      "y": 4400
+    },
+    "Main.dc.html": {
+      "h": 960,
+      "is_interactive": true,
+      "title": "Kit widgets + example: NuuRoad options (live)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Menus.dc.html": {
+      "h": 860,
+      "is_interactive": true,
+      "title": "Kit: menus and dropdowns (live select)",
+      "w": 1280,
+      "x": 1360,
+      "y": 1080
+    },
+    "Panels.dc.html": {
+      "h": 1000,
+      "title": "Kit: tree, panes, fields, progress, notices, states",
+      "w": 1440,
+      "x": 1520,
+      "y": 4400
+    },
+    "Planner.dc.html": {
+      "h": 960,
+      "title": "Example: NuuProfessions planner",
+      "w": 1320,
+      "x": 0,
+      "y": 2200
+    },
+    "Tokens.dc.html": {
+      "h": 960,
+      "title": "Kit: theme tokens",
+      "w": 1120,
+      "x": 1400,
+      "y": 2200
+    },
+    "Tracker.dc.html": {
+      "h": 960,
+      "title": "Example: NuuRoad tracker",
+      "w": 1000,
+      "x": 1520,
+      "y": 0
+    },
+    "TypeFocus.dc.html": {
+      "h": 860,
+      "title": "Kit: type and keyboard focus",
+      "w": 1280,
+      "x": 0,
+      "y": 5620
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-27T19:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "scale": {
+      "fill": "blue",
+      "maxH": 150,
+      "size": 24,
+      "text": "Green tags and boards named Kit: what NuuKit provides (widgets, themes, textures, window handling, states). Cream tags and boards named Example: windows NuuRoad and NuuProfessions build themselves from kit parts; the kit does not ship them. Windows drawn at 1.25x game pixels.",
+      "w": 620,
+      "x": 0,
+      "y": -180
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Tracker.dc.html",
+    "Buttons.dc.html",
+    "Menus.dc.html",
+    "Planner.dc.html",
+    "Tokens.dc.html",
+    "ArtThemes.dc.html",
+    "Lists.dc.html",
+    "Panels.dc.html",
+    "TypeFocus.dc.html"
+  ],
+  "pages": [],
+  "title": "NuuKit UI Mockups"
+}

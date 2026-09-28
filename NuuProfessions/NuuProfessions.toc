@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: NuuProfessions
+## Notes: Profession levelling planner for WoW: Forever
+## Author: noonien
+## Version: 0.1.0-dev
+## SavedVariables: NuuProfessionsDB
+## SavedVariablesPerCharacter: NuuProfessionsCharacterDB
+## Dependencies: NuuKit
+## OptionalDeps: NuuRoad, Auctionator
+
+Core.lua
+LoadProbe.lua

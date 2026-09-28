@@ -1,0 +1,12 @@
+## Interface: 16001
+## Title: NuuRoad
+## Notes: Offline, player-directed guides for WoW: Forever
+## Author: noonien
+## Version: 0.1.0-dev
+## SavedVariables: NuuRoadDB
+## SavedVariablesPerCharacter: NuuRoadCharacterDB
+## Dependencies: NuuKit
+## OptionalDeps: NuuProfessions
+
+Core.lua
+LoadProbe.lua

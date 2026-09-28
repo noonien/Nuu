@@ -1,0 +1,32 @@
+## Interface: 16001
+## Title: NuuKit
+## Notes: Shared library for the Nuu addons (development copy; each release embeds its own)
+## Author: noonien
+## Version: 0.1.0-dev
+
+Kit.lua
+Core/Safe.lua
+Core/Logging.lua
+Core/Recorder.lua
+Core/BugReport.lua
+UI/Theme/Themes.lua
+UI/Theme/Look.lua
+UI/Base/UI.lua
+UI/Base/Layout.lua
+UI/Base/Tooltip.lua
+UI/Base/Text.lua
+UI/Controls/Buttons.lua
+UI/Chrome/Window.lua
+UI/Chrome/Tabs.lua
+UI/Controls/Fields.lua
+UI/Controls/Menus.lua
+UI/Display/Lists.lua
+UI/Display/Feedback.lua
+UI/Display/Tables.lua
+UI/Controls/Forms.lua
+UI/Display/Slots.lua
+UI/Theme/LookPicker.lua
+# Development only: the widget gallery (/nuukit ui). Never shipped.
+Dev/Gallery.lua
+# Development only: publishes _G.NuuKit. Never shipped; must stay last.
+NuuKit.lua

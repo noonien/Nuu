@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Type and focus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=Barlow+Condensed:wght@400;500&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; box-sizing: border-box; padding: 36px 40px; display: flex; gap: 48px; font-family: 'Barlow Semi Condensed', sans-serif; background: {{t.window}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+
+<div style="width: 640px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 10px; padding-bottom: 8px">
+<div style="font-size: 18px; font-weight: 600">Type</div>
+<div style="font-size: 13.5px; color: {{t.muted}}">Sizes in game pixels; drawn here at 1.25x</div>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+<div style="display: grid; grid-template-columns: 90px minmax(0, 1fr) 170px; column-gap: 16px; padding-bottom: 6px; font-size: 12.5px; color: {{t.muted}}">
+<div>Style</div><div>Sample</div><div>In game</div>
+</div>
+<sc-for list="{{type}}" as="r" hint-placeholder-count="9">
+<div style="min-height: 44px; display: grid; grid-template-columns: 90px minmax(0, 1fr) 170px; column-gap: 16px; align-items: center; border-top: 1px solid {{t.hairline}}">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{t.muted}}">{{r.key}}</div>
+<div style="font-family: {{r.face}}; font-size: {{r.px}}px; font-weight: {{r.fw}}; color: {{r.color}}">{{r.sample}}<sc-if value="{{r.chip}}" hint-placeholder-val="{{ false }}"><span style="display: inline-block; margin-left: 8px; padding: 0 4px; font-family: 'Barlow Condensed', sans-serif; font-size: 11.5px; background: rgba(0,0,0,0.45); border: 1px solid {{t.border}}; color: {{t.text}}">S-B4</span><span style="display: inline-block; margin-left: 6px; padding: 0 4px; font-family: 'Barlow Condensed', sans-serif; font-size: 11.5px; background: rgba(0,0,0,0.45); border: 1px solid {{t.border}}; color: {{t.text}}">C-1</span></sc-if></div>
+<div style="font-size: 12.5px; color: {{t.muted}}">{{r.game}}</div>
+</div>
+</sc-for>
+<div style="padding-top: 12px; font-size: 13px; line-height: 1.45; color: {{t.muted}}">Game fonts come in one weight. Hierarchy is size and colour; the heavier look here stands for the next size up. Art themes may swap the title face for a client font such as Morpheus.</div>
+</div>
+
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: center; gap: 10px; padding-bottom: 8px">
+<div style="font-size: 18px; font-weight: 600">Keyboard focus</div>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding-bottom: 12px; font-size: 13.5px; line-height: 1.45; color: {{t.muted}}">
+<div><span style="color: {{t.text}}">By default</span> the ring follows the text fields: Tab and Shift-Tab move between them, Enter commits, Escape hands the keys back to the game. While a search field has focus, the arrow keys move through its list.</div>
+<div><span style="color: {{t.text}}">Opt-in per window:</span> full keyboard control of buttons, checkboxes, tabs, selects and sliders. That window holds the keyboard while it is open, so the game's keybinds stop until it closes.</div>
+</div>
+
+<div style="display: grid; grid-template-columns: 110px minmax(0, 1fr); column-gap: 16px; row-gap: 22px; align-items: center; font-size: 13px">
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">Button</div><div style="font-size: 12px; color: {{t.accent}}">opt-in</div></div>
+<div style="display: flex; gap: 14px; align-items: center">
+<button style="height: 30px; padding: 0 14px; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}; box-shadow: {{t.ring}}">Save as guide</button>
+<button style="height: 30px; padding: 0 16px; font-size: 14px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.accentFill}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}; box-shadow: {{t.ring}}">Run in tracker</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">Checkbox</div><div style="font-size: 12px; color: {{t.accent}}">opt-in</div></div>
+<button style="justify-self: start; display: flex; align-items: center; gap: 8px; padding: 3px 6px 3px 3px; background: transparent; border: 0; text-shadow: {{t.shadow}}; box-shadow: {{t.ring}}">
+<div style="width: 18px; height: 18px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.accent}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"></path></svg></div>
+<div style="font-size: 14px; color: {{t.accent}}">Sell back what I make</div>
+</button>
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">Tabs</div><div style="font-size: 12px; color: {{t.accent}}">opt-in</div></div>
+<div role="tablist" aria-label="Focus demo" style="justify-self: start; display: flex; gap: 4px; border-bottom: 1px solid {{t.hairline}}">
+<button role="tab" aria-selected="true" style="height: 32px; margin-bottom: -1px; padding: 0 14px; font-size: 14px; font-weight: 600; background: transparent; border: 0; border-bottom: 2px solid {{t.accent}}; color: {{t.text}}; text-shadow: {{t.shadow}}">Plan</button>
+<button role="tab" aria-selected="false" style="height: 30px; margin: 0 2px 1px; padding: 0 14px; font-size: 14px; background: transparent; border: 0; color: {{t.text}}; text-shadow: {{t.shadow}}; box-shadow: {{t.ring}}">Recipes</button>
+<button role="tab" aria-selected="false" style="height: 32px; margin-bottom: -1px; padding: 0 14px; font-size: 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: {{t.muted}}; text-shadow: {{t.shadow}}">Materials</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">Select</div><div style="font-size: 12px; color: {{t.accent}}">opt-in</div></div>
+<button style="justify-self: start; width: 170px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}; box-shadow: {{t.ring}}">Cheapest<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">Text field</div><div style="font-size: 12px; color: {{t.accent}}">default</div></div>
+<div style="display: flex; align-items: center; gap: 12px">
+<div style="width: 170px; height: 30px; box-sizing: border-box; display: flex; align-items: center; padding: 0 8px; font-size: 14px; background: {{t.raised}}; border: 1px solid {{t.accent}}; color: {{t.text}}">32s<div style="width: 1px; height: 16px; margin-left: 1px; background: {{t.text}}"></div></div>
+<div style="color: {{t.muted}}">Fields keep their accent edge; no second ring.</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">List row</div><div style="font-size: 12px; color: {{t.accent}}">with search focused</div></div>
+<div style="display: flex; flex-direction: column; background: {{t.surface}}; border: 1px solid {{t.hairline}}">
+<div style="height: 30px; display: flex; align-items: center; padding: 0 10px 0 10px; font-size: 14px; border-bottom: 1px solid {{t.hairline}}">Westfall</div>
+<div style="height: 28px; margin: 1px; display: flex; align-items: center; padding: 0 9px; font-size: 14px; outline: 1px solid {{t.accent}}; outline-offset: -1px">Loch Modan</div>
+<div style="height: 30px; display: flex; align-items: center; padding: 0 7px; font-size: 14px; background: {{t.accentWash}}; border-left: 3px solid {{t.accent}}; color: {{t.accent}}">Elwynn Forest</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 1px"><div style="color: {{t.muted}}">Slider</div><div style="font-size: 12px; color: {{t.accent}}">opt-in</div></div>
+<div style="display: flex; gap: 12px; align-items: center">
+<div style="width: 170px; height: 16px; position: relative">
+<div style="position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: {{t.border}}"></div>
+<div style="position: absolute; left: 0; width: 104px; top: 7px; height: 2px; background: {{t.accent}}"></div>
+<div style="position: absolute; left: 98px; top: 1px; width: 10px; height: 14px; box-sizing: border-box; background: {{t.raised}}; border: 1px solid {{t.accent}}; box-shadow: {{t.ring}}"></div>
+</div>
+<div style="font-size: 14px">Undercut 5%</div>
+</div>
+</div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment","horde","alliance"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"]},"$preview":{"width":1280,"height":860}}'>
+var THEMES = {
+  midnight: { light: false, window: '#090b0e', hairline: '#1c222b', surface: '#0b0e12', raised: '#13171d', border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { light: false, window: '#16191e', hairline: '#2b313a', surface: '#1a1e24', raised: '#252a32', border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { light: false, window: '#000000', hairline: '#2a2f36', surface: '#000000', raised: '#0d0f12', border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { light: true, window: '#eadfc4', hairline: '#c4b28a', surface: '#efe6cf', raised: '#f7f0de', border: '#ad9a70', text: '#2a2114', muted: '#6a593e' },
+  horde: { light: false, window: '#15110f', hairline: '#3d2f26', surface: '#1f1916', raised: '#2a211c', border: '#5a4636', text: '#e6ddd2', muted: '#ad9e8f', accent: '#e8705a' },
+  alliance: { light: false, window: '#0f141d', hairline: '#2e3a4f', surface: '#161e2b', raised: '#1f2938', border: '#3c4a63', text: '#e1e6ef', muted: '#a0adc2', accent: '#7aa6ec' }
+};
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+class Component extends DCLogic {
+  renderVals() {
+    var th = THEMES[this.props.theme] || THEMES.midnight;
+    var accent = this.props.accent || th.accent || '#4dc9f0';
+    var ak = th.light ? mix(accent, '#000000', 0.45) : accent;
+    var t = { window: th.window, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+      accent: ak, accentFill: th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68), onFill: th.light ? '#ffffff' : th.text,
+      accentWash: rgba(accent, th.light ? 0.22 : 0.16), shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+      ring: '0 0 0 2px ' + th.window + ', 0 0 0 3px ' + ak };
+    var body = "'Barlow Semi Condensed', sans-serif", nums = "'Barlow Condensed', sans-serif";
+    var type = [
+      { key: 'title', px: 22, fw: 600, face: body, color: t.text, sample: 'Elwynn Forest', game: 'FRIZQT, 18' },
+      { key: 'window', px: 19, fw: 600, face: body, color: t.text, sample: 'Choose a guide', game: 'FRIZQT, 15' },
+      { key: 'heading', px: 16, fw: 600, face: body, color: t.text, sample: 'Route', game: 'FRIZQT, 13' },
+      { key: 'body', px: 14, fw: 400, face: body, color: t.text, sample: 'Kill Kobold Vermin and Young Wolves', game: 'FRIZQT, 11' },
+      { key: 'label', px: 14, fw: 400, face: body, color: t.muted, sample: 'Route by', game: 'FRIZQT, 11, muted' },
+      { key: 'link', px: 14, fw: 400, face: body, color: t.accent, sample: 'Report a problem', game: 'FRIZQT, 11, accent' },
+      { key: 'fine', px: 12.5, fw: 400, face: body, color: t.muted, sample: 'Guessed from vendor price', game: 'FRIZQT, 10' },
+      { key: 'number', px: 15, fw: 400, face: nums, color: t.text, sample: '112 / 150   24g 18s   x22', game: 'ARIALN, 12' },
+      { key: 'key', px: 13, fw: 400, face: nums, color: t.muted, sample: 'Key hints', game: 'ARIALN, 9, on a slot', chip: true }
+    ].map(function (r) { r.chip = !!r.chip; return r; });
+    return { t: t, type: type };
+  }
+}
+</script>
+</body>
+</html>

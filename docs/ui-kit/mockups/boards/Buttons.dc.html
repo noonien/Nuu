@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Button tones and attention</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button{font-family:inherit}
+@keyframes nk-breathe{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes nk-pulse{0%{transform:scale(1);opacity:.9}100%{transform:scale(1.25,1.7);opacity:0}}
+@keyframes nk-shimmer{0%{transform:translateX(-160%) skewX(-20deg)}55%,100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes nk-spin{to{transform:rotate(360deg)}}
+@keyframes nk-march{to{stroke-dashoffset:-20}}
+@keyframes nk-flash{0%,20%,40%{opacity:.9}10%,30%{opacity:.1}50%,100%{opacity:0}}
+@keyframes nk-bob{0%,55%,100%{transform:translateY(0)}25%{transform:translateY(-5px)}40%{transform:translateY(0)}47%{transform:translateY(-2px)}}
+.nk-breathe{animation:nk-breathe 1.6s ease-in-out infinite}
+.nk-pulse{animation:nk-pulse 1.4s ease-out infinite}
+.nk-shimmer{animation:nk-shimmer 2.6s ease-in-out infinite}
+.nk-spin{animation:nk-spin 2.4s linear infinite}
+.nk-march{animation:nk-march .8s linear infinite}
+.nk-flash{animation:nk-flash 2.8s linear infinite}
+.nk-bob{animation:nk-bob 1.8s ease-in-out infinite}
+.nk-hold .nk-fill{width:0;transition:width .2s ease-out}
+.nk-hold:active .nk-fill{width:100%;transition:width 1.2s linear}
+@media (prefers-reduced-motion: reduce){.nk-breathe,.nk-pulse,.nk-shimmer,.nk-spin,.nk-march,.nk-flash,.nk-bob{animation:none !important}}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1000px; box-sizing: border-box; padding: 36px 40px; display: flex; flex-direction: column; gap: 22px; font-family: 'Barlow Semi Condensed', sans-serif; background: {{t.window}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<div style="font-size: 18px; font-weight: 600">Tones</div>
+<div style="font-size: 14px; color: {{t.muted}}">Button(parent, caption, { tone = "danger", style = "soft" })</div>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 110px repeat(5, minmax(0, 1fr)); column-gap: 14px; row-gap: 12px; align-items: center">
+<div></div>
+<div style="font-size: 13px; color: {{t.muted}}">solid</div>
+<div style="font-size: 13px; color: {{t.muted}}">soft</div>
+<div style="font-size: 13px; color: {{t.muted}}">outline</div>
+<div style="font-size: 13px; color: {{t.muted}}">ghost</div>
+<div style="font-size: 13px; color: {{t.muted}}">disabled</div>
+<sc-for list="{{tones}}" as="r" hint-placeholder-count="7">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: {{t.muted}}"><div style="width: 10px; height: 10px; background: {{r.swatch}}"></div>{{r.name}}</div>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="5">
+<button disabled="{{c.disabled}}" style="justify-self: start; height: 32px; padding: 0 16px; font-size: 14.5px; font-weight: {{c.fw}}; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{c.bg}}; border: 1px solid {{c.edge}}; color: {{c.color}}">{{r.caption}}</button>
+</sc-for>
+</sc-for>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding-top: 6px">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<div style="font-size: 18px; font-weight: 600">Attention</div>
+<div style="font-size: 14px; color: {{t.muted}}">button:Attract("pulse") / button:Attract(nil). One at a time per window; off under Reduce motion.</div>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px">
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center; gap: 4px">
+<div style="position: relative; width: 34px; height: 34px">
+<div class="nk-breathe" style="position: absolute; left: 0; top: 0; width: 34px; height: 34px; background: {{accentWash2}}"></div>
+<button aria-label="Next step" style="position: absolute; left: 0; top: 0; width: 34px; height: 34px; padding: 0; background: transparent; border: 0; color: {{t.accent}}"><svg width="16" height="16" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+</div>
+<div style="font-size: 15px; font-weight: 600">breathe</div>
+<div style="font-size: 13px; color: {{t.muted}}">Press this next. OpenRoad's glyph highlight, kept.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">Alpha .3-1, BOUNCE, 0.8s</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative">
+<div class="nk-pulse" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; border: 2px solid {{t.accent}}"></div>
+<button style="position: relative; height: 32px; padding: 0 18px; font-size: 14.5px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{solidAccent}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}">Run in tracker</button>
+</div>
+</div>
+<div style="font-size: 15px; font-weight: 600">pulse</div>
+<div style="font-size: 13px; color: {{t.muted}}">A ring leaves the edge. The first-run call to action.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">edge texture: Scale + Alpha 1-0</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<button style="position: relative; overflow: hidden; height: 32px; padding: 0 18px; font-size: 14.5px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{solidQuest}}; border: 1px solid {{quest}}; color: {{t.onFill}}">
+<div class="nk-shimmer" style="position: absolute; left: 0; top: 0; width: 30%; height: 100%; background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.35), rgba(255,255,255,0))"></div>
+<span style="position: relative">Accept all 3</span>
+</button>
+</div>
+<div style="font-size: 15px; font-weight: 600">shimmer</div>
+<div style="font-size: 13px; color: {{t.muted}}">A glint sweeps across. Something new is ready.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">glint: Translation, ClipsChildren</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 170px; height: 36px; overflow: hidden">
+<div class="nk-spin" style="position: absolute; left: 50%; top: 50%; width: 220px; height: 220px; margin: -110px 0 0 -110px; background: {{orbit}}"></div>
+<button style="position: absolute; left: 2px; top: 2px; width: 166px; height: 32px; font-size: 14.5px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.raised}}; border: 0; color: {{t.accent}}">Save as guide</button>
+</div>
+</div>
+<div style="font-size: 15px; font-weight: 600">orbit</div>
+<div style="font-size: 13px; color: {{t.muted}}">A bright run circles the edge. Unsaved work.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">4 edge textures, lit run on a path</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative; width: 170px; height: 36px">
+<svg width="170" height="36" viewBox="0 0 170 36" style="position: absolute; left: 0; top: 0" aria-hidden="true"><rect class="nk-march" x="1" y="1" width="168" height="34" fill="none" stroke="{{t.warning}}" stroke-width="2" stroke-dasharray="6 4"></rect></svg>
+<button style="position: absolute; left: 3px; top: 3px; width: 164px; height: 30px; font-size: 14.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{softWarning}}; border: 0; color: {{t.warning}}">Drop target here</button>
+</div>
+</div>
+<div style="font-size: 15px; font-weight: 600">march</div>
+<div style="font-size: 13px; color: {{t.muted}}">Moving dashes. A place to drop or pick.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">dashed edge art, TexCoord scroll</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<button style="position: relative; overflow: hidden; height: 32px; padding: 0 18px; font-size: 14.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.danger}}; color: {{t.danger}}">
+<div class="nk-flash" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: {{dangerWash}}"></div>
+<span style="position: relative">Price missing</span>
+</button>
+</div>
+<div style="font-size: 15px; font-weight: 600">flash</div>
+<div style="font-size: 13px; color: {{t.muted}}">Two blinks, then still. Something just went wrong.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">wash: Alpha x2, then stop</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<div style="position: relative">
+<button style="height: 32px; padding: 0 18px; font-size: 14.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Materials</button>
+<div class="nk-bob" style="position: absolute; right: -9px; top: -10px; min-width: 20px; height: 20px; padding: 0 5px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 600; background: {{solidEstimate}}; border: 1px solid {{t.estimate}}; color: {{t.onFill}}">3</div>
+</div>
+</div>
+<div style="font-size: 15px; font-weight: 600">badge hop</div>
+<div style="font-size: 13px; color: {{t.muted}}">A count hops when it changes.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">badge: Translation 0,5 BOUNCE</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 14px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<div style="height: 86px; display: flex; align-items: center; justify-content: center">
+<button class="nk-hold" style="position: relative; overflow: hidden; height: 32px; padding: 0 18px; font-size: 14.5px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.danger}}; color: {{t.danger}}">
+<div class="nk-fill" style="position: absolute; left: 0; top: 0; height: 100%; background: {{dangerWash}}"></div>
+<span style="position: relative">Hold to abandon</span>
+</button>
+</div>
+<div style="font-size: 15px; font-weight: 600">hold</div>
+<div style="font-size: 13px; color: {{t.muted}}">Fills while held. Try it. Pairs with the two-click confirm.</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">fill width in OnUpdate, 1.2s</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"],"default":"#4dc9f0"},"$preview":{"width":1280,"height":1000}}'>
+var THEMES = {
+  midnight: { light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', raised: '#13171d', border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', raised: '#252a32', border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', raised: '#0d0f12', border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', raised: '#f7f0de', border: '#ad9a70', text: '#2a2114', muted: '#6a593e' }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', estimate: '#cca8fa' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', estimate: '#6d4bb0' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+class Component extends DCLogic {
+  renderVals() {
+    var th = THEMES[this.props.theme] || THEMES.midnight;
+    var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+    var accent = this.props.accent || '#4dc9f0';
+    function ink(c) { return th.light ? mix(c, '#000000', 0.45) : c; }
+    function solid(c) { return th.light ? mix(c, '#000000', 0.38) : mix(c, th.window, 0.64); }
+    var t = { window: th.window, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+      accent: ink(accent), onFill: th.light ? '#ffffff' : th.text, shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+      danger: st.danger, warning: st.warning, estimate: st.estimate };
+    var quest = th.light ? '#8a6a00' : '#ffd100';
+    var TONES = [
+      { name: 'accent', caption: 'Start guide', c: accent },
+      { name: 'neutral', caption: 'Skip step', c: null },
+      { name: 'success', caption: 'Turn in', c: th.light ? '#4a9a55' : '#73cc80' },
+      { name: 'danger', caption: 'Abandon', c: th.light ? '#c9463b' : '#e66157' },
+      { name: 'warning', caption: 'Buy anyway', c: th.light ? '#b8860b' : '#f2bf4d' },
+      { name: 'quest', caption: 'Accept', c: th.light ? '#b08a10' : '#ffd100' },
+      { name: 'class', caption: 'Summon', c: '#f48cba' }
+    ];
+    var tones = TONES.map(function (tn) {
+      var cells;
+      if (!tn.c) {
+        cells = [
+          { bg: th.raised, edge: th.border, color: th.text, fw: 600, disabled: false },
+          { bg: rgba(th.muted, 0.14), edge: rgba(th.muted, 0.35), color: th.text, fw: 400, disabled: false },
+          { bg: 'transparent', edge: th.border, color: th.muted, fw: 400, disabled: false },
+          { bg: 'transparent', edge: 'transparent', color: th.muted, fw: 400, disabled: false },
+          { bg: th.surface, edge: rgba(th.border, 0.5), color: rgba(th.muted, 0.45), fw: 400, disabled: true }
+        ];
+      } else {
+        var k = ink(tn.c);
+        cells = [
+          { bg: solid(tn.c), edge: k, color: th.light ? '#ffffff' : th.text, fw: 600, disabled: false },
+          { bg: rgba(tn.c, th.light ? 0.2 : 0.14), edge: rgba(k, 0.45), color: k, fw: 400, disabled: false },
+          { bg: 'transparent', edge: k, color: k, fw: 400, disabled: false },
+          { bg: 'transparent', edge: 'transparent', color: k, fw: 400, disabled: false },
+          { bg: th.surface, edge: rgba(k, 0.3), color: rgba(k, 0.4), fw: 400, disabled: true }
+        ];
+      }
+      return { name: tn.name, caption: tn.caption, swatch: tn.c ? ink(tn.c) : th.muted, cells: cells };
+    });
+    return {
+      t: t, tones: tones, quest: quest,
+      accentWash2: rgba(accent, th.light ? 0.3 : 0.25),
+      solidAccent: solid(accent), solidQuest: solid(th.light ? '#b08a10' : '#ffd100'), solidEstimate: solid(th.light ? '#8a6ad0' : '#cca8fa'),
+      softWarning: rgba(st.warning, 0.12), dangerWash: rgba(st.danger, 0.35),
+      orbit: 'conic-gradient(from 0deg, ' + rgba(ink(accent), 0) + ' 0deg, ' + ink(accent) + ' 50deg, ' + rgba(ink(accent), 0) + ' 100deg, ' + rgba(ink(accent), 0) + ' 360deg)'
+    };
+  }
+}
+</script>
+</body>
+</html>

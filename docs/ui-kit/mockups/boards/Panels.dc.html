@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Panels and states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button,input{font-family:inherit}
+.art-horde-win{background:url(/_blob/362e4b987e151c1585c1421c2bfc9937) repeat !important;border-style:solid !important;border-width:30px !important;border-image:url(/_blob/cc0ecd542b20d7a10c763257702e502f) 30 stretch !important}
+.art-alliance-win{background:url(/_blob/80999a201d56f5193e4fbf88681ede40) repeat !important;border-style:solid !important;border-width:30px !important;border-image:url(/_blob/55e9f21718fb3747393ca239929d3a14) 30 stretch !important}
+.art-horde-band{background:url(/_blob/606cda2f5b8546c2eaf1aafc93890847) repeat-x !important;background-size:auto 100% !important}
+.art-alliance-band{background:url(/_blob/bc8935543619dcb03e5e56ecf12faeb7) repeat-x !important;background-size:auto 100% !important}
+.art-horde-plate{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/92856dbb24e0674adb5d6333ef5af0a4) 12 fill stretch !important}
+.art-alliance-plate{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/b453476a0b16aa010e66a197eccf9677) 12 fill stretch !important}
+.art-horde-pri{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/f87c8c648ff4b3dab06aa051d1b83989) 12 fill stretch !important}
+.art-alliance-pri{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/ba98217dcda0a1f118e98b2beb97e569) 12 fill stretch !important}
+@keyframes nk-spin{to{transform:rotate(360deg)}}
+@keyframes nk-stripes{to{background-position:28px 0}}
+@keyframes nk-fade{0%,100%{opacity:.45}50%{opacity:1}}
+.nk-spin{animation:nk-spin 1s linear infinite}
+.nk-stripes{animation:nk-stripes .9s linear infinite}
+.nk-fade{animation:nk-fade 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){.nk-spin,.nk-stripes,.nk-fade{animation:none !important}}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: #5f594e; color: {{t.text}}; text-shadow: {{t.shadow}}">
+
+<svg width="1440" height="1000" viewBox="0 0 1440 1000" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect x="0" y="0" width="1440" height="1000" fill="#6d665b"></rect>
+<rect x="0" y="0" width="1440" height="300" fill="#8a8274"></rect>
+<rect x="60" y="80" width="200" height="260" fill="#9c9383"></rect>
+<rect x="1160" y="60" width="220" height="280" fill="#9c9383"></rect>
+</svg>
+
+<section class="art-{{t.art}}-win" aria-label="Guides" style="position: absolute; left: 40px; top: 30px; width: 1360px; height: 540px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.windowBg}}; border: 1px solid {{t.hairline}}">
+<div class="art-{{t.art}}-band" style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 12px 0 16px; background: {{t.bandBg}}">
+<div style="font-size: 17px; font-weight: 600">Guides</div>
+<div style="font-size: 13px; color: {{t.muted}}">Level 8 Human Warrior</div>
+<div style="flex-grow: 1"></div>
+<label style="width: 280px; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0 8px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><circle cx="5" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7.6 7.6 L10.5 10.5" stroke="currentColor" stroke-width="1.4"></path></svg>
+<span style="position: absolute; left: -9999px">Search guides</span>
+<input placeholder="Search guides, zones, quests" style="flex-grow: 1; min-width: 0; height: 26px; padding: 0; font-size: 14px; background: transparent; border: 0; outline: none; color: {{t.text}}">
+</label>
+<button aria-label="Close" style="width: 28px; height: 28px; padding: 0; background: transparent; border: 0; color: {{t.text}}"><svg width="13" height="13" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.7"></path></svg></button>
+</div>
+
+<div style="flex-grow: 1; min-height: 0; display: flex">
+
+<div role="tree" aria-label="Places to look" style="width: 270px; flex-shrink: 0; padding: 12px 8px 12px 12px; display: flex; flex-direction: column; gap: 1px; font-size: 14px">
+<div style="padding: 0 6px 4px; font-size: 13px; font-weight: 600; color: {{t.muted}}">Quick views</div>
+<sc-for list="{{quick}}" as="q" hint-placeholder-count="4">
+<div role="treeitem" style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 8px; color: {{t.text}}"><div style="flex-grow: 1">{{q.name}}</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{t.muted}}">{{q.n}}</div></div>
+</sc-for>
+<div style="height: 1px; margin: 8px 6px; background: {{t.hairline}}"></div>
+<div style="padding: 0 6px 4px; font-size: 13px; font-weight: 600; color: {{t.muted}}">Folders</div>
+<sc-for list="{{tree}}" as="n" hint-placeholder-count="9">
+<div role="treeitem" aria-expanded="{{n.expanded}}" aria-selected="{{n.selected}}" style="height: 28px; position: relative; display: flex; align-items: center; gap: 6px; padding-left: {{n.pad}}px; padding-right: 8px; background: {{n.bg}}; color: {{n.color}}">
+<sc-for list="{{n.guides}}" as="gl" hint-placeholder-count="1"><div style="position: absolute; left: {{gl.x}}px; top: 0; bottom: 0; width: 1px; background: {{t.hairline}}"></div></sc-for>
+<div style="width: 12px; flex-shrink: 0; color: {{t.muted}}"><sc-if value="{{n.chevron}}" hint-placeholder-val="{{ true }}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="{{n.chevron}}" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></sc-if></div>
+<div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{n.name}}</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{t.muted}}">{{n.n}}</div>
+</div>
+</sc-for>
+</div>
+
+<div role="separator" aria-orientation="vertical" aria-label="Resize" style="width: 9px; flex-shrink: 0; display: flex; justify-content: center; cursor: col-resize">
+<div style="width: 1px; background: {{t.hairline}}"></div>
+</div>
+
+<div style="flex-grow: 1; min-width: 0; padding: 12px 10px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; gap: 8px"><div style="font-size: 15px; font-weight: 600">Eastern Kingdoms</div><div style="font-size: 13px; color: {{t.muted}}">16 guides, and every folder under it</div></div>
+<div role="listbox" aria-label="Guides" style="display: flex; flex-direction: column; background: {{t.wellBg}}; border: 1px solid {{t.hairline}}">
+<sc-for list="{{guides}}" as="g" hint-placeholder-count="8">
+<div role="option" aria-selected="{{g.selected}}" style="height: 44px; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 7px; background: {{g.bg}}; border-left: 3px solid {{g.bar}}; border-bottom: 1px solid {{t.hairline}}">
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 14px; color: {{g.color}}">{{g.name}}</div>
+<div style="font-size: 12px; color: {{t.muted}}">{{g.path}}</div>
+</div>
+<div style="width: 44px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{g.levelColor}}">{{g.levels}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div role="separator" aria-orientation="vertical" aria-label="Resize" style="width: 9px; flex-shrink: 0; position: relative; display: flex; justify-content: center; cursor: col-resize; background: {{t.accentWash}}">
+<div style="width: 1px; background: {{t.accent}}"></div>
+<div style="position: absolute; left: 3px; top: 50%; margin-top: -10px; width: 3px; height: 20px; display: flex; flex-direction: column; justify-content: space-between">
+<div style="width: 3px; height: 3px; background: {{t.accent}}"></div><div style="width: 3px; height: 3px; background: {{t.accent}}"></div><div style="width: 3px; height: 3px; background: {{t.accent}}"></div>
+</div>
+</div>
+
+<div style="width: 380px; flex-shrink: 0; padding: 14px 16px 16px 12px; display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 19px; font-weight: 600">Elwynn Forest</div>
+<div style="font-size: 13.5px; color: {{t.muted}}">Levels <span style="color: {{lvlYellow}}">6-10</span>, Alliance, 38 steps, about 1 h 20 m</div>
+<div style="font-size: 14px; line-height: 1.45">From Northshire's gate to Goldshire and the farms around it: Fargodeep Mine, the Stonefield and Maclure feud, Jasperlode Mine, then on to Westfall.</div>
+<div style="font-size: 13.5px; color: {{t.muted}}">Zones: Elwynn Forest</div>
+<div style="display: flex; flex-direction: column; gap: 5px; padding-top: 4px">
+<div style="display: flex; font-size: 13px"><div style="flex-grow: 1; color: {{t.muted}}">Your progress</div><div style="font-family: 'JetBrains Mono', monospace">16 / 38</div></div>
+<div style="height: 8px; display: flex; gap: 2px">
+<div style="flex-grow: 12; position: relative; background: {{t.hairline}}"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: {{t.accent}}"></div></div>
+<div style="flex-grow: 14; position: relative; background: {{t.hairline}}"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 28%; background: {{t.accent}}"></div></div>
+<div style="flex-grow: 12; background: {{t.hairline}}"></div>
+</div>
+</div>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; gap: 8px">
+<button class="art-{{t.art}}-pri" style="height: 34px; padding: 0 18px; font-size: 15px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.accentFill}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}">Continue guide</button>
+<button class="art-{{t.art}}-plate" style="height: 34px; padding: 0 14px; font-size: 14.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Open in editor</button>
+</div>
+</div>
+</div>
+</section>
+
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="4">
+<div style="position: absolute; left: {{c.x}}px; top: 600px; width: 324px; height: 370px; box-sizing: border-box; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; background: {{t.windowBg}}; border: 1px solid {{t.hairline}}">
+<div style="display: flex; align-items: center; gap: 10px; padding-bottom: 6px"><div style="font-size: 15.5px; font-weight: 600">{{c.title}}</div><div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div></div>
+</div>
+</sc-for>
+
+<div style="position: absolute; left: 56px; top: 646px; width: 292px; display: flex; flex-direction: column; gap: 7px; font-size: 14px">
+<label for="m1" style="font-size: 13px; color: {{t.muted}}">Buy price, Silk Cloth</label>
+<div style="display: flex; align-items: center; gap: 8px">
+<input id="m1" value="1g 20s" style="width: 130px; height: 30px; box-sizing: border-box; padding: 0 8px; font-size: 14px; outline: none; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px">1<span style="color: {{t.coinG}}">g</span> 20<span style="color: {{t.coinS}}">s</span></div>
+</div>
+<label for="m2" style="font-size: 13px; color: {{t.muted}}">Focused</label>
+<div style="display: flex; align-items: center; gap: 8px">
+<input id="m2" value="32s" style="width: 130px; height: 30px; box-sizing: border-box; padding: 0 8px; font-size: 14px; outline: none; background: {{t.raised}}; border: 1px solid {{t.accent}}; color: {{t.text}}">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px">32<span style="color: {{t.coinS}}">s</span></div>
+</div>
+<label for="m3" style="font-size: 13px; color: {{t.muted}}">Not a price</label>
+<input id="m3" value="32x" style="width: 130px; height: 30px; box-sizing: border-box; padding: 0 8px; font-size: 14px; outline: none; background: {{t.surface}}; border: 1px solid {{t.danger}}; color: {{t.text}}">
+<div style="font-size: 12.5px; color: {{t.danger}}">Write it like 1g 20s 5c, or a number of copper.</div>
+<label for="m4" style="font-size: 13px; color: {{t.muted}}">Nothing set yet</label>
+<div style="display: flex; align-items: center; gap: 8px">
+<input id="m4" placeholder="~41s, a guess" style="width: 130px; height: 30px; box-sizing: border-box; padding: 0 8px; font-size: 14px; outline: none; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.estimate}}">
+<div style="font-size: 12.5px; color: {{t.estimate}}">Guessed from vendor price</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; padding-top: 6px">
+<div style="font-size: 13px; color: {{t.muted}}; flex-grow: 1">Target skill</div>
+<button class="art-{{t.art}}-plate" aria-label="Lower" style="width: 30px; height: 30px; padding: 0; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5 H8" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<label style="display: flex"><span style="position: absolute; left: -9999px">Target skill</span><input value="225" style="width: 56px; height: 30px; box-sizing: border-box; text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; outline: none; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}"></label>
+<button class="art-{{t.art}}-plate" aria-label="Raise" style="width: 30px; height: 30px; padding: 0; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 5 H8 M5 2 V8" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+<div style="font-size: 12.5px; color: {{t.muted}}; text-align: right">113 to 300</div>
+</div>
+
+<div style="position: absolute; left: 404px; top: 646px; width: 292px; display: flex; flex-direction: column; gap: 14px; font-size: 13.5px">
+<div style="display: flex; flex-direction: column; gap: 5px">
+<div style="display: flex"><div style="flex-grow: 1">Tailoring</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px">112 / 150</div></div>
+<div style="height: 8px; position: relative; background: {{t.hairline}}">
+<div style="position: absolute; left: 0; top: 0; bottom: 0; width: 37%; background: {{t.accent}}"></div>
+<div style="position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: {{t.muted}}"></div>
+<div style="position: absolute; left: 75%; top: -3px; bottom: -3px; width: 2px; background: {{t.warning}}"></div>
+</div>
+<div style="position: relative; height: 14px; font-size: 12px"><div style="position: absolute; left: 50%; transform: translateX(-50%); color: {{t.muted}}">cap 150</div><div style="position: absolute; left: 75%; transform: translateX(-50%); color: {{t.warning}}">target 225</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 5px">
+<div style="display: flex"><div style="flex-grow: 1">Silk Cloth gathered</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{t.warning}}">64 / 88</div></div>
+<div style="height: 8px; position: relative; background: {{t.hairline}}"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 73%; background: {{t.warning}}"></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 5px">
+<div style="display: flex"><div style="flex-grow: 1">Linen Cloth gathered</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{t.done}}">40 / 40</div></div>
+<div style="height: 8px; position: relative; background: {{t.hairline}}"><div style="position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: {{t.done}}"></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 5px">
+<div style="color: {{t.muted}}">Reading the merchant's list</div>
+<div class="nk-stripes" style="height: 8px; background: repeating-linear-gradient(135deg, {{t.accent65}} 0 10px, {{t.accentWash}} 10px 20px); background-size: 28px 8px"></div>
+</div>
+</div>
+
+<div style="position: absolute; left: 752px; top: 646px; width: 292px; display: flex; flex-direction: column; gap: 10px; font-size: 13.5px; line-height: 1.35">
+<sc-for list="{{notices}}" as="n" hint-placeholder-count="4">
+<div role="status" style="display: flex; gap: 9px; padding: 9px 8px 9px 10px; background: {{n.bg}}; border: 1px solid {{n.edge}}">
+<div style="width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; background: {{n.tone}}; color: {{n.glyphInk}}; text-shadow: none">{{n.glyph}}</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 3px">
+<div>{{n.text}}</div>
+<sc-if value="{{n.action}}" hint-placeholder-val="{{ true }}"><button style="align-self: flex-start; padding: 0; font-size: 13.5px; background: transparent; border: 0; color: {{n.link}}">{{n.action}}</button></sc-if>
+</div>
+<button aria-label="Dismiss" style="width: 18px; height: 18px; flex-shrink: 0; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="10" height="10" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+</sc-for>
+</div>
+
+<div style="position: absolute; left: 1100px; top: 646px; width: 292px; display: flex; flex-direction: column; gap: 12px; font-size: 13.5px">
+<div style="display: flex; align-items: center; gap: 8px; color: {{t.muted}}">
+<svg class="nk-spin" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="{{t.hairline}}" stroke-width="2"></circle><path d="M8 2 A6 6 0 0 1 14 8" fill="none" stroke="{{t.accent}}" stroke-width="2"></path></svg>
+Reading recipes from the Tailoring window
+</div>
+<div style="display: flex; flex-direction: column; background: {{t.wellBg}}; border: 1px solid {{t.hairline}}">
+<sc-for list="{{skeleton}}" as="k" hint-placeholder-count="3">
+<div class="nk-fade" style="height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-bottom: 1px solid {{t.hairline}}">
+<div style="width: 44px; height: 8px; background: {{t.skeleton}}"></div>
+<div style="width: {{k.w}}px; height: 8px; background: {{t.skeleton}}"></div>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; background: {{t.wellBg}}; border: 1px solid {{t.hairline}}">
+<div>Open your Tailoring window once, so the planner can read what you know.</div>
+<div style="font-size: 12.5px; color: {{t.muted}}">Nothing else is needed; the window can close again.</div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; background: {{t.dangerWash}}; border: 1px solid {{t.dangerEdge}}">
+<div>4 recipes came back without reagents, so they are left out of the plan.</div>
+<div style="display: flex; gap: 8px; padding-top: 2px">
+<button class="art-{{t.art}}-plate" style="height: 28px; padding: 0 12px; font-size: 13.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Read again</button>
+<button style="height: 28px; padding: 0 6px; font-size: 13.5px; background: transparent; border: 0; color: {{t.accent}}">Report a problem</button>
+</div>
+</div>
+</div>
+
+<div style="position: absolute; left: 40px; top: 6px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit tree, split panes and list, in an example window (NuuRoad's guide browser)</div>
+<div style="position: absolute; left: 40px; top: 576px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit fields, bars, notices and states; the texts are examples</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment","horde","alliance"],"default":"alliance"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"]},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  midnight: { light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', raisedA: 0.78, border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', raisedA: 0.85, border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', raisedA: 0.9, border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', raisedA: 0.96, border: '#ad9a70', text: '#2a2114', muted: '#6a593e' },
+  horde: { art: 'horde', light: false, window: '#15110f', band: '#1b1613', hairline: '#3d2f26', surface: '#1f1916', surfaceA: 0.9, raised: '#2a211c', raisedA: 0.92, border: '#5a4636', text: '#e6ddd2', muted: '#ad9e8f', accent: '#e8705a' },
+  alliance: { art: 'alliance', light: false, window: '#0f141d', band: '#131a25', hairline: '#2e3a4f', surface: '#161e2b', surfaceA: 0.9, raised: '#1f2938', raisedA: 0.92, border: '#3c4a63', text: '#e1e6ef', muted: '#a0adc2', accent: '#7aa6ec' }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', gain: '#66d1c7', estimate: '#cca8fa', pattern: '#fa85c7' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', gain: '#1d7a72', estimate: '#6d4bb0', pattern: '#a83674' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + Math.round(a * 100) / 100 + ')'; }
+function makeTokens(key, accentProp) {
+  var th = THEMES[key] || THEMES.midnight;
+  var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+  var accent = accentProp || th.accent || '#4dc9f0';
+  var ak = th.light ? mix(accent, '#000000', 0.45) : accent;
+  return {
+    art: th.art || 'none', light: th.light,
+    window: th.window, band: th.band, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+    windowBg: rgba(th.window, 0.97), bandBg: rgba(th.band, 1), surfaceBg: rgba(th.surface, th.surfaceA), raisedBg: rgba(th.raised, th.raisedA),
+    wellBg: th.art ? 'rgba(0,0,0,0.28)' : rgba(th.surface, th.surfaceA),
+    muted45: rgba(th.muted, 0.45), skeleton: rgba(th.muted, 0.22),
+    accent: ak, accent65: rgba(ak, 0.65), accent80: rgba(ak, 0.8),
+    accentFill: th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68),
+    onFill: th.light ? '#ffffff' : th.text,
+    accentWash: rgba(accent, th.light ? 0.22 : 0.16),
+    shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+    danger: st.danger, done: st.done, warning: st.warning, gain: st.gain, estimate: st.estimate, pattern: st.pattern,
+    dangerWash: rgba(st.danger, 0.1), dangerEdge: rgba(st.danger, 0.5),
+    coinG: th.light ? '#8a6a00' : '#ffd100', coinS: th.light ? '#5f6168' : '#c7c7cf', coinC: th.light ? '#8a4f1c' : '#eda55f'
+  };
+}
+function levelColor(t, lo) {
+  var d = lo - 8;
+  if (d >= 5) return t.light ? '#a0302a' : '#d0655c';
+  if (d >= 3) return t.light ? '#b8672f' : '#cc855c';
+  if (d >= -2) return t.light ? '#a88a1f' : '#ccb861';
+  if (d >= -5) return t.light ? '#4b8a4b' : '#70a870';
+  return t.muted;
+}
+var DOWN = 'M3 4.5 L6 7.5 L9 4.5', RIGHT = 'M4.5 3 L7.5 6 L4.5 9';
+class Component extends DCLogic {
+  renderVals() {
+    var t = makeTokens(this.props.theme || 'alliance', this.props.accent);
+    var quick = [{ name: 'Right for my level', n: 6 }, { name: 'Where I stand', n: 3 }, { name: 'In progress', n: 2 }, { name: 'Written by me', n: 1 }];
+    var T = [
+      ['Alliance', 0, 'open', 24], ['Eastern Kingdoms', 1, 'open', 16, true], ['Elwynn Forest', 2, '', 2], ['Westfall', 2, '', 3],
+      ['Dun Morogh', 2, 'closed', 2], ['Kalimdor', 1, 'closed', 8], ['Professions', 0, 'closed', 9], ['Dungeons', 0, 'closed', 5]
+    ];
+    var tree = T.map(function (n) {
+      var guides = [];
+      for (var d = 1; d <= n[1]; d++) guides.push({ x: 6 + (d - 1) * 16 + 5 });
+      return { name: n[0], n: n[3], pad: 6 + n[1] * 16, guides: guides,
+        chevron: n[2] === 'open' ? DOWN : (n[2] === 'closed' ? RIGHT : ''), expanded: n[2] === 'open' ? 'true' : (n[2] === 'closed' ? 'false' : null),
+        selected: n[4] ? 'true' : 'false', bg: n[4] ? t.accentWash : 'transparent', color: n[4] ? t.accent : t.text };
+    });
+    var G = [
+      ['Elwynn Forest', 'Eastern Kingdoms / Elwynn Forest', 6, 10, true],
+      ['Goldshire errands', 'Eastern Kingdoms / Elwynn Forest', 8, 10],
+      ['Westfall', 'Eastern Kingdoms / Westfall', 10, 15],
+      ['Westfall: the Defias trail', 'Eastern Kingdoms / Westfall', 14, 18],
+      ['Deadmines prep', 'Eastern Kingdoms / Westfall', 16, 18],
+      ['Dun Morogh', 'Eastern Kingdoms / Dun Morogh', 1, 10],
+      ['Loch Modan', 'Eastern Kingdoms', 10, 15]
+    ];
+    var guides = G.map(function (g) {
+      return { name: g[0], path: g[1], levels: g[2] + '-' + g[3], levelColor: levelColor(t, g[2]),
+        selected: g[4] ? 'true' : 'false', bg: g[4] ? t.accentWash : 'transparent', bar: g[4] ? t.accent : 'transparent', color: g[4] ? t.accent : t.text };
+    });
+    var cards = [{ x: 40, title: 'Money and numbers' }, { x: 388, title: 'Progress' }, { x: 736, title: 'Notices' }, { x: 1084, title: 'Loading and errors' }];
+    function notice(tone, glyph, text, action) {
+      return { tone: tone, glyph: glyph, text: text, action: action || '', bg: rgba(tone, 0.1), edge: rgba(tone, 0.45), link: t.light ? mix(tone, '#000000', 0.2) : tone, glyphInk: t.light ? '#ffffff' : '#0b0e12' };
+    }
+    var notices = [
+      notice(t.accent, 'i', 'Prices come from your last merchant and auction house visits.', ''),
+      notice(t.warning, '!', '3 prices are guesses, so the route may change once you set them.', 'Set them'),
+      notice(t.danger, 'x', 'The Tailoring window closed before the scan finished.', 'Scan again'),
+      notice(t.done, 'v', 'Saved as the guide Tailoring 112-225.', 'Open it')
+    ];
+    var skeleton = [{ w: 150 }, { w: 190 }, { w: 120 }];
+    return { t: t, quick: quick, tree: tree, guides: guides, cards: cards, notices: notices, skeleton: skeleton, lvlYellow: levelColor(t, 6) };
+  }
+}
+</script>
+</body>
+</html>

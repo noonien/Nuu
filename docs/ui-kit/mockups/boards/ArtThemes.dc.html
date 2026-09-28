@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Art themes: Horde and Alliance</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button{font-family:inherit}
+.horde-win{background:url(/_blob/362e4b987e151c1585c1421c2bfc9937) repeat;border-style:solid;border-width:30px;border-image:url(/_blob/cc0ecd542b20d7a10c763257702e502f) 30 stretch}
+.alliance-win{background:url(/_blob/80999a201d56f5193e4fbf88681ede40) repeat;border-style:solid;border-width:30px;border-image:url(/_blob/55e9f21718fb3747393ca239929d3a14) 30 stretch}
+.horde-band{background:url(/_blob/606cda2f5b8546c2eaf1aafc93890847) repeat-x;background-size:auto 100%}
+.alliance-band{background:url(/_blob/bc8935543619dcb03e5e56ecf12faeb7) repeat-x;background-size:auto 100%}
+.horde-pri{border-style:solid;border-width:6px;border-image:url(/_blob/f87c8c648ff4b3dab06aa051d1b83989) 12 fill stretch}
+.horde-plate{border-style:solid;border-width:6px;border-image:url(/_blob/92856dbb24e0674adb5d6333ef5af0a4) 12 fill stretch}
+.alliance-pri{border-style:solid;border-width:6px;border-image:url(/_blob/ba98217dcda0a1f118e98b2beb97e569) 12 fill stretch}
+.alliance-plate{border-style:solid;border-width:6px;border-image:url(/_blob/b453476a0b16aa010e66a197eccf9677) 12 fill stretch}
+.horde-box{border-style:solid;border-width:4px;border-image:url(/_blob/92856dbb24e0674adb5d6333ef5af0a4) 12 fill stretch}
+.alliance-box{border-style:solid;border-width:4px;border-image:url(/_blob/b453476a0b16aa010e66a197eccf9677) 12 fill stretch}
+.horde-xg:hover{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/92856dbb24e0674adb5d6333ef5af0a4) 12 fill stretch !important}
+.alliance-xg:hover{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/b453476a0b16aa010e66a197eccf9677) 12 fill stretch !important}
+.xg:active{filter:brightness(0.85)}
+.tx:hover{filter:brightness(1.15)}
+.tx:active{filter:brightness(0.9)}
+</style>
+</helmet>
+<div style="width: 1480px; height: 1000px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: #6d665b">
+
+<svg width="1480" height="1000" viewBox="0 0 1480 1000" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect x="0" y="0" width="1480" height="1000" fill="#7b7466"></rect>
+<rect x="0" y="0" width="1480" height="340" fill="#968d7c"></rect>
+<polygon points="0,340 1480,340 1480,1000 0,1000" fill="#5f594e"></polygon>
+</svg>
+
+<sc-for list="{{wins}}" as="w" hint-placeholder-count="2">
+<section class="{{w.k}}-win" aria-label="{{w.label}}" style="position: absolute; left: {{w.x}}px; top: 60px; width: 680px; height: 800px; box-sizing: border-box; display: flex; flex-direction: column; box-shadow: 0 12px 32px rgba(0,0,0,0.5); color: {{w.text}}; text-shadow: 1px 1px 0 rgba(0,0,0,0.9)">
+
+<div class="{{w.k}}-band" style="height: 58px; flex-shrink: 0; margin: -8px -8px 0; display: flex; align-items: center; gap: 12px; padding: 0 12px 4px 22px">
+<div style="display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 18px; font-weight: 600; color: {{w.title}}">NuuProfessions</div>
+<div style="font-size: 13px; color: {{w.muted}}">Tailoring 112 / 150, planning to 225</div>
+</div>
+<div style="flex-grow: 1"></div>
+<button class="xg {{w.k}}-xg" aria-label="Close" style="width: 30px; height: 30px; box-sizing: border-box; padding: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; background: rgba(0,0,0,0.25); border: 1px solid {{w.closeEdge}}; color: {{w.title}}"><svg width="14" height="14" viewBox="0 0 12 12"><path d="M2.5 2.5 L9.5 9.5 M9.5 2.5 L2.5 9.5" fill="none" stroke="currentColor" stroke-width="2"></path></svg></button>
+</div>
+
+<div role="tablist" aria-label="Planner pages" style="flex-shrink: 0; display: flex; align-items: flex-end; gap: 4px; padding: 6px 12px 0; border-bottom: 1px solid {{w.line}}">
+<sc-for list="{{w.tabs}}" as="tb" hint-placeholder-count="4">
+<button class="tx" role="tab" aria-selected="{{tb.selected}}" style="height: 36px; margin-bottom: -1px; padding: 0 16px; font-size: 14.5px; font-weight: {{tb.fw}}; text-shadow: 1px 1px 0 rgba(0,0,0,0.9); background: transparent; border: 0; border-bottom: 2px solid {{tb.line}}; color: {{tb.color}}">{{tb.caption}}</button>
+</sc-for>
+</div>
+
+<div style="flex-grow: 1; padding: 18px 14px; display: flex; flex-direction: column; gap: 16px">
+
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{w.muted}}" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<div style="font-size: 16px; font-weight: 600; color: {{w.title}}">Route</div>
+<div style="font-size: 13px; color: {{w.muted}}">9 legs to 225</div>
+<div style="flex-grow: 1; height: 1px; background: {{w.line}}"></div>
+</div>
+
+<div style="display: flex; flex-direction: column; background: rgba(0,0,0,0.28); border: 1px solid {{w.line}}">
+<sc-for list="{{w.rows}}" as="r" hint-placeholder-count="5">
+<div style="height: 34px; display: grid; grid-template-columns: 84px minmax(0, 1fr) 56px 90px; column-gap: 12px; align-items: center; padding: 0 10px 0 7px; font-size: 14px; background: {{r.bg}}; border-left: 3px solid {{r.bar}}; border-bottom: 1px solid {{w.line}}">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{w.muted}}">{{r.range}}</div>
+<div style="color: {{r.nameColor}}">{{r.name}}</div>
+<div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px">{{r.crafts}}</div>
+<div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px"><sc-for list="{{r.cost}}" as="c" hint-placeholder-count="2"><span>{{c.v}}</span><span style="color: {{c.color}}">{{c.u}}</span> </sc-for></div>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; align-items: center; gap: 10px; padding-top: 4px">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{w.muted}}" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<div style="font-size: 16px; font-weight: 600; color: {{w.title}}">Run it</div>
+<div style="flex-grow: 1; height: 1px; background: {{w.line}}"></div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px">
+<button class="{{w.k}}-pri tx" style="height: 36px; box-sizing: border-box; padding: 0 16px; font-size: 14.5px; font-weight: 600; text-shadow: 1px 1px 0 rgba(0,0,0,0.9); color: {{w.title}}">Run in tracker</button>
+<button class="{{w.k}}-plate tx" style="height: 36px; box-sizing: border-box; padding: 0 14px; font-size: 14.5px; text-shadow: 1px 1px 0 rgba(0,0,0,0.9); color: {{w.text}}">Save as guide</button>
+<div style="flex-grow: 1"></div>
+<div style="font-size: 13.5px; color: {{w.muted}}">Route by</div>
+<button class="{{w.k}}-plate tx" style="width: 150px; height: 34px; box-sizing: border-box; padding: 0 6px 0 8px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; text-shadow: 1px 1px 0 rgba(0,0,0,0.9); color: {{w.text}}">Cheapest<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 22px">
+<button class="tx" style="display: flex; align-items: center; gap: 8px; padding: 0; background: transparent; border: 0; text-shadow: 1px 1px 0 rgba(0,0,0,0.9)">
+<div class="{{w.k}}-box" style="width: 20px; height: 20px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; color: {{w.accentInk}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2.2"></path></svg></div>
+<div style="font-size: 14px; color: {{w.accentInk}}">Sell back what I make</div>
+</button>
+<button class="tx" style="display: flex; align-items: center; gap: 8px; padding: 0; background: transparent; border: 0; text-shadow: 1px 1px 0 rgba(0,0,0,0.9)">
+<div class="{{w.k}}-box" style="width: 20px; height: 20px; box-sizing: border-box"></div>
+<div style="font-size: 14px; color: {{w.muted}}">Farm cloth myself</div>
+</button>
+</div>
+</div>
+
+<div style="height: 34px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 13px; color: {{w.muted}}; background: rgba(0,0,0,0.3); border-top: 1px solid {{w.line}}">
+Silk Cloth price set to 32s.
+<button class="tx" style="height: 22px; padding: 0 4px; font-size: 13px; background: transparent; border: 0; color: {{w.accentInk}}">Undo</button>
+</div>
+</section>
+</sc-for>
+
+<div style="position: absolute; left: 50px; top: 886px; width: 1380px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<div style="font-size: 17px; font-weight: 600; color: #f3efe6">Textures in each theme</div>
+<div style="font-size: 14px; color: #e0dace">Our own art, power-of-two sizes. A missing file falls back to Flat.</div>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<sc-for list="{{slots}}" as="s" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; background: rgba(20,16,12,0.72); border: 1px solid #3b342c">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: #f3efe6">{{s.key}}</div>
+<div style="font-size: 12.5px; color: #c9c1b2">{{s.what}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+
+<div style="position: absolute; left: 50px; top: 24px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit: art themes. The window is an example: NuuProfessions' planner.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1480,"height":1000}}'>
+var LEGS = [
+  ['112-125', 'Double-stitched Woolen Shoulders', 15, 0, 96],
+  ['125-145', 'Bolt of Silk Cloth', 22, 2, 11],
+  ['145-160', 'Azure Silk Hood', 16, 3, 4],
+  ['160-170', 'Silk Headband', 10, 1, 88],
+  ['170-175', 'Formal White Shirt', 5, 0, 92]
+];
+var ART = {
+  horde: { k: 'horde', label: 'Horde theme', x: 50,
+    title: '#f1e6d8', text: '#e6ddd2', muted: '#ad9e8f', line: 'rgba(150,120,100,0.28)', closeEdge: 'rgba(200,170,150,0.45)',
+    accent: '#b8352a', accentInk: '#e8705a', rowOn: 'rgba(184,53,42,0.2)' },
+  alliance: { k: 'alliance', label: 'Alliance theme', x: 750,
+    title: '#eee9dc', text: '#e1e6ef', muted: '#a0adc2', line: 'rgba(130,148,180,0.26)', closeEdge: 'rgba(201,164,90,0.55)',
+    accent: '#c9a45a', accentInk: '#7aa6ec', rowOn: 'rgba(90,140,220,0.2)' }
+};
+// Only the coins there are: 96s, not 0g 96s.
+function money(g, sv, c) {
+  var out = [];
+  if (g) out.push({ v: g, u: 'g', color: '#ffd100' });
+  if (sv) out.push({ v: sv, u: 's', color: '#c7c7cf' });
+  if (c || !out.length) out.push({ v: c || 0, u: 'c', color: '#eda55f' });
+  return out;
+}
+class Component extends DCLogic {
+  renderVals() {
+    var wins = ['horde', 'alliance'].map(function (k) {
+      var a = Object.assign({}, ART[k]);
+      a.tabs = ['Plan', 'Recipes', 'Materials', 'Options'].map(function (c, i) {
+        var on = i === 0;
+        return { caption: c, selected: on ? 'true' : 'false', fw: on ? 600 : 400, line: on ? a.accent : 'transparent', color: on ? a.title : a.muted };
+      });
+      a.rows = LEGS.map(function (l, i) {
+        var on = i === 1;
+        return { range: l[0], name: l[1], crafts: 'x' + l[2], cost: money(l[3], l[4], 0), bg: on ? a.rowOn : 'transparent', bar: on ? a.accentInk : 'transparent', nameColor: on ? a.accentInk : a.text };
+      });
+      return a;
+    });
+    var slots = [
+      { key: 'bg  256x256', what: 'tiles both ways: leather, slate' },
+      { key: 'frame  128x128', what: '9-slice, 30 px corners, clear centre' },
+      { key: 'band  256x64', what: 'header, tiles across' },
+      { key: 'plate  128x64', what: '9-slice button, field, checkbox' },
+      { key: 'plate_primary  128x64', what: 'the call to action' }
+    ];
+    return { wins: wins, slots: slots };
+  }
+}
+</script>
+</body>
+</html>

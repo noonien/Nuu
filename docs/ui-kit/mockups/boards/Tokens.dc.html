@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Theme tokens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+</style>
+</helmet>
+<div style="width: 1120px; height: 960px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 20px; font-family: 'Barlow Semi Condensed', sans-serif; background: #f3f1ec; color: #1f1d1a">
+<div style="display: flex; align-items: baseline; gap: 16px">
+<h1 style="margin: 0; font-size: 34px; font-weight: 600">Theme tokens</h1>
+<div style="font-size: 16px; color: #5c574f">Kit.UI.colors, per theme, with accent <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px">{{accent}}</span></div>
+</div>
+
+<div style="display: grid; grid-template-columns: 220px repeat(4, minmax(0, 1fr)); column-gap: 8px">
+<div></div>
+<sc-for list="{{heads}}" as="h" hint-placeholder-count="4">
+<div style="padding: 10px 12px; font-size: 16px; font-weight: 600; background: {{h.bg}}; color: {{h.ink}}">{{h.name}}</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="18">
+<sc-if value="{{r.group}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 14px 0 6px; font-size: 14px; font-weight: 600; color: #5c574f">{{r.group}}</div>
+</sc-if>
+<div style="display: grid; grid-template-columns: 220px repeat(4, minmax(0, 1fr)); column-gap: 8px">
+<div style="height: 34px; display: flex; flex-direction: column; justify-content: center; border-top: 1px solid #dcd7cc">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500">{{r.key}}</div>
+<div style="font-size: 12.5px; color: #5c574f">{{r.role}}</div>
+</div>
+<sc-for list="{{r.cells}}" as="c" hint-placeholder-count="4">
+<div style="height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: {{c.bg}}">
+<div style="width: 20px; height: 20px; flex-shrink: 0; background: {{c.hex}}; border: 1px solid {{c.edge}}"></div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{c.ink}}">{{c.label}}</div>
+</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"],"default":"#4dc9f0"},"$preview":{"width":1120,"height":960}}'>
+var THEMES = {
+  midnight: { name: 'Midnight', light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', raisedA: 0.78, border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { name: 'Slate', light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', raisedA: 0.85, border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { name: 'Obsidian', light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', raisedA: 0.9, border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { name: 'Parchment', light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', raisedA: 0.96, border: '#ad9a70', text: '#2a2114', muted: '#6a593e' }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', gain: '#66d1c7', estimate: '#cca8fa', pattern: '#fa85c7' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', gain: '#1d7a72', estimate: '#6d4bb0', pattern: '#a83674' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+var ROWS = [
+  { group: 'Planes', key: 'window', role: 'opaque windows (planner, options)' },
+  { key: 'band', role: 'header band, status strip' },
+  { key: 'hairline', role: 'dividers inside a window' },
+  { key: 'surface', role: 'in-play panels, controls', alpha: 'surfaceA' },
+  { key: 'raised', role: 'hover, active, cards', alpha: 'raisedA' },
+  { key: 'border', role: 'control and panel edges' },
+  { group: 'Text', key: 'text', role: 'body and names' },
+  { key: 'muted', role: 'labels, idle controls' },
+  { group: 'Accent (derived)', key: 'accent', role: 'selection, focus, links' },
+  { key: 'accentFill', role: 'primary button fill' },
+  { key: 'accentHover', role: 'primary button, hovered' },
+  { group: 'Status (fixed per theme)', key: 'danger', role: 'to do, invalid, destructive' },
+  { key: 'done', role: 'finished' },
+  { key: 'warning', role: 'in progress' },
+  { key: 'gain', role: 'money made' },
+  { key: 'estimate', role: 'guessed price' },
+  { key: 'pattern', role: 'missing recipe pattern' }
+];
+function value(th, key, accent) {
+  var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+  if (key === 'accent') return th.light ? mix(accent, '#000000', 0.45) : accent;
+  if (key === 'accentFill') return th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68);
+  if (key === 'accentHover') return th.light ? mix(accent, '#000000', 0.24) : mix(accent, th.window, 0.52);
+  return th[key] || st[key];
+}
+class Component extends DCLogic {
+  renderVals() {
+    var accent = this.props.accent || '#4dc9f0';
+    var keys = Object.keys(THEMES);
+    var heads = keys.map(function (k) { return { name: THEMES[k].name, bg: THEMES[k].band, ink: THEMES[k].text }; });
+    var rows = ROWS.map(function (r) {
+      return { group: r.group || '', key: r.key, role: r.role,
+        cells: keys.map(function (k) {
+          var th = THEMES[k], hex = value(th, r.key, accent);
+          return { hex: hex, bg: th.window, edge: th.border, ink: th.muted, label: hex + (r.alpha ? '  a' + th[r.alpha] : '') };
+        }) };
+    });
+    return { accent: accent, heads: heads, rows: rows };
+  }
+}
+</script>
+</body>
+</html>

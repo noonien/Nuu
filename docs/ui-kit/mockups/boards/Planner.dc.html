@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NuuProfessions planner</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1320px; height: 960px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: #57524a">
+
+<svg width="1320" height="960" viewBox="0 0 1320 960" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect x="0" y="0" width="1320" height="960" fill="#6d665b"></rect>
+<rect x="0" y="0" width="1320" height="300" fill="#8a8274"></rect>
+<polygon points="0,300 1320,300 1320,960 0,960" fill="#5a544a"></polygon>
+<rect x="80" y="120" width="160" height="240" fill="#9c9383"></rect>
+<rect x="1080" y="90" width="180" height="280" fill="#9c9383"></rect>
+</svg>
+
+<section aria-label="Profession planner" style="position: absolute; left: 60px; top: 40px; width: 1200px; height: 880px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.windowBg}}; border: {{win.border}}; box-shadow: {{win.shadow}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<sc-if value="{{framed}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: -12px; top: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+<div style="position: absolute; right: -12px; top: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+<div style="position: absolute; left: -12px; bottom: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+<div style="position: absolute; right: -12px; bottom: -12px; width: 14px; height: 14px; transform: rotate(45deg); background: {{f.light}}; border: 2px solid {{f.dark}}"></div>
+</sc-if>
+
+<div style="flex-shrink: 0; background: {{t.bandBg}}; border-bottom: 1px solid {{tabLine}}">
+<div style="height: 65px; display: flex; align-items: center; gap: 16px; padding: 0 12px 0 20px">
+<div style="font-size: 22px; font-weight: 600">Tailoring</div>
+<div style="display: flex; flex-direction: column; gap: 5px">
+<div style="font-size: 13.5px; color: {{t.muted}}"><span style="color: {{t.text}}">112</span> / 150  Journeyman  -  planning to <span style="color: {{t.text}}">225</span></div>
+<div style="width: 220px; height: 5px; background: {{t.hairline}}"><div style="width: 50%; height: 5px; background: {{t.accent}}"></div></div>
+</div>
+<div style="flex-grow: 1"></div>
+<div style="font-size: 13.5px; color: {{t.muted}}">Profession</div>
+<button style="width: 160px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Tailoring<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+<label for="target" style="font-size: 13.5px; color: {{t.muted}}">Target</label>
+<input id="target" value="225" style="width: 64px; height: 30px; box-sizing: border-box; padding: 0 8px; font-size: 14px; border-radius: 0; outline: none; background: {{t.surface}}; border: 1px solid {{t.accent80}}; color: {{t.text}}">
+<button aria-label="Close" style="width: 32px; height: 32px; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="14" height="14" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+<div role="tablist" aria-label="Planner pages" style="display: flex; align-items: flex-end; gap: {{tabGap}}px; padding: 0 20px">
+<sc-for list="{{tabs}}" as="tb" hint-placeholder-count="4">
+<button role="tab" aria-selected="{{tb.selected}}" style="height: {{tb.h}}px; margin-bottom: -1px; padding: 0 18px; font-size: 14.5px; font-weight: {{tb.fw}}; text-shadow: {{t.shadow}}; background: {{tb.bg}}; color: {{tb.color}}; border-top: {{tb.bt}}; border-left: {{tb.bs}}; border-right: {{tb.bs}}; border-bottom: {{tb.bb}}">{{tb.caption}}<sc-if value="{{tb.badge}}" hint-placeholder-val="{{ false }}"><span style="margin-left: 6px; padding: 0 5px; font-size: 11.5px; background: {{t.raised}}; color: {{t.estimate}}">{{tb.badge}}</span></sc-if></button>
+</sc-for>
+</div>
+</div>
+
+<div style="flex-grow: 1; min-height: 0; display: flex; gap: 20px; padding: 20px">
+
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<div style="font-size: 16px; font-weight: 600">Route</div>
+<div style="font-size: 13px; color: {{t.muted}}">9 legs. Click a leg to see its materials.</div>
+<div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div>
+<div style="font-size: 13px; color: {{t.muted}}">Route by</div>
+<button style="width: 150px; height: 28px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 13.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.text}}">Cheapest<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+
+<div style="display: flex; flex-direction: column; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}">
+<div style="height: 30px; display: grid; grid-template-columns: 92px minmax(0, 1fr) 64px 150px 128px; column-gap: 12px; align-items: center; padding: 0 12px; font-size: 12.5px; color: {{t.muted}}; border-bottom: 1px solid {{t.hairline}}">
+<div>Skill</div><div>Recipe</div><div style="text-align: right">Crafts</div><div>Colour on the way</div><div style="text-align: right">Cost</div>
+</div>
+<sc-for list="{{legs}}" as="l" hint-placeholder-count="9">
+<div style="height: 36px; display: grid; grid-template-columns: 92px minmax(0, 1fr) 64px 150px 128px; column-gap: 12px; align-items: center; padding: 0 12px 0 9px; font-size: 14px; background: {{l.bg}}; border-left: 3px solid {{l.bar}}; border-bottom: 1px solid {{t.hairline}}">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{t.muted}}">{{l.range}}</div>
+<div style="display: flex; align-items: center; gap: 8px; min-width: 0">
+<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {{l.nameColor}}">{{l.name}}</div>
+<sc-if value="{{l.pattern}}" hint-placeholder-val="{{ false }}"><div style="flex-shrink: 0; font-size: 11.5px; padding: 0 5px; border: 1px solid {{t.pattern}}; color: {{t.pattern}}">needs pattern</div></sc-if>
+</div>
+<div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px">{{l.crafts}}</div>
+<div style="display: flex; height: 6px">
+<div style="width: {{l.o}}%; background: {{d.orange}}"></div>
+<div style="width: {{l.y}}%; background: {{d.yellow}}"></div>
+<div style="width: {{l.g}}%; background: {{d.green}}"></div>
+</div>
+<div style="text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{l.costColor}}">{{l.tilde}}<sc-for list="{{l.cost}}" as="c" hint-placeholder-count="2"><span>{{c.v}}</span><span style="color: {{c.color}}">{{c.u}}</span> </sc-for></div>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; gap: 8px">
+<button style="height: 30px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>Ways around (2)</button>
+<button style="height: 30px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>Left out (4)</button>
+</div>
+</div>
+
+<div style="width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 10px; background: {{t.raisedBg}}; border: 1px solid {{t.border}}">
+<div style="font-size: 16px; font-weight: 600">112 to 225</div>
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) auto; row-gap: 7px; font-size: 14px">
+<div style="color: {{t.muted}}">Materials bought</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px">24<span style="color: {{t.coinG}}">g</span> 18<span style="color: {{t.coinS}}">s</span></div>
+<div style="color: {{t.muted}}">Sold back</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; color: {{t.gain}}">+6g 40s</div>
+<div style="color: {{t.muted}}">Net</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500">17<span style="color: {{t.coinG}}">g</span> 78<span style="color: {{t.coinS}}">s</span></div>
+<div style="color: {{t.muted}}">Crafts</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 13px">123</div>
+</div>
+<div style="font-size: 13px; color: {{t.estimate}}">3 prices are guesses. Set them on Materials.</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 4px">
+<button style="height: 32px; font-size: 14px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.accentFill}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}">Run in tracker</button>
+<button style="height: 32px; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}">Save as guide</button>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}">
+<div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid {{t.hairline}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg>
+<div style="font-size: 14.5px; font-weight: 600">Shopping list</div>
+<div style="font-size: 12.5px; color: {{t.muted}}">6 items</div>
+</div>
+<sc-for list="{{mats}}" as="m" hint-placeholder-count="6">
+<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 13.5px; border-bottom: 1px solid {{t.hairline}}">
+<div style="width: 34px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{t.muted}}">{{m.n}}</div>
+<div style="flex-grow: 1">{{m.name}}</div>
+<div style="font-size: 12px; color: {{t.muted}}">{{m.src}}</div>
+<div style="width: 56px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{m.color}}">{{m.price}}</div>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+
+<div style="height: 38px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 20px; background: {{t.bandBg}}; border-top: 1px solid {{t.hairline}}; font-size: 13px; color: {{t.muted}}">
+<div>Silk Cloth price set to 32s. The route now skips Azure Silk Hood.</div>
+<button style="height: 24px; padding: 0 6px; font-size: 13px; background: transparent; border: 0; color: {{t.accent}}">Undo</button>
+<div style="flex-grow: 1"></div>
+<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M9 3 L3 9 M9 6 L6 9" stroke="{{t.muted}}" stroke-width="1.2"></path></svg>
+</div>
+</section>
+
+<div style="position: absolute; left: 60px; top: 12px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #f3efe6; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Example: NuuProfessions' planner, built by NuuProfessions from kit parts</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"],"default":"#4dc9f0"},"chrome":{"editor":"enum","options":["flat","framed"],"default":"flat"},"$preview":{"width":1320,"height":960}}'>
+var THEMES = {
+  midnight: { name: 'Midnight', light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', raisedA: 0.78, border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3', frame: { mid: '#5d6878', dark: '#1a1e24', light: '#a4afbd', title: '#ebf0f7' } },
+  slate: { name: 'Slate', light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', raisedA: 0.85, border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1', frame: { mid: '#747c89', dark: '#25292f', light: '#b3bac5', title: '#e4e7ec' } },
+  obsidian: { name: 'Obsidian', light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', raisedA: 0.9, border: '#58616e', text: '#ffffff', muted: '#bcc5d1', frame: { mid: '#8a6d2f', dark: '#2a1f08', light: '#d9b35c', title: '#ffd100' } },
+  parchment: { name: 'Parchment', light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', raisedA: 0.96, border: '#ad9a70', text: '#2a2114', muted: '#6a593e', frame: { mid: '#9c7a3c', dark: '#4d3813', light: '#dcbd76', title: '#2a2114' } }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', gain: '#66d1c7', estimate: '#cca8fa', pattern: '#fa85c7' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', gain: '#1d7a72', estimate: '#6d4bb0', pattern: '#a83674' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + Math.round(a * 100) / 100 + ')'; }
+function makeTokens(key, accent) {
+  var th = THEMES[key] || THEMES.midnight;
+  var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+  var accentText = th.light ? mix(accent, '#000000', 0.45) : accent;
+  return {
+    light: th.light, window: th.window, band: th.band, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+    windowBg: rgba(th.window, 0.97), bandBg: rgba(th.band, 1), surfaceBg: rgba(th.surface, th.surfaceA), raisedBg: rgba(th.raised, th.raisedA),
+    accent: accentText, accent80: rgba(accentText, 0.8),
+    accentFill: th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68),
+    onFill: th.light ? '#ffffff' : th.text,
+    accentWash: rgba(accent, th.light ? 0.22 : 0.16),
+    shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+    danger: st.danger, done: st.done, warning: st.warning, gain: st.gain, estimate: st.estimate, pattern: st.pattern,
+    coinG: th.light ? '#8a6a00' : '#ffd100', coinS: th.light ? '#5f6168' : '#c7c7cf', coinC: th.light ? '#8a4f1c' : '#eda55f'
+  };
+}
+class Component extends DCLogic {
+  renderVals() {
+    var t = makeTokens(this.props.theme || 'midnight', this.props.accent || '#4dc9f0');
+    var d = t.light
+      ? { orange: '#b8672f', yellow: '#a88a1f', green: '#4b8a4b' }
+      : { orange: '#cc855c', yellow: '#ccb861', green: '#70a870' };
+    function money(g, s, c) {
+      var out = [];
+      if (g) out.push({ v: g, u: 'g', color: t.coinG });
+      if (s) out.push({ v: s, u: 's', color: t.coinS });
+      if (c) out.push({ v: c, u: 'c', color: t.coinC });
+      return out;
+    }
+    var legs = [
+      ['112-125', 'Double-stitched Woolen Shoulders', 15, [70, 30, 0], money(0, 96, 0), false, false],
+      ['125-145', 'Bolt of Silk Cloth', 22, [40, 45, 15], money(2, 11, 0), false, false],
+      ['145-160', 'Azure Silk Hood', 16, [60, 40, 0], money(3, 4, 50), false, true],
+      ['160-170', 'Silk Headband', 10, [50, 50, 0], money(1, 88, 0), false, false],
+      ['170-175', 'Formal White Shirt', 5, [100, 0, 0], money(0, 92, 0), false, false],
+      ['175-185', 'Bolt of Mageweave', 12, [40, 40, 20], money(2, 30, 0), false, false],
+      ['185-205', 'Crimson Silk Vest', 21, [45, 45, 10], money(5, 20, 0), false, true],
+      ['205-215', 'Crimson Silk Pantaloons', 10, [70, 30, 0], money(3, 1, 0), true, false],
+      ['215-225', 'Black Mageweave Leggings', 12, [60, 40, 0], money(4, 12, 0), false, true]
+    ];
+    var selected = 1;
+    var rows = legs.map(function (l, i) {
+      var on = i === selected;
+      return { range: l[0], name: l[1], crafts: 'x' + l[2], o: l[3][0], y: l[3][1], g: l[3][2], cost: l[4], pattern: l[5],
+        tilde: l[6] ? '~' : '', costColor: l[6] ? t.estimate : t.text,
+        bg: on ? t.accentWash : 'transparent', bar: on ? t.accent : 'transparent', nameColor: on ? t.accent : t.text };
+    });
+    var mats = [
+      { n: 186, name: 'Silk Cloth', src: 'AH', price: '32s', color: t.text },
+      { n: 96, name: 'Mageweave Cloth', src: 'AH', price: '~41s', color: t.estimate },
+      { n: 58, name: 'Fine Thread', src: 'Vendor', price: '1s', color: t.text },
+      { n: 22, name: 'Blue Dye', src: 'Vendor', price: '50c', color: t.text },
+      { n: 20, name: 'Red Dye', src: 'Vendor', price: '50c', color: t.text },
+      { n: 10, name: 'Bleach', src: 'Vendor', price: '25c', color: t.text }
+    ];
+    var f = (THEMES[this.props.theme] || THEMES.midnight).frame;
+    var framed = this.props.chrome === 'framed';
+    var tabs = ['Plan', 'Recipes', 'Materials', 'Options'].map(function (c, i) {
+      var on = i === 0, badge = c === 'Materials' ? '3' : '';
+      if (!framed) return { caption: c, badge: badge, selected: on ? 'true' : 'false', h: 38, fw: on ? 600 : 400, bg: 'transparent', color: on ? t.text : t.muted, bt: '0', bs: '0', bb: '2px solid ' + (on ? t.accent : 'transparent') };
+      return { caption: c, badge: badge, selected: on ? 'true' : 'false', h: on ? 36 : 30, fw: on ? 600 : 400, bg: on ? t.window : t.band, color: on ? f.title : t.muted,
+        bt: on ? '2px solid ' + f.light : '1px solid ' + f.dark, bs: '1px solid ' + (on ? f.mid : f.dark), bb: '1px solid ' + (on ? t.window : f.mid) };
+    });
+    return { t: t, d: d, legs: rows, mats: mats, f: f, framed: framed, tabs: tabs, tabGap: framed ? 2 : 4, tabLine: framed ? f.mid : t.hairline,
+      win: framed ? { border: '6px ridge ' + f.mid, shadow: '0 0 0 1px ' + f.dark + ', 0 10px 30px rgba(0,0,0,0.5)' } : { border: '1px solid ' + t.hairline, shadow: 'none' } };
+  }
+}
+</script>
+</body>
+</html>

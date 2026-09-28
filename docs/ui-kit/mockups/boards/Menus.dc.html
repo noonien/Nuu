@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Menus and dropdowns</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button,input{font-family:inherit}
+.mrow:hover{background:var(--k-wash) !important}
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: {{t.window}}; color: {{t.text}}; text-shadow: {{t.shadow}}; --k-wash: {{t.wash}}">
+
+<sc-for list="{{labels}}" as="l" hint-placeholder-count="5">
+<div style="position: absolute; left: {{l.x}}px; top: {{l.y}}px; width: {{l.w}}px; display: flex; flex-direction: column; gap: 3px">
+<div style="display: flex; align-items: center; gap: 10px"><div style="font-size: 16px; font-weight: 600">{{l.title}}</div><div style="flex-grow: 1; height: 1px; background: {{t.hairline}}"></div></div>
+<div style="font-size: 13px; color: {{t.muted}}">{{l.hint}}</div>
+</div>
+</sc-for>
+
+<div style="position: absolute; left: 40px; top: 96px; display: flex; align-items: center; gap: 8px">
+<button onClick="{{toggle}}" aria-haspopup="listbox" aria-expanded="{{expanded}}" style="width: 200px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; cursor: pointer; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{liveEdge}}; color: {{t.text}}">{{liveCaption}}<svg width="12" height="12" viewBox="0 0 12 12"><path d="{{liveChevron}}" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+<sc-if value="{{liveStored}}" hint-placeholder-val="{{ false }}"><button onClick="{{resetLive}}" style="height: 24px; padding: 0 4px; font-size: 12.5px; background: transparent; border: 0; cursor: pointer; color: {{t.muted}}">reset</button></sc-if>
+</div>
+
+<div style="position: absolute; left: 360px; top: 96px">
+<button aria-haspopup="listbox" aria-expanded="true" style="width: 280px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.accent80}}; color: {{t.text}}">Westfall<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 7.5 L6 4.5 L9 7.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+
+<div style="position: absolute; left: 680px; top: 96px; width: 540px; height: 22px; display: flex; align-items: center; gap: 6px; font-size: 13px; background: {{t.wash}}">
+<div style="width: 3px; height: 22px; background: {{t.accent}}"></div>
+<div style="width: 26px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">12</div>
+<div style="color: {{t.accent}}">Kill Kobold Vermin and Young Wolves</div>
+</div>
+<svg width="16" height="20" viewBox="0 0 16 20" style="position: absolute; left: 736px; top: 106px; z-index: 3" aria-hidden="true"><path d="M1 1 L1 16 L5 12 L8 19 L10.5 18 L7.5 11 L13 11 Z" fill="#ffffff" stroke="#000000" stroke-width="1.2"></path></svg>
+
+<div style="position: absolute; left: 40px; top: 530px">
+<button aria-haspopup="listbox" aria-expanded="true" style="width: 240px; height: 30px; padding: 0 10px 0 12px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.accent80}}; color: {{t.text}}">Vendor, AH, Craft<svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 7.5 L6 4.5 L9 7.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+
+<div style="position: absolute; left: 360px; top: 530px; width: 360px; height: 36px; box-sizing: border-box; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 12px; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}">
+<div style="font-size: 15px; font-weight: 600">Northshire Valley</div>
+<div style="flex-grow: 1"></div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{t.muted}}">12/148</div>
+<button aria-label="Menu" aria-expanded="true" style="width: 28px; height: 28px; padding: 0; margin-left: 6px; background: {{t.wash}}; border: 0; color: {{t.accent}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 3 H10 M2 6 H10 M2 9 H10" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></button>
+</div>
+
+<sc-for list="{{menus}}" as="m" hint-placeholder-count="5">
+<div role="menu" aria-label="{{m.label}}" style="position: absolute; left: {{m.x}}px; top: {{m.y}}px; width: {{m.w}}px; z-index: {{m.z}}; display: flex; flex-direction: column; padding: 4px 0; background: {{t.raised}}; border: 1px solid {{t.border}}; box-shadow: 0 8px 22px rgba(0,0,0,0.5)">
+<sc-if value="{{m.search}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 4px 8px 6px">
+<label style="display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; background: {{t.surface}}; border: 1px solid {{t.accent}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><circle cx="5" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7.6 7.6 L10.5 10.5" stroke="currentColor" stroke-width="1.4"></path></svg>
+<span style="position: absolute; left: -9999px">Filter zones</span>
+<input value="{{m.search}}" style="flex-grow: 1; min-width: 0; height: 24px; padding: 0; font-size: 14px; background: transparent; border: 0; outline: none; color: {{t.text}}">
+</label>
+</div>
+</sc-if>
+<sc-for list="{{m.rows}}" as="r" hint-placeholder-count="4">
+<sc-if value="{{r.isSep}}" hint-placeholder-val="{{ false }}"><div style="height: 1px; margin: 4px 10px; background: {{t.hairline}}"></div></sc-if>
+<sc-if value="{{r.isHead}}" hint-placeholder-val="{{ false }}"><div style="padding: 6px 12px 3px; font-size: 12.5px; font-weight: 600; color: {{t.muted}}">{{r.caption}}</div></sc-if>
+<sc-if value="{{r.isItem}}" hint-placeholder-val="{{ true }}">
+<div class="mrow" role="{{r.role}}" aria-checked="{{r.ariaChecked}}" aria-disabled="{{r.ariaDisabled}}" onClick="{{r.pick}}" style="display: flex; gap: 8px; align-items: flex-start; padding: 5px 10px; cursor: pointer; background: {{r.bg}}">
+<div style="width: 14px; height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: {{t.accent}}">
+<sc-if value="{{r.mCheck}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2"></path></svg></sc-if>
+<sc-if value="{{r.mRadioOn}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.3"></circle><circle cx="6" cy="6" r="2.2" fill="currentColor"></circle></svg></sc-if>
+<sc-if value="{{r.mRadioOff}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}"><circle cx="6" cy="6" r="4.5" fill="none" stroke="currentColor" stroke-width="1.3"></circle></svg></sc-if>
+<sc-if value="{{r.mBoxOn}}" hint-placeholder-val="{{ false }}"><div style="width: 13px; height: 13px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; background: {{t.surface}}; border: 1px solid {{t.border}}"><svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6.5 L5 9 L10 3" fill="none" stroke="currentColor" stroke-width="2.4"></path></svg></div></sc-if>
+<sc-if value="{{r.mBoxOff}}" hint-placeholder-val="{{ false }}"><div style="width: 13px; height: 13px; box-sizing: border-box; background: {{t.surface}}; border: 1px solid {{t.border}}"></div></sc-if>
+</div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 14px; color: {{r.color}}">{{r.pre}}<span style="color: {{r.hitColor}}; text-decoration: {{r.hitDeco}}">{{r.hit}}</span>{{r.post}}</div>
+<sc-if value="{{r.desc}}" hint-placeholder-val="{{ false }}"><div style="font-size: 12px; color: {{r.descColor}}">{{r.desc}}</div></sc-if>
+</div>
+<sc-if value="{{r.key}}" hint-placeholder-val="{{ false }}"><div style="flex-shrink: 0; padding-top: 2px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{t.muted}}">{{r.key}}</div></sc-if>
+<sc-if value="{{r.arrow}}" hint-placeholder-val="{{ false }}"><svg width="12" height="12" viewBox="0 0 12 12" style="flex-shrink: 0; margin-top: 3px; color: {{r.arrowColor}}"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></sc-if>
+</div>
+</sc-if>
+</sc-for>
+<sc-if value="{{m.footer}}" hint-placeholder-val="{{ false }}">
+<div style="margin-top: 4px; padding: 6px 12px 2px; display: flex; align-items: center; gap: 8px; border-top: 1px solid {{t.hairline}}; font-size: 12.5px; color: {{t.muted}}">
+<div style="flex-grow: 1">{{m.footer}}</div>
+<sc-if value="{{m.allNone}}" hint-placeholder-val="{{ false }}"><button style="height: 22px; padding: 0 6px; font-size: 12.5px; background: transparent; border: 0; color: {{t.accent}}">All</button><button style="height: 22px; padding: 0 6px; font-size: 12.5px; background: transparent; border: 0; color: {{t.accent}}">None</button></sc-if>
+</div>
+</sc-if>
+</div>
+</sc-for>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"],"default":"#4dc9f0"},"$preview":{"width":1280,"height":860}}'>
+var THEMES = {
+  midnight: { light: false, window: '#090b0e', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { light: false, window: '#16191e', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { light: false, window: '#000000', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { light: true, window: '#eadfc4', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', border: '#ad9a70', text: '#2a2114', muted: '#6a593e' }
+};
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+var LIVE = [
+  { value: 'cheap', caption: 'Cheapest', desc: 'Least gold spent, counting what you sell back.' },
+  { value: 'few', caption: 'Fewest crafts', desc: 'Fewer clicks; may cost more.' },
+  { value: 'farm', caption: 'Least farming', desc: 'Buy what you would otherwise gather.' },
+  { sep: true },
+  { value: 'bags', caption: 'From my bags only', desc: 'Needs a bank scan first.', disabled: true }
+];
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { open: true, value: 'few' }; }
+  renderVals() {
+    var self = this, s = this.state;
+    var th = THEMES[this.props.theme] || THEMES.midnight;
+    var accent = this.props.accent || '#4dc9f0';
+    var danger = th.light ? '#b0382f' : '#e66157';
+    var ak = th.light ? mix(accent, '#000000', 0.45) : accent;
+    var t = { window: th.window, hairline: th.hairline, surface: th.surface, surfaceBg: rgba(th.surface, th.surfaceA), raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+      accent: ak, accent80: rgba(ak, 0.8), wash: rgba(accent, th.light ? 0.22 : 0.16), shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)' };
+    var muted45 = rgba(th.muted, 0.45);
+    function row(o) {
+      if (o.sep) return { isSep: true, isHead: false, isItem: false };
+      if (o.head) return { isSep: false, isHead: true, isItem: false, caption: o.head };
+      var dis = !!o.disabled, on = !!o.on;
+      var color = dis ? muted45 : (o.danger ? danger : (on && o.mark === 'check' ? t.accent : t.text));
+      return { isSep: false, isHead: false, isItem: true,
+        role: o.mark === 'radio' ? 'menuitemradio' : (o.mark ? 'menuitemcheckbox' : 'menuitem'),
+        ariaChecked: o.mark ? (on ? 'true' : 'false') : null, ariaDisabled: dis ? 'true' : 'false',
+        pre: o.pre != null ? o.pre : o.caption, hit: o.hit || '', post: o.post || '', hitColor: t.accent, hitDeco: o.hit ? 'underline' : 'none',
+        color: color, desc: o.desc || '', descColor: dis ? muted45 : t.muted, key: o.key || '',
+        arrow: !!o.arrow, arrowColor: o.hover ? t.accent : t.muted, bg: o.hover ? t.wash : 'transparent',
+        mCheck: o.mark === 'check' && on, mRadioOn: o.mark === 'radio' && on, mRadioOff: o.mark === 'radio' && !on,
+        mBoxOn: o.mark === 'box' && on, mBoxOff: o.mark === 'box' && !on, pick: o.pick || null };
+    }
+    var chosen = LIVE.filter(function (x) { return x.value === s.value; })[0] || LIVE[0];
+    var menus = [];
+    if (s.open) menus.push({ label: 'Route by', x: 40, y: 130, w: 280, z: 2, search: '', footer: '', allNone: false,
+      rows: LIVE.map(function (x) {
+        if (x.sep) return row({ sep: true });
+        return row({ caption: x.caption, desc: x.disabled ? 'Needs a bank scan first. Open your bank once.' : x.desc, disabled: x.disabled, mark: 'check', on: x.value === s.value,
+          pick: x.disabled ? null : function () { self.setState({ value: x.value, open: false }); } });
+      }) });
+    menus.push({ label: 'Zone', x: 360, y: 130, w: 280, z: 2, search: 'st', footer: '5 of 42 zones', allNone: false, rows: [
+      row({ pre: '', hit: 'St', post: 'ormwind City', mark: 'check', on: false, hover: true }),
+      row({ pre: '', hit: 'St', post: 'onetalon Mountains', mark: 'check', on: false }),
+      row({ pre: '', hit: 'St', post: 'ranglethorn Vale', mark: 'check', on: false }),
+      row({ pre: 'Du', hit: 'st', post: 'wallow Marsh', mark: 'check', on: false }),
+      row({ pre: 'We', hit: 'st', post: 'fall', mark: 'check', on: true })
+    ] });
+    menus.push({ label: 'Step 12', x: 744, y: 124, w: 250, z: 2, search: '', footer: '', allNone: false, rows: [
+      row({ head: 'Step 12' }),
+      row({ caption: 'Go to this step', key: 'Click', mark: '' }),
+      row({ caption: 'Mark done', key: 'Shift-Click', mark: '' }),
+      row({ caption: 'Skip', mark: '' }),
+      row({ sep: true }),
+      row({ caption: 'Set waypoint', arrow: true, hover: true, mark: '' }),
+      row({ caption: 'Show on map', mark: 'box', on: true }),
+      row({ sep: true }),
+      row({ caption: 'Edit step...', mark: '' }),
+      row({ caption: 'Reset guide...', danger: true, desc: 'Asks again before it forgets.', mark: '' })
+    ] });
+    menus.push({ label: 'Set waypoint', x: 996, y: 228, w: 240, z: 3, search: '', footer: '', allNone: false, rows: [
+      row({ caption: 'Kobold camp', desc: 'Where most Vermin are', mark: '' }),
+      row({ caption: 'Eagan Peltskinner', desc: 'Turn in, 112 yd', mark: '' }),
+      row({ caption: 'Nearest flight master', disabled: true, desc: 'None in Northshire', mark: '' })
+    ] });
+    menus.push({ label: 'Sources', x: 40, y: 564, w: 240, z: 2, search: '', footer: '3 of 4', allNone: true, rows: [
+      row({ head: 'Buy from' }),
+      row({ caption: 'Vendor', mark: 'box', on: true }),
+      row({ caption: 'Auction house', mark: 'box', on: true, hover: true }),
+      row({ head: 'Make or gather' }),
+      row({ caption: 'Craft', mark: 'box', on: true }),
+      row({ caption: 'Farm', mark: 'box', on: false, desc: 'Counts your time as free' })
+    ] });
+    menus.push({ label: 'Tracker', x: 480, y: 568, w: 240, z: 2, search: '', footer: '', allNone: false, rows: [
+      row({ head: 'List shows' }),
+      row({ caption: 'Next 10 steps', mark: 'radio', on: false }),
+      row({ caption: 'This section', mark: 'radio', on: true }),
+      row({ caption: 'Whole guide', mark: 'radio', on: false }),
+      row({ sep: true }),
+      row({ caption: 'Lock position', mark: 'box', on: false }),
+      row({ caption: 'Options...', key: '/nuu', mark: '' }),
+      row({ caption: 'Choose a guide...', mark: '' })
+    ] });
+    var labels = [
+      { x: 40, y: 36, w: 280, title: 'Select', hint: 'Live: click it. Stored choice gets an accent edge and reset.' },
+      { x: 360, y: 36, w: 280, title: 'Searchable select', hint: 'Long lists: type to filter, match underlined.' },
+      { x: 680, y: 36, w: 560, title: 'Context menu + submenu', hint: 'Right-click opens at the cursor; submenus open on hover.' },
+      { x: 40, y: 470, w: 280, title: 'Multi-select', hint: 'Checkboxes, group headers, All / None.' },
+      { x: 360, y: 470, w: 360, title: 'Title-bar menu', hint: 'Radio groups and toggles, under the = glyph.' }
+    ];
+    return {
+      t: t, menus: menus, labels: labels,
+      expanded: s.open ? 'true' : 'false', liveCaption: chosen.caption,
+      liveEdge: s.value !== 'cheap' ? t.accent80 : th.border, liveStored: s.value !== 'cheap',
+      liveChevron: s.open ? 'M3 7.5 L6 4.5 L9 7.5' : 'M3 4.5 L6 7.5 L9 4.5',
+      toggle: function () { self.setState({ open: !s.open }); },
+      resetLive: function () { self.setState({ value: 'cheap', open: false }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

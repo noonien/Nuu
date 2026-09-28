@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Lists, text and slots</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button,input,textarea{font-family:inherit}
+.art-horde-win{background:url(/_blob/362e4b987e151c1585c1421c2bfc9937) repeat !important;border-style:solid !important;border-width:30px !important;border-image:url(/_blob/cc0ecd542b20d7a10c763257702e502f) 30 stretch !important}
+.art-alliance-win{background:url(/_blob/80999a201d56f5193e4fbf88681ede40) repeat !important;border-style:solid !important;border-width:30px !important;border-image:url(/_blob/55e9f21718fb3747393ca239929d3a14) 30 stretch !important}
+.art-horde-band{background:url(/_blob/606cda2f5b8546c2eaf1aafc93890847) repeat-x !important;background-size:auto 100% !important}
+.art-alliance-band{background:url(/_blob/bc8935543619dcb03e5e56ecf12faeb7) repeat-x !important;background-size:auto 100% !important}
+.art-horde-plate{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/92856dbb24e0674adb5d6333ef5af0a4) 12 fill stretch !important}
+.art-alliance-plate{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/b453476a0b16aa010e66a197eccf9677) 12 fill stretch !important}
+.art-horde-pri{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/f87c8c648ff4b3dab06aa051d1b83989) 12 fill stretch !important}
+.art-alliance-pri{border-style:solid !important;border-width:5px !important;border-image:url(/_blob/ba98217dcda0a1f118e98b2beb97e569) 12 fill stretch !important}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1100px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: #9db7c9; color: {{t.text}}; text-shadow: {{t.shadow}}">
+
+<svg width="1440" height="1100" viewBox="0 0 1440 1100" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect x="0" y="0" width="1440" height="1100" fill="#9db7c9"></rect>
+<polygon points="0,420 140,300 260,360 420,220 560,330 700,250 860,360 1000,200 1160,320 1300,260 1440,340 1440,1100 0,1100" fill="#c6d3dc"></polygon>
+<polygon points="0,600 220,510 420,580 640,500 880,580 1120,510 1440,580 1440,1100 0,1100" fill="#5d7a4e"></polygon>
+<polygon points="0,780 300,720 600,770 900,710 1200,770 1440,730 1440,1100 0,1100" fill="#34472d"></polygon>
+</svg>
+
+<section class="art-{{t.art}}-win" aria-label="Choose a guide" style="position: absolute; left: 40px; top: 40px; width: 520px; height: 560px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.windowBg}}; border: 1px solid {{t.hairline}}">
+<div class="art-{{t.art}}-band" style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; background: {{t.bandBg}}">
+<div style="font-size: 17px; font-weight: 600">Choose a guide</div>
+<div style="flex-grow: 1"></div>
+<button aria-label="Close" style="width: 28px; height: 28px; padding: 0; background: transparent; border: 0; color: {{t.text}}"><svg width="13" height="13" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.7"></path></svg></button>
+</div>
+<div style="padding: 12px 16px 8px; display: flex; gap: 8px; align-items: center">
+<label style="flex-grow: 1; display: flex; align-items: center; gap: 6px; height: 30px; box-sizing: border-box; padding: 0 8px; background: {{t.surface}}; border: 1px solid {{t.border}}">
+<svg width="12" height="12" viewBox="0 0 12 12" style="color: {{t.muted}}" aria-hidden="true"><circle cx="5" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.4"></circle><path d="M7.6 7.6 L10.5 10.5" stroke="currentColor" stroke-width="1.4"></path></svg>
+<span style="position: absolute; left: -9999px">Search guides</span>
+<input placeholder="Search guides, zones, quests" style="flex-grow: 1; min-width: 0; height: 26px; padding: 0; font-size: 14px; background: transparent; border: 0; outline: none; color: {{t.text}}">
+</label>
+<div style="font-size: 13px; color: {{t.muted}}">42 guides</div>
+</div>
+<div style="flex-grow: 1; min-height: 0; margin: 0 16px 14px; position: relative; background: {{t.wellBg}}; border: 1px solid {{t.hairline}}">
+<div role="listbox" aria-label="Guides" style="position: absolute; left: 0; top: 0; right: 12px; bottom: 0; overflow: hidden; display: flex; flex-direction: column">
+<sc-for list="{{guides}}" as="g" hint-placeholder-count="14">
+<div role="option" aria-selected="{{g.selected}}" aria-disabled="{{g.disabled}}" style="height: 30px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 10px 0 7px; background: {{g.bg}}; border-left: 3px solid {{g.bar}}; border-bottom: 1px solid {{t.hairline}}">
+<div style="flex-grow: 1; min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {{g.color}}">{{g.name}}</div>
+<div style="font-size: 12.5px; color: {{g.noteColor}}">{{g.note}}</div>
+<div style="width: 44px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; color: {{g.levelColor}}">{{g.levels}}</div>
+</div>
+</sc-for>
+</div>
+<div style="position: absolute; right: 3px; top: 3px; bottom: 3px; width: 6px">
+<div style="position: absolute; left: 0; top: 18%; width: 6px; height: 34%; box-sizing: border-box; background: {{t.raised}}; border: 1px solid {{t.border}}"></div>
+</div>
+</div>
+</section>
+
+<section aria-label="Empty list" style="position: absolute; left: 40px; top: 630px; width: 520px; height: 150px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.windowBg}}; border: 1px solid {{t.hairline}}">
+<div style="padding: 12px 16px 8px; display: flex; gap: 8px; align-items: center">
+<div style="flex-grow: 1; height: 30px; box-sizing: border-box; display: flex; align-items: center; padding: 0 8px; font-size: 14px; background: {{t.surface}}; border: 1px solid {{t.accent}}; color: {{t.text}}">wolf rider</div>
+<div style="font-size: 13px; color: {{t.muted}}">0 guides</div>
+</div>
+<div style="flex-grow: 1; margin: 0 16px 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: {{t.wellBg}}; border: 1px solid {{t.hairline}}">
+<div style="font-size: 14.5px; color: {{t.text}}">No guides match "wolf rider".</div>
+<div style="display: flex; gap: 14px; font-size: 13.5px">
+<button style="padding: 0; background: transparent; border: 0; color: {{t.accent}}">Clear search</button>
+<button style="padding: 0; background: transparent; border: 0; color: {{t.accent}}">Show other factions' guides (3)</button>
+</div>
+</div>
+</section>
+
+<section aria-label="Item slots" style="position: absolute; left: 40px; top: 816px; display: flex; flex-direction: column; gap: 4px">
+<div style="height: 24px; align-self: flex-start; display: flex; align-items: center; gap: 8px; padding: 0 8px; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}; font-size: 12.5px; color: {{t.muted}}">
+<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2 H8 M2 5 H8 M2 8 H8" stroke="currentColor" stroke-width="1.2"></path></svg>Items for this step
+</div>
+<div style="display: flex; gap: 6px">
+<sc-for list="{{slots}}" as="s" hint-placeholder-count="7">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 5px; width: 64px">
+<button aria-label="{{s.label}}" style="width: 52px; height: 52px; position: relative; padding: 0; overflow: hidden; background: rgba(0,0,0,0.35); border: 2px solid {{s.edge}}; box-shadow: 0 0 0 1px rgba(0,0,0,0.5); opacity: {{s.opacity}}">
+<div style="position: absolute; left: 3px; top: 3px; right: 3px; bottom: 3px; display: flex; align-items: center; justify-content: center; background: {{s.plate}}">
+<svg width="28" height="28" viewBox="0 0 24 24" style="color: {{s.ink}}" aria-hidden="true"><path d="{{s.icon}}" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"></path></svg>
+</div>
+<sc-if value="{{s.hover}}" hint-placeholder-val="{{ false }}"><div style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.16)"></div></sc-if>
+<sc-if value="{{s.cd}}" hint-placeholder-val="{{ false }}">
+<div style="position: absolute; left: -10px; top: -10px; width: 72px; height: 72px; background: conic-gradient(rgba(0,0,0,0) 0deg 110deg, rgba(0,0,0,0.68) 110deg 360deg)"></div>
+<div style="position: absolute; left: 0; right: 0; top: 14px; text-align: center; font-size: 17px; font-weight: 600; color: #ffffff; text-shadow: 1px 1px 0 #000">{{s.cd}}</div>
+</sc-if>
+<div style="position: absolute; right: 3px; top: 1px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: #ffffff; text-shadow: 1px 1px 0 #000">{{s.key}}</div>
+<div style="position: absolute; right: 3px; bottom: 1px; font-size: 12.5px; font-weight: 600; color: #ffffff; text-shadow: 1px 1px 0 #000">{{s.count}}</div>
+</button>
+<div style="font-size: 12px; color: #1d2418; text-shadow: none">{{s.caption}}</div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<section class="art-{{t.art}}-win" aria-label="Report a problem" style="position: absolute; left: 600px; top: 40px; width: 440px; height: 560px; box-sizing: border-box; display: flex; flex-direction: column; background: {{t.windowBg}}; border: 1px solid {{t.hairline}}">
+<div class="art-{{t.art}}-band" style="height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 16px; background: {{t.bandBg}}">
+<div style="font-size: 17px; font-weight: 600">Report a problem</div>
+<div style="flex-grow: 1"></div>
+<button aria-label="Close" style="width: 28px; height: 28px; padding: 0; background: transparent; border: 0; color: {{t.text}}"><svg width="13" height="13" viewBox="0 0 12 12"><path d="M3 3 L9 9 M9 3 L3 9" fill="none" stroke="currentColor" stroke-width="1.7"></path></svg></button>
+</div>
+<div style="flex-grow: 1; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+<label for="what" style="font-size: 14px; color: {{t.muted}}">What happened?</label>
+<div style="height: 150px; position: relative; box-sizing: border-box; background: {{t.raised}}; border: 1px solid {{t.accent}}">
+<textarea id="what" style="position: absolute; left: 0; top: 0; width: 100%; height: 100%; box-sizing: border-box; padding: 8px 20px 8px 10px; resize: none; overflow: hidden; font-size: 14px; line-height: 1.45; background: transparent; border: 0; outline: none; color: {{t.text}}">The tracker skipped the Kobold Candles step after I looted the last candle, but the quest log still showed 7/8. It came back after /reload. This was right after I hearthed to Goldshire and flew back, so maybe the bag event fired before the quest log updated?</textarea>
+<div style="position: absolute; right: 3px; top: 3px; bottom: 3px; width: 6px"><div style="position: absolute; left: 0; top: 50%; width: 6px; height: 48%; box-sizing: border-box; background: {{t.surface}}; border: 1px solid {{t.border}}"></div></div>
+</div>
+<div style="display: flex; font-size: 12.5px; color: {{t.muted}}"><div style="flex-grow: 1">Focused, text longer than the box</div><div style="font-family: 'JetBrains Mono', monospace">268 / 2000</div></div>
+
+<label for="steps" style="font-size: 14px; color: {{t.muted}}; padding-top: 6px">Steps to repeat it (optional)</label>
+<textarea id="steps" placeholder="1. Take the quest ..." style="height: 70px; box-sizing: border-box; padding: 8px 10px; resize: none; font-size: 14px; line-height: 1.45; background: {{t.surface}}; border: 1px solid {{t.border}}; outline: none; color: {{t.text}}"></textarea>
+
+<label for="where" style="font-size: 14px; color: {{t.muted}}; padding-top: 6px">Which guide?</label>
+<textarea id="where" style="height: 40px; box-sizing: border-box; padding: 8px 10px; resize: none; font-size: 14px; background: {{t.surface}}; border: 1px solid {{t.danger}}; outline: none; color: {{t.text}}"></textarea>
+<div style="font-size: 13px; color: {{t.danger}}">Pick the guide this happened in.</div>
+
+<div style="flex-grow: 1"></div>
+<div style="display: flex; gap: 8px; justify-content: flex-end">
+<button class="art-{{t.art}}-plate" style="height: 32px; padding: 0 16px; font-size: 14.5px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}">Cancel</button>
+<button class="art-{{t.art}}-pri" style="height: 32px; padding: 0 16px; font-size: 14.5px; font-weight: 600; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.accentFill}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}">Save report</button>
+</div>
+</div>
+</section>
+
+<div style="position: absolute; left: 1080px; top: 40px; width: 320px; display: flex; flex-direction: column; gap: 10px">
+<div style="font-size: 14px; font-weight: 600; color: #1d2418; text-shadow: none">Blizzard's tooltip, kept</div>
+<div style="display: flex; flex-direction: column; gap: 3px; padding: 9px 11px; background: rgba(8,8,18,0.92); border: 2px solid #a8a8a8; border-radius: 5px; font-size: 14px; text-shadow: 1px 1px 0 #000">
+<div style="font-size: 15.5px; color: #ffffff">Bolt of Silk Cloth</div>
+<div style="color: #ffd100">Requires Tailoring (125)</div>
+<div style="color: #ffffff">Reagents: Silk Cloth (4)</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px; margin-top: -8px; padding: 9px 11px; background: rgba(8,8,18,0.92); border: 2px solid #a8a8a8; border-radius: 5px; font-size: 14px; text-shadow: 1px 1px 0 #000">
+<div style="font-size: 15.5px; color: #ffffff">Bolt of Silk Cloth</div>
+<div style="color: #ffffff">Max Stack: 10</div>
+<div style="color: #ffffff">Sell Price: 3s 75c</div>
+</div>
+<div style="font-size: 12.5px; color: #1d2418; text-shadow: none">Chained item tooltip under it matches.</div>
+
+<div style="font-size: 14px; font-weight: 600; color: #1d2418; text-shadow: none; padding-top: 12px">Themed tooltip</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; background: {{t.raised}}; border: 1px solid {{t.border}}; box-shadow: 0 6px 18px rgba(0,0,0,0.45); font-size: 14px">
+<div style="font-size: 15.5px; font-weight: 600">Bolt of Silk Cloth</div>
+<div style="color: {{t.muted}}">Leg 2 of the route: 125 to 145, 22 crafts.</div>
+<div>Uses <span style="color: {{t.text}}">88 Silk Cloth</span> at <span style="color: {{t.estimate}}">~32s</span> each.</div>
+<div style="height: 1px; background: {{t.hairline}}; margin: 3px 0"></div>
+<div style="color: {{t.muted}}"><span style="color: {{t.accent}}">Click</span> to see materials. <span style="color: {{t.accent}}">Shift-click</span> to link.</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px; margin-top: -6px; padding: 9px 11px; background: rgba(8,8,18,0.92); border: 2px solid #a8a8a8; border-radius: 5px; font-size: 14px; text-shadow: 1px 1px 0 #000">
+<div style="font-size: 15.5px; color: #ffffff">Bolt of Silk Cloth</div>
+<div style="color: #ffffff">Sell Price: 3s 75c</div>
+</div>
+<div style="font-size: 12.5px; color: #1d2418; text-shadow: none">Our lines themed; the game's own chained tooltip is not.</div>
+</div>
+
+<div style="position: absolute; left: 600px; top: 640px; font-size: 16px; font-weight: 600; color: #f3efe6">Moving and resizing (in-play frames stay flat)</div>
+
+<section aria-label="Tracker, hovered" style="position: absolute; left: 600px; top: 676px; width: 380px; box-sizing: border-box; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}">
+<div style="height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 12px; background: {{t.raisedBg}}; cursor: move">
+<svg width="14" height="14" viewBox="0 0 14 14" style="color: {{t.muted}}" aria-hidden="true"><path d="M7 1 V13 M1 7 H13 M7 1 L5 3 M7 1 L9 3 M7 13 L5 11 M7 13 L9 11 M1 7 L3 5 M1 7 L3 9 M13 7 L11 5 M13 7 L11 9" fill="none" stroke="currentColor" stroke-width="1.2"></path></svg>
+<div style="font-size: 15px; font-weight: 600">Northshire Valley</div>
+<div style="flex-grow: 1"></div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{t.muted}}">12/148</div>
+<button aria-label="Collapse" style="width: 24px; height: 24px; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 7.5 L6 4.5 L9 7.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+<div style="padding: 6px 12px 4px; display: flex; flex-direction: column; font-size: 13px">
+<sc-for list="{{miniRows}}" as="r" hint-placeholder-count="5">
+<div style="height: 20px; display: flex; align-items: center; gap: 8px; color: {{r.color}}"><div style="width: 22px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{t.muted}}">{{r.n}}</div>{{r.text}}</div>
+</sc-for>
+</div>
+<div style="height: 18px; position: relative">
+<div style="position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; background: {{t.accentWash}}"></div>
+<svg width="12" height="12" viewBox="0 0 12 12" style="position: absolute; right: 3px; bottom: 3px" aria-hidden="true"><path d="M11 3 L3 11 M11 7 L7 11" stroke="{{t.accent}}" stroke-width="1.4"></path></svg>
+</div>
+<div style="position: absolute; left: 0; top: -22px; font-size: 12.5px; color: #f3efe6; text-shadow: 1px 1px 0 #000">Title hovered: drag to move. Grip hovered: drag to resize.</div>
+</section>
+
+<section aria-label="Tracker, collapsed" style="position: absolute; left: 1010px; top: 676px; width: 390px; box-sizing: border-box; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}">
+<div style="height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 12px">
+<div style="font-size: 15px; font-weight: 600">Northshire Valley</div>
+<div style="flex-grow: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {{t.muted}}">Kill Kobold Vermin <span style="color: {{t.warning}}">6/10</span></div>
+<button aria-label="Expand" style="width: 24px; height: 24px; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+</div>
+<div style="position: absolute; left: 0; top: -22px; font-size: 12.5px; color: #f3efe6; text-shadow: 1px 1px 0 #000">Collapsed: one line, the goal that matters.</div>
+</section>
+
+<section aria-label="Tracker, being dragged" style="position: absolute; left: 1024px; top: 776px; width: 380px; box-sizing: border-box; background: {{t.surfaceBg}}; border: 1px solid {{t.accent}}; box-shadow: 0 14px 30px rgba(0,0,0,0.45); opacity: 0.92">
+<div style="height: 34px; display: flex; align-items: center; gap: 6px; padding: 0 6px 0 12px; background: {{t.raisedBg}}">
+<div style="font-size: 15px; font-weight: 600">Northshire Valley</div>
+<div style="flex-grow: 1"></div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: {{t.muted}}">12/148</div>
+</div>
+<div style="padding: 6px 12px 12px; display: flex; flex-direction: column; font-size: 13px">
+<sc-for list="{{miniRows}}" as="r" hint-placeholder-count="5">
+<div style="height: 20px; display: flex; align-items: center; gap: 8px; color: {{r.color}}"><div style="width: 22px; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{t.muted}}">{{r.n}}</div>{{r.text}}</div>
+</sc-for>
+</div>
+<div style="position: absolute; left: 0; top: -22px; font-size: 12.5px; color: #f3efe6; text-shadow: 1px 1px 0 #000">Dragging: accent edge, lifted.</div>
+</section>
+<div style="position: absolute; left: 1010px; top: 766px; width: 380px; height: 170px; box-sizing: border-box; border: 1px dashed {{t.muted}}"></div>
+
+<div style="position: absolute; left: 40px; top: 12px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit list and scrollbar, in an example window (NuuRoad's guide list)</div>
+<div style="position: absolute; left: 600px; top: 12px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit text fields, in an example form</div>
+<div style="position: absolute; left: 1080px; top: 12px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit tooltip</div>
+<div style="position: absolute; left: 40px; top: 606px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit empty state</div>
+<div style="position: absolute; left: 40px; top: 790px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit slots</div>
+<div style="position: absolute; left: 600px; top: 612px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit window handling, shown on NuuRoad's tracker</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment","horde","alliance"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"]},"$preview":{"width":1440,"height":1100}}'>
+var THEMES = {
+  midnight: { light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', raisedA: 0.78, border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', raisedA: 0.85, border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', raisedA: 0.9, border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', raisedA: 0.96, border: '#ad9a70', text: '#2a2114', muted: '#6a593e' },
+  horde: { art: 'horde', light: false, window: '#15110f', band: '#1b1613', hairline: '#3d2f26', surface: '#1f1916', surfaceA: 0.9, raised: '#2a211c', raisedA: 0.92, border: '#5a4636', text: '#e6ddd2', muted: '#ad9e8f', accent: '#e8705a' },
+  alliance: { art: 'alliance', light: false, window: '#0f141d', band: '#131a25', hairline: '#2e3a4f', surface: '#161e2b', surfaceA: 0.9, raised: '#1f2938', raisedA: 0.92, border: '#3c4a63', text: '#e1e6ef', muted: '#a0adc2', accent: '#7aa6ec' }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', gain: '#66d1c7', estimate: '#cca8fa', pattern: '#fa85c7' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', gain: '#1d7a72', estimate: '#6d4bb0', pattern: '#a83674' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + Math.round(a * 100) / 100 + ')'; }
+function makeTokens(key, accentProp) {
+  var th = THEMES[key] || THEMES.midnight;
+  var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+  var accent = accentProp || th.accent || '#4dc9f0';
+  var ak = th.light ? mix(accent, '#000000', 0.45) : accent;
+  return {
+    art: th.art || 'none', light: th.light,
+    window: th.window, band: th.band, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+    windowBg: rgba(th.window, 0.97), bandBg: rgba(th.band, 1), surfaceBg: rgba(th.surface, th.surfaceA), raisedBg: rgba(th.raised, th.raisedA),
+    wellBg: th.art ? 'rgba(0,0,0,0.28)' : rgba(th.surface, th.surfaceA),
+    border50: rgba(th.border, 0.5), muted45: rgba(th.muted, 0.45),
+    accent: ak, accent65: rgba(ak, 0.65), accent80: rgba(ak, 0.8),
+    accentFill: th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68),
+    onFill: th.light ? '#ffffff' : th.text,
+    accentWash: rgba(accent, th.light ? 0.22 : 0.16),
+    shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+    danger: st.danger, done: st.done, warning: st.warning, gain: st.gain, estimate: st.estimate, pattern: st.pattern
+  };
+}
+// Level against a level-8 character, in the planner's flattened difficulty colours.
+function levelColor(t, lo) {
+  var d = lo - 8;
+  if (d >= 5) return t.light ? '#a0302a' : '#d0655c';
+  if (d >= 3) return t.light ? '#b8672f' : '#cc855c';
+  if (d >= -2) return t.light ? '#a88a1f' : '#ccb861';
+  if (d >= -5) return t.light ? '#4b8a4b' : '#70a870';
+  return t.muted;
+}
+var ICONS = {
+  bag: 'M6 8 H18 L17 20 H7 Z M9 8 V6 A3 3 0 0 1 15 6 V8',
+  potion: 'M10 3 H14 M11 3 V8 L7 15 A5 5 0 0 0 17 15 L13 8 V3 M8 14 H16',
+  stone: 'M12 3 L19 8 L17 18 L7 18 L5 8 Z M9 11 H15',
+  scroll: 'M7 5 H17 V19 H7 Z M7 5 A2 2 0 0 0 7 9 M10 9 H15 M10 12 H15 M10 15 H13',
+  meat: 'M6 14 A6 6 0 1 1 14 18 L10 22 L8 20 L9 17 A6 6 0 0 1 6 14 Z',
+  candle: 'M10 9 H14 V20 H10 Z M12 9 V6 M12 3 A1.5 2 0 0 1 12 6 A1.5 2 0 0 1 12 3',
+  sword: 'M5 19 L15 9 L19 5 L18 9 L8 19 Z M4 16 L8 20 M6 22 L2 18'
+};
+class Component extends DCLogic {
+  renderVals() {
+    var t = makeTokens(this.props.theme || 'midnight', this.props.accent);
+    var G = [
+      ['Northshire Valley', 1, 6, 'done', ''],
+      ['Elwynn Forest', 6, 10, 'selected', '42%'],
+      ['Westfall', 10, 15, '', ''],
+      ['Loch Modan', 10, 15, '', ''],
+      ['Darkshore', 12, 17, 'hover', ''],
+      ['Redridge Mountains', 15, 20, '', ''],
+      ['Wetlands', 20, 25, '', ''],
+      ['Duskwood', 20, 25, '', ''],
+      ['The Barrens', 12, 20, 'disabled', 'Horde only'],
+      ['Ashenvale', 20, 25, '', ''],
+      ['Hillsbrad Foothills', 24, 30, '', ''],
+      ['Stranglethorn Vale', 30, 35, '', ''],
+      ['Arathi Highlands', 30, 35, '', ''],
+      ['Desolace', 32, 38, '', ''],
+      ['Dustwallow Marsh', 35, 40, '', ''],
+      ['Tanaris', 40, 45, '', '']
+    ];
+    var guides = G.map(function (g) {
+      var st = g[3];
+      return { name: g[0], levels: g[1] + '-' + g[2],
+        selected: st === 'selected' ? 'true' : 'false', disabled: st === 'disabled' ? 'true' : 'false',
+        bg: st === 'selected' ? t.accentWash : (st === 'hover' ? rgba(t.text, 0.06) : 'transparent'),
+        bar: st === 'selected' ? t.accent : 'transparent',
+        color: st === 'disabled' ? t.muted45 : (st === 'selected' ? t.accent : (st === 'done' ? t.muted : t.text)),
+        note: st === 'done' ? 'Done' : g[4], noteColor: st === 'done' ? t.done : (st === 'disabled' ? t.muted45 : t.muted),
+        levelColor: st === 'disabled' ? t.muted45 : levelColor(t, g[1]) };
+    });
+    var Q = { poor: '#9d9d9d', common: '#e8e8e8', uncommon: '#1eff00', rare: '#0070dd', epic: '#a335ee' };
+    var slots = [
+      { caption: 'Common', label: 'Linen Cloth', icon: ICONS.scroll, edge: Q.common, key: '1', count: '14', plate: '#3a3a3a', ink: '#e8e8e8' },
+      { caption: 'Uncommon', label: 'Sword', icon: ICONS.sword, edge: Q.uncommon, key: '2', count: '', plate: '#243a24', ink: '#c9f0c0' },
+      { caption: 'Rare', label: 'Rare bag', icon: ICONS.bag, edge: Q.rare, key: 'S3', count: '', plate: '#1d2d45', ink: '#bcd6ff' },
+      { caption: 'Hovered', label: 'Tough Wolf Meat', icon: ICONS.meat, edge: Q.poor, key: '4', count: '8', plate: '#3a2a26', ink: '#f0c8b8', hover: true },
+      { caption: 'Cooldown', label: 'Hearthstone', icon: ICONS.stone, edge: Q.common, key: 'C5', count: '', plate: '#2a3440', ink: '#d6e6f5', cd: '12m' },
+      { caption: 'Usable', label: 'Minor Healing Potion', icon: ICONS.potion, edge: t.accent, key: '6', count: '3', plate: '#3a1f24', ink: '#ffc0c8' },
+      { caption: 'Not in bags', label: 'Kobold Candle, missing', icon: ICONS.candle, edge: t.danger, key: '', count: '0', plate: '#2a2a2a', ink: '#8a8a8a', opacity: 0.55 }
+    ].map(function (s) { s.hover = !!s.hover; s.cd = s.cd || ''; s.opacity = s.opacity || 1; return s; });
+    var miniRows = [
+      { n: 11, text: 'Accept Kobold Camp Cleanup', color: t.muted },
+      { n: 12, text: 'Kill Kobold Vermin and Young Wolves', color: t.accent },
+      { n: 13, text: 'Turn in Wolves Across the Border', color: t.text },
+      { n: 14, text: 'Accept Brotherhood of Thieves', color: t.text }
+    ];
+    return { t: t, guides: guides, slots: slots, miniRows: miniRows };
+  }
+}
+</script>
+</body>
+</html>

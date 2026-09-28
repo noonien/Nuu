@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NuuRoad tracker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Barlow Semi Condensed',sans-serif}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1000px; height: 960px; position: relative; overflow: hidden; font-family: 'Barlow Semi Condensed', sans-serif; background: #9db7c9">
+
+<svg width="1000" height="960" viewBox="0 0 1000 960" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<rect x="0" y="0" width="1000" height="960" fill="#a9c1d1"></rect>
+<polygon points="0,380 120,280 240,340 380,200 520,320 660,230 800,330 1000,250 1000,960 0,960" fill="#cfdbe3"></polygon>
+<polygon points="340,238 380,200 420,240 400,250 380,234 360,252" fill="#f6f9fb"></polygon>
+<polygon points="622,266 660,230 700,268 680,276 660,262 642,278" fill="#f6f9fb"></polygon>
+<polygon points="0,520 200,450 420,510 640,430 1000,500 1000,960 0,960" fill="#6a8757"></polygon>
+<polygon points="0,680 260,610 560,670 820,600 1000,640 1000,960 0,960" fill="#3a4f31"></polygon>
+<path d="M300 960 C 380 820, 460 740, 560 680" stroke="#b9a070" stroke-width="48" fill="none"></path>
+</svg>
+
+<section aria-label="Targets" style="position: absolute; left: 60px; top: 520px; display: flex; flex-direction: column; gap: 4px; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 8px; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}; font-size: 12.5px; color: {{t.muted}}">
+<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2 H8 M2 5 H8 M2 8 H8" stroke="currentColor" stroke-width="1.2"></path></svg>Targets
+</div>
+<div style="display: flex; gap: 4px">
+<sc-for list="{{targets}}" as="s" hint-placeholder-count="4">
+<button aria-label="{{s.label}}" style="width: 48px; height: 48px; position: relative; padding: 0; background: {{s.plate}}; border: 1px solid {{s.edge}}; box-shadow: 0 0 0 1px rgba(0,0,0,0.35); cursor: pointer">
+<div style="font-size: 15px; font-weight: 600; color: {{s.ink}}">{{s.initials}}</div>
+<div style="position: absolute; right: 3px; top: 1px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: {{t.text}}; text-shadow: 1px 1px 0 rgba(0,0,0,0.9)">{{s.key}}</div>
+<sc-if value="{{s.count}}" hint-placeholder-val="{{ false }}"><div style="position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: {{t.text}}; text-shadow: 1px 1px 0 rgba(0,0,0,0.9)">{{s.count}}</div></sc-if>
+</button>
+</sc-for>
+</div>
+</section>
+
+<section aria-label="Guide tracker" style="position: absolute; left: 500px; top: 60px; width: 450px; box-sizing: border-box; background: {{t.surfaceBg}}; border: 1px solid {{t.border}}; color: {{t.text}}; text-shadow: {{t.shadow}}">
+<div style="height: 36px; display: flex; align-items: center; gap: 2px; padding: 0 4px 0 12px">
+<div style="font-size: 15px; font-weight: 600">Northshire Valley</div>
+<div style="font-size: 13px; color: {{t.muted}}; margin-left: 6px">1-6</div>
+<div style="flex-grow: 1"></div>
+<button aria-label="Back" style="width: 26px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M7.5 3 L4.5 6 L7.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px">12/148</div>
+<button aria-label="Skip" style="width: 26px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M4.5 3 L7.5 6 L4.5 9" fill="none" stroke="currentColor" stroke-width="1.6"></path></svg></button>
+<button aria-label="Menu" style="width: 26px; height: 30px; padding: 0; background: transparent; border: 0; color: {{t.muted}}"><svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 3 H10 M2 6 H10 M2 9 H10" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></button>
+</div>
+
+<div style="margin: 0 12px; height: 15px; display: flex; gap: 1px; position: relative">
+<div style="flex-grow: 40; background: {{t.raisedBg}}"></div>
+<div style="flex-grow: 36; background: {{t.surfaceBg}}"></div>
+<div style="flex-grow: 44; background: {{t.raisedBg}}"></div>
+<div style="flex-grow: 28; background: {{t.surfaceBg}}"></div>
+<div style="position: absolute; left: 0; bottom: 0; width: 8%; height: 5px; background: {{t.accent}}"></div>
+</div>
+
+<div style="margin: 8px 12px 0; display: flex; align-items: center; gap: 8px; height: 19px; font-size: 12.5px; color: {{t.muted}}">
+<div style="width: 15px; height: 15px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: {{t.text}}; background: {{t.warningWash}}">o</div>
+<div style="flex-grow: 1">Carried: <span style="color: {{t.text}}">Red Burlap Bandana</span> for Brotherhood of Thieves</div>
+<div style="color: {{t.warning}}">5/12</div>
+</div>
+
+<div style="margin: 6px 12px 0; padding: 6px 8px; display: flex; flex-direction: column; gap: 1px; background: {{t.raisedBg}}; border: 1px solid {{t.accent50}}; font-size: 12.5px">
+<sc-for list="{{card}}" as="c" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 8px; min-height: 19px">
+<div style="width: 15px; height: 15px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: {{c.glyphColor}}; background: {{c.tint}}">{{c.glyph}}</div>
+<div style="flex-grow: 1">{{c.pre}}<span style="color: {{c.nameColor}}">{{c.name}}</span>{{c.mid}}<span style="color: {{t.accent}}">{{c.npc}}</span></div>
+<div style="color: {{c.countColor}}">{{c.count}}</div>
+<div style="width: 44px; flex-shrink: 0; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: {{t.muted}}">{{c.away}}</div>
+</div>
+</sc-for>
+<div style="display: flex; gap: 6px; padding-top: 6px">
+<button style="height: 26px; padding: 0 12px; font-size: 13px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.accentFill}}; border: 1px solid {{t.accent}}; color: {{t.onFill}}">Done here</button>
+<button style="height: 26px; padding: 0 12px; font-size: 13px; border-radius: 0; text-shadow: {{t.shadow}}; background: {{t.surface}}; border: 1px solid {{t.border}}; color: {{t.muted}}">Skip wolves</button>
+</div>
+</div>
+
+<div style="margin: 8px 12px 0; display: flex; flex-direction: column; font-size: 12.5px">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="14">
+<div style="height: 19px; display: flex; align-items: center; gap: 6px; background: {{r.bg}}">
+<div style="width: 3px; height: 19px; flex-shrink: 0; background: {{r.bar}}"></div>
+<div style="width: 26px; flex-shrink: 0; text-align: right; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: {{t.muted}}">{{r.n}}</div>
+<div style="width: 13px; height: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: {{r.glyphColor}}">{{r.glyph}}</div>
+<div style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: {{r.color}}">{{r.text}}</div>
+</div>
+</sc-for>
+</div>
+<div style="height: 12px; position: relative">
+<svg width="10" height="10" viewBox="0 0 10 10" style="position: absolute; right: 2px; bottom: 2px" aria-hidden="true"><path d="M9 3 L3 9 M9 6 L6 9" stroke="{{t.muted}}" stroke-width="1.2"></path></svg>
+</div>
+</section>
+
+<div style="position: absolute; left: 500px; top: 30px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #f3efe6; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Example: NuuRoad's tracker, built by NuuRoad from kit parts</div>
+<div style="position: absolute; left: 60px; top: 490px; z-index: 5; padding: 2px 8px; font-family: 'Barlow Semi Condensed', sans-serif; font-size: 13px; font-weight: 500; white-space: nowrap; background: #cfe6d4; border: 1px solid #2a2520; color: #2a2520; text-shadow: none">Kit: strip panel and slots</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["midnight","slate","obsidian","parchment"],"default":"midnight"},"accent":{"editor":"color","options":["#4dc9f0","#6f9dff","#b08cff","#e8c35a"],"default":"#4dc9f0"},"opacity":{"editor":"range","min":40,"max":100,"step":5,"default":100},"$preview":{"width":1000,"height":960}}'>
+var THEMES = {
+  midnight: { name: 'Midnight', light: false, window: '#090b0e', band: '#0e1116', hairline: '#1c222b', surface: '#0b0e12', surfaceA: 0.72, raised: '#13171d', raisedA: 0.78, border: '#2e3847', text: '#ebf0f7', muted: '#8f9eb3' },
+  slate: { name: 'Slate', light: false, window: '#16191e', band: '#1c2026', hairline: '#2b313a', surface: '#1a1e24', surfaceA: 0.8, raised: '#252a32', raisedA: 0.85, border: '#3f4754', text: '#e4e7ec', muted: '#9ba4b1' },
+  obsidian: { name: 'Obsidian', light: false, window: '#000000', band: '#060708', hairline: '#2a2f36', surface: '#000000', surfaceA: 0.85, raised: '#0d0f12', raisedA: 0.9, border: '#58616e', text: '#ffffff', muted: '#bcc5d1' },
+  parchment: { name: 'Parchment', light: true, window: '#eadfc4', band: '#ddd0ad', hairline: '#c4b28a', surface: '#efe6cf', surfaceA: 0.94, raised: '#f7f0de', raisedA: 0.96, border: '#ad9a70', text: '#2a2114', muted: '#6a593e' }
+};
+var STATUS_DARK = { danger: '#e66157', done: '#73cc80', warning: '#f2bf4d', gain: '#66d1c7', estimate: '#cca8fa', pattern: '#fa85c7' };
+var STATUS_LIGHT = { danger: '#b0382f', done: '#2f7a3b', warning: '#8a6410', gain: '#1d7a72', estimate: '#6d4bb0', pattern: '#a83674' };
+function hx(h) { h = String(h || '#4dc9f0').replace('#', ''); return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+function toHex(c) { return '#' + c.map(function (v) { v = Math.max(0, Math.min(255, Math.round(v))); return (v < 16 ? '0' : '') + v.toString(16); }).join(''); }
+function mix(a, b, t) { var x = hx(a), y = hx(b); return toHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t]); }
+function rgba(h, a) { var c = hx(h); return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + Math.round(a * 100) / 100 + ')'; }
+function makeTokens(key, accent, opacity) {
+  var th = THEMES[key] || THEMES.midnight;
+  var st = th.light ? STATUS_LIGHT : STATUS_DARK;
+  var o = (opacity == null ? 100 : opacity) / 100;
+  var accentText = th.light ? mix(accent, '#000000', 0.45) : accent;
+  return {
+    name: th.name, light: th.light,
+    window: th.window, hairline: th.hairline, surface: th.surface, raised: th.raised, border: th.border, text: th.text, muted: th.muted,
+    windowBg: rgba(th.window, 0.97 * o), bandBg: rgba(th.band, o), surfaceBg: rgba(th.surface, th.surfaceA * o), raisedBg: rgba(th.raised, th.raisedA * o),
+    accent: accentText, accent50: rgba(accentText, 0.5),
+    accentFill: th.light ? mix(accent, '#000000', 0.38) : mix(accent, th.window, 0.68),
+    onFill: th.light ? '#ffffff' : th.text,
+    accentWash: rgba(accent, th.light ? 0.22 : 0.16),
+    shadow: th.light ? 'none' : '1px 1px 0 rgba(0,0,0,0.9)',
+    danger: st.danger, done: st.done, warning: st.warning,
+    dangerWash: rgba(st.danger, 0.3), doneWash: rgba(st.done, 0.3), warningWash: rgba(st.warning, 0.3),
+    quest: th.light ? '#7a5a00' : '#ffd100'
+  };
+}
+class Component extends DCLogic {
+  renderVals() {
+    var t = makeTokens(this.props.theme || 'midnight', this.props.accent || '#4dc9f0', this.props.opacity == null ? 100 : this.props.opacity);
+    var card = [
+      { glyph: 'x', glyphColor: t.text, tint: t.warningWash, pre: 'Kill ', name: 'Kobold Vermin', nameColor: t.danger, mid: '', npc: '', count: '6/10', countColor: t.warning, away: '38 yd' },
+      { glyph: 'o', glyphColor: t.text, tint: t.doneWash, pre: 'Loot ', name: 'Tough Wolf Meat', nameColor: t.text, mid: ' from Young Wolves', npc: '', count: '8/8', countColor: t.done, away: '' },
+      { glyph: '?', glyphColor: t.quest, tint: t.dangerWash, pre: 'Turn in ', name: 'Wolves Across the Border', nameColor: t.quest, mid: ' to ', npc: 'Eagan Peltskinner', count: '', countColor: t.muted, away: '112 yd' }
+    ];
+    var steps = [
+      [9, '!', 'Accept A Threat Within from Deputy Willem'],
+      [10, '?', 'Turn in A Threat Within to Marshal McBride'],
+      [11, '!', 'Accept Kobold Camp Cleanup from Marshal McBride'],
+      [12, 'x', 'Kill Kobold Vermin and Young Wolves'],
+      [13, '?', 'Turn in Wolves Across the Border'],
+      [14, '!', 'Accept Brotherhood of Thieves from Deputy Willem'],
+      [15, '>', 'Go to the vineyards east of the abbey'],
+      [16, 'x', 'Kill Defias Thugs, loot Red Burlap Bandanas'],
+      [17, '?', 'Turn in Kobold Camp Cleanup'],
+      [18, '!', 'Accept Investigate Echo Ridge'],
+      [19, 'x', 'Kill Kobold Workers in Echo Ridge Mine'],
+      [20, '?', 'Turn in Brotherhood of Thieves'],
+      [21, '!', 'Accept Bounty on Garrick Padfoot'],
+      [22, 'x', 'Kill Garrick Padfoot at the cottage']
+    ];
+    var rows = steps.map(function (s) {
+      var n = s[0], done = n < 12, current = n === 12, quest = s[1] === '!' || s[1] === '?';
+      return { n: n, glyph: done ? 'v' : s[1], text: s[2],
+        glyphColor: done ? t.done : (quest ? t.quest : t.muted),
+        color: done ? t.muted : (current ? t.accent : t.text),
+        bg: current ? t.accentWash : 'transparent', bar: current ? t.accent : 'transparent' };
+    });
+    var targets = [
+      { initials: 'KV', label: 'Target Kobold Vermin', key: '1', count: '', ink: t.text, edge: t.danger, plate: 'rgba(0,0,0,0.3)' },
+      { initials: 'YW', label: 'Target Young Wolf', key: '2', count: '', ink: t.text, edge: t.danger, plate: 'rgba(0,0,0,0.3)' },
+      { initials: 'EP', label: 'Target Eagan Peltskinner', key: 'S3', count: '', ink: t.text, edge: t.accent, plate: t.accentWash },
+      { initials: 'HS', label: 'Use Hearthstone', key: 'C4', count: '', ink: t.text, edge: t.border, plate: 'rgba(0,0,0,0.3)' }
+    ];
+    return { t: t, card: card, rows: rows, targets: targets };
+  }
+}
+</script>
+</body>
+</html>
