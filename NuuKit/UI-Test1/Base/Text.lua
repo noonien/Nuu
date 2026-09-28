@@ -91,20 +91,10 @@ UI.Define("Text", {
 -- onReset } (the reset shows only while `stored`), gap and padding of the
 -- body, headerGap, grow.
 local function sectionToggle(toggle)
-    local w = toggle.kitSection
+    local w = toggle.kitOwner
     UI.ClickSound()
     w:SetOpen(not w.kitOpen)
     if w.kitOnToggle then w.kitOnToggle(w.kitOpen) end
-end
-
-local function sectionEnter(toggle)
-    toggle.hover = true
-    toggle.kitSection:PaintState(toggle.kitSection.ui.tokens)
-end
-
-local function sectionLeave(toggle)
-    toggle.hover = false
-    toggle.kitSection:PaintState(toggle.kitSection.ui.tokens)
 end
 
 local function sectionReset(link)
@@ -114,14 +104,14 @@ end
 
 -- The heading's natural width: chevron, caption, hint.
 local function toggleMeasure(toggle)
-    local w = toggle.kitSection
+    local w = toggle.kitOwner
     local width = (w.kitFoldable and 16 or 0) + UI.StringWidth(w.title)
     if (w.hint:GetText() or "") ~= "" then width = width + 8 + UI.StringWidth(w.hint) end
     return math.ceil(width) + 2, 22
 end
 
 local function toggleSized(toggle, width)
-    local w = toggle.kitSection
+    local w = toggle.kitOwner
     local x = -(width or 0) / 2 + 5
     w.openGlyph:Offset(x, 0)
     w.foldedGlyph:Offset(x, 0)
@@ -133,21 +123,17 @@ UI.Define("Section", {
         local ui = w.ui
         w:SetSize(1, 1)
         UI.MakeStack(ui, w, "column", {})
-        local header = CreateFrame("Frame", nil, w)
-        header:SetSize(1, 22)
-        UI.MakeStack(ui, header, "row", { gap = 10 })
-        header.kitLayout = { height = 22 }
+        local header = UI.Part(ui, w, "row", { gap = 10 }, { height = 22 })
         w:Append(header)
         w.header = header
 
         local toggle = CreateFrame("Button", nil, header)
         toggle:SetHeight(22)
         UI.Adopt(toggle, "SectionHeading", { UI.Widget }, { Measure = toggleMeasure, Sized = toggleSized })
-        toggle.ui, toggle.kitSection, toggle.kitStretch = ui, w, false
-        toggle.kitLayout = {}
+        toggle.ui, toggle.kitStretch, toggle.kitLayout = ui, false, {}
         toggle:SetScript("OnClick", sectionToggle)
-        toggle:SetScript("OnEnter", sectionEnter)
-        toggle:SetScript("OnLeave", sectionLeave)
+        -- Hover repaints the section (its PaintState reads toggle.hover).
+        UI.Hover(toggle, w)
         w.toggle = toggle
         w.openGlyph = UI.NewGlyph(toggle, "down", 8, 1.5)
         w.foldedGlyph = UI.NewGlyph(toggle, "next", 8, 1.5)
@@ -162,10 +148,7 @@ UI.Define("Section", {
         header:Append(reset)
         w.reset = reset
 
-        local body = CreateFrame("Frame", nil, w)
-        body:SetSize(1, 1)
-        UI.MakeStack(ui, body, "column", {})
-        body.kitLayout = {}
+        local body = UI.Part(ui, w, "column", {})
         w:Append(body)
         w.kitInner = body
         w.body = body

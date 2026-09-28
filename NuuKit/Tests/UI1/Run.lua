@@ -118,7 +118,7 @@ local function testWindow(ui, width, height)
     if ui.Window then
         local win = ui:Window({ width = width or 600, height = height or 500 })
         win:Show()
-        return win, win
+        return win, win.kitInner
     end
     local holder = CreateFrame("Frame", nil, UIParent)
     holder:SetSize(width or 600, height or 500)

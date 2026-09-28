@@ -169,17 +169,20 @@ local function control(stack, name, spec, picker)
 end
 
 -- A look set elsewhere (in code, or by another picker) shows in every
--- picker of that UI. One listener per UI.
+-- picker of that UI. One listener per UI, the same function for all.
+local function lookChanged(look, ui)
+    for w in pairs(ui.widgets) do
+        if w.kitType == "LookPicker" and not w.kitPooled then w:Sync(look) end
+    end
+end
+
 local function listen(ui)
     if ui.kitLookPickerListening then return end
     ui.kitLookPickerListening = true
-    ui:OnLook(function(look)
-        for w in pairs(ui.widgets) do
-            if w.kitType == "LookPicker" and not w.kitPooled then w:Sync(look) end
-        end
-    end)
+    ui:OnLook(lookChanged)
 end
 
+-- The accent section's reset; the section knows its picker.
 local function pickerReset(section) section.kitPicker:Change("accent", nil) end
 
 UI.Define("LookPicker", {
@@ -187,9 +190,6 @@ UI.Define("LookPicker", {
     Build = function(w)
         types.Column.Build(w)
         w.cards, w.swatches = {}, {}
-        -- The section's reset calls back with nothing; this knows the
-        -- picker. Made once per frame, not per use.
-        w.kitAccentReset = function() pickerReset(w.accents) end
     end,
     Init = function(w, spec)
         UI.SetStack(w, "column", { gap = spec.gap or 18 })
@@ -214,7 +214,7 @@ UI.Define("LookPicker", {
 
         -- Accent
         local accents = w:Section{ "Accent", hint = "selection, focus, the call to action", reset = {
-            stored = w.kitLook.accent ~= nil, default = "the theme's own", onReset = w.kitAccentReset,
+            stored = w.kitLook.accent ~= nil, default = "the theme's own", onReset = pickerReset,
         } }
         accents.kitPicker = w
         w.accents = accents

@@ -62,11 +62,17 @@ end
 -- `corner` is how big the corners are drawn; `tint` shades the texture.
 function Plate:Art(spec, corner, tint)
     if not spec then return false end
-    if not self.nine or self.nineSpec ~= spec then
-        if self.nine then self.nine:Hide() end
-        self.nine = UI.NineSlice(self.frame, self.layer, spec, corner or 6, true, self.sublevel)
-        self.nineSpec = spec
-        self.nineShown = false
+    -- One 9-slice per art spec, made the first time and kept: switching
+    -- between art themes reuses them rather than making textures each time.
+    if self.nineSpec ~= spec then
+        if self.nine and self.nineShown then self.nine:Hide() end
+        self.nines = self.nines or {}
+        local nine = self.nines[spec]
+        if not nine then
+            nine = UI.NineSlice(self.frame, self.layer, spec, corner or 6, true, self.sublevel)
+            self.nines[spec] = nine
+        end
+        self.nine, self.nineSpec, self.nineShown = nine, spec, false
     end
     if not self.nine.loaded then return false end
     showFlat(self, false)

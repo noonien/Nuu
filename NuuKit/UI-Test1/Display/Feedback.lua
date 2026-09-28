@@ -15,6 +15,32 @@ local BAR = 8
 -- frame's width, 1, until the caller sized it.)
 local NATURAL_WIDTH = 200
 
+-- Parts both bars keep in lists and reuse: part `index` of `list`, made by
+-- `make(w)` the first time; and the ones past `count` hidden, their `key`
+-- (what they drew) forgotten.
+local function take(list, index, make, w)
+    local part = list[index]
+    if not part then
+        part = make(w)
+        list[index] = part
+    end
+    return part
+end
+
+local function hideFrom(list, count, key)
+    for index = count + 1, #list do
+        list[index]:Hide()
+        if key then list[index][key] = nil end
+    end
+end
+
+-- A line across the track at `x`, `over` beyond it above and below.
+local function placeAcross(line, track, x, over)
+    line:ClearAllPoints()
+    line:SetPoint("TOPLEFT", track, "TOPLEFT", x, over)
+    line:SetPoint("BOTTOMLEFT", track, "BOTTOMLEFT", x, -over)
+end
+
 -- Progress bars ---------------------------------------------------------------------------
 
 -- Spec: label, value, max, tone (the fill: accent by default), marks
@@ -51,6 +77,12 @@ local function placeStillRun(w)
     w.run:SetWidth(math.max(0.01, (w:GetWidth() or 0) * 0.33))
 end
 
+local function newTick(w)
+    local tick = w:CreateTexture(nil, "OVERLAY")
+    UI.Stroke(tick, "width", 2)
+    return tick
+end
+
 -- Every part where it goes for the bar's width.
 local function placeBar(w)
     local top = UI.Snap(w, hasLabelRow(w) and 16 or 0)
@@ -66,36 +98,20 @@ local function placeBar(w)
     w.fill:SetShown(not w.kitBusy and share > 0)
     local over = UI.Snap(w, 3)
     for index, mark in ipairs(w.kitMarks) do
-        local tick = w.markTicks[index]
-        if not tick then
-            tick = w:CreateTexture(nil, "OVERLAY")
-            UI.Stroke(tick, "width", 2)
-            w.markTicks[index] = tick
-        end
+        local tick = take(w.markTicks, index, newTick, w)
         local mid = max > 0 and width * math.max(0, math.min(1, (mark.at or 0) / max)) or 0
-        local x = UI.Snap(w, mid - 1)
-        tick:ClearAllPoints()
-        tick:SetPoint("TOPLEFT", track, "TOPLEFT", x, over)
-        tick:SetPoint("BOTTOMLEFT", track, "BOTTOMLEFT", x, -over)
+        placeAcross(tick, track, UI.Snap(w, mid - 1), over)
         tick:Show()
-        local caption = w.markLabels[index]
-        if not caption then
-            caption = UI.NewText(w)
-            w.markLabels[index] = caption
-        end
+        local caption = take(w.markLabels, index, UI.NewText, w)
         caption:ClearAllPoints()
         caption:SetPoint("TOP", track, "BOTTOMLEFT", mid, -4)
         caption:SetText(mark.caption or "")
         caption:Show()
     end
-    for index = #w.kitMarks + 1, #w.markTicks do
-        w.markTicks[index]:Hide()
-        w.markLabels[index]:Hide()
-    end
+    hideFrom(w.markTicks, #w.kitMarks)
+    hideFrom(w.markLabels, #w.kitMarks)
     if w.kitBusy and not w.kitRunning then placeStillRun(w) end
 end
-
-local function barSized(w) placeBar(w) end
 
 -- The run of a busy bar, moving along the track.
 local function busyTick(w, elapsed)
@@ -133,7 +149,6 @@ local function startBusy(w)
     w:SetScript("OnUpdate", busyTick)
 end
 
-local function barHidden(w) stopBusy(w) end
 local function barShown(w) if w.kitBusy then startBusy(w) end end
 
 UI.Define("ProgressBar", {
@@ -151,8 +166,8 @@ UI.Define("ProgressBar", {
         w.run = w:CreateTexture(nil, "ARTWORK", nil, 1)
         w.run:Hide()
         w.markTicks, w.markLabels = {}, {}
-        w:HookScript("OnSizeChanged", barSized)
-        w:HookScript("OnHide", barHidden)
+        w:HookScript("OnSizeChanged", placeBar)
+        w:HookScript("OnHide", stopBusy)
         w:HookScript("OnShow", barShown)
     end,
     Init = function(w, spec)
@@ -215,7 +230,7 @@ UI.Define("ProgressBar", {
         Measure = function(self)
             return NATURAL_WIDTH, (hasLabelRow(self) and 16 or 0) + self.kitBarHeight + (hasMarkRow(self) and 18 or 0) + 2
         end,
-        Sized = function(self) placeBar(self) end,
+        Sized = placeBar,
         Paint = function(self, t)
             UI.ApplyStyle(self.label, "label", t, "text")
             UI.ApplyStyle(self.readout, "number", t, nil, true)
@@ -284,6 +299,14 @@ local function newOutline(w)
     return box
 end
 
+local function newFill(w) return w:CreateTexture(nil, "ARTWORK") end
+
+local function newLine(w)
+    local line = w:CreateTexture(nil, "OVERLAY")
+    UI.Hairline(line, "width")
+    return line
+end
+
 local function newPointer(w)
     local p = CreateFrame("Frame", nil, w)
     p:SetSize(10, 6)
@@ -310,18 +333,10 @@ local function placeSegments(w)
         local part
         if segment.style == "outline" then
             outlines = outlines + 1
-            part = pools.outlines[outlines]
-            if not part then
-                part = newOutline(w)
-                pools.outlines[outlines] = part
-            end
+            part = take(pools.outlines, outlines, newOutline, w)
         else
             fills = fills + 1
-            part = pools.fills[fills]
-            if not part then
-                part = w:CreateTexture(nil, "ARTWORK")
-                pools.fills[fills] = part
-            end
+            part = take(pools.fills, fills, newFill, w)
         end
         part.kitSegment = segment
         part:ClearAllPoints()
@@ -329,55 +344,30 @@ local function placeSegments(w)
         part:SetSize(right - left, h)
         part:Show()
     end
-    for index = fills + 1, #pools.fills do
-        pools.fills[index]:Hide()
-        pools.fills[index].kitSegment = nil
-    end
-    for index = outlines + 1, #pools.outlines do
-        pools.outlines[index]:Hide()
-        pools.outlines[index].kitSegment = nil
-    end
+    hideFrom(pools.fills, fills, "kitSegment")
+    hideFrom(pools.outlines, outlines, "kitSegment")
     local lines, pointers = 0, 0
     local over = UI.Snap(w, SEGMENT_OVER)
     for _, mark in ipairs(w.kitMarks) do
         local x = UI.Snap(w, w:XOf(mark.at or w.kitMin))
         if mark.kind == "pointer" then
             pointers = pointers + 1
-            local holder = pools.pointers[pointers]
-            if not holder then
-                holder = newPointer(w)
-                pools.pointers[pointers] = holder
-            end
+            local holder = take(pools.pointers, pointers, newPointer, w)
             holder.kitMark = mark
             holder:ClearAllPoints()
             holder:SetPoint("BOTTOM", track, "TOPLEFT", x, UI.Pixels(w, 1))
             holder:Show()
         else
             lines = lines + 1
-            local line = pools.lines[lines]
-            if not line then
-                line = w:CreateTexture(nil, "OVERLAY")
-                UI.Hairline(line, "width")
-                pools.lines[lines] = line
-            end
+            local line = take(pools.lines, lines, newLine, w)
             line.kitMark = mark
-            line:ClearAllPoints()
-            line:SetPoint("TOPLEFT", track, "TOPLEFT", x, over)
-            line:SetPoint("BOTTOMLEFT", track, "BOTTOMLEFT", x, -over)
+            placeAcross(line, track, x, over)
             line:Show()
         end
     end
-    for index = lines + 1, #pools.lines do
-        pools.lines[index]:Hide()
-        pools.lines[index].kitMark = nil
-    end
-    for index = pointers + 1, #pools.pointers do
-        pools.pointers[index]:Hide()
-        pools.pointers[index].kitMark = nil
-    end
+    hideFrom(pools.lines, lines, "kitMark")
+    hideFrom(pools.pointers, pointers, "kitMark")
 end
-
-local function segmentsSized(w) placeSegments(w) end
 
 local function colorOf(t, tone, fallback)
     if tone == nil then return fallback end
@@ -399,12 +389,8 @@ local function follow(w)
     local value, x = cursorValue(w)
     if not value then return end
     if w.kitHover then
-        local over = UI.Snap(w, SEGMENT_OVER)
-        local line = w.hoverLine
-        line:ClearAllPoints()
-        line:SetPoint("TOPLEFT", w.track, "TOPLEFT", x, over)
-        line:SetPoint("BOTTOMLEFT", w.track, "BOTTOMLEFT", x, -over)
-        line:Show()
+        placeAcross(w.hoverLine, w.track, x, UI.Snap(w, SEGMENT_OVER))
+        w.hoverLine:Show()
         if w.kitTooltipFor then
             local text = w.kitTooltipFor(value)
             if text ~= w.kitShownTip then
@@ -477,7 +463,7 @@ UI.Define("SegmentBar", {
         w:SetScript("OnMouseDown", segDown)
         w:SetScript("OnMouseUp", segUp)
         w:HookScript("OnHide", segStop)
-        w:HookScript("OnSizeChanged", segmentsSized)
+        w:HookScript("OnSizeChanged", placeSegments)
     end,
     Init = function(w, spec)
         w.kitMin, w.kitMax = spec.min or 0, spec.max or 1
@@ -525,7 +511,7 @@ UI.Define("SegmentBar", {
             local above, below = room(self)
             return NATURAL_WIDTH, self.kitBarHeight + above + below
         end,
-        Sized = function(self) placeSegments(self) end,
+        Sized = placeSegments,
         Paint = function(self, t)
             local parts = self.kitParts
             UI.TexColor(self.track, t.hairline)

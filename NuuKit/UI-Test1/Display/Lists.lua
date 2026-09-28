@@ -240,30 +240,31 @@ local function rowDoubleClick(row)
     if item ~= nil and not row.kitDisabled then activate(row.kitList, item) end
 end
 
--- A row's frame and its own parts; what it holds comes from make.
-local function newRow(w)
-    local row = CreateFrame("Button", nil, w)
-    row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    UI.MakeStack(w.ui, row, "row", w.kitRowOpts)
-    row.kitList = w
-    row.bg = row:CreateTexture(nil, "BACKGROUND")
-    row.bg:SetAllPoints()
-    row.bar = row:CreateTexture(nil, "ARTWORK")
-    row.bar:SetPoint("TOPLEFT")
-    row.bar:SetPoint("BOTTOMLEFT")
-    UI.Stroke(row.bar, "width", 3)
-    row.line = row:CreateTexture(nil, "BACKGROUND", nil, 1)
-    row.line:SetPoint("BOTTOMLEFT")
-    row.line:SetPoint("BOTTOMRIGHT")
-    UI.Hairline(row.line, "height")
-    row.SetDisabled = rowSetDisabled
-    row:SetScript("OnEnter", rowEnter)
-    row:SetScript("OnLeave", rowLeave)
-    row:SetScript("OnClick", rowClick)
-    row:SetScript("OnDoubleClick", rowDoubleClick)
-    row:HookScript("OnMouseDown", take)
-    return row
-end
+-- A row: a row stack with its own parts; what it holds comes from make.
+-- It belongs to its list for good (`row.kitList`), never to a pool.
+UI.Define("ListRow", {
+    kind = "Button", stack = true, internal = true,
+    Build = function(row)
+        row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        row.bg = row:CreateTexture(nil, "BACKGROUND")
+        row.bg:SetAllPoints()
+        row.bar = row:CreateTexture(nil, "ARTWORK")
+        row.bar:SetPoint("TOPLEFT")
+        row.bar:SetPoint("BOTTOMLEFT")
+        UI.Stroke(row.bar, "width", 3)
+        row.line = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+        row.line:SetPoint("BOTTOMLEFT")
+        row.line:SetPoint("BOTTOMRIGHT")
+        UI.Hairline(row.line, "height")
+        row:SetScript("OnEnter", rowEnter)
+        row:SetScript("OnLeave", rowLeave)
+        row:SetScript("OnClick", rowClick)
+        row:SetScript("OnDoubleClick", rowDoubleClick)
+        row:HookScript("OnMouseDown", take)
+    end,
+    Init = function(row, spec) UI.SetStack(row, "row", spec) end,
+    methods = { SetDisabled = rowSetDisabled },
+})
 
 -- Its place in the list: one row height below the last, the list's width
 -- less the bar's room. Answers whether its size changed.
@@ -277,7 +278,6 @@ local function placeRow(w, row, index)
         row.kitPY = y
     end
     if row.kitPW ~= width or row.kitPH ~= height then
-        -- Noted first, so the stack's own size hook finds nothing to do.
         row.kitPW, row.kitPH = width, height
         row:SetSize(width, height)
         return true
@@ -331,10 +331,9 @@ local function makeRow(w, row)
 end
 
 -- Draws the rows for the offset: made as the list grows taller, never as it
--- scrolls. Each row's content is laid out now, only inside the row; or,
--- when the layout pass itself resized the list (`inPass`), in the pass's
--- next round, as a stack must not be laid out inside another's layout.
-local function refresh(w, inPass)
+-- scrolls. Each row's content is laid out now, only inside the row, the
+-- layout pass's own included.
+local function refresh(w)
     local count = visibleCount(w)
     local view, rows = w.view, w.rows
     local top = maxOffset(w)
@@ -346,7 +345,8 @@ local function refresh(w, inPass)
         local row = rows[index]
         if index <= count and not w.kitState then
             if not row then
-                row = newRow(w)
+                row = UI.Make(w.ui, "ListRow", w, w.kitRowOpts)
+                row.kitList = w
                 rows[index] = row
                 placeRow(w, row, index)
             end
@@ -362,9 +362,7 @@ local function refresh(w, inPass)
                     row.number:SetText(type(numbers) == "function" and numbers(item, at) or at)
                 end
                 if row.valueText then row.valueText:SetText(value(item) or "") end
-                if row.kitChildren[1] then
-                    if inPass then UI.Invalidate(row) else row:StackLayout() end
-                end
+                if row.kitChildren[1] then row:StackLayout() end
                 paintRow(w, row, t)
             else
                 row:Hide()
@@ -414,7 +412,7 @@ local function listResized(w)
     if w.kitSizedW == width and w.kitSizedH == height then return end
     w.kitSizedW, w.kitSizedH = width, height
     for index, row in ipairs(w.rows) do placeRow(w, row, index) end
-    refresh(w, true)
+    refresh(w)
 end
 
 local function listWheel(w, delta)
@@ -602,10 +600,26 @@ UI.Define("List", {
     methods = listMethods,
 })
 
+-- A folder's chevron, pointing down while open: a tree's, a table group's.
+local function newChevron(parent, size)
+    local chevron = CreateFrame("Frame", nil, parent)
+    chevron:SetSize(size, size)
+    chevron.open = UI.NewGlyph(chevron, "down", 8, 1.5)
+    chevron.shut = UI.NewGlyph(chevron, "next", 8, 1.5)
+    return chevron
+end
+
+local function drawChevron(chevron, folder, open, t)
+    chevron.open:SetShown(folder and open)
+    chevron.shut:SetShown(folder and not open)
+    chevron.open:SetColor(t.muted)
+    chevron.shut:SetColor(t.muted)
+end
+
 -- For Tree and Tables.lua: a list type with its own make, draw and hook.
 UI.ListParts = {
     build = buildList, init = initList, release = releaseList, methods = listMethods,
-    refresh = refresh, select = selectItem,
+    refresh = refresh, select = selectItem, newChevron = newChevron, drawChevron = drawChevron,
 }
 
 local function withMethods(extra)
@@ -614,7 +628,6 @@ local function withMethods(extra)
     for key, fn in pairs(extra or {}) do methods[key] = fn end
     return methods
 end
-UI.ListParts.withMethods = withMethods
 
 -- Trees ------------------------------------------------------------------------------------
 
@@ -658,10 +671,7 @@ end
 
 local function treeMake(row)
     row.guides = {}
-    row.chevronFrame = CreateFrame("Frame", nil, row)
-    row.chevronFrame:SetSize(12, 12)
-    row.openGlyph = UI.NewGlyph(row.chevronFrame, "down", 8, 1.5)
-    row.shutGlyph = UI.NewGlyph(row.chevronFrame, "next", 8, 1.5)
+    row.chevron = newChevron(row, 12)
     row.caption = UI.NewText(row)
     row.count = UI.NewText(row)
     row.count:SetPoint("RIGHT", row, "RIGHT", -8, 0)
@@ -692,17 +702,13 @@ local function treeDraw(row, entry)
     end
     if row.kitLeft ~= left then
         row.kitLeft = left
-        row.chevronFrame:ClearAllPoints()
-        row.chevronFrame:SetPoint("LEFT", row, "LEFT", left, 0)
+        row.chevron:ClearAllPoints()
+        row.chevron:SetPoint("LEFT", row, "LEFT", left, 0)
         row.caption:ClearAllPoints()
         row.caption:SetPoint("LEFT", row, "LEFT", left + 16, 0)
         row.caption:SetPoint("RIGHT", row.count, "LEFT", -6, 0)
     end
-    local folder = node.children ~= nil
-    row.openGlyph:SetShown(folder and node.open and true or false)
-    row.shutGlyph:SetShown(folder and not node.open)
-    row.openGlyph:SetColor(t.muted)
-    row.shutGlyph:SetColor(t.muted)
+    drawChevron(row.chevron, node.children ~= nil, node.open and true or false, t)
     row.caption:SetText(node.caption or tostring(node.value or ""))
     row.count:SetText(node.count ~= nil and tostring(node.count) or "")
     UI.ApplyStyle(row.caption, "body", t, nil, true)
@@ -725,7 +731,7 @@ local TREE_HOOK = {
         if row.caption then UI.TextColor(row.caption, selected and t.accent or t.text) end
     end,
     -- A new look: the rows' words drawn again in its fonts.
-    paint = function(w) refresh(w) end,
+    paint = refresh,
 }
 
 UI.Define("Tree", {
@@ -943,7 +949,6 @@ UI.Define("SplitPanes", {
         for index = #w.kitChildren, 1, -1 do
             local pane = w.kitChildren[index]
             w.kitChildren[index] = nil
-            pane.kitFillChildren = nil
             pane.kitParent = nil
             UI.Release(pane)
         end

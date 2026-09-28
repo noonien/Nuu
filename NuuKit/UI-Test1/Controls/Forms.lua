@@ -10,15 +10,6 @@ local UI = Kit.UI1
 -- in OpenRoad (PlannerOptions, the tracker's options, the editor's step
 -- kinds).
 
--- As in Fields.lua: Core's Widget:Reset would pass the default for a value
--- that is false.
-local function resetValue(self)
-    local bind = self.kitBind
-    if bind then bind[1][bind[2]] = nil end
-    self:SetValue(self.kitDefault)
-    if self.kitOnChange then self.kitOnChange(self:GetValue(), self) end
-end
-
 -- Settings -------------------------------------------------------------------------------
 
 -- One setting: its name and what it does on the left, the control on the
@@ -75,17 +66,16 @@ local function settingAppend(controls, child)
     return child
 end
 
+local SETTING_ROW = { gap = 20, padding = 10, padLeft = 0, padRight = 0 }
+
 UI.Define("Setting", {
     holds = true,
     Build = function(w)
         local ui = w.ui
         w:SetSize(1, 1)
-        UI.MakeStack(ui, w, "row", { gap = 20, padding = 10, padLeft = 0, padRight = 0 })
+        UI.MakeStack(ui, w, "row", SETTING_ROW)
 
-        local about = CreateFrame("Frame", nil, w)
-        about:SetSize(1, 1)
-        UI.MakeStack(ui, about, "column", { gap = 3 })
-        about.kitLayout = { width = 260 }
+        local about = UI.Part(ui, w, "column", { gap = 3 }, { width = 260 })
         w.label = UI.Make(ui, "Text", about, { "", wrap = true })
         about:Append(w.label)
         w.help = UI.Make(ui, "Text", about, { "", style = "label", wrap = true })
@@ -95,10 +85,7 @@ UI.Define("Setting", {
 
         -- The controls take the room between the name and the reset, so
         -- the resets of a page of settings line up at the right.
-        local controls = CreateFrame("Frame", nil, w)
-        controls:SetSize(1, 1)
-        UI.MakeStack(ui, controls, "row", { gap = 8 })
-        controls.kitLayout = {}
+        local controls = UI.Part(ui, w, "row", { gap = 8 })
         controls.kitGrow = 1
         controls.kitSetting = w
         controls.Append = settingAppend
@@ -117,7 +104,7 @@ UI.Define("Setting", {
         UI.Hairline(w.line, "height")
     end,
     Init = function(w, spec)
-        UI.SetStack(w, "row", { gap = 20, padding = 10, padLeft = 0, padRight = 0 })
+        UI.SetStack(w, "row", SETTING_ROW)
         UI.SetStack(w.controls, "row", { gap = spec.gap or 8 })
         local labelWidth = spec.labelWidth or 260
         if w.about.kitLayout.width ~= labelWidth then
@@ -219,6 +206,5 @@ UI.Define("Choices", {
             self:SetValue(value)
             UI.Commit(self, value)
         end,
-        Reset = resetValue,
     },
 })

@@ -156,15 +156,6 @@ UI.Define("StripPanel", {
             self:Changed()
             UI.LayoutNow()
         end,
-        -- Measured every time, not cached: a few sums. (The pass keeps a
-        -- parent's cached size when the parent was already waiting to be
-        -- measured and was measured again since, as UI.Fit does for a strip
-        -- just made; see Base/Layout.lua measure().)
-        NaturalWidth = function(self) return (self:Measure()) end,
-        NaturalHeight = function(self)
-            local _, height = self:Measure()
-            return height
-        end,
         -- The strip is as long as its slots, and its header at least as long
         -- as its words.
         Measure = function(self)

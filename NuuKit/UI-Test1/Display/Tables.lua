@@ -4,7 +4,6 @@ local Kit = ns.Kit or {}
 ns.Kit = Kit
 Kit.UI1 = Kit.UI1 or {}
 local UI = Kit.UI1
-local types = UI.types
 local L = UI.ListParts
 
 -- Tables, pagers and stat figures, as in UI/Display/Tables.lua on shared
@@ -214,11 +213,8 @@ local function tableMake(row)
     row.cells = {}
     local group = CreateFrame("Frame", nil, row)
     group:SetAllPoints(row)
-    group.chevron = CreateFrame("Frame", nil, group)
-    group.chevron:SetSize(10, 10)
+    group.chevron = L.newChevron(group, 10)
     group.chevron:SetPoint("LEFT", group, "LEFT", PAD_LEFT, 0)
-    group.openGlyph = UI.NewGlyph(group.chevron, "down", 8, 1.5)
-    group.shutGlyph = UI.NewGlyph(group.chevron, "next", 8, 1.5)
     group.caption = UI.NewText(group)
     group.caption:SetPoint("LEFT", group.chevron, "RIGHT", 6, 0)
     group.count = UI.NewText(group)
@@ -249,11 +245,7 @@ local function tableDraw(row, entry)
     end
     if isGroup then
         local group, item = row.group, entry.item
-        local open = item.open ~= false
-        group.openGlyph:SetShown(open)
-        group.shutGlyph:SetShown(not open)
-        group.openGlyph:SetColor(t.muted)
-        group.shutGlyph:SetColor(t.muted)
+        L.drawChevron(group.chevron, true, item.open ~= false, t)
         group.caption:SetText(item.caption or "")
         group.count:SetText(tostring(entry.count or 0))
         UI.ApplyStyle(group.caption, "body", t, "text")
@@ -292,14 +284,14 @@ local TABLE_HOOK = {
     paintRow = function(_, row, t)
         if row.entry and row.entry.isGroup and row.item == row.entry then UI.TexColor(row.bg, t.surface) end
     end,
-    paint = function(list) L.refresh(list) end,
+    paint = L.refresh,
 }
 
 -- The table's own list: a List type of its own, so its rows (with their
 -- cells) pool with other tables' and never meet a plain list's make. Not a
--- widget the addon makes, so it is not given a constructor.
-local tableListDef = {
-    fills = true, focusable = true,
+-- widget the addon makes: internal, so it is not given a constructor.
+UI.Define("TableList", {
+    internal = true, fills = true, focusable = true,
     Build = L.build,
     Init = function(w, spec)
         w.kitTable = spec.kitTable
@@ -309,10 +301,8 @@ local tableListDef = {
         L.release(w)
         w.kitTable = nil
     end,
-    methods = L.withMethods(),
-}
-tableListDef.name = "TableList"
-types.TableList = tableListDef
+    methods = L.methods,
+})
 
 -- Groups flatten into their line and, while open, their rows.
 local function matches(tbl, item, text)
@@ -361,18 +351,18 @@ local function tableSized(w)
 end
 
 local WEAK = { __mode = "k" }
+local TABLE_STACK, PAGER_STACK = { gap = 0 }, { gap = 8 }
 
 UI.Define("Table", {
     stack = true,
     Build = function(w)
         w:SetSize(1, 1)
-        UI.SetStack(w, "column", { gap = 0 })
         w:HookScript("OnSizeChanged", tableSized)
         w.head = newLine(w, HEAD)
         w.foot = newLine(w, HEAD + 2)
     end,
     Init = function(w, spec)
-        UI.SetStack(w, "column", { gap = 0 })
+        UI.SetStack(w, "column", TABLE_STACK)
         local columns = spec.columns or {}
         w.kitColumns = columns
         local widgets = false
@@ -526,11 +516,10 @@ UI.Define("Pager", {
     stack = true,
     Build = function(w)
         w:SetSize(1, 26)
-        UI.SetStack(w, "row", { gap = 8 })
         w:HookScript("OnSizeChanged", tableSized)
     end,
     Init = function(w, spec)
-        UI.SetStack(w, "row", { gap = 8 })
+        UI.SetStack(w, "row", PAGER_STACK)
         w.kitCaption, w.kitNoun, w.kitPageSize = spec.caption, spec.noun, spec.pageSize
         w.kitOnChange, w.kitOnAdd, w.kitOnDelete = spec.onChange, spec.onAdd, spec.onDelete
         w.kitAt = spec.at or 1

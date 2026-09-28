@@ -198,7 +198,10 @@ local function paintWindow(win, t)
     if art and art.frame then
         if win.nineSpec ~= art.frame then
             if win.nine then win.nine:Hide() end
-            win.nine = UI.NineSlice(win, "BORDER", art.frame, ART_CORNER, false)
+            -- One frame per art theme, kept for when it comes back.
+            win.nines = win.nines or {}
+            win.nine = win.nines[art.frame] or UI.NineSlice(win, "BORDER", art.frame, ART_CORNER, false)
+            win.nines[art.frame] = win.nine
             win.nineSpec = art.frame
         end
         framed = win.nine.loaded
@@ -236,19 +239,10 @@ end
 
 -- Scripts (shared; each finds its window through the frame) ---------------------------
 
-local function partEnter(part)
-    part.hover = true
-    local win = part.kitOwner
-    win:PaintState(win.ui.tokens)
-end
-
-local function partLeave(part)
-    part.hover = false
-    local win = part.kitOwner
-    win:PaintState(win.ui.tokens)
-end
-
 local function clearTyping() UI.ClearTypingFocus(nil) end
+
+-- A locked window does not move.
+local function canMove(win) return not win.kitLocked end
 
 local function closeClicked(button) button.kitOwner:Hide() end
 
@@ -408,14 +402,6 @@ function Window:SetLocked(locked) self.kitLocked = locked and true or false end
 
 -- The shell ------------------------------------------------------------------------------
 
--- A stack the window builds for itself joins the UI's widgets, so a change
--- of pixel scale lays it out again (UI.PlacedAgain only reaches widgets).
-local function ownStack(ui, frame, axis, opts)
-    UI.MakeStack(ui, frame, axis, opts)
-    ui.widgets[frame] = true
-    return frame
-end
-
 -- A window is never released to a pool.
 local function keepWindow() end
 
@@ -447,17 +433,13 @@ local function shell(ui, opts, inPlay)
     -- collapse and close marks. It is what the player drags.
     local band = CreateFrame("Frame", nil, win)
     band:SetHeight(BAND)
-    band.kitOwner = win
     win.band = band
     win.bandBg = band:CreateTexture(nil, "BACKGROUND")
     win.bandBg:SetAllPoints()
     band:EnableMouse(true)
-    band:SetScript("OnEnter", partEnter)
-    band:SetScript("OnLeave", partLeave)
+    UI.Hover(band, win)
     band:SetScript("OnMouseDown", clearTyping)
-    -- DragFrame's can() takes no argument, so this one test is a closure
-    -- per window (windows are few and never pooled).
-    UI.DragFrame(band, win, "move", { can = function() return not win.kitLocked end, onStop = save })
+    UI.DragFrame(band, win, "move", { can = canMove, onStop = save })
 
     win.title = UI.NewText(band)
     win.title:SetPoint("LEFT", band, "LEFT", 12, 0)
@@ -484,12 +466,10 @@ local function shell(ui, opts, inPlay)
     end
     -- The addon's own controls in the band, right of the title:
     -- `win.header:Button{ ... }`.
-    local header = CreateFrame("Frame", nil, band)
-    header:SetHeight(BAND)
-    ownStack(ui, header, "row", { gap = 4, align = "right" })
+    -- `arrange` below places and sizes it.
+    local header = UI.Part(ui, band, "row", { gap = 4, align = "right" })
     header.kitWindow = win
     header.kitFromRight = right
-    header:SetPoint("TOPRIGHT", band, "TOPRIGHT", UI.Snap(win, right), 0)
     win.header = header
 
     if inPlay and not opts.title and not opts.collapsible then band:Hide() end
@@ -499,14 +479,12 @@ local function shell(ui, opts, inPlay)
     -- What does not fit is cut at the window's edge, not drawn over the world;
     -- a screen that can outgrow the window holds its content in a ScrollArea.
     if body.SetClipsChildren then pcall(body.SetClipsChildren, body, true) end
-    ownStack(ui, body, "column", { gap = opts.gap or 0, padding = opts.padding or 0 })
+    UI.MakeStack(ui, body, "column", { gap = opts.gap or 0, padding = opts.padding or 0 })
     body.kitWindow = win
     body.kitFillChildren = true
     win.body = body
     win.kitInner = body
     win.kitFillChildren = true
-    -- The body's children, read on the window as on any stack (the same list).
-    win.kitChildren = body.kitChildren
 
     -- A click on the bare window takes the focus from a field.
     win:SetScript("OnMouseDown", clearTyping)
@@ -521,11 +499,9 @@ local function shell(ui, opts, inPlay)
         local grip = CreateFrame("Button", nil, win)
         grip:SetSize(GRIP, GRIP)
         grip:SetFrameLevel(win:GetFrameLevel() + 20)
-        grip.kitOwner = win
         grip.glyph = UI.NewGlyph(grip, "grip", 9, 1.3)
         UI.DragFrame(grip, win, opts.resizable == "width" and "width" or "size", { bounds = win.kitBounds, onStop = save })
-        grip:SetScript("OnEnter", partEnter)
-        grip:SetScript("OnLeave", partLeave)
+        UI.Hover(grip, win)
         win.grip = grip
     end
 

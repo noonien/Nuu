@@ -230,9 +230,12 @@ end
 --   tooltip     true: hooks the tooltip whatever the spec says (it can be
 --               disabled with a reason, or show an item)
 --   pool        false: never reused (secure frames)
+--   internal    true: a part the kit builds widgets from (a tab, a list's
+--               row), made with UI.Make only: no ui: or stack constructor
 function UI.Define(name, def)
     types[name] = def
     def.name = name
+    if def.internal then return end
     -- Placed by the caller: `ui:Button(parent, spec)`.
     Proto[name] = function(ui, parent, spec)
         local w = UI.Make(ui, name, parent, spec)
@@ -539,6 +542,28 @@ function Widget:Reset()
         if self.GetValue then value = self:GetValue() end
         self.kitOnChange(value, self)
     end
+end
+
+-- Hover on a part of a widget (a tab, a row, a band): the part's `hover`
+-- goes on and off and its owner (`part.kitOwner`, else the part) repaints
+-- its colours. One pair of scripts for every such part.
+local function hoverEnter(part)
+    part.hover = true
+    local owner = part.kitOwner or part
+    owner:PaintState(owner.ui.tokens)
+end
+
+local function hoverLeave(part)
+    part.hover = false
+    local owner = part.kitOwner or part
+    owner:PaintState(owner.ui.tokens)
+end
+
+function UI.Hover(part, owner)
+    if owner then part.kitOwner = owner end
+    part:SetScript("OnEnter", hoverEnter)
+    part:SetScript("OnLeave", hoverLeave)
+    return part
 end
 
 -- Right-click on any widget: `fn(widget)`.

@@ -24,27 +24,9 @@ local LABEL_GAP, MESSAGE_GAP = 4, 3
 local WHITE = { 1, 1, 1, 1 }
 local DIM = { 0.55, 0.55, 0.55, 1 }
 
--- Core's Widget:Reset passes `GetValue() or default` to onChange, which is
--- the default (nil) for a toggle that is off. This one passes the value.
-local function resetValue(self)
-    local bind = self.kitBind
-    if bind then bind[1][bind[2]] = nil end
-    self:SetValue(self.kitDefault)
-    if self.kitOnChange then self.kitOnChange(self:GetValue(), self) end
-end
-
--- In a row, fields line up by their tops, so a help line under one does not
--- lift its box above the others. The spec is the caller's, so the layout
--- options go in a copy the widget keeps.
-local function topAligned(w, spec)
-    if spec.valign ~= nil then return end
-    local copy = w.kitTopLayout or {}
-    for key in pairs(copy) do copy[key] = nil end
-    for key, value in pairs(spec) do copy[key] = value end
-    copy.valign = "top"
-    w.kitTopLayout = copy
-    w.kitLayout = copy
-end
+-- In a row, fields line up by their tops (every field type says
+-- `valign = "top"`), so a help line under one does not lift its box above
+-- the others.
 
 -- The frame around a box --------------------------------------------------------------
 
@@ -236,7 +218,6 @@ end
 -- What a field's Init shares: every piece of state from the spec, so a
 -- field from the pool keeps nothing of its last use.
 local function initField(w, spec, boxHeight, hasBand)
-    topAligned(w, spec)
     w.kitHelp = spec.help
     w.kitHasLabel = (spec.label ~= nil) or hasBand or nil
     w.label:SetText(spec.label or "")
@@ -332,8 +313,6 @@ end
 
 function Field:kitFieldCommit(text) UI.Commit(self, text) end
 
-function Field:Reset() resetValue(self) end
-
 function Field:Measure(width)
     local height = self.kitBoxHeight + self.kitBand
     if self.message:IsShown() then
@@ -401,7 +380,7 @@ local function initInput(w, spec)
 end
 
 UI.Define("Input", {
-    wraps = true,
+    wraps = true, valign = "top",
     Build = function(w) buildInput(w) end,
     Init = initInput,
     Release = releaseField,
@@ -418,7 +397,7 @@ UI.Define("Input", {
 local SEARCH_INSET = 22
 
 UI.Define("Search", {
-    wraps = true,
+    wraps = true, valign = "top",
     Build = function(w)
         buildInput(w, SEARCH_INSET)
         local lens = CreateFrame("Frame", nil, w.box)
@@ -503,7 +482,7 @@ local function letters(text)
 end
 
 UI.Define("TextArea", {
-    wraps = true,
+    wraps = true, valign = "top",
     Build = function(w)
         buildField(w)
         local boxFrame = CreateFrame("Frame", nil, w.line)
@@ -577,7 +556,7 @@ local function moneyShowing(w)
 end
 
 UI.Define("MoneyInput", {
-    wraps = true,
+    wraps = true, valign = "top",
     Build = function(w)
         buildField(w)
         local box = newBox(w, w.line, false)
@@ -674,7 +653,7 @@ local function numberWheel(box, delta)
 end
 
 UI.Define("NumberInput", {
-    wraps = true, stretch = false,
+    wraps = true, stretch = false, valign = "top",
     Build = function(w)
         buildField(w)
         local ui = w.ui
@@ -797,7 +776,6 @@ UI.Define("Toggle", UI.ClickableType({
         GetValue = function(self) return self.kitChecked end,
         SetChecked = function(self, on) self:SetValue(on) end,
         GetChecked = function(self) return self.kitChecked end,
-        Reset = resetValue,
         SetText = function(self, text)
             text = text or ""
             if text == self.label:GetText() then return end
@@ -980,7 +958,6 @@ UI.Define("Slider", {
             self.kitSilent = silent
         end,
         GetValue = function(self) return self.kitValue end,
-        Reset = resetValue,
         Measure = function(self) return 200, self.kitHeight end,
         Sized = function(self) sliderShow(self, self.kitValue or self.kitMin) end,
         Paint = function(self, t)

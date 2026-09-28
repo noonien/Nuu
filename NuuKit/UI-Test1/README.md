@@ -51,7 +51,12 @@ UI.Define("Tag", {
   `UI.Make(ui, "Link", parent, spec)` in Build (or lazily in Init) and belong to the widget for good; a part placed by
   hand is sized with `UI.Fit(part)`. A widget that holds a stack for the addon's widgets sets `holds = true` and
   `w.kitInner = stack` (see Card, Section).
-- **Internal stacks**: `UI.MakeStack(ui, frame, "row" | "column", opts)`; `stack:Append(part)`.
+- **Internal stacks**: `UI.Part(ui, parent, "row" | "column", opts, layout)` makes one (a section's heading and
+  body, a setting's rows); the caller appends it. `UI.MakeStack` makes an existing frame a stack.
+- **Hover on a part** (a tab, a band, a thumb) that only repaints colours: `UI.Hover(part, owner)`, which sets `hover`
+  and calls the owner's `PaintState`. Write your own handlers only when hover does more (a tooltip, a submenu).
+- **A part the kit builds widgets from** (a list's row): `UI.Define(name, { internal = true, ... })`, made with
+  `UI.Make`; it gets no `ui:` or stack constructor.
 - **Pixels**: `UI.Snap`, `UI.Pixels`, `UI.Hairline`, `UI.Stroke`, as before.
 - **Focus**: `focusable = true` (or `"field"`) in the def; an inner EditBox registers with
   `UI.RegisterFocusable(ui, box, true)` in Init. `kitKeyArrow` / `kitKeyPress` as before. `UI.FocusOrder`,

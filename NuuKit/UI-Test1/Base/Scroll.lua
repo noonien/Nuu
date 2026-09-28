@@ -25,10 +25,11 @@ local function cursorY(bar)
     return y / (bar:GetEffectiveScale() or 1)
 end
 
-local function paintBar(bar)
-    local t = bar.ui.tokens
-    UI.TexColor(bar.track, t.border, 0.6)
-    UI.TexColor(bar.fill, t.accent, (bar.thumb.hover or bar.thumb.kitDrag) and 1 or 0.65)
+-- Colours only; the thumb lights while the cursor is on it or drags it.
+function Bar:PaintState()
+    local t = self.ui.tokens
+    UI.TexColor(self.track, t.border, 0.6)
+    UI.TexColor(self.fill, t.accent, (self.thumb.hover or self.thumb.kitDrag) and 1 or 0.65)
 end
 
 function Bar:Sync()
@@ -70,17 +71,14 @@ local function stopDrag(frame)
     local thumb = bar.thumb
     thumb.kitDrag = nil
     thumb:SetScript("OnUpdate", nil)
-    paintBar(bar)
+    bar:PaintState()
 end
-
-local function thumbEnter(thumb) thumb.hover = true; paintBar(thumb:GetParent()) end
-local function thumbLeave(thumb) thumb.hover = false; paintBar(thumb:GetParent()) end
 
 local function thumbDown(thumb, mouse)
     if mouse ~= "LeftButton" then return end
     local bar = thumb:GetParent()
     thumb.kitDrag = { y = cursorY(bar), from = bar.kitSource:ScrollAt() }
-    paintBar(bar)
+    bar:PaintState()
     thumb:SetScript("OnUpdate", thumbDrag)
 end
 
@@ -116,13 +114,12 @@ function UI.NewScrollBar(ui, parent, source, step)
     thumb:EnableMouse(true)
     bar.fill = thumb:CreateTexture(nil, "ARTWORK")
     bar.fill:SetAllPoints()
-    thumb:SetScript("OnEnter", thumbEnter)
-    thumb:SetScript("OnLeave", thumbLeave)
+    UI.Hover(thumb, bar)
     thumb:SetScript("OnMouseDown", thumbDown)
     thumb:SetScript("OnMouseUp", stopDrag)
     bar:SetScript("OnHide", stopDrag)
     bar:SetScript("OnMouseDown", trackDown)
-    ui:Paint(bar, function() paintBar(bar) end)
+    ui:Paint(bar, function() bar:PaintState() end)
     bar:Hide()
     return bar
 end

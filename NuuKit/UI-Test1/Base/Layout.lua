@@ -43,18 +43,6 @@ local function distribute(count, sizes, grows, mins, available, gap, offsets, ou
     end
 end
 
--- UI/'s form, for callers that want it.
-function UI.Distribute(items, available, gap)
-    local sizes, grows, mins, offsets, out = {}, {}, {}, {}, {}
-    for i, item in ipairs(items) do
-        sizes[i], grows[i], mins[i] = item.size or 0, item.grow, item.min
-    end
-    distribute(#items, sizes, grows, mins, available, gap or 0, offsets, out)
-    local result = {}
-    for i = 1, #items do result[i] = { offset = offsets[i], size = out[i] } end
-    return result
-end
-
 -- Where a run of `total` starts in `available` for an alignment.
 function UI.AlignStart(align, available, total)
     if align == "center" then return math.max(0, (available - total) / 2) end
@@ -113,7 +101,6 @@ function UI.Invalidate(stack)
     layouts[stack.kitInner or stack] = true
     schedule()
 end
-UI.LayoutOnly = UI.Invalidate
 
 local function depthOf(w) return w.kitDepth or 0 end
 
@@ -563,6 +550,17 @@ function UI.MakeStack(ui, frame, axis, opts)
         frame.kitSizeHooked = true
         frame:HookScript("OnSizeChanged", stackSized)
     end
+    return frame
+end
+
+-- A stack a widget builds itself from (a section's heading and body, a
+-- setting's name column): a plain frame made a stack, with its layout
+-- options. The caller appends it where it goes.
+function UI.Part(ui, parent, axis, opts, layout)
+    local frame = CreateFrame("Frame", nil, parent)
+    frame:SetSize(1, 1)
+    UI.MakeStack(ui, frame, axis, opts)
+    frame.kitLayout = layout or {}
     return frame
 end
 

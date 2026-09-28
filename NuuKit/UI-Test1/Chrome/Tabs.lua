@@ -25,6 +25,7 @@ local types = UI.types
 -- release, what the addon made in the pages goes back to its pools.
 local TAB_HEIGHT = 30
 local TAB_LAYOUT = {}
+local NO_GAP = { gap = 0 }
 
 local function paintTabState(tab, t)
     local color
@@ -75,19 +76,9 @@ local function choose(w, key, byPlayer)
     if byPlayer then UI.Commit(w, key) end
 end
 
-local function tabEnter(tab)
-    tab.hover = true
-    paintTabState(tab, tab.ui.tokens)
-end
-
-local function tabLeave(tab)
-    tab.hover = false
-    paintTabState(tab, tab.ui.tokens)
-end
-
 local function tabClicked(tab)
     if not tab:IsEnabled() then return end
-    local w = tab.kitOwner
+    local w = tab.kitTabsWidget
     UI.ClearTypingFocus(nil)
     if tab.kitKey ~= w.kitChosen then UI.ClickSound() end
     choose(w, tab.kitKey, true)
@@ -96,7 +87,7 @@ end
 -- Left / up and right / down move to the next tab that can be chosen, and
 -- the focus ring with it. (UI/ also stopped on disabled tabs.)
 local function tabArrow(tab, key)
-    local w = tab.kitOwner
+    local w = tab.kitTabsWidget
     local order = w.kitOrder
     local count = #order
     local step = (key == "LEFT" or key == "UP") and -1 or 1
@@ -122,7 +113,7 @@ local function tabFrame(w, index)
     tab = CreateFrame("Button", nil, w.strip)
     UI.Adopt(tab, "Tab", { UI.Widget }, { Measure = tabMeasure, Sized = tabSized, Paint = paintTab,
         PaintState = paintTabState, kitKeyArrow = tabArrow })
-    tab.ui, tab.kitOwner, tab.kitLayout, tab.kitStretch = ui, w, TAB_LAYOUT, false
+    tab.ui, tab.kitTabsWidget, tab.kitLayout, tab.kitStretch = ui, w, TAB_LAYOUT, false
     tab:SetHeight(TAB_HEIGHT)
     tab.label = UI.NewText(tab)
     tab.label:SetPoint("CENTER", tab, "CENTER", 0, 1)
@@ -133,8 +124,8 @@ local function tabFrame(w, index)
     tab.badge = UI.Make(ui, "Tag", tab, { "", tone = "estimate" })
     tab.badge.kitFree = true
     tab.badge:SetPoint("LEFT", tab.label, "RIGHT", 5, 0)
-    tab:SetScript("OnEnter", tabEnter)
-    tab:SetScript("OnLeave", tabLeave)
+    -- Hover repaints the tab alone (its own PaintState).
+    UI.Hover(tab)
     tab:SetScript("OnClick", tabClicked)
     -- Painted on a look change and laid out again on a change of scale.
     ui.widgets[tab] = true
@@ -146,12 +137,8 @@ end
 local function pageFrame(w, index)
     local page = w.kitPageFrames[index]
     if page then return page end
-    page = CreateFrame("Frame", nil, w.holder)
-    page:SetSize(1, 1)
-    UI.MakeStack(w.ui, page, "column", {})
-    page.kitLayout = {}
+    page = UI.Part(w.ui, w.holder, "column", {})
     page.kitFillChildren = true
-    w.ui.widgets[page] = true
     w.kitPageFrames[index] = page
     return page
 end
@@ -169,36 +156,26 @@ UI.Define("Tabs", {
     Build = function(w)
         local ui = w.ui
         w:SetSize(1, 1)
-        UI.MakeStack(ui, w, "column", { gap = 0 })
+        UI.MakeStack(ui, w, "column", NO_GAP)
 
-        local strip = CreateFrame("Frame", nil, w)
-        strip:SetSize(1, TAB_HEIGHT)
-        strip.kitLayout = { height = TAB_HEIGHT }
-        UI.MakeStack(ui, strip, "row", { gap = 2, padding = 0 })
+        local strip = UI.Part(ui, w, "row", { gap = 2, padding = 0 }, { height = TAB_HEIGHT })
         strip.rule = strip:CreateTexture(nil, "BACKGROUND")
         strip.rule:SetPoint("BOTTOMLEFT")
         strip.rule:SetPoint("BOTTOMRIGHT")
         UI.Hairline(strip.rule, "height")
         w.strip = strip
 
-        local holder = CreateFrame("Frame", nil, w)
-        holder:SetSize(1, 1)
-        holder.kitLayout = {}
-        UI.MakeStack(ui, holder, "column", { gap = 0 })
+        local holder = UI.Part(ui, w, "column", NO_GAP)
         holder.kitGrow = 1
         holder.kitFillChildren = true
         w.holder = holder
 
-        -- Internal stacks are not widgets; as widgets, a change of pixel
-        -- scale lays them out again (UI.PlacedAgain only reaches widgets).
-        ui.widgets[strip] = true
-        ui.widgets[holder] = true
         w.kitTabFrames, w.kitPageFrames = {}, {}
         w.kitTabs, w.kitPages, w.kitOrder = {}, {}, {}
     end,
     Init = function(w, spec)
         local ui = w.ui
-        UI.SetStack(w, "column", { gap = 0 })
+        UI.SetStack(w, "column", NO_GAP)
         UI.SetStack(w.holder, "column", { gap = 0, padding = spec.padding or 0 })
         -- A released stack gave its parts up: they come back.
         if #w.kitChildren == 0 then

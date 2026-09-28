@@ -94,3 +94,19 @@ local before = placed.kitPW
 placed:SetText("Placed and longer")
 layout()
 assertTrue(placed.kitPW > before, "a placed button fits its new caption")
+
+-- Art themes: each plate makes its 9-slice for a theme once, and switching
+-- back and forth makes nothing more.
+do
+    local objects = ctx.objects
+    ui:SetLook({ theme = "horde" })
+    ui:SetLook({ theme = "alliance" })
+    local count = #objects
+    for _ = 1, 3 do
+        ui:SetLook({ theme = "horde" })
+        ui:SetLook({ theme = "alliance" })
+        ui:SetLook({ theme = "midnight" })
+    end
+    assertTrue(#objects == count, "switching art themes again makes no textures: " .. (#objects - count) .. " new")
+    ui:SetLook({})
+end

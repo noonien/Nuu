@@ -144,6 +144,17 @@ local function clickableType(def)
 end
 UI.ClickableType = clickableType
 
+-- A clickable type made from another: the base's Build and methods, with
+-- `def`'s own on top (ConfirmButton on Button, ResetButton on Link).
+local function extend(base, def)
+    def.Build = def.Build or base.Build
+    local methods = {}
+    for key, fn in pairs(base.methods) do methods[key] = fn end
+    for key, fn in pairs(def.methods or {}) do methods[key] = fn end
+    def.methods = methods
+    return clickableType(def)
+end
+
 -- Buttons --------------------------------------------------------------------------------
 
 -- Whether a button of this tone and style wears the theme's plate art.
@@ -190,16 +201,24 @@ local function clip(w)
     if room > 0 and UI.StringWidth(label) > room then label:SetWidth(room) end
 end
 
+-- A button's or a link's caption: answers whether it changed.
+local function setCaption(self, text)
+    text = text == nil and "" or tostring(text)
+    if text == self.kitCaption then return false end
+    self.kitCaption = text
+    self.label:SetText(text)
+    return true
+end
+
+local function getCaption(self) return self.kitCaption end
+
 local buttonMethods = {
     SetText = function(self, text)
-        text = text == nil and "" or tostring(text)
-        if text == self.kitCaption then return end
-        self.kitCaption = text
-        self.label:SetText(text)
+        if not setCaption(self, text) then return end
         clip(self)
         self:Changed()
     end,
-    GetText = function(self) return self.kitCaption end,
+    GetText = getCaption,
     SetActive = function(self, active)
         self.kitActive = active and true or false
         self:PaintState(self.ui.tokens)
@@ -306,23 +325,8 @@ local function confirmTick(w)
     if w.kitArmedAt and UI.Now() - w.kitArmedAt >= CONFIRM_SECONDS then disarm(w) end
 end
 
-local confirmMethods = {}
-for key, fn in pairs(buttonMethods) do confirmMethods[key] = fn end
-confirmMethods.Activate = function(self)
-    if self.kitArmedAt and UI.Now() - self.kitArmedAt < CONFIRM_SECONDS then
-        disarm(self)
-        if self.kitConfirm then self.kitConfirm(self) end
-        return
-    end
-    self.kitArmedAt = UI.Now()
-    self:SetTone("danger", "soft")
-    self:SetText(self.kitConfirmText)
-    self:SetScript("OnUpdate", confirmTick)
-end
-
-UI.Define("ConfirmButton", clickableType({
+UI.Define("ConfirmButton", extend(types.Button, {
     stretch = false,
-    Build = buildButton,
     Init = function(w, spec)
         initButton(w, spec)
         w.kitClick = nil
@@ -334,7 +338,19 @@ UI.Define("ConfirmButton", clickableType({
         w.kitOnHide = confirmHidden
     end,
     Release = function(w) if w.kitArmedAt then disarm(w) end end,
-    methods = confirmMethods,
+    methods = {
+        Activate = function(self)
+            if self.kitArmedAt and UI.Now() - self.kitArmedAt < CONFIRM_SECONDS then
+                disarm(self)
+                if self.kitConfirm then self.kitConfirm(self) end
+                return
+            end
+            self.kitArmedAt = UI.Now()
+            self:SetTone("danger", "soft")
+            self:SetText(self.kitConfirmText)
+            self:SetScript("OnUpdate", confirmTick)
+        end,
+    },
 }))
 
 -- Links ------------------------------------------------------------------------------
@@ -357,14 +373,8 @@ UI.Define("Link", clickableType({
         w:SetText(spec[1])
     end,
     methods = {
-        SetText = function(self, text)
-            text = text == nil and "" or tostring(text)
-            if text == self.kitCaption then return end
-            self.kitCaption = text
-            self.label:SetText(text)
-            self:Changed()
-        end,
-        GetText = function(self) return self.kitCaption end,
+        SetText = function(self, text) if setCaption(self, text) then self:Changed() end end,
+        GetText = getCaption,
         Measure = function(self)
             return math.ceil(UI.StringWidth(self.label)) + 2, math.ceil(self.label:GetStringHeight() or 12) + 4
         end,
@@ -391,25 +401,20 @@ UI.Define("Link", clickableType({
 -- The reset beside a setting. It shows only while the player's choice is
 -- stored; a click forgets the choice. Spec: stored, default (words for the
 -- tooltip), onReset. The owner calls SetStored(stored, defaultText).
-local linkDef = types.Link
-UI.Define("ResetButton", clickableType({
+UI.Define("ResetButton", extend(types.Link, {
     stretch = false,
-    Build = linkDef.Build,
     Init = function(w, spec)
-        linkDef.Init(w, { "reset", style = "fine", color = "text", onClick = spec.onReset or spec.onClick,
+        types.Link.Init(w, { "reset", style = "fine", color = "text", onClick = spec.onReset or spec.onClick,
             disabled = spec.disabled })
         w:SetStored(spec.stored, spec.default)
     end,
-    methods = (function()
-        local methods = {}
-        for key, fn in pairs(linkDef.methods) do methods[key] = fn end
-        methods.SetStored = function(self, stored, defaultText)
+    methods = {
+        SetStored = function(self, stored, defaultText)
             self.tooltip = "Back to the default" .. (defaultText and (" (" .. defaultText .. ")") or "")
                 .. ". Your choice is forgotten, so the default applies from now on."
             self:SetShown(stored and true or false)
-        end
-        return methods
-    end)(),
+        end,
+    },
 }))
 
 -- Glyph buttons -------------------------------------------------------------------------
