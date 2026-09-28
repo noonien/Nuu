@@ -25,6 +25,23 @@ function Object:CreateFontString(name, layer, template)
     if template then text.fontSize = 12 end
     return text
 end
+-- SetToDefaults as build 70009 showed it (/nuukit report, 2026-09-28): it
+-- puts back alpha, scale, strata, level, shown, size, anchors, enabled,
+-- text, attributes, scripts and hooks, and turns the mouse off; it keeps
+-- the parent, the wheel, events, regions, children and Lua fields. A font
+-- string loses its font too.
+function Object:SetToDefaults()
+    self.alpha, self.strata = 1, nil
+    self.level = (self.parent and self.parent.level or 0) + 1
+    self.shown, self.enabled = true, true
+    self.width, self.height, self.points = 0, 0, {}
+    self.scripts, self.hooks = {}, {}
+    self.mouse, self.attributes = false, nil
+    self.text = nil
+    if self.kind == "FontString" then self.fontSize = nil end
+end
+function Object:EnableMouse(on) self.mouse = on and true or false end
+function Object:IsMouseEnabled() return self.mouse ~= false end
 -- As the client: no text on a font string before it has a font.
 local setText = Object.SetText
 function Object:SetText(text)
@@ -43,7 +60,7 @@ for line in io.lines("NuuKit.toc") do
     end
 end
 
-local PARTS = { "Base", "Buttons", "Chrome", "Fields", "Menus", "Lists", "Display", "Pooling", "Gallery", "Examples", "Report" }
+local PARTS = { "Base", "Buttons", "Chrome", "Fields", "Menus", "Lists", "Display", "Pooling", "Reset", "Gallery", "Examples", "Report" }
 
 -- Named parts run alone; none, all of them. `--copy` runs with methods
 -- copied onto frames: the path a client that refuses frames a metatable

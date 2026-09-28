@@ -71,7 +71,7 @@ end
 local function hidden(handle) stop(handle.kitDragDriver) end
 
 function UI.DragFrame(handle, frame, mode, opts)
-    local driver = CreateFrame("Frame", nil, handle)
+    local driver = UI.NewFrame("Frame", nil, handle)
     driver:Hide()
     driver.kitFrame, driver.kitMode, driver.kitOpts = frame, mode, opts or {}
     driver:SetScript("OnUpdate", follow)

@@ -109,7 +109,7 @@ local function tabFrame(w, index)
     local tab = w.kitTabFrames[index]
     if tab then return tab end
     local ui = w.ui
-    tab = CreateFrame("Button", nil, w.strip)
+    tab = UI.NewFrame("Button", nil, w.strip)
     UI.Adopt(tab, "Tab", { UI.Widget }, { Measure = tabMeasure, Sized = tabSized, Paint = paintTab,
         PaintState = paintTabState, kitKeyArrow = tabArrow })
     tab.ui, tab.kitTabsWidget, tab.kitLayout, tab.kitStretch = ui, w, TAB_LAYOUT, false

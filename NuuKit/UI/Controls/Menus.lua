@@ -144,17 +144,17 @@ local Menu = {}
 function Menu:Row(index)
     local row = self.rows[index]
     if row then return row end
-    row = CreateFrame("Button", nil, self)
+    row = UI.NewFrame("Button", nil, self)
     row.kitMenu = self
     row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     row.highlight = row:CreateTexture(nil, "BACKGROUND")
     row.highlight:SetAllPoints()
     row.line = row:CreateTexture(nil, "ARTWORK")
     UI.Hairline(row.line, "height")
-    row.markFrame = CreateFrame("Frame", nil, row)
+    row.markFrame = UI.NewFrame("Frame", nil, row)
     row.markFrame:SetSize(MARK, MARK)
     row.check = UI.NewGlyph(row.markFrame, "check", 9, 2)
-    row.boxFrame = CreateFrame("Frame", nil, row.markFrame)
+    row.boxFrame = UI.NewFrame("Frame", nil, row.markFrame)
     row.boxFrame:SetSize(12, 12)
     row.boxFrame:SetPoint("CENTER")
     row.box = UI.NewPlate(row.boxFrame)
@@ -165,7 +165,7 @@ function Menu:Row(index)
     row.key = UI.NewText(row)
     row.key:SetJustifyH("RIGHT")
     row.key:SetPoint("RIGHT", row, "RIGHT", -INSET, 0)
-    local arrowFrame = CreateFrame("Frame", nil, row)
+    local arrowFrame = UI.NewFrame("Frame", nil, row)
     arrowFrame:SetSize(10, 10)
     arrowFrame:SetPoint("RIGHT", row, "RIGHT", -INSET + 2, 0)
     row.arrow = UI.NewGlyph(arrowFrame, "next", 7, 1.5)
@@ -407,7 +407,7 @@ end
 -- The menu of `ui`; with `parentMenu`, its submenu.
 function UI.BuildMenu(ui, parentMenu)
     local isSub = parentMenu ~= nil
-    local menu = CreateFrame("Frame", nil, UIParent)
+    local menu = UI.NewFrame("Frame", nil, UIParent)
     for key, fn in pairs(Menu) do menu[key] = fn end
     menu.ui = ui
     menu.kitIsSub = isSub or nil
@@ -428,7 +428,7 @@ function UI.BuildMenu(ui, parentMenu)
         -- A click anywhere else puts the menu away and goes no further, so
         -- the click on the drop-down that opened it closes it rather than
         -- opening it again.
-        local catcher = CreateFrame("Button", nil, UIParent)
+        local catcher = UI.NewFrame("Button", nil, UIParent)
         catcher.kitMenu = menu
         catcher:SetAllPoints(UIParent)
         catcher:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -439,14 +439,14 @@ function UI.BuildMenu(ui, parentMenu)
         menu:SetFrameLevel(catcher:GetFrameLevel() + 10)
 
         -- The filter box of a searchable menu.
-        local search = CreateFrame("EditBox", nil, menu)
+        local search = UI.NewFrame("EditBox", nil, menu)
         search.kitMenu = menu
         search.kitField = true
         search:SetAutoFocus(false)
         search:SetHeight(24)
         search:SetTextInsets(22, 6, 2, 2)
         search.plate = UI.NewPlate(search)
-        local lens = CreateFrame("Frame", nil, search)
+        local lens = UI.NewFrame("Frame", nil, search)
         lens:SetSize(12, 12)
         lens:SetPoint("LEFT", search, "LEFT", 6, 0)
         search.lens = UI.NewGlyph(lens, "search", 11, 1.3)
@@ -689,7 +689,7 @@ local function buildSelect(w)
     button.label:SetPoint("RIGHT", button, "RIGHT", -24, 0)
     button.label:SetJustifyH("LEFT")
     button.kitTextReserve = 34
-    local chevronFrame = CreateFrame("Frame", nil, button)
+    local chevronFrame = UI.NewFrame("Frame", nil, button)
     chevronFrame:SetSize(10, 10)
     chevronFrame:SetPoint("RIGHT", button, "RIGHT", -8, 0)
     w.chevron = UI.NewGlyph(chevronFrame, "down", 8, 1.5)
@@ -697,7 +697,7 @@ local function buildSelect(w)
     button:SetOnClick(selectClick)
     button:HookScript("OnEnter", buttonHover)
     button:HookScript("OnLeave", buttonHover)
-    local ring = CreateFrame("Frame", nil, button)
+    local ring = UI.NewFrame("Frame", nil, button)
     ring:SetAllPoints(button)
     ring.plate = UI.NewPlate(ring, "OVERLAY")
     w.ring = ring

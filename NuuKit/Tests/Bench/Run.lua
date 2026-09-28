@@ -19,6 +19,9 @@ local archs = {
     { key = "D", name = "D declarative", file = "D.lua", base = "B.lua" },
     { key = "E", name = "E widget objects", file = "E.lua" },
     { key = "UI", name = "UI the kit as built", file = "Kit.lua", screenFile = "B.lua", kit = true },
+    -- The kit resetting every released widget, as if each were marked.
+    { key = "UI-always", name = "UI, every widget reset", file = "Kit.lua", screenFile = "B.lua", kit = true,
+      opts = { reset = "always" } },
 }
 local only = arg and arg[1]
 for index = #archs, 1, -1 do

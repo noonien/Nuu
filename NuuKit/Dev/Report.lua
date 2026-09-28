@@ -161,6 +161,172 @@ step("features", function()
     frame:Hide()
 end)
 
+-- SetToDefaults: whether the client has it, and what it puts back on a frame.
+-- A scratch button, a texture, a text and a child are changed through the
+-- plain API, then reset; each line says whether the change was undone.
+-- Scripts and hooks are told by firing them, since GetScript cannot show a
+-- hook. The kit may use it to reset pooled widgets if it undoes enough.
+step("SetToDefaults", function()
+    add("")
+    local probe = CreateFrame("Button", nil, UIParent)
+    if not probe.SetToDefaults then
+        add("SetToDefaults: not in this client")
+        probe:Hide()
+        return
+    end
+    add("SetToDefaults on a frame: what it puts back (reset) or leaves (KEPT)")
+    local ran = {}
+    local function run(name) ran[name] = true end
+    local other = CreateFrame("Frame", nil, UIParent)
+
+    -- What a new frame reads, to compare with.
+    local function read(f)
+        local r = {}
+        local function try(key, fn)
+            local ok, a, b = pcall(fn)
+            r[key] = ok and (b ~= nil and (tostring(a) .. " " .. tostring(b)) or tostring(a)) or "error"
+        end
+        try("alpha", function() return f:GetAlpha() end)
+        try("scale", function() return f:GetScale() end)
+        try("strata", function() return f:GetFrameStrata() end)
+        try("level", function() return f:GetFrameLevel() end)
+        try("shown", function() return f:IsShown() end)
+        try("size", function() return math.floor(f:GetWidth() + 0.5), math.floor(f:GetHeight() + 0.5) end)
+        try("anchors", function() return f:GetNumPoints() end)
+        try("parent", function() return f:GetParent() == UIParent and "UIParent" or "other" end)
+        try("mouse", function() return f:IsMouseEnabled() end)
+        try("wheel", function() return f:IsMouseWheelEnabled() end)
+        try("movable", function() return f:IsMovable() end)
+        try("clamped", function() return f:IsClampedToScreen() end)
+        try("id", function() return f:GetID() end)
+        try("enabled", function() return f:IsEnabled() end)
+        try("button text", function() return f:GetText() end)
+        try("attribute", function() return f:GetAttribute("nuuTest") end)
+        try("event", function() return f:IsEventRegistered("BAG_UPDATE") end)
+        try("script OnEnter", function() return f:GetScript("OnEnter") ~= nil end)
+        try("regions", function() return f:GetNumRegions() end)
+        try("children", function() return f:GetNumChildren() end)
+        try("Lua field", function() return rawget(f, "nuuField") end)
+        try("hit rect insets", function() return table.concat({ f:GetHitRectInsets() }, ",") end)
+        try("clips children", function() return f:DoesClipChildren() end)
+        try("ignores parent alpha", function() return f:IsIgnoringParentAlpha() end)
+        try("ignores parent scale", function() return f:IsIgnoringParentScale() end)
+        try("resizable", function() return f:IsResizable() end)
+        try("resize bounds", function() return table.concat({ f:GetResizeBounds() }, ",") end)
+        try("keyboard", function() return f:IsKeyboardEnabled() end)
+        try("key propagation", function() return f:GetPropagateKeyboardInput() end)
+        try("toplevel", function() return f:IsToplevel() end)
+        try("animation groups", function() return select("#", f:GetAnimationGroups()) end)
+        return r
+    end
+    local fresh = read(CreateFrame("Button", nil, UIParent))
+
+    -- Change everything, the way an addon might.
+    probe:SetParent(other)
+    probe:SetAlpha(0.5)
+    probe:SetScale(1.5)
+    probe:SetFrameStrata("DIALOG")
+    probe:SetFrameLevel(50)
+    probe:Hide()
+    probe:SetSize(123, 45)
+    probe:SetPoint("CENTER")
+    probe:EnableMouse(true)
+    probe:EnableMouseWheel(true)
+    probe:SetMovable(true)
+    probe:SetClampedToScreen(true)
+    probe:SetID(7)
+    probe:Disable()
+    pcall(probe.SetText, probe, "changed")
+    probe:SetAttribute("nuuTest", 1)
+    probe:RegisterEvent("BAG_UPDATE")
+    probe:SetScript("OnEnter", function() run("script") end)
+    probe:HookScript("OnLeave", function() run("hook") end)
+    probe.nuuField = 1
+    pcall(probe.SetHitRectInsets, probe, 1, 2, 3, 4)
+    pcall(probe.SetClipsChildren, probe, true)
+    pcall(probe.SetIgnoreParentAlpha, probe, true)
+    pcall(probe.SetIgnoreParentScale, probe, true)
+    pcall(probe.SetResizable, probe, true)
+    pcall(probe.SetResizeBounds, probe, 10, 10, 500, 500)
+    pcall(probe.EnableKeyboard, probe, true)
+    pcall(probe.SetPropagateKeyboardInput, probe, true)
+    pcall(probe.SetToplevel, probe, true)
+    pcall(probe.CreateAnimationGroup, probe)
+    local texture = probe:CreateTexture()
+    texture:SetColorTexture(1, 0, 0, 1)
+    texture:SetAlpha(0.3)
+    local text = probe:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    text:SetText("region text")
+    local child = CreateFrame("Frame", nil, probe)
+    local before = read(probe)
+
+    local ok, err = pcall(probe.SetToDefaults, probe)
+    if not ok then
+        addf("  the call failed: %s", tostring(err))
+        return
+    end
+    local after = read(probe)
+    local keys = { "alpha", "scale", "strata", "level", "shown", "size", "anchors", "parent", "mouse", "wheel",
+        "movable", "clamped", "id", "enabled", "button text", "attribute", "event", "script OnEnter", "regions",
+        "children", "Lua field", "hit rect insets", "clips children", "ignores parent alpha",
+        "ignores parent scale", "resizable", "resize bounds", "keyboard", "key propagation", "toplevel",
+        "animation groups" }
+    for _, key in ipairs(keys) do
+        local verdict = after[key] == before[key] and "KEPT" or (after[key] == fresh[key] and "reset" or "changed")
+        addf("  %-16s %-6s  new frame %s, changed to %s, after %s", key, verdict, fresh[key], before[key], after[key])
+    end
+    -- Scripts and hooks, fired.
+    if type(ExecuteFrameScript) == "function" then
+        pcall(ExecuteFrameScript, probe, "OnEnter")
+        pcall(ExecuteFrameScript, probe, "OnLeave")
+        addf("  %-16s %-6s", "script runs", ran.script and "KEPT" or "reset")
+        addf("  %-16s %-6s", "hook runs", ran.hook and "KEPT" or "reset")
+    end
+    -- What became of the regions and the child made on it.
+    local function state(object)
+        local okShown, shown = pcall(object.IsShown, object)
+        local okParent, parent = pcall(object.GetParent, object)
+        return string.format("shown %s, parent %s", okShown and tostring(shown) or "error",
+            okParent and (parent == probe and "the frame" or tostring(parent)) or "error")
+    end
+    addf("  %-16s %s, alpha %s", "texture", state(texture), tostring(select(2, pcall(texture.GetAlpha, texture))))
+    addf("  %-16s %s, text %s", "font string", state(text), tostring(select(2, pcall(text.GetText, text))))
+    addf("  %-16s %s", "child frame", state(child))
+    -- On a region by itself.
+    local region = UIParent:CreateTexture()
+    region:SetColorTexture(0, 1, 0, 1)
+    region:SetAlpha(0.3)
+    region:SetSize(10, 10)
+    local okRegion = pcall(region.SetToDefaults, region)
+    addf("  a texture's own SetToDefaults: %s, alpha %s, size %s", okRegion and "ran" or "failed",
+        tostring(select(2, pcall(region.GetAlpha, region))), tostring(select(2, pcall(region.GetWidth, region))))
+
+    -- What it costs: change five things and reset, 1000 times.
+    local t0 = now()
+    for _ = 1, 1000 do
+        probe:SetAlpha(0.5)
+        probe:SetScale(1.5)
+        probe:SetFrameLevel(50)
+        probe:EnableMouse(true)
+        probe:SetID(7)
+        probe:SetToDefaults()
+    end
+    local cycle = (now() - t0)
+    t0 = now()
+    for _ = 1, 1000 do
+        probe:SetAlpha(0.5)
+        probe:SetScale(1.5)
+        probe:SetFrameLevel(50)
+        probe:EnableMouse(true)
+        probe:SetID(7)
+    end
+    local changes = now() - t0
+    addf("  cost: %.2f us per SetToDefaults (1000 runs, less the changes)", math.max(0, cycle - changes))
+    probe:Hide()
+    other:Hide()
+    region:Hide()
+end)
+
 -- One kit's scenarios, as a chain of steps.
 local results = {}
 for index, kit in ipairs(KITS) do
@@ -284,6 +450,116 @@ step("results", function()
     row("rebuild, memory kept KB", "%.0f", function(r) return r.rebuildKept end)
 end)
 
+-- Resetting released frames (UI.resetMode): what resetting every widget
+-- and each part of that costs on a rebuild, against the default (marked
+-- widgets only, none marked here), and whether a widget reset works after.
+step("reset on release", function()
+    local UI, kit, run = Kit.UI, KITS[1], results[1]
+    add("")
+    if not (UIParent.SetToDefaults and run and run.win) then
+        add("Reset on release: not measured (no SetToDefaults, or no benchmark screen)")
+        return
+    end
+    addf("Reset on release: clear and rebuild the %d-row screen, best of 3 runs of 5", ROWS)
+    run.win:Show()
+    -- { caption, UI.resetMode, UI.resetParts }. The parts on their own leave
+    -- widgets that do not work: timing only.
+    local modes = {
+        { "no reset", nil },
+        { "marked only (default, none)", "marked" },
+        { "every widget, in full", "always" },
+        { "  SetToDefaults only", "always", { defaults = true } },
+        { "  UnregisterAllEvents only", "always", { events = true } },
+        { "  SetToDefaults + events", "always", { defaults = true, events = true } },
+        { "  SetToDefaults + setup", "always", { defaults = true, setup = true } },
+    }
+    local function rebuild()
+        run.win:Clear()
+        run.plus = {}
+        kit.screen(run.ui, run.win, run.db, run.items, run.plus)
+        kit.flush()
+    end
+    local base
+    for _, mode in ipairs(modes) do
+        UI.resetMode, UI.resetParts = mode[2], mode[3]
+        rebuild()  -- once first, so every mode starts from the same pools
+        local took = best(3, 5, function(count)
+            for _ = 1, count do rebuild() end
+        end)
+        base = base or took
+        local change = base > 0 and string.format("%+5.0f%%", (took / base - 1) * 100) or ""
+        addf("  %-30s %6.2f ms   %s", mode[1], took, change)
+    end
+    -- After full resets: a button still clicks and hovers, and nothing is
+    -- left shown. (The parts-only modes above leave widgets set up wrong, so
+    -- two full rebuilds come first.)
+    UI.resetMode, UI.resetParts = "always", nil
+    rebuild()
+    rebuild()
+    rebuild()
+    local button, item = run.plus[1], run.items[1]
+    local count = item.count
+    button:Click()
+    kit.flush()
+    fire(button, "OnEnter")
+    local hovered = button.hover
+    fire(button, "OnLeave")
+    local stray = 0
+    for _, pool in pairs(run.ui.pools) do
+        for _, w in ipairs(pool) do if w:IsShown() then stray = stray + 1 end end
+    end
+    addf("  after resets: click %s, hover %s, pooled widgets left shown: %d",
+        item.count == count + 1 and "works" or "FAILS", hovered and "works" or "FAILS", stray)
+    UI.resetMode = "marked"
+    run.win:Hide()
+end)
+
+-- The kit's own parts: resetting a widget's frame does not reach its parts
+-- (a button's label), so what an addon changes on one may carry over to the
+-- widget's next use. A pooled button's label is changed, the button released
+-- and made again from the same frame, and each change checked.
+step("kit parts", function()
+    local run = results[1]
+    add("")
+    if not (run and run.ui and run.win) then
+        add("Kit parts: not checked (no benchmark screen)")
+        return
+    end
+    add("A kit part changed by an addon, after its widget is released and made again")
+    local ui = run.ui
+    local button = ui:Button(run.win, { "Probe" })
+    local label = button.label
+    local function round(v) return type(v) == "number" and string.format("%.2f", v) or tostring(v) end
+    local function font() return tostring((select(2, label:GetFont()))) end
+    local function color()
+        local r, g, b = label:GetTextColor()
+        return round(r) .. "," .. round(g) .. "," .. round(b)
+    end
+    local function point() return tostring((label:GetPoint(1))) end
+    local function shadow()
+        local x, y = label:GetShadowOffset()
+        return round(x) .. "," .. round(y)
+    end
+    local fresh = { font = font(), color = color(), point = point(), shadow = shadow() }
+    label:SetFont(Kit.UI.FontFile(), 24, "OUTLINE")
+    label:SetTextColor(1, 0, 0, 1)
+    label:ClearAllPoints()
+    label:SetPoint("TOPLEFT")
+    label:SetShadowOffset(4, -4)
+    local changed = { font = font(), color = color(), point = point(), shadow = shadow() }
+    button:Release()
+    local again = ui:Button(run.win, { "Probe" })
+    local same = again == button
+    local after = { font = font(), color = color(), point = point(), shadow = shadow() }
+    addf("  the same frame made again: %s", same and "yes" or "no (the check below does not apply)")
+    for _, key in ipairs({ "font", "color", "point", "shadow" }) do
+        local verdict = after[key] == changed[key] and "KEPT" or (after[key] == fresh[key] and "back" or "changed")
+        addf("  label %-8s %-6s  new %s, changed to %s, after %s", key, verdict, tostring(fresh[key]),
+            tostring(changed[key]), tostring(after[key]))
+    end
+    again:Release()
+end)
+
 -- Whole pixels: every shown widget of the open gallery.
 step("pixels", function()
     add("")
@@ -371,12 +647,17 @@ local function run()
     if running then return end
     running = true
     lines = {}
+    -- The audit (Dev/Audit.lua) slows every change to a widget: off while
+    -- measuring, back after.
+    local audited = Kit.UI.audit
+    if Kit.UI.SetAudit then Kit.UI.SetAudit(false) end
     local index = 0
     local function nextStep()
         index = index + 1
         local current = steps[index]
         if not current then
             running = false
+            if audited then Kit.UI.SetAudit(true) end
             show(table.concat(lines, "\n"))
             print("|cff4cc9f0NuuKit|r: report ready. Ctrl+C in the window copies it.")
             return

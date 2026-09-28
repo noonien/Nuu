@@ -210,6 +210,13 @@ local function Buttons(row)
     local skip = row:GlyphButton{ "next", tooltip = "Skip this step" }
     skip:Attract("breathe")  -- pulse, shimmer, flash, trail; nil stops; still under reduceMotion
     skip:Attract(nil)
+
+    -- The plain API on a widget: mark what it changes (flags in ui.Custom:
+    -- events, parts, frame; they add up), and that much is undone when it
+    -- is cleared. Alpha, scale, anchors, size and decorations (AddTexture,
+    -- AddText, AddFrame) need no mark.
+    row:Button{ "Later" }:SetAlpha(0.6)
+    row:Button{ "Bags" }:Customize(ns.UI.Custom.frame):SetFrameStrata("HIGH")
     return mode
 end
 

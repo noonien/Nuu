@@ -59,7 +59,7 @@ local function buildField(w)
     if w.message.SetWordWrap then w.message:SetWordWrap(true) end
     w.message:SetJustifyV("TOP")
     w.message:Hide()
-    w.line = CreateFrame("Frame", nil, w)
+    w.line = UI.NewFrame("Frame", nil, w)
     w.line:SetHeight(BOX_HEIGHT)
 end
 
@@ -189,7 +189,7 @@ end
 -- carries the plate and placeholder when it is not the box (a text area's
 -- frame); `inset` is where the text starts.
 local function newBox(w, parent, multiLine, holder, inset)
-    local box = CreateFrame("EditBox", nil, parent)
+    local box = UI.NewFrame("EditBox", nil, parent)
     box.kitField = true
     box.kitOwner = w
     box.kitMulti = multiLine or nil
@@ -399,7 +399,7 @@ UI.Define("Search", {
     wraps = true, valign = "top",
     Build = function(w)
         buildInput(w, SEARCH_INSET)
-        local lens = CreateFrame("Frame", nil, w.box)
+        local lens = UI.NewFrame("Frame", nil, w.box)
         lens:SetSize(12, 12)
         lens:SetPoint("LEFT", w.box, "LEFT", 7, 0)
         w.lens = UI.NewGlyph(lens, "search", 11, 1.3)
@@ -484,7 +484,7 @@ UI.Define("TextArea", {
     wraps = true, valign = "top",
     Build = function(w)
         buildField(w)
-        local boxFrame = CreateFrame("Frame", nil, w.line)
+        local boxFrame = UI.NewFrame("Frame", nil, w.line)
         boxFrame:SetAllPoints(w.line)
         boxFrame:EnableMouse(true)
         boxFrame.kitOwner = w
@@ -745,7 +745,7 @@ UI.Define("Toggle", UI.ClickableType({
     stretch = false,
     Build = function(w)
         w:SetHeight(20)
-        local box = CreateFrame("Frame", nil, w)
+        local box = UI.NewFrame("Frame", nil, w)
         box:SetSize(CHECK, CHECK)
         box:SetPoint("LEFT", w, "LEFT", 0, 0)
         w.plate = UI.NewPlate(box)
@@ -886,7 +886,7 @@ UI.Define("Slider", {
         w.label:SetPoint("TOPLEFT", w, "TOPLEFT", 0, 0)
         w.readout = UI.NewText(w)
         w.readout:SetJustifyH("RIGHT")
-        local slider = CreateFrame("Slider", nil, w)
+        local slider = UI.NewFrame("Slider", nil, w)
         slider.kitOwner = w
         slider:SetOrientation("HORIZONTAL")
         slider:SetHeight(16)
@@ -901,7 +901,7 @@ UI.Define("Slider", {
         w.thumb = slider.GetThumbTexture and slider:GetThumbTexture()
         if w.thumb then
             w.thumb:SetSize(10, 14)
-            local edge = CreateFrame("Frame", nil, slider)
+            local edge = UI.NewFrame("Frame", nil, slider)
             edge:SetAllPoints(w.thumb)
             w.thumbPlate = UI.NewPlate(edge, "OVERLAY")
         end

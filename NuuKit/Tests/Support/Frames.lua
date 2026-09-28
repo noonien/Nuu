@@ -9,12 +9,42 @@ local objects = {}
 local Object = {}
 local function noop() end
 
+-- Regions (textures, texts, lines) and child frames, listed on their parent
+-- as the client keeps them (GetRegions, GetChildren).
+local REGION = { Texture = true, FontString = true, Line = true }
+local NOT_CHILD = { AnimationGroup = true, Animation = true }
+
+local function listOf(parent, kind)
+    if not parent or NOT_CHILD[kind] then return nil end
+    local key = REGION[kind] and "regionList" or "childList"
+    local list = rawget(parent, key)
+    if not list then
+        list = {}
+        rawset(parent, key, list)
+    end
+    return list
+end
+
+local function adopt(o, parent)
+    local list = listOf(parent, o.kind)
+    if list then list[#list + 1] = o end
+end
+
+local function disown(o, parent)
+    local list = listOf(parent, o.kind)
+    if not list then return end
+    for index = #list, 1, -1 do
+        if list[index] == o then table.remove(list, index) end
+    end
+end
+
 local function new(kind, parent)
     local o = setmetatable({
         kind = kind, parent = parent, points = {}, scripts = {}, hooks = {}, shown = true,
         width = 0, height = 0, text = "", enabled = true, level = parent and ((parent.level or 0) + 1) or 1,
     }, Object)
     objects[#objects + 1] = o
+    adopt(o, parent)
     return o
 end
 
@@ -31,7 +61,16 @@ end
 
 function Object:GetObjectType() return self.kind end
 function Object:GetParent() return self.parent end
-function Object:SetParent(p) self.parent = p end
+function Object:SetParent(p)
+    if p == self.parent then return end
+    disown(self, self.parent)
+    self.parent = p
+    adopt(self, p)
+end
+function Object:GetNumRegions() return #(rawget(self, "regionList") or {}) end
+function Object:GetRegions() return unpack(rawget(self, "regionList") or {}) end
+function Object:GetNumChildren() return #(rawget(self, "childList") or {}) end
+function Object:GetChildren() return unpack(rawget(self, "childList") or {}) end
 function Object:SetSize(w, h) self:SetWidth(w); self:SetHeight(h) end
 function Object:SetWidth(w)
     assertTrue(type(w) == "number" and w == w, "SetWidth with " .. tostring(w))
@@ -166,6 +205,24 @@ _G.GetCurrentKeyBoardFocus = function() return nil end
 _G.UISpecialFrames = {}
 _G.SlashCmdList = {}
 _G.print = print
+-- The client's debugstack, as far as the kit's audit reads it: a line per
+-- level from `start` (1 = the caller), files under the kit's AddOns folder.
+_G.debugstack = function(start, count)
+    local lines, level = {}, (start or 1) + 1
+    for _ = 1, count or 12 do
+        local info = debug.getinfo(level, "Sl")
+        if not info then break end
+        if info.what == "C" then
+            lines[#lines + 1] = "[C]: ?"
+        elseif info.what == "tail" then
+            lines[#lines + 1] = "(tail call): ?"
+        else
+            lines[#lines + 1] = "Interface/AddOns/NuuKit/" .. info.short_src .. ":" .. (info.currentline or 0) .. ": in function"
+        end
+        level = level + 1
+    end
+    return table.concat(lines, "\n") .. "\n"
+end
 
 -- Runs what the client would run on the next frames.
 local function tick()

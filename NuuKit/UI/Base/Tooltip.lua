@@ -91,10 +91,12 @@ function Proto:Tooltip(owner, filler, opts)
         end
     end
     GameTooltip:Show()
+    UI.tipOwner = owner
     drawLinks(opts.links)
 end
 
 function Proto:HideTooltip()
+    UI.tipOwner = nil
     hideLinkTips()
     if GameTooltip then GameTooltip:Hide() end
 end

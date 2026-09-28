@@ -4,4 +4,7 @@ local addonName, ns = ...
 -- of the kit through `ns.Kit = ns.Kit or _G.NuuKit`.
 _G.NuuKit = ns.Kit
 
+-- Development builds audit the addons' marks for resetting widgets (Dev/Audit.lua).
+ns.Kit.UI.SetAudit(true)
+
 ns.Kit.Loaded(addonName, "NuuKit.lua")

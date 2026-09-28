@@ -39,7 +39,9 @@ kit reads and writes only what it is handed.
 8. **OpenRoad names where they exist**, so ports from OpenRoad are mostly mechanical.
 9. **Clearing deletes.** `container:Clear()`, `Remove(w)` and `w:Release()` take widgets away for good; the kit
    reuses their frames for the next widgets made (WoW never frees a frame), so a screen rebuilt again and again
-   costs no more memory. The addon does not use a widget after it clears it.
+   costs no more memory. An addon that changes a widget with the plain API marks it with what it changed
+   (`w:Customize(ui.Custom.frame)`, flags; alpha and scale need none), and the kit undoes that much before reuse; development builds audit the marks
+   (`NuuKit/UI/README.md` lists the kinds and what is not undone). The addon does not use a widget after it clears it.
 
 `NuuKit/UI/examples.lua` shows the API in use, one example per area. Beyond the sections below it settles:
 

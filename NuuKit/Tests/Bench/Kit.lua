@@ -16,10 +16,17 @@ assert(UI and UI.types.Toggle, "the kit did not load from NuuKit.toc")
 
 local function look(l) return { theme = l.theme, textSize = l.textScale > 1 and "large" or "normal" } end
 
+-- `opts.reset` is UI.resetMode: "marked" (the kit's default; the screen
+-- marks nothing), "always" to reset every widget, false for none;
+-- `opts.parts` limits a reset to some of its parts.
 function M.NewUI(l, opts)
     local ui = Kit.NewUI(ns, look(l))
     ui.track = {}
     ui.pool = not (opts and opts.pool == false)
+    local reset = "marked"
+    if opts and opts.reset ~= nil then reset = opts.reset or nil end
+    UI.resetMode = reset
+    UI.resetParts = opts and opts.parts or nil
     return ui
 end
 function M.SetLook(ui, l) ui:SetLook(look(l)) end

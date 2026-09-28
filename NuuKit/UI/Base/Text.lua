@@ -127,7 +127,7 @@ UI.Define("Section", {
         w:Append(header)
         w.header = header
 
-        local toggle = CreateFrame("Button", nil, header)
+        local toggle = UI.NewFrame("Button", nil, header)
         toggle:SetHeight(22)
         UI.Adopt(toggle, "SectionHeading", { UI.Widget }, { Measure = toggleMeasure, Sized = toggleSized })
         toggle.ui, toggle.kitStretch, toggle.kitLayout = ui, false, {}
@@ -265,7 +265,7 @@ UI.Define("Notice", {
     Build = function(w)
         w:SetSize(1, 40)
         w.plate = UI.NewPlate(w)
-        local badge = CreateFrame("Frame", nil, w)
+        local badge = UI.NewFrame("Frame", nil, w)
         badge:SetSize(16, 16)
         badge:SetPoint("TOPLEFT", w, "TOPLEFT", 9, -9)
         w.badgeFill = badge:CreateTexture(nil, "ARTWORK")
@@ -347,7 +347,7 @@ UI.Define("Card", {
         w.rail:SetPoint("TOPLEFT")
         w.rail:SetPoint("BOTTOMLEFT")
         UI.Stroke(w.rail, "width", RAIL)
-        local body = CreateFrame("Frame", nil, w)
+        local body = UI.NewFrame("Frame", nil, w)
         UI.MakeStack(w.ui, body, "column", {})
         body.kitLayout = {}
         body.kitParent = w

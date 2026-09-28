@@ -292,7 +292,7 @@ local function room(w)
 end
 
 local function newOutline(w)
-    local box = CreateFrame("Frame", nil, w)
+    local box = UI.NewFrame("Frame", nil, w)
     box.plate = UI.NewPlate(box, "ARTWORK")
     return box
 end
@@ -306,7 +306,7 @@ local function newLine(w)
 end
 
 local function newPointer(w)
-    local p = CreateFrame("Frame", nil, w)
+    local p = UI.NewFrame("Frame", nil, w)
     p:SetSize(10, 6)
     p.glyph = UI.NewGlyph(p, "down", 9, 1.8)
     return p

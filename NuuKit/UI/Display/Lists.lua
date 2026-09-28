@@ -601,7 +601,7 @@ UI.Define("List", {
 
 -- A folder's chevron, pointing down while open: a tree's, a table group's.
 local function newChevron(parent, size)
-    local chevron = CreateFrame("Frame", nil, parent)
+    local chevron = UI.NewFrame("Frame", nil, parent)
     chevron:SetSize(size, size)
     chevron.open = UI.NewGlyph(chevron, "down", 8, 1.5)
     chevron.shut = UI.NewGlyph(chevron, "next", 8, 1.5)
@@ -878,7 +878,7 @@ local function barUp(bar)
 end
 
 local function newSplitBar(w)
-    local bar = CreateFrame("Button", nil, w)
+    local bar = UI.NewFrame("Button", nil, w)
     bar:SetWidth(BAR)
     bar.kitSplit = w
     bar.wash = bar:CreateTexture(nil, "BACKGROUND")

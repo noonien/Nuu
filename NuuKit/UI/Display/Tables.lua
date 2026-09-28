@@ -119,7 +119,7 @@ end
 
 -- A cell: a frame with a line of text, or holding a column's widget.
 local function newCell(line)
-    local cell = CreateFrame("Frame", nil, line)
+    local cell = UI.NewFrame("Frame", nil, line)
     cell.text = UI.NewText(cell)
     cell.text:SetPoint("LEFT", cell, "LEFT", 0, 0)
     cell.text:SetPoint("RIGHT", cell, "RIGHT", 0, 0)
@@ -149,7 +149,7 @@ end
 local function lineMeasure(line) return 0, line.kitHeight end
 
 local function newLine(w, height)
-    local line = CreateFrame("Frame", nil, w)
+    local line = UI.NewFrame("Frame", nil, w)
     UI.Adopt(line, "TableLine", { UI.Widget }, { Measure = lineMeasure, Sized = lineSized })
     line.ui, line.kitTable, line.kitHeight = w.ui, w, height
     line.kitLayout = {}
@@ -210,7 +210,7 @@ end
 
 local function tableMake(row)
     row.cells = {}
-    local group = CreateFrame("Frame", nil, row)
+    local group = UI.NewFrame("Frame", nil, row)
     group:SetAllPoints(row)
     group.chevron = L.newChevron(group, 10)
     group.chevron:SetPoint("LEFT", group, "LEFT", PAD_LEFT, 0)
@@ -581,7 +581,7 @@ UI.Define("Pager", {
 local FIGURE_PAD = 12
 
 local function newFigure(w)
-    local cell = CreateFrame("Frame", nil, w)
+    local cell = UI.NewFrame("Frame", nil, w)
     cell.caption = UI.NewText(cell)
     cell.caption:SetPoint("TOPLEFT", cell, "TOPLEFT", FIGURE_PAD, -FIGURE_PAD)
     cell.number = UI.NewText(cell)

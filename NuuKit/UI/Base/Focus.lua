@@ -53,7 +53,7 @@ function UI.FocusWidget(win, w)
         return
     end
     if not ring then
-        ring = CreateFrame("Frame", nil, win)
+        ring = UI.NewFrame("Frame", nil, win)
         ring.plate = UI.NewPlate(ring, "OVERLAY")
         win.focusRing = ring
         win.ui:Paint(ring, function(t) ring.plate:Flat(nil, t.accent) end)

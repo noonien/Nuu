@@ -261,7 +261,9 @@ UI.Holder = UI.Holder or {}
 -- UI.sharedMethods says which (nil until the first frame).
 UI.sharedMethods = nil
 local classes = {}
-local RAW = { "Show", "Hide", "IsShown" }
+-- By class key, then by the client's metatable: for the audit (Dev/Audit.lua).
+UI.classes = classes
+local RAW = { "Show", "Hide", "IsShown", "SetAlpha", "SetScale" }
 
 -- The client's own method `name` for frames of this metatable.
 local function rawOf(index, name, frame)
@@ -290,7 +292,10 @@ local function classFor(key, frame, sources, extra)
     class = {}
     for field, value in pairs(base) do class[field] = value end
     class.__index = index
+    -- The method table, also while the audit answers __index (Dev/Audit.lua).
+    class.kitIndex = index
     byBase[base] = class
+    if UI.OnClass then UI.OnClass(class) end
     return class
 end
 
@@ -316,6 +321,142 @@ function UI.Adopt(frame, key, sources, extra)
     return frame
 end
 
+-- Resetting released frames -------------------------------------------------------------------
+
+-- An addon that changes a widget with the plain API marks it, saying what
+-- it changed (w:Customize, below), and on release only that is undone:
+-- most widgets are never touched, and resetting every one cost about 9 us
+-- a widget in build 70009. "marked" (the default); "always" resets every
+-- widget in full; nil resets none, for measuring (Dev/Report.lua).
+UI.resetMode = "marked"
+
+-- SetToDefaults also takes away the kit's own setup of the frame, so the
+-- setup calls a type's Build makes on its widget are recorded, the first
+-- time the type is built, and made again after a reset. Build uses shared
+-- functions only (see README.md), so one record serves every widget of the
+-- type.
+local NO_SPEC = {}
+local SETUP = { "SetScript", "HookScript", "RegisterForClicks", "EnableMouse", "EnableMouseWheel",
+    "SetMotionScriptsWhileDisabled", "SetMovable", "SetResizable", "SetClampedToScreen", "SetFrameStrata",
+    "SetToplevel", "SetClipsChildren", "SetHitRectInsets", "EnableKeyboard", "SetPropagateKeyboardInput",
+    "RegisterForDrag", "SetAttribute" }
+local NO_SETUP = {}
+
+local function buildRecorded(w, def)
+    local log = {}
+    local target = UI.sharedMethods and getmetatable(w).kitIndex or w
+    local saved, original = {}, {}
+    for _, name in ipairs(SETUP) do
+        original[name] = w[name]
+        saved[name] = rawget(target, name)
+        local call = original[name]
+        if call then
+            target[name] = function(self, ...)
+                if self == w then log[#log + 1] = { name, ... } end
+                return call(self, ...)
+            end
+        end
+    end
+    local ok, err = pcall(def.Build, w)
+    for _, name in ipairs(SETUP) do rawset(target, name, saved[name]) end
+    if not ok then error(err, 0) end
+    def.kitSetup = log
+    def.kitMouse = w.IsMouseEnabled and w:IsMouseEnabled() or false
+    def.kitWheel = w.IsMouseWheelEnabled and w:IsMouseWheelEnabled() or false
+end
+
+-- Which parts of a reset run, for measuring them apart: nil runs them all,
+-- else { defaults = true, events = true, setup = true }. A reset without
+-- its setup leaves a widget that does not work; only for timing.
+UI.resetParts = nil
+
+-- Back to the client's defaults, then the kit's own setup again. The frame
+-- is left shown (SetToDefaults shows it); Release hides it after.
+function UI.ResetFrame(w, def)
+    if not w.SetToDefaults then return end
+    local parts = UI.resetParts
+    if not parts or parts.defaults then
+        w:SetToDefaults()
+        -- A font string without a font refuses text: that much goes with it.
+        if def.kind == "FontString" then
+            w:SetFont(UI.FontFile(), 11, "")
+            w.kitFontFile, w.kitFontSize, w.kitShadowed, w.kitWrap, w.kitText = nil, nil, nil, nil, nil
+        end
+    end
+    if not parts or parts.events then
+        if w.UnregisterAllEvents then w:UnregisterAllEvents() end
+        -- SetToDefaults keeps the keyboard (build 70009): a widget left
+        -- taking it would stop the game's keybinds.
+        if w.EnableKeyboard then w:EnableKeyboard(false) end
+    end
+    if parts and not parts.setup then return end
+    if def.kind ~= "FontString" then
+        if w.EnableMouse then w:EnableMouse(def.kitMouse) end
+        if w.EnableMouseWheel then w:EnableMouseWheel(def.kitWheel) end
+    end
+    for _, call in ipairs(def.kitSetup or NO_SETUP) do w[call[1]](w, unpack(call, 2)) end
+    -- The kit's hooks made after Build come back when next asked for.
+    w.kitTooltipHooked, w.kitRightHooked = nil, nil
+end
+
+-- What a mark can ask to be undone, as flags (UI.Custom, also ui.Custom),
+-- each undone by its cheapest call:
+--   events  UnregisterAllEvents (widgets register none of their own)
+--   parts   textures, texts and frames made on it with the plain API hidden
+--   frame   everything about the frame: SetToDefaults, events, keyboard,
+--           and the kit's setup made again (covers events)
+-- Flags add up: Custom.frame + Custom.parts. Anchors, size, parent and
+-- frame level need no mark: the kit sets them on every use. Nor do alpha
+-- and scale: the widget's own SetAlpha and SetScale note a change, and
+-- release puts it back.
+local EVENTS, PARTS, FRAME = 1, 2, 4
+local FLAGS = { EVENTS, PARTS, FRAME }
+UI.Custom = { events = EVENTS, parts = PARTS, frame = FRAME }
+Proto.Custom = UI.Custom
+
+-- Whether `marks` holds `flag` (no bit library needed for three flags).
+local function has(marks, flag) return marks % (flag + flag) >= flag end
+UI.HasFlag = has
+
+-- Marks the widget for a reset on release; returns it. Call it where the
+-- addon changes the widget, e.g. w:Customize(ui.Custom.frame):HookScript(...);
+-- no flags means frame and parts. The marks are one number on the widget.
+-- In development the audit (Dev/Audit.lua) logs a change made without its
+-- mark, and a mark that nothing needed; it keeps where each mark was made.
+function Widget:Customize(flags)
+    -- In development, wrong flags are an error (Dev/Audit.lua).
+    if UI.audit then UI.AuditFlags(flags) end
+    flags = flags or (FRAME + PARTS)
+    local marks = self.kitCustom or 0
+    local where = UI.audit and UI.AuditCaller()
+    for _, flag in ipairs(FLAGS) do
+        if has(flags, flag) and not has(marks, flag) then
+            marks = marks + flag
+            if where then
+                local at = self.kitMarkedAt or {}
+                at[flag] = where
+                self.kitMarkedAt = at
+            end
+        end
+    end
+    self.kitCustom = marks
+    return self
+end
+
+local releaseStrays
+
+-- Undoes what the marks (flags) ask for; `marks` nil undoes everything.
+function UI.ResetMarked(w, def, marks)
+    if not marks or has(marks, FRAME) then
+        -- SetToDefaults puts back alpha and scale too.
+        UI.ResetFrame(w, def)
+        w.kitFaded, w.kitScaled = nil, nil
+    elseif has(marks, EVENTS) and w.UnregisterAllEvents then
+        w:UnregisterAllEvents()
+    end
+    if (not marks or has(marks, PARTS)) and def.kind ~= "FontString" then releaseStrays(w) end
+end
+
 local function build(ui, name, def, parent, spec)
     local w
     if def.Create then
@@ -339,7 +480,7 @@ local function build(ui, name, def, parent, spec)
     UI.Adopt(w, name, sources, def.class)
     w.ui = ui
     if def.Build then
-        def.Build(w)
+        if def.kitSetup then def.Build(w) else buildRecorded(w, def) end
         -- Copied methods: the type's own win over what Build copied on.
         if UI.sharedMethods == false then copyInto(w, def.methods or {}) end
     end
@@ -357,6 +498,7 @@ function UI.Make(ui, name, parent, spec)
     assert(def, "no widget type " .. tostring(name))
     local pool = def.pool ~= false and ui.pools[name]
     local w = pool and pool[#pool]
+    local fresh = not w
     if w then
         pool[#pool] = nil
         w.kitPooled = nil
@@ -375,13 +517,151 @@ function UI.Make(ui, name, parent, spec)
     if grow == nil and def.grow then grow = def.grow(spec, parent) end
     w.kitGrow = (grow == true and 1) or (type(grow) == "number" and grow > 0 and grow) or nil
     w.hover, w.kitReason, w.kitRightClick, w.kitLinks = nil, nil, nil, nil
-    w.tooltip = spec.tooltip
+    w.tooltip, w.data = spec.tooltip, spec.data
     if def.focusable then UI.RegisterFocusable(ui, w, def.focusable == "field") end
+    if UI.audit then w.kitMadeAt = UI.AuditCaller() end
     def.Init(w, spec)
     if spec.tooltip ~= nil or def.tooltip then UI.HookTooltip(w) end
     if spec.hidden then w:Hide() end
     w:Paint(ui.tokens)
+    if fresh then UI.KitMade(w) end
     return w
+end
+
+-- The kit's own frames: marked, so a release that looks for an addon's
+-- frames on a widget (the "parts" mark, the audit) passes over them.
+function UI.NewFrame(kind, name, parent, template)
+    local frame = CreateFrame(kind, name, parent, template)
+    frame.kitOwn = true
+    return frame
+end
+
+-- The textures, texts and child frames a new widget holds are the kit's:
+-- marked, so that on release anything else (an addon's own, made with the
+-- plain API) is found and hidden. Two client calls, once per frame. A
+-- texture or text the kit makes later is hidden on release too, harmlessly:
+-- the kit shows its parts again where it uses them (the audit marks those).
+local function markAll(...)
+    local count = select("#", ...)
+    for index = 1, count do
+        local part = select(index, ...)
+        if part then part.kitOwn = true end
+    end
+    return count
+end
+
+function UI.KitMade(w)
+    if types[w.kitType] and types[w.kitType].kind == "FontString" then return end
+    w.kitOwnRegions = markAll(w:GetRegions())
+    w.kitOwnChildren = markAll(w:GetChildren())
+end
+
+-- On release, for a widget marked "parts": what an addon made on it and the
+-- kit did not (see KitMade) is hidden. `UI.stats.strays` counts them.
+-- Widgets of the kit parented to it (a stack's texts and buttons) raise its
+-- counts too, so the counts are taken again after a look: a widget looks
+-- again only when it holds more than last time.
+UI.stats = UI.stats or { strays = 0 }
+
+local function isStray(part)
+    return part and not part.kitOwn and not part.kitType and not part.kitClass and part:IsShown()
+end
+
+local function hideStrays(w, ...)
+    for index = 1, select("#", ...) do
+        local part = select(index, ...)
+        if isStray(part) then
+            part:Hide()
+            UI.stats.strays = UI.stats.strays + 1
+        end
+    end
+end
+
+function releaseStrays(w)
+    local regions, children = w:GetNumRegions() or 0, w:GetNumChildren() or 0
+    if regions > (w.kitOwnRegions or 0) then
+        hideStrays(w, w:GetRegions())
+        w.kitOwnRegions = regions
+    end
+    if children > (w.kitOwnChildren or 0) then
+        hideStrays(w, w:GetChildren())
+        w.kitOwnChildren = children
+    end
+end
+
+-- Whether an addon made a part on the widget, for the audit: looks without
+-- hiding, and takes no counts.
+local function anyStray(...)
+    for index = 1, select("#", ...) do
+        if isStray(select(index, ...)) then return true end
+    end
+    return false
+end
+
+function UI.HasStrays(w)
+    if types[w.kitType].kind == "FontString" then return false end
+    return anyStray(w:GetRegions()) or anyStray(w:GetChildren())
+end
+
+-- An addon's own texture, text or frame on a widget, which the kit keeps
+-- with the widget: on release it is put back to defaults and hidden, and
+-- the next Add of the same kind on that frame takes it again, so a
+-- decoration made on every use costs nothing more.
+local function added(w, key, make)
+    local list = w.kitAdded
+    if not list then
+        list = {}
+        w.kitAdded = list
+    end
+    for index = 1, #list do
+        local item = list[index]
+        if not item.kitInUse and item.kitAddKey == key then
+            item.kitInUse = true
+            item:Show()
+            return item, false
+        end
+    end
+    local item = make()
+    item.kitAddKey, item.kitInUse, item.kitOwn = key, true, true
+    list[#list + 1] = item
+    return item, true
+end
+
+function Widget:AddTexture(layer, sublevel)
+    local texture = added(self, "Texture", function() return self:CreateTexture(nil, layer or "ARTWORK") end)
+    texture:SetDrawLayer(layer or "ARTWORK", sublevel or 0)
+    return texture
+end
+
+-- A text in a kit text style (UI.ApplyStyle); `color` a token or a colour.
+function Widget:AddText(style, color)
+    local text = added(self, "Text", function() return UI.NewText(self) end)
+    UI.ApplyStyle(text, style or "body", self.ui.tokens, color)
+    return text
+end
+
+function Widget:AddFrame(kind, template)
+    local key = "Frame:" .. (kind or "Frame") .. ":" .. (template or "")
+    return (added(self, key, function() return CreateFrame(kind or "Frame", nil, self, template) end))
+end
+
+local function releaseAdded(w)
+    local list = w.kitAdded
+    if not list then return end
+    for index = 1, #list do
+        local item = list[index]
+        if item.kitInUse then
+            item.kitInUse = false
+            if item.SetToDefaults then pcall(item.SetToDefaults, item) end
+            if item.UnregisterAllEvents then item:UnregisterAllEvents() end
+            if item.GetObjectType and item:GetObjectType() == "FontString" then
+                item:SetFont(UI.FontFile(), 11, "")
+                item.kitFontFile, item.kitFontSize, item.kitShadowed = nil, nil, nil
+            end
+            item:Hide()
+            item:ClearAllPoints()
+        end
+    end
 end
 
 -- Widget methods -------------------------------------------------------------------------------
@@ -405,6 +685,18 @@ end
 
 function Widget:SetShown(shown)
     if shown then self:Show() else self:Hide() end
+end
+
+-- Alpha and scale remember whether they are off the default, so a release
+-- puts back only what was changed, and an addon needs no mark for them.
+function Widget:SetAlpha(alpha)
+    self.kitFaded = alpha ~= 1 or nil
+    self:kitRawSetAlpha(alpha)
+end
+
+function Widget:SetScale(scale)
+    self.kitScaled = scale ~= 1 or nil
+    if self.kitRawSetScale then self:kitRawSetScale(scale) end
 end
 function Widget:PaintState(t) self:Paint(t) end
 function Widget:Repaint() self:Paint(self.ui.tokens) end
@@ -477,8 +769,31 @@ function UI.Release(w)
     if w.kitInner and w.kitInner ~= w then w.kitInner:ReleaseChildren() end
     if def.Release then def.Release(w) end
     if w.kitAttractKind and UI.Attract then UI.Attract(w, nil) end
+    -- What still points at it: the kit's tooltip for it, a menu by it, the
+    -- focus ring on it.
+    local ui = w.ui
+    if UI.tipOwner == w then ui:HideTooltip() end
+    if ui.kitMenu and ui.kitMenu.anchor == w then ui:CloseMenu() end
+    local win = w.kitWindow
+    if win and win.kitFocused == w then UI.FocusWidget(win, nil) end
     w.kitParent, w.kitWindow = nil, nil
     w.kitPX, w.kitPY, w.kitPW, w.kitPH, w.kitFree = nil, nil, nil, nil, nil
+    if def.pool ~= false then
+        local marks, mode = w.kitCustom, UI.resetMode
+        if UI.audit then UI.AuditRelease(w, marks or 0) end
+        if mode == "always" then
+            UI.ResetMarked(w, def, nil)
+        elseif mode and marks then
+            UI.ResetMarked(w, def, marks)
+        end
+        w.kitCustom, w.kitMarkedAt = nil, nil
+        if w.kitFaded then w:SetAlpha(1) end
+        if w.kitScaled then w:SetScale(1) end
+        releaseAdded(w)
+    end
+    -- Nothing of the addon's is kept alive by a widget in a pool.
+    w.kitLayout, w.data, w.tooltip, w.kitLinks, w.kitRightClick = NO_SPEC, nil, nil, nil, nil
+    w.kitClick, w.kitOnChange, w.kitBind, w.kitDefault = nil, nil, nil, nil
     w:Hide()
     w:ClearAllPoints()
     if def.pool == false then

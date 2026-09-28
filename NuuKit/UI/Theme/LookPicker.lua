@@ -51,7 +51,7 @@ UI.Define("LookCard", UI.ClickableType({
     stretch = false,
     Build = function(w)
         w.plate = UI.NewPlate(w)
-        local preview = CreateFrame("Frame", nil, w)
+        local preview = UI.NewFrame("Frame", nil, w)
         preview:SetPoint("TOPLEFT", w, "TOPLEFT", 6, -6)
         preview:SetPoint("TOPRIGHT", w, "TOPRIGHT", -6, -6)
         preview:SetHeight(PREVIEW_H)
@@ -67,7 +67,7 @@ UI.Define("LookCard", UI.ClickableType({
         w.mutedLine = preview:CreateTexture(nil, "ARTWORK")
         w.mutedLine:SetPoint("TOPLEFT", w.line, "BOTTOMLEFT", 0, -3)
         w.mutedLine:SetSize(34, 3)
-        local chip = CreateFrame("Frame", nil, preview)
+        local chip = UI.NewFrame("Frame", nil, preview)
         chip:SetPoint("TOPLEFT", w.mutedLine, "BOTTOMLEFT", 0, -4)
         chip:SetSize(26, 8)
         w.chip = UI.NewPlate(chip)

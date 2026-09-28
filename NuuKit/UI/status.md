@@ -29,8 +29,26 @@ schema and a declarative layer were measured and rejected: slower, and no easier
 the details.
 
 **API.** One spec table per widget (`col:Button{ "Save", tone = "accent" }`); callbacks only for the player's
-changes; `bind = { table, key }` with `default`, `Reset()` and `IsStored()` on every value widget; clearing
-deletes, and the pools behind it are never seen by the addon.
+changes; `bind = { table, key }` with `default`, `Reset()` and `IsStored()` on every value widget; `data` for the
+addon's own values; `AddTexture` / `AddText` / `AddFrame` for decorations; clearing deletes, and the pools behind it
+are never seen by the addon.
+
+**Reset on release, by marks.** WoW never frees a frame, so a released widget's frame is used again. Every
+release lets go of what pointed at the widget (the kit's tooltip, a menu, the focus ring) and what the kit held for
+the addon (spec, callbacks, `data`), and puts away its Adds. What an addon did to the widget itself with the plain
+API is undone only when the addon marked it: `w:Customize(ui.Custom.events)` (flags that add up: `events`,
+`parts`, `frame`; none means `frame` and `parts`), kept as one number on the widget, each undone by its cheapest
+call, `frame` by `SetToDefaults`, events, the keyboard and the kit's setup
+made again (recorded once per type from Build). Alpha and scale need no mark: the widget's own `SetAlpha` and
+`SetScale` note a value off the default, and release puts back only that. Resetting every widget was measured first (below)
+and cost about 9 us a widget for widgets nobody touched. In development the audit (`Dev/Audit.lua`, on from
+`NuuKit.lua`, `/nuukit audit`) checks the marks without wrapping anything: while it is on, a class's metatable
+answers `__index` through a function that sees the widget and, through `debugstack`, the caller, and notes changes
+from outside the kit's `UI/` files. Every wrong mark is an error: bad flags, a change no reset undoes and a change
+after a clear with `error()` at the call; a change without its mark, a mark nothing needed and a `frame` mark where
+`events` would do on release, through the client's error handler (an `error()` mid-release would break a `Clear`). The kit's own frames are
+made with `UI.NewFrame`, which marks them, so neither the `parts` reset nor the audit takes them for an addon's.
+[README.md](README.md) has the table of kinds and the audit's limits.
 
 **Code.** Every widget of the plan's phases 1 to 6:
 
@@ -55,7 +73,9 @@ deletes, and the pools behind it are never seen by the addon.
 **Tests.** `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"` from `NuuKit/` runs six suites: the core, the
 theme and look sums, table columns, and the smoke tests (`Tests/UI/Smoke/`), which build every widget on a stand-in
 for the client's frame API (`Tests/Support/Frames.lua`, taught a few of the client's rules) and check behaviour,
-pooling (a rebuild makes no frames, and nothing of a widget's last use survives), and the costs that matter (hover
+pooling (a rebuild makes no frames, and nothing of a widget's last use survives), the reset on release (a marked
+change does not reach the next use, an unmarked one does, and the audit raises each wrong mark; `Reset.lua`), and
+the costs that matter (hover
 sets no font and lays nothing out, a text change lays out only its row). `lua Tests/UI/Smoke/Run.lua --copy` runs
 them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench screen) and `Tests/Bench/Gallery.lua`
 (the whole gallery) count client calls, to compare before and after a change.
@@ -72,16 +92,56 @@ them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench scr
 | Click "+1" and layout | 5.1-5.7 ms | 0.38-0.40 ms |
 | Look change | 9-10 ms | 2.2 ms |
 | Resize | 10.4-11.2 ms | 0.84-0.93 ms |
-| Clear and rebuild | 26 ms, 130 frames made, 588 KB kept | 4.5 ms, 0 frames made, 1 KB kept |
+| Clear and rebuild | 26 ms, 130 frames made, 588 KB kept | 4.5 ms, 0 frames made, 1 KB kept (8.0 ms with the reset on release, below) |
 
 Methods are shared through metatables in this client. Every shown gallery widget sits on whole screen pixels (183
-of 183). The client features the kit uses are all there; see [docs/api-compatibility.md](../../docs/api-compatibility.md).
+of 183).
+
+What `SetToDefaults` does on a frame in build 70009: it puts back alpha, scale, strata, level, shown, size, anchors,
+movable, clamped, ID, enabled, button text, attributes, scripts and hooks, hit rect insets, clipping, ignoring the
+parent's alpha and scale, resizable and its bounds, key propagation and toplevel, and turns the mouse off. It keeps
+the parent, the wheel, registered events, the keyboard, animation groups, regions, children and Lua fields. One call
+costs about 1.2-1.6 us.
+
+Resetting released frames, clearing and rebuilding the same 60-row screen (about 250 widgets):
+
+| | First run (no stray check yet) | Second run (with the stray check) |
+| --- | --- | --- |
+| No reset | 4.37 ms | 5.76 ms |
+| Reset | 6.54 ms (+50%) | 8.03 ms (+39% over no reset) |
+| `SetToDefaults` only | +17% | +9% |
+| `UnregisterAllEvents` only | +12% | +4% |
+| `SetToDefaults` + events | +27% | +18% |
+| `SetToDefaults` + the kit's setup | +38% | +26% |
+
+The reset is about 9 us a widget. Between the two runs "no reset" went from 4.37 to 5.76 ms: the stray check, added
+in between, ran on every release, and it listed a widget's regions and children on nearly every one, because the
+kit's widgets parented to a stack (its texts, its buttons) and parts the kit made later raised the counts it
+compared. That is why only marked widgets are reset now; the stray check runs only for a `parts` mark and takes the
+counts again after it looks. Not measured in the client since: the report's reset lines are now "no reset",
+"marked only (default, none)" and "every widget, in full". On the bench (client calls, clear and rebuild): 8306
+resetting every widget, 5320 marked only, 5574 before for no reset with the stray check. All of this happens on
+releases only: building, hover, updates, look changes and resize do not change. The
+client features the kit uses are all there; see [docs/api-compatibility.md](../../docs/api-compatibility.md).
 
 ## Not verified, and known issues
 
 - **Seen, not gone through.** The gallery was looked over in the client and looked right, and the report checked
   what it can measure. The row-by-row checks in `docs/api-compatibility.md` (what each animation, field and menu
   should do) have not been gone through one by one.
+- **The audit in the client.** Tested on the stand-in only (the whole smoke suite, gallery and examples included,
+  logs nothing with it on). Not yet run in the client: whether this client's `debugstack` lines are what it expects
+  (it keys the kit's files on the last folder before `UI/`, e.g. `NuuKit/UI/`), and what it costs while on.
+- **Marks are the addon's to get right.** An unmarked change reaches the widget's next use in a release build; the
+  audit only finds it in development, and only on uses that happen there.
+- **The kit's own parts are not reset.** Measured on a button's label (build 70009): a changed font, anchor and
+  shadow carry over to the widget's next use; its colour comes back (the kit repaints it). The documented rule: a
+  widget's parts are the kit's; customize through the spec or an Add.
+- **Animation groups** an addon makes on a widget are kept by `SetToDefaults`; stopping them would mean listing them
+  on every release. Not handled; in the README's list of what is not undone, and the audit raises an error when one
+  is made.
+- **References kept after a release** reach the frame's next use: a documented rule. The audit raises an error for a
+  change made through one in development; release builds do not look.
 - **The first kit's leak on art themes** (every switch to Horde or Alliance made new textures) is fixed here; each
   plate keeps one 9-slice per theme. It is not measured in the client yet: the report switches flat themes only.
 - **Layout timing.** Layout runs on the next frame (a driver `OnUpdate`), or at once through `UI.LayoutNow()`; a

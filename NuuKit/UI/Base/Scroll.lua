@@ -97,7 +97,7 @@ end
 
 -- Makes the bar in `parent` for `source`. The caller anchors it.
 function UI.NewScrollBar(ui, parent, source, step)
-    local bar = CreateFrame("Frame", nil, parent)
+    local bar = UI.NewFrame("Frame", nil, parent)
     for key, fn in pairs(Bar) do bar[key] = fn end
     bar.ui, bar.kitSource, bar.kitStep = ui, source, step
     bar:SetWidth(UI.SCROLLBAR)
@@ -107,7 +107,7 @@ function UI.NewScrollBar(ui, parent, source, step)
     bar.track:SetPoint("TOP", bar, "TOP", 0, 0)
     bar.track:SetPoint("BOTTOM", bar, "BOTTOM", 0, 0)
     UI.Stroke(bar.track, "width", 4)
-    local thumb = CreateFrame("Frame", nil, bar)
+    local thumb = UI.NewFrame("Frame", nil, bar)
     bar.thumb = thumb
     thumb:SetWidth(UI.Snap(bar, 6))
     thumb:SetHeight(THUMB_MIN)
@@ -161,9 +161,9 @@ end
 -- A ScrollFrame and its content frame with the slim bar. Returns scroll,
 -- content; `scroll:ScrollTo(y)`, `scroll:ScrollToTop()`, `scroll:Sync()`.
 function UI.NewScroll(ui, parent)
-    local scroll = CreateFrame("ScrollFrame", nil, parent)
+    local scroll = UI.NewFrame("ScrollFrame", nil, parent)
     for key, fn in pairs(Scroll) do scroll[key] = fn end
-    local content = CreateFrame("Frame", nil, scroll)
+    local content = UI.NewFrame("Frame", nil, scroll)
     content:SetSize(1, 1)
     content.kitScroll = scroll
     scroll:SetScrollChild(content)

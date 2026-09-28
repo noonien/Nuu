@@ -83,7 +83,7 @@ local function schedule()
     if driver then
         driver:Show()
     elseif type(CreateFrame) == "function" then
-        driver = CreateFrame("Frame")
+        driver = UI.NewFrame("Frame")
         driver:SetScript("OnUpdate", function() UI.LayoutNow() end)
     end
 end
@@ -558,7 +558,7 @@ end
 -- setting's name column): a plain frame made a stack, with its layout
 -- options. The caller appends it where it goes.
 function UI.Part(ui, parent, axis, opts, layout)
-    local frame = CreateFrame("Frame", nil, parent)
+    local frame = UI.NewFrame("Frame", nil, parent)
     frame:SetSize(1, 1)
     UI.MakeStack(ui, frame, axis, opts)
     frame.kitLayout = layout or {}
@@ -661,7 +661,7 @@ function Stack:SetState(kind, text, opts)
     opts = opts or {}
     local overlay = inner.kitStateFrame
     if not overlay then
-        overlay = CreateFrame("Frame", nil, inner)
+        overlay = UI.NewFrame("Frame", nil, inner)
         overlay:SetAllPoints(inner)
         overlay:SetFrameLevel(inner:GetFrameLevel() + 5)
         overlay.message = UI.NewText(overlay)

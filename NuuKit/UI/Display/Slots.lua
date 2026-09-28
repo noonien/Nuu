@@ -101,7 +101,7 @@ UI.Define("StripPanel", {
         w:SetMovable(true)
         w:SetSize(200, HEADER + 4 + SLOT)
 
-        local header = CreateFrame("Frame", nil, w)
+        local header = UI.NewFrame("Frame", nil, w)
         header:SetPoint("TOPLEFT")
         header:SetHeight(HEADER)
         header:EnableMouse(true)
@@ -118,7 +118,7 @@ UI.Define("StripPanel", {
         UI.DragFrame(header, w, "move", DRAG)
         w.header = header
 
-        local body = CreateFrame("Frame", nil, w)
+        local body = UI.NewFrame("Frame", nil, w)
         body:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, -4)
         UI.MakeStack(ui, body, "row", { gap = 4 })
         body.kitLayout = {}
@@ -398,7 +398,7 @@ UI.Define("SecureSlot", slotDef({
     pool = false,
     Create = function(ui, parent, spec)
         local ok, made = pcall(CreateFrame, "Button", nil, parent, "SecureActionButtonTemplate")
-        local w = ok and made or CreateFrame("Button", nil, parent)
+        local w = ok and made or UI.NewFrame("Button", nil, parent)
         w.kitSecure = true
         return w
     end,

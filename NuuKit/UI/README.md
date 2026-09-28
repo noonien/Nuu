@@ -33,7 +33,10 @@ UI.Define("Tag", {
 
 - **No per-instance closures.** Scripts are file-level functions (`w:SetScript("OnEnter", onEnter)`); the handler finds
   its widget through the frame (`frame` is the widget, or store `sub.kitOwner = w` on sub-frames). Callbacks from the
-  spec are stored as fields (`w.kitOnChange = spec.onChange`).
+  spec are stored as fields (`w.kitOnChange = spec.onChange`). A "frame" reset on release depends on it: the setup calls a
+  type's Build makes on its widget's own frame (scripts, hooks, clicks, mouse, movable, strata, clipping...; the
+  list is `SETUP` in `Core.lua`) are recorded once per type and made again after every reset, so they must be the
+  same for every widget of the type. A frame setting not in that list belongs in Init, which runs on every make.
 - **Init resets everything.** A pooled widget keeps whatever its last use left: text, shown/hidden parts, enabled,
   selection, scroll, timers, values. Optional parts are made lazily in Init the first time a spec needs them, then
   shown or hidden on every Init.
@@ -49,6 +52,8 @@ UI.Define("Tag", {
   `UI.Make(ui, "Link", parent, spec)` in Build (or lazily in Init) and belong to the widget for good; a part placed by
   hand is sized with `UI.Fit(part)`. A widget that holds a stack for the addon's widgets sets `holds = true` and
   `w.kitInner = stack` (see Card, Section).
+- **The kit's frames** are made with `UI.NewFrame(kind, name, parent, template)`, never `CreateFrame`: it marks
+  them the kit's, so the `Custom.parts` reset and the audit pass over them.
 - **Internal stacks**: `UI.Part(ui, parent, "row" | "column", opts, layout)` makes one (a section's heading and
   body, a setting's rows); the caller appends it. `UI.MakeStack` makes an existing frame a stack.
 - **Hover on a part** (a tab, a band, a thumb) that only repaints colours: `UI.Hover(part, owner)`, which sets `hover`
@@ -76,8 +81,75 @@ Every widget follows these; `examples.lua` shows them in use.
   value (`SetValue`, `Select`, `SetAt`) never calls them.
 - **Value widgets** answer `GetValue` / `SetValue` and take `bind`, `default`, `Reset()` and `IsStored()` (below).
 - **Clearing deletes.** `Clear`, `Remove` and `Release` take widgets away for good (into the pools, which the addon
-  never sees); the addon does not use a widget after it clears it, and does not put its own scripts or regions on
-  kit widgets (it uses callbacks, or a frame of its own).
+  never sees); the addon does not use a widget after it clears it.
+
+## Customizing a widget, and what release undoes
+
+WoW never frees a frame, so a cleared widget's frame is used again for the next widget of its type. On every
+release the kit lets go of what it holds for the addon and what points at the widget:
+
+- **What the kit held for the addon** (the spec, callbacks, `data`) is dropped, so a widget in a pool keeps nothing
+  of the addon's alive.
+- **Things pointing at it:** the kit's tooltip for it, a menu anchored to it and the focus ring let go.
+- **Decorations** made with `w:AddTexture(layer)`, `w:AddText(style)` and `w:AddFrame(kind)` are put away, and the
+  next Add of the same kind on that frame takes them again. They need no mark.
+
+What the addon does to the widget itself with the plain API is undone only when the addon marks the widget with
+what it changes, because resetting every widget cost about 9 us a widget in build 70009 and most widgets are never
+touched. `w:Customize(flags)` takes flags from `ui.Custom` (also `Kit.UI.Custom`), which add up (each once:
+`Custom.frame + Custom.frame` is no flag), and returns the widget; the marks are one number on it. Each flag is
+undone by its cheapest call:
+
+| Flag | For | Undone by |
+| --- | --- | --- |
+| `Custom.events` (1) | `RegisterEvent`, `RegisterUnitEvent`... | `UnregisterAllEvents` (widgets register none of their own) |
+| `Custom.parts` (2) | textures, texts and frames made on it with the plain API | hiding them (they stay on the frame, so one made on every use grows by one each time: prefer an Add) |
+| `Custom.frame` (4) | everything else: scripts, hooks, strata, mouse, attributes, a text's colour or font... | `SetToDefaults`, `UnregisterAllEvents`, the keyboard off, and the kit's setup made again; covers `Custom.events` |
+
+`w:Customize()` with no flags asks for `Custom.frame + Custom.parts`. Anchors, size, parent and frame level need no mark: the
+kit sets them on every use. Nor do alpha and scale: every widget has its own `SetAlpha` and `SetScale`, which note
+a value off the default (one field) before calling the client's, and release puts back only a noted one. `UI.resetMode` is `"marked"` by default; `"always"` resets every widget in full, and
+nil none (both for measuring).
+
+```lua
+row:Button{ "Later" }:SetAlpha(0.6)                         -- no mark
+local Custom = ns.UI.Custom
+row:Button{ "Bags" }:Customize(Custom.events):RegisterEvent("BAG_UPDATE")
+w:Customize(Custom.frame + Custom.parts):HookScript("OnEnter", showMore)
+```
+
+**The audit** (`Dev/Audit.lua`, development builds only, on from `NuuKit.lua`) checks the marks. While it is on,
+each widget class's metatable answers `__index` through a function, which runs in the frame of the code looking a
+method up, so `debugstack` names the caller: a change from outside the kit's `UI/` files is noted on the widget,
+with the kind it needs, and the client's own method goes back as it is (nothing is wrapped or copied). On release
+the notes are held against the marks. Every wrong mark is an error, every time:
+
+- **At the call**, raised with `error()` at the addon's line, before the change is made:
+  - **flags**: `Customize` given anything but `ui.Custom`'s flags, each added once (a string, 0, `frame + frame`).
+  - **never**: a change no reset undoes (`CreateAnimationGroup`).
+  - **released**: a widget changed after it was cleared.
+- **On release**, sent to the client's error handler (`geterrorhandler()`: the error frame, or BugSack), which does
+  not unwind: an `error()` there would stop a `Clear` half-way and leave its stack and the pools broken.
+  - **missing**: a change the marks do not undo (it reaches the next use), with where it was made and the mark to
+    add. A frame an addon made with the widget as its parent is found by looking, and named by where the widget was
+    made.
+  - **unneeded**: a mark nothing in that use needed, even one set and never used. A mark placed for a change made
+    only sometimes fails on the uses without it: mark it where the change is made.
+  - **broader**: `Custom.frame` where `Custom.events` would do.
+
+Each is also counted in a log: `/nuukit audit` lists it, most frequent first; `/nuukit audit on`, `off`, `clear`. The report turns it off
+while measuring. Its limits: a lookup counts as a call (`if w.SetBackdrop then` is noted), a method kept in a local
+and called later is noted where it was looked up, a tail call from an addon passes as the kit's, and methods copied
+onto frames (a client that refuses frames a metatable) are not watched.
+
+What no mark undoes, and so is the addon's to avoid:
+
+- **The kit's own parts** (a button's `label`, its plate, a field's box): a reset reaches the widget's frame, not
+  its parts, and the kit sets some part settings only once (a label's anchor) or skips ones it believes set (a font).
+  Customize through the spec or an Add.
+- **Animation groups** made on the widget: `SetToDefaults` keeps them.
+- **The addon's own fields** on the widget: use `w.data` (`data = ...` in the spec), which the kit clears.
+- **References, timers and anchors** the addon keeps to a widget it cleared: they reach whatever the frame is next.
 
 ### `bind`, on every value widget
 

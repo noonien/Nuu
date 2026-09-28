@@ -345,7 +345,7 @@ function Window:IsCollapsed() return self.kitCollapsed or false end
 function Window:Status(text, opts)
     local strip = self.statusStrip
     if not strip then
-        strip = CreateFrame("Frame", nil, self)
+        strip = UI.NewFrame("Frame", nil, self)
         strip:Hide()
         strip:SetHeight(STATUS)
         strip.bg = strip:CreateTexture(nil, "BACKGROUND")
@@ -408,7 +408,7 @@ local function keepWindow() end
 -- Makes the window shell shared by Window and Panel.
 local function shell(ui, opts, inPlay)
     local name = (not inPlay or opts.escape) and frameName(ui, opts.key) or nil
-    local win = CreateFrame("Frame", name, opts.parent or UIParent)
+    local win = UI.NewFrame("Frame", name, opts.parent or UIParent)
     -- What a widget has (Changed, Repaint, OnRightClick...), but a window
     -- is never released to a pool; a holder: what is made on the window
     -- goes in the body.
@@ -431,7 +431,7 @@ local function shell(ui, opts, inPlay)
 
     -- The band: title, subtitle, room for the addon's own controls, then the
     -- collapse and close marks. It is what the player drags.
-    local band = CreateFrame("Frame", nil, win)
+    local band = UI.NewFrame("Frame", nil, win)
     band:SetHeight(BAND)
     win.band = band
     win.bandBg = band:CreateTexture(nil, "BACKGROUND")
@@ -475,7 +475,7 @@ local function shell(ui, opts, inPlay)
     if inPlay and not opts.title and not opts.collapsible then band:Hide() end
 
     -- The body: a column that fills the window.
-    local body = CreateFrame("Frame", nil, win)
+    local body = UI.NewFrame("Frame", nil, win)
     -- What does not fit is cut at the window's edge, not drawn over the world;
     -- a screen that can outgrow the window holds its content in a ScrollArea.
     if body.SetClipsChildren then pcall(body.SetClipsChildren, body, true) end
@@ -496,7 +496,7 @@ local function shell(ui, opts, inPlay)
     if opts.resizable then
         if win.SetResizable then win:SetResizable(true) end
         setBounds(win, opts)
-        local grip = CreateFrame("Button", nil, win)
+        local grip = UI.NewFrame("Button", nil, win)
         grip:SetSize(GRIP, GRIP)
         grip:SetFrameLevel(win:GetFrameLevel() + 20)
         grip.glyph = UI.NewGlyph(grip, "grip", 9, 1.3)
