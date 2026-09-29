@@ -19,6 +19,7 @@ Data/BuiltIn/GettingStarted.lua
 Data/BuiltIn/HordeBarrens.lua
 Data/BuiltIn/HordeMulgore16.lua
 Data/BuiltIn/HordeMulgore612.lua
+Data/BuiltIn/HordeTirisfal16.lua
 Data/BuiltIn/HordeTirisfal612.lua
 Data/BuiltIn/HordeWailingCaverns.lua
 Data/BuiltIn/HordeRagefireChasm.lua

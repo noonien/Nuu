@@ -134,9 +134,8 @@ for _, id in ipairs({ "nuuroad:leveling:horde-mulgore-1-6", "nuuroad:leveling:ho
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
--- The ported RestedXP Brill guide: Tirisfal Glades and the Undercity.
-do
-    local id = "nuuroad:leveling:horde-tirisfal-6-12"
+-- The ported RestedXP Tirisfal guides: Deathknell, then Brill and the Undercity.
+for _, id in ipairs({ "nuuroad:leveling:horde-tirisfal-1-6", "nuuroad:leveling:horde-tirisfal-6-12" }) do
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
     assert(source.only == "Horde" and source.map == 1420, id .. " is a Horde guide on the Tirisfal map")
