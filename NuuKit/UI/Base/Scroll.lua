@@ -158,6 +158,21 @@ local function wheel(scroll, delta)
     scroll.bar:Sync()
 end
 
+-- Whether something around `frame` would scroll under the wheel: a kit
+-- scroll frame above it that takes the wheel and has further to go. A view
+-- inside one (a list, a text area) leaves the wheel to it until taken hold
+-- of; with none, the view takes the wheel as soon as the pointer is on it.
+function UI.PageScrolls(frame)
+    local parent = frame:GetParent()
+    while parent do
+        if parent.ScrollRange == Scroll.ScrollRange and parent:IsMouseWheelEnabled() and parent:ScrollRange() > 0 then
+            return true
+        end
+        parent = parent:GetParent()
+    end
+    return false
+end
+
 -- A ScrollFrame and its content frame with the slim bar. Returns scroll,
 -- content; `scroll:ScrollTo(y)`, `scroll:ScrollToTop()`, `scroll:Sync()`.
 function UI.NewScroll(ui, parent)

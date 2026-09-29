@@ -94,3 +94,18 @@ layout()
 assertTrue(title.kitPH > height, "a larger text size makes a title taller: " .. title.kitPH .. " vs " .. height)
 ui:SetLook({ theme = "midnight" })
 layout()
+
+-- A type defined after stacks were made (an addon defining its own late, on
+-- a kit another addon already built with) is made in those stacks too.
+UI.Define("SmokeLateType", {
+    Build = function() end,
+    Init = function() end,
+    methods = { Measure = function() return 10, 10 end },
+})
+-- (Not with methods copied onto frames: those keep the makers they had.)
+if UI.sharedMethods then
+    local late = body:SmokeLateType{}
+    assertTrue(late and late.kitType == "SmokeLateType", "a stack made earlier makes a type defined later")
+    body:Remove(late)
+end
+UI.types.SmokeLateType = nil

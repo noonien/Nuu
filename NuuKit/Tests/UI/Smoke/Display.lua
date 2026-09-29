@@ -180,13 +180,13 @@ assertTrue(UI.LayoutSettled(), "Fit lays it out now")
 
 -- Every setter.
 assertTrue(s1.icon.texture == "Interface\\Icons\\item6948" and s1.kitLinks.item == 6948, "an item's icon, and its tooltip link")
-assertTrue(same(s1.border.color, { 1, 1, 1, 1 }), "a ring in the item's quality colour")
+assertTrue(same(s1.ring[1].color, { 1, 1, 1, 1 }), "a ring in the item's quality colour")
 assertTrue(s1.keyText.text == UI.ShortKey("SHIFT-1") and s1.countText.text == "5" and s1.countStrip.shown, "key and count")
-assertTrue(s2.icon.texture == "Interface\\Icons\\inv" and s2.questMark.shown and same(s2.border.color, t.border), "an icon, a quest mark, a plain ring")
-assertTrue(s3.marker.shown and string.find(s3.marker.texture, "Icon_8", 1, true) and same(s3.border.color, UI.Tone(t, "success")),
+assertTrue(s2.icon.texture == "Interface\\Icons\\inv" and s2.questMark.shown and same(s2.ring[1].color, t.border), "an icon, a quest mark, a plain ring")
+assertTrue(s3.marker.shown and string.find(s3.marker.texture, "Icon_8", 1, true) and same(s3.ring[1].color, UI.Tone(t, "success")),
     "a marker, the edge's tone over the quality")
 s2:SetItem(2589)
-assertTrue(s2.icon.texture == "Interface\\Icons\\item2589" and same(s2.border.color, { 0, 0.44, 0.87, 1 }), "SetItem")
+assertTrue(s2.icon.texture == "Interface\\Icons\\item2589" and same(s2.ring[1].color, { 0, 0.44, 0.87, 1 }), "SetItem")
 s2:SetIcon("Interface\\Icons\\other")
 assertTrue(s2.icon.texture == "Interface\\Icons\\other", "SetIcon")
 s2:SetKey("BUTTON4")
@@ -203,10 +203,10 @@ assertTrue(s2.questMark.shown and not s2.marker.shown and not s2.countStrip.show
 s2:SetQuest(false)
 assertTrue(not s2.questMark.shown, "SetQuest")
 s2:SetMissing(true)
-assertTrue(s2.alpha == 0.6 and same(s2.border.color, t.danger), "missing: dimmed, a danger ring")
+assertTrue(s2.alpha == 0.6 and same(s2.ring[1].color, t.danger), "missing: dimmed, a danger ring")
 s2:SetMissing(false)
 s2:SetEdge("warning")
-assertTrue(s2.alpha == 1 and same(s2.border.color, UI.Tone(t, "warning")), "SetEdge")
+assertTrue(s2.alpha == 1 and same(s2.ring[1].color, UI.Tone(t, "warning")), "SetEdge")
 local cooled
 s1.cooldown.SetCooldown = function(_, start, duration) cooled = { start, duration } end
 s1:UpdateCooldown()
@@ -254,7 +254,7 @@ for _, r in ipairs({ r1, r2, r3 }) do
     assertTrue(r == s1 or r == s2 or r == s3, "from the pool")
     assertTrue(r.kitItem == nil and r.kitLinks == nil and not r.kitMissing and r.alpha == 1, "no item, not missing")
     assertTrue(not r.questMark.shown and not r.marker.shown and not r.countStrip.shown and r.keyText.text == "", "no marks, no count, no key")
-    assertTrue(r.kitEdge == nil and same(r.border.color, t.border) and r.kitPW == 24, "a plain ring, its new size")
+    assertTrue(r.kitEdge == nil and same(r.ring[1].color, t.border) and r.kitPW == 24, "a plain ring, its new size")
     assertTrue(r.tooltip == nil, "no old tooltip")
 end
 assertTrue(r1.icon.texture == "Interface\\Icons\\a" and r2.icon.texture == nil, "only the icon it is given")
@@ -275,7 +275,21 @@ assertTrue(slot.marker.shown and not slot.questMark.shown and string.find(slot.m
 slot:SetMarker(nil)
 slot:SetCount(1)
 assertTrue(slot.questMark.shown and not slot.marker.shown and not slot.countStrip.shown, "and gives it back; one of a thing has no count")
+-- A note in a tone has no strip; a model is the picture, under the marks.
+slot:SetCount("talk", "accent")
+assertTrue(slot.countText.text == "talk" and not slot.countStrip.shown, "a toned note has no strip")
+assertTrue(slot.kitCountTone == "accent", "and is in its tone")
+local model = CreateFrame("Frame")
+slot:HoldModel(model)
+assertTrue(model.parent == slot and slot.kitMarks and slot.countText.parent == slot.kitMarks, "a model on the slot, the marks over it")
+assertTrue(model.level < slot.kitMarks.level, "the marks above the model")
+slot:FadePicture(0.75)
+assertTrue(slot.icon.alpha == 0.75 and model.alpha == 0.75 and slot.alpha == 1, "only the picture fades")
 slot:Release()
+local again = ui:Slot(UIParent, {})
+assertTrue(again == slot and not model:IsShown() and slot.kitModel == nil and slot.icon.alpha == 1,
+    "taken again: no model, the picture whole")
+again:Release()
 Object.SetAttribute = nil
 
 -- The look picker ----------------------------------------------------------------------------

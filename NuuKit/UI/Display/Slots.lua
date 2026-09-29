@@ -12,6 +12,9 @@ local Proto, Makers = UI.Proto, UI.Makers
 -- themselves sit on the world.
 
 local HEADER, SLOT = 20, 36
+-- The ring's edges: the corners each runs between, and the axis it is thin on.
+local RING = { { "TOPLEFT", "TOPRIGHT", "height" }, { "BOTTOMLEFT", "BOTTOMRIGHT", "height" },
+    { "TOPLEFT", "BOTTOMLEFT", "width" }, { "TOPRIGHT", "BOTTOMRIGHT", "width" } }
 local WHITE = { 1, 1, 1, 1 }
 
 -- Item facts from whichever API the client has.
@@ -206,15 +209,22 @@ end
 
 -- Spec: item (an item id: icon, quality edge and cooldown come from it),
 -- icon (a texture, instead), key (a binding, shortened to fit the corner),
--- count (on a shaded strip), quest (a "!" in the top-left corner), marker (a
+-- count (on a shaded strip; `slot:SetCount(text, tone)` writes a note in a
+-- tone instead, with no strip), quest (a "!" in the top-left corner), marker (a
 -- raid target, 1 to 8, in that corner instead), edge (a tone for the ring
 -- instead of the quality), missing, onClick(slot, mouse), tooltip, size,
 -- secure (attributes for a SecureActionButtonTemplate, set out of combat:
--- { type = "item", item = ... }).
+-- { type = "item", item = ... }), name (a secure slot's global name, for a
+-- key binding: `CLICK <name>:LeftButton`).
 --
 -- A secure slot is its own type, SecureSlot, made from the template and
 -- never pooled: a secure frame keeps its attributes and cannot be handed to
 -- another use in combat. Plain slots come from the pool.
+--
+-- `slot:HoldModel(model)` makes a model the addon made (a PlayerModel) the
+-- slot's picture: over the ring and the icon, under the key, count and
+-- marker. `slot:FadePicture(alpha)` fades the icon and that model, not the
+-- ring or the marks.
 
 local function slotClicked(w, mouse)
     if w.kitOnClick then w.kitOnClick(w, mouse) end
@@ -227,6 +237,14 @@ local function hardShadow(text)
     text:SetShadowOffset(1, -1)
 end
 
+local function paintCount(w, t)
+    if w.kitCountTone then
+        UI.ApplyStyle(w.countText, "fine", t, UI.Tone(t, w.kitCountTone) or t.text)
+    else
+        UI.ApplyStyle(w.countText, "number", t, WHITE)
+    end
+end
+
 local function buildSlot(w)
     w:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     -- The plate and the ring of shadow only tint the world behind the art:
@@ -235,9 +253,17 @@ local function buildSlot(w)
     w.shadow:SetPoint("TOPLEFT", -2, 2)
     w.shadow:SetPoint("BOTTOMRIGHT", 2, -2)
     w.shadow:SetColorTexture(0, 0, 0, 0.25)
-    w.border = w:CreateTexture(nil, "BACKGROUND", nil, -2)
-    w.border:SetPoint("TOPLEFT", -1, 1)
-    w.border:SetPoint("BOTTOMRIGHT", 1, -1)
+    -- The ring is four edges, not a plate under the backing: a plate showed
+    -- through the translucent backing and tinted the whole slot its colour.
+    local ring = {}
+    for index, side in ipairs(RING) do
+        local edge = w:CreateTexture(nil, "BORDER")
+        edge:SetPoint(side[1], w, side[1], 0, 0)
+        edge:SetPoint(side[2], w, side[2], 0, 0)
+        UI.Stroke(edge, side[3], 1)
+        ring[index] = edge
+    end
+    w.ring = ring
     w.backing = w:CreateTexture(nil, "BACKGROUND", nil, -1)
     w.backing:SetAllPoints()
     w.backing:SetColorTexture(0.03, 0.04, 0.05, 0.3)
@@ -290,6 +316,11 @@ local function initSlot(w, spec)
     w.kitMissing = false
     w.icon:SetDesaturated(false)
     w:SetAlpha(1)
+    if w.kitModel then
+        w.kitModel:Hide()
+        w.kitModel = nil
+    end
+    w:FadePicture(1)
     if w.cooldown then pcall(w.cooldown.Clear, w.cooldown) end
     if spec.icon then w:SetIcon(spec.icon) end
     if spec.item then w:SetItem(spec.item) end
@@ -314,10 +345,40 @@ local slotMethods = {
     GetItem = function(self) return self.kitItem end,
     SetIcon = function(self, texture) self.icon:SetTexture(texture) end,
     SetKey = function(self, key) self.keyText:SetText(UI.ShortKey(key) or "") end,
-    SetCount = function(self, count)
+    -- A count on its shaded strip, or with a tone a short note in that
+    -- tone ("3x", "talk"), outlined by its shadow alone: over a portrait
+    -- the strip drew a grey film across the bottom of the picture.
+    SetCount = function(self, count, tone)
         local shown = count and count ~= 1
         self.countText:SetText(shown and tostring(count) or "")
-        self.countStrip:SetShown(shown and true or false)
+        self.countStrip:SetShown((shown and not tone) and true or false)
+        if tone ~= self.kitCountTone then
+            self.kitCountTone = tone
+            paintCount(self, self.ui.tokens)
+        end
+    end,
+    HoldModel = function(self, model)
+        if not self.kitMarks then
+            -- The marks move to a frame of their own, above the model.
+            local marks = UI.NewFrame("Frame", nil, self)
+            marks:SetAllPoints()
+            for _, part in ipairs({ self.countStrip, self.countText, self.keyText, self.marker, self.questMark }) do
+                part:SetParent(marks)
+            end
+            self.kitMarks = marks
+        end
+        model:SetParent(self)
+        model:ClearAllPoints()
+        model:SetAllPoints(self.icon)
+        model:SetFrameLevel(self:GetFrameLevel() + 1)
+        self.kitMarks:SetFrameLevel(self:GetFrameLevel() + 2)
+        model:SetAlpha(self.kitPictureAlpha or 1)
+        self.kitModel = model
+    end,
+    FadePicture = function(self, alpha)
+        self.kitPictureAlpha = alpha
+        self.icon:SetAlpha(alpha)
+        if self.kitModel then self.kitModel:SetAlpha(alpha) end
     end,
     -- A quest item: a gold "!" in the top-left corner.
     SetQuest = function(self, on)
@@ -364,7 +425,7 @@ local slotMethods = {
     Measure = function(self) return self.kitSize, self.kitSize end,
     Paint = function(self, t)
         UI.ApplyStyle(self.keyText, "key", t, WHITE)
-        UI.ApplyStyle(self.countText, "number", t, WHITE)
+        paintCount(self, t)
         UI.ApplyStyle(self.questMark, "heading", t, t.quest)
         self:PaintState(t)
     end,
@@ -379,7 +440,7 @@ local slotMethods = {
         else
             edge = qualityColor(self.kitQuality) or t.border
         end
-        UI.TexColor(self.border, edge)
+        for _, side in ipairs(self.ring) do UI.TexColor(side, edge) end
         UI.TexColor(self.highlight, t.accentRaw, 0.22)
     end,
 }
@@ -397,9 +458,9 @@ UI.Define("Slot", slotDef())
 UI.Define("SecureSlot", slotDef({
     pool = false,
     Create = function(ui, parent, spec)
-        local ok, made = pcall(CreateFrame, "Button", nil, parent, "SecureActionButtonTemplate")
+        local ok, made = pcall(CreateFrame, "Button", spec and spec.name or nil, parent, "SecureActionButtonTemplate")
         local w = ok and made or UI.NewFrame("Button", nil, parent)
-        w.kitSecure = true
+        w.kitSecure = (ok and made and made.SetAttribute ~= nil) or false
         return w
     end,
 }))

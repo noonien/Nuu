@@ -1,0 +1,24 @@
+<Bindings>
+    <Binding name="CLICK NuuRoadMarkButton:LeftButton" header="NUUROAD" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadMarkAllButton:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton1:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton2:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton3:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton4:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton5:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton6:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton7:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton8:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton9:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadTargetButton10:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton1:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton2:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton3:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton4:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton5:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton6:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton7:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton8:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton9:LeftButton" category="NuuRoad" />
+    <Binding name="CLICK NuuRoadItemButton10:LeftButton" category="NuuRoad" />
+</Bindings>

@@ -126,15 +126,39 @@ list:Select(GUIDES[3])
 Object.SetFont = setFont
 assertTrue(fonts == 0 and UI.LayoutSettled(), "hover and selection set no font and lay nothing out")
 
--- The wheel is the list's only once taken, and while it scrolls.
-assertTrue(not list.wheel, "a list leaves the wheel to the page")
-rows[1]:Fire("OnMouseDown", "LeftButton")
-assertTrue(list.wheel and list.kitHeld, "until a row is pressed")
+-- With nothing around it that scrolls, the wheel is the list's while it scrolls.
+assertTrue(list.wheel and not list.kitHeld, "a list in a page that does not scroll takes the wheel untouched")
 local at = list.offset
 list:GetScript("OnMouseWheel")(list, -1)
 assertTrue(list.offset == at + 3 and rows[1].item == list:GetView()[at + 4], "a notch moves three rows")
+rows[1]:Fire("OnMouseDown", "LeftButton")
 rows[1]:Fire("OnLeave")
-assertTrue(not list.wheel and not list.kitHeld, "and gives it back when the pointer leaves")
+assertTrue(list.wheel and not list.kitHeld, "and keeps it after it was held")
+
+-- In a page that scrolls, the wheel is the list's only once taken.
+do
+    local _, body = testWindow(ui, 400, 300)
+    local area = body:ScrollArea{ gap = 6 }
+    local inner = area:List{ rows = 4, make = makeGuide, draw = drawGuide }
+    inner:SetItems(GUIDES)
+    local lines = {}
+    for i = 1, 30 do lines[i] = area:Text{ "Line " .. i } end
+    layout()
+    assertTrue(area.scroll:ScrollRange() > 0 and UI.PageScrolls(inner), "the page scrolls")
+    inner.rows[1]:Fire("OnEnter")
+    assertTrue(not inner.wheel, "a list leaves the wheel to the page")
+    inner.rows[1]:Fire("OnMouseDown", "LeftButton")
+    assertTrue(inner.wheel and inner.kitHeld, "until a row is pressed")
+    inner.rows[1]:Fire("OnLeave")
+    assertTrue(not inner.wheel and not inner.kitHeld, "and gives it back when the pointer leaves")
+    -- The page stops scrolling: the next time the pointer comes, it is the list's.
+    for _, line in ipairs(lines) do line:Release() end
+    layout()
+    assertTrue(area.scroll:ScrollRange() == 0, "the page no longer scrolls")
+    inner:Fire("OnEnter")
+    assertTrue(inner.wheel and not inner.kitHeld, "so the list takes the wheel on hover")
+    inner:Release()
+end
 
 -- Scrolling makes no frames, lays out nothing above the list, and lays each
 -- row's content out at once.
@@ -550,7 +574,7 @@ local l, tbl, tree, pager, figs, panes, area = build(1)
 layout()
 assertTrue(#objects == before, "a rebuild takes every frame from the pools: " .. (#objects - before) .. " new")
 assertTrue(l == firstList, "the list comes from its pool")
-assertTrue(l:GetSelected() == nil and not l.kitHeld and not l.wheel and l.offset == 0, "with no old selection, hold or scroll")
+assertTrue(l:GetSelected() == nil and not l.kitHeld and l.offset == 0, "with no old selection, hold or scroll")
 assertTrue(l.rows[1].number and l.rows[1].number:GetText() == "1" and l.rows[1].name:GetText() == "Guide 1", "rows made again for this make")
 assertTrue(l.rows[1].kitPH == 26, "at this row height")
 local laidOut

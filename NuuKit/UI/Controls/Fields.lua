@@ -481,6 +481,12 @@ end
 local function areaSized(scroll) areaFit(scroll.kitOwner) end
 local function areaMouseDown(frame) frame.kitOwner.box:SetFocus() end
 
+-- Not typing, the text takes the wheel only where nothing around it scrolls.
+local function areaEnter(frame)
+    local w = frame.kitOwner
+    if not w.box:HasFocus() then w.scroll:EnableMouseWheel(not UI.PageScrolls(w)) end
+end
+
 -- Keeps the cursor in view while typing past the bottom.
 local function areaCursor(box, _, y, _, h)
     local scroll = box.kitOwner.scroll
@@ -515,6 +521,8 @@ UI.Define("TextArea", {
         local box = newBox(w, content, true, boxFrame)
         box:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0)
         box:SetScript("OnCursorChanged", areaCursor)
+        box:HookScript("OnEnter", areaEnter)
+        boxFrame:HookScript("OnEnter", areaEnter)
         w.box = box
         w.counter = UI.NewText(w)
         w.counter:SetPoint("BOTTOMRIGHT", w.line, "TOPRIGHT", 0, LABEL_GAP)
@@ -524,9 +532,9 @@ UI.Define("TextArea", {
         w.kitMaxLetters = spec.maxLetters
         w.counter:SetShown(spec.maxLetters ~= nil)
         initField(w, spec, spec.boxHeight or 90, spec.maxLetters ~= nil)
-        -- The wheel is the text's only while the player is typing in it;
-        -- until then it scrolls whatever holds the field, so the page does
-        -- not stop when the field passes under the pointer.
+        -- Inside a page that scrolls, the wheel is the text's only while the
+        -- player is typing in it; until then it scrolls the page, so the page
+        -- does not stop when the field passes under the pointer.
         w.scroll:EnableMouseWheel(false)
         w.scroll:ScrollSet(0)
         setText(w, UI.InitValue(w, spec))

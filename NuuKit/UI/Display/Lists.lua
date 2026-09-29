@@ -139,13 +139,18 @@ local function paintRows(w, t)
     end
 end
 
--- The wheel is the list's only once the player has taken hold of it (a
--- click on a row, the list or its bar), only while it has more than it
--- shows, and until the pointer leaves it: the page scrolling past a list
--- must not stop at it. Held, its edge lights, as a field's does.
+-- The wheel is the list's only while it has more than it shows. Where
+-- nothing around it scrolls, that is all; inside a page that scrolls, only
+-- once the player has taken hold of it (a click on a row, the list or its
+-- bar) and until the pointer leaves it: the page scrolling past a list must
+-- not stop at it. Held, its edge lights, as a field's does.
+local function syncWheel(w)
+    w:EnableMouseWheel(maxOffset(w) > 0 and (w.kitHeld or not UI.PageScrolls(w)))
+end
+
 local function holdWheel(w, held)
     w.kitHeld = held and true or false
-    w:EnableMouseWheel(w.kitHeld and maxOffset(w) > 0)
+    syncWheel(w)
     w:PaintState(w.ui.tokens)
 end
 
@@ -155,6 +160,9 @@ local function take(frame)
     local w = listOf(frame)
     if not w.kitHeld then holdWheel(w, true) end
 end
+
+-- The page may have come to scroll, or stopped, since the list last looked.
+local function enter(frame) syncWheel(listOf(frame)) end
 
 -- Leaving the list for one of its own rows is not leaving it.
 local function leave(frame)
@@ -221,6 +229,7 @@ local TIP = {}
 local function rowEnter(row)
     row.hover = true
     local w = row.kitList
+    syncWheel(w)
     paintRow(w, row, w.ui.tokens)
     local filler, opts
     if row.item ~= nil then
@@ -416,8 +425,8 @@ local function refresh(w)
     elseif w.emptyText then
         w.emptyText:Hide()
     end
-    -- More or fewer items: held, it takes the wheel only if it scrolls.
-    w:EnableMouseWheel(w.kitHeld and maxOffset(w) > 0)
+    -- More or fewer items: it takes the wheel only if it scrolls.
+    syncWheel(w)
     w.bar:Sync()
 end
 
@@ -496,10 +505,12 @@ local function buildList(w)
     w.bar = bar
     w:EnableMouseWheel(false)
     w:HookScript("OnMouseDown", take)
+    w:HookScript("OnEnter", enter)
     w:HookScript("OnLeave", leave)
     w:HookScript("OnHide", listHidden)
     for _, part in ipairs({ bar, bar.thumb }) do
         part:HookScript("OnMouseDown", take)
+        part:HookScript("OnEnter", enter)
         part:HookScript("OnLeave", leave)
     end
     w:SetScript("OnMouseWheel", listWheel)

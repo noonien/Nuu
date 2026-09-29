@@ -6,17 +6,20 @@ can build a window in a few lines. Mockups: see [README.md](README.md).
 
 ## Scope
 
-The kit ships reusable parts only. NuuRoad and NuuProfessions build their own screens from them.
+The kit ships reusable parts, and three shared windows every addon has (diagnostics, the session log, the bug report
+form: `UI/Screens/`, 2026-09-29) whose addon-specific parts come in through their specs. NuuRoad and NuuProfessions
+build their other screens from the parts.
 
 | The kit ships | The addons build |
 | --- | --- |
 | themes, accents, art textures, window chrome | the tracker, guide browser, editor (NuuRoad) |
 | windows: move, resize, collapse, Escape, placement | the planner and its tabs (NuuProfessions) |
 | layout (column, row), sections, tabs | each addon's options window |
-| buttons, fields, toggles, sliders, menus, selects | the bug report form |
+| buttons, fields, toggles, sliders, menus, selects | what their bug reports, logs and diagnostics say |
 | lists, tree, split panes, scroll areas, slots | anything that knows about guides, quests or recipes |
 | tooltips, progress bars, notices, empty / loading / error states | |
 | the look picker (theme, accent, chrome), the focus ring | |
+| the diagnostics, session log and bug report windows | |
 
 The kit holds no settings. An addon passes in its own tables and callbacks (the look, window positions), and the
 kit reads and writes only what it is handed.

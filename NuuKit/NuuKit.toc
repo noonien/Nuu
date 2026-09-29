@@ -32,6 +32,9 @@ UI/Display/Tables.lua
 UI/Controls/Forms.lua
 UI/Display/Slots.lua
 UI/Theme/LookPicker.lua
+UI/Screens/Diagnostics.lua
+UI/Screens/SessionLog.lua
+UI/Screens/BugReportForm.lua
 # Development only: the widget gallery (/nuukit ui), the report (/nuukit report) and the reset audit
 # (/nuukit audit). Never shipped.
 Dev/Gallery.lua

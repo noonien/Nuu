@@ -1,0 +1,235 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Zone browser</title>
+<style>
+:root { --bg: #16181c; --panel: #202329; --text: #e4e6ea; --muted: #9aa0aa; --line: #333842; --accent: #3b6fd8; }
+@media (prefers-color-scheme: light) { :root { --bg: #f3f4f6; --panel: #ffffff; --text: #1d2026; --muted: #5d6470; --line: #d5d9e0; } }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
+#app { display: flex; height: 100%; }
+#side { width: 290px; padding: 12px; background: var(--panel); border-right: 1px solid var(--line); overflow: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+h1 { font-size: 15px; margin: 0; }
+select, input[type=text] { width: 100%; box-sizing: border-box; padding: 5px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+label { display: block; margin: 2px 0; cursor: pointer; }
+.muted { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.section { border-top: 1px solid var(--line); padding-top: 8px; }
+button { padding: 5px 9px; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 4px; cursor: pointer; font: inherit; margin: 3px 3px 0 0; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .5; cursor: default; }
+#list { max-height: 260px; overflow: auto; }
+#list div { padding: 3px 5px; border-radius: 3px; cursor: pointer; display: flex; justify-content: space-between; gap: 6px; }
+#list div:hover, #list div.on { background: rgba(59,111,216,.25); }
+#list .star { color: #ffc34d; }
+#view { flex: 1; position: relative; overflow: hidden; background: #0b0c0e; }
+svg { width: 100%; height: 100%; display: block; cursor: grab; }
+svg.dragging { cursor: grabbing; }
+#readout { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.7); color: #fff; padding: 4px 8px; border-radius: 4px; font: 12px monospace; pointer-events: none; }
+#tip { position: absolute; background: rgba(0,0,0,.85); color: #fff; padding: 5px 8px; border-radius: 4px; font: 12px monospace; pointer-events: none; display: none; white-space: pre; }
+pre { white-space: pre-wrap; font-size: 11px; max-height: 140px; overflow: auto; background: var(--bg); padding: 6px; border-radius: 4px; margin: 6px 0 0; }
+.swatch { display: inline-block; width: 9px; height: 9px; margin-right: 5px; vertical-align: middle; }
+@media (max-width: 700px) { #app { flex-direction: column; } #side { width: 100%; max-height: 45%; } }
+</style></head>
+<body><div id="app"><div id="side">
+<select id="zone"></select>
+<div id="layers"></div>
+<div class="section"><h1 id="count">Caves</h1><div id="list" class="muted">Loading...</div></div>
+<div class="section" id="detail"><span class="muted">Click a marker or a cave in the list.</span></div>
+<div class="section muted">Wheel or Q/E zoom, drag or W/A/S/D pan (Shift faster). Built places open in the <a href="/" style="color:#6ea8fe">place viewer</a>.</div>
+</div>
+<div id="view"><svg id="svg" xmlns="http://www.w3.org/2000/svg"></svg><div id="readout"></div><div id="tip"></div></div></div>
+<script>
+// The zone browser: a zone's own minimap with every placed model on it,
+// caves first, to find them and mark them for place generation. Marks go to
+// serve.py (marks.json); "Generate place" runs build.py for the mark.
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("svg"), tip = document.getElementById("tip");
+const KINDS = {
+  cave: { label: "Caves, mines, dens", colour: "#ff9f1a", on: true, size: 7 },
+  dungeon: { label: "Dungeon entrances", colour: "#c77dff", on: true, size: 7 },
+  new: { label: "New in this build (unnamed)", colour: "#2ec4b6", on: true, size: 6 },
+  building: { label: "Buildings", colour: "#b0b6c0", on: false, size: 4 },
+  other: { label: "Other models", colour: "#7a808a", on: false, size: 3 },
+};
+let zone = null, marks = [], selected = null, W = 1000, H = 1000, layers = {};
+const X = x => x * W / 100, Y = y => y * H / 100;
+const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); (parent || svg).appendChild(e); return e; };
+const hash = () => new URLSearchParams(location.hash.slice(1));
+const slug = text => text.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32) || "cave";
+const short = name => (name || "").split("/").pop().replace(/\.wmo$/, "");
+async function json(url, body) {
+  const response = await fetch(url, body === undefined ? {} : { method: "POST", body: JSON.stringify(body) });
+  if (!response.ok) throw new Error(url + ": " + response.status);
+  return response.json();
+}
+
+async function start() {
+  const zones = await json("/zones.json");
+  const pick = document.getElementById("zone");
+  const want = hash().get("zone") || "1412";
+  for (const [id, name] of Object.entries(zones).sort((a, b) => a[1].localeCompare(b[1]))) {
+    const o = document.createElement("option"); o.value = id; o.textContent = name + " (" + id + ")"; o.selected = id === want; pick.appendChild(o);
+  }
+  pick.onchange = () => { location.hash = "zone=" + pick.value; load(pick.value); };
+  marks = await json("/marks.json");
+  load(pick.value);
+}
+
+async function load(id) {
+  document.getElementById("list").textContent = "Reading the zone (the first time takes a little while)...";
+  svg.innerHTML = ""; selected = null; showDetail();
+  zone = await json("/zone/" + id + ".json");
+  W = 1000; H = 1000 * zone.yards[1] / zone.yards[0];
+  el("image", { href: "/zone/" + id + ".jpg", x: 0, y: 0, width: W, height: H, preserveAspectRatio: "none" });
+  layers = {};
+  const holes = layers.holes = el("g", {});
+  for (const [x, y] of zone.holes) el("rect", { x: X(x) - .6, y: Y(y) - .6, width: 1.2, height: 1.2, fill: "#ff4d4d", opacity: .8 }, holes);
+  for (const kind of ["other", "building", "new", "dungeon", "cave"]) {
+    const g = layers[kind] = el("g", {});
+    for (const m of zone.models.filter(m => m.kind === kind)) marker(m, g);
+  }
+  layers.marked = el("g", {});
+  drawMarks();
+  buildLayerSwitches();
+  buildList();
+  vb = { x: 0, y: 0, w: W, h: H }; apply();
+}
+
+function marker(m, g) {
+  const k = KINDS[m.kind], s = k.size;
+  const shape = m.kind === "cave" || m.kind === "dungeon"
+    ? el("path", { d: `M${X(m.at[0])},${Y(m.at[1]) - s} l${s},${s} l${-s},${s} l${-s},${-s} z`, fill: k.colour, stroke: "#000", "stroke-width": 1, "vector-effect": "non-scaling-stroke", class: "mk" }, g)
+    : el("circle", { cx: X(m.at[0]), cy: Y(m.at[1]), r: s / 2, fill: k.colour, stroke: "#000", "stroke-width": .5, "vector-effect": "non-scaling-stroke", class: "mk" }, g);
+  shape.dataset.s = s; shape.dataset.cx = X(m.at[0]); shape.dataset.cy = Y(m.at[1]);
+  shape.addEventListener("mousemove", ev => { tip.textContent = short(m.name) + "\n" + m.kind + ", " + m.size[0] + " x " + m.size[1] + " yd, at " + m.at[0].toFixed(1) + ", " + m.at[1].toFixed(1); const r = svg.getBoundingClientRect(); tip.style.display = "block"; tip.style.left = ev.clientX - r.left + 14 + "px"; tip.style.top = ev.clientY - r.top + 14 + "px"; });
+  shape.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  shape.addEventListener("click", ev => { ev.stopPropagation(); select(m); });
+}
+
+function drawMarks() {
+  const g = layers.marked; g.innerHTML = "";
+  for (const mk of marks.filter(mk => zone && mk.map === zone.map)) {
+    const [x0, y0, x1, y1] = mk.box;
+    el("rect", { x: X(x0), y: Y(y0), width: X(x1) - X(x0), height: Y(y1) - Y(y0), fill: "none", stroke: "#ffc34d", "stroke-width": 2, "stroke-dasharray": "5 3", "vector-effect": "non-scaling-stroke" }, g);
+  }
+}
+
+function buildLayerSwitches() {
+  const box = document.getElementById("layers"); box.innerHTML = "";
+  const add = (key, label, colour, on) => {
+    const l = document.createElement("label"), i = document.createElement("input");
+    i.type = "checkbox"; i.checked = on; layers[key].style.display = on ? "" : "none";
+    i.onchange = () => { layers[key].style.display = i.checked ? "" : "none"; };
+    const sw = document.createElement("span"); sw.className = "swatch"; sw.style.background = colour;
+    l.append(i, " ", sw, label + " (" + (key in KINDS ? zone.models.filter(m => m.kind === key).length : key === "holes" ? zone.holes.length : marks.filter(m => m.map === zone.map).length) + ")");
+    box.appendChild(l);
+  };
+  for (const [key, k] of Object.entries(KINDS)) add(key, k.label, k.colour, k.on);
+  add("holes", "Holes in the ground", "#ff4d4d", true);
+  add("marked", "Marked for places", "#ffc34d", true);
+}
+
+function buildList() {
+  const caves = zone.models.filter(m => m.kind === "cave" || m.kind === "dungeon").sort((a, b) => short(a.name).localeCompare(short(b.name)));
+  document.getElementById("count").textContent = caves.length + " caves and entrances in " + zone.name;
+  const list = document.getElementById("list"); list.innerHTML = "";
+  for (const m of caves) {
+    const row = document.createElement("div");
+    const mk = marks.find(x => x.unique === m.unique);
+    row.innerHTML = `<span>${mk ? '<span class="star">*</span> ' : ""}${short(m.name)}</span><span class="muted">${m.at[0].toFixed(0)}, ${m.at[1].toFixed(0)}</span>`;
+    row.onclick = () => { select(m); centre(m); };
+    if (selected && selected.unique === m.unique) row.className = "on";
+    list.appendChild(row);
+  }
+}
+
+function select(m) { selected = m; showDetail(); buildList(); }
+
+function showDetail() {
+  const box = document.getElementById("detail");
+  if (!selected) { box.innerHTML = '<span class="muted">Click a marker or a cave in the list.</span>'; return; }
+  const m = selected, mk = marks.find(x => x.unique === m.unique);
+  box.innerHTML = `<h1>${short(m.name)}</h1><div class="muted">${m.name}<br>${m.kind}, ${m.size[0]} x ${m.size[1]} yd, placed at height ${m.height} yd<br>map ${m.at[0].toFixed(2)}, ${m.at[1].toFixed(2)} (file ${m.file})</div>`;
+  const three = document.createElement("button"); three.textContent = "Open in 3D"; three.style.marginTop = "8px";
+  three.onclick = () => {
+    // Map % to the 3D scene's frame (x = C - world Y, z = C - world X).
+    const f = zone.frame, C = 51200 / 3;
+    const wx = f.top + (f.bottom - f.top) * m.at[1] / 100, wy = f.left + (f.right - f.left) * m.at[0] / 100;
+    window.open(`/scene.html?zone=${zone.map}&at=${(C - wy).toFixed(0)},${(C - wx).toFixed(0)}&h=${m.height}`, "_blank");
+  };
+  box.append(three);
+  if (!mk) {
+    const input = document.createElement("input"); input.type = "text"; input.placeholder = "Name, e.g. Palemane Rock"; input.style.marginTop = "8px";
+    const button = document.createElement("button"); button.className = "primary"; button.textContent = "Mark for place generation";
+    button.onclick = async () => {
+      const title = input.value.trim() || short(m.name);
+      let region = slug(title); while (marks.some(x => x.region === region)) region += "x";
+      marks = await json("/marks.json", [...marks, { region, title, map: zone.map, model: m.file, unique: m.unique, name: m.name, box: m.box, at: m.at }]);
+      drawMarks(); buildLayerSwitches(); showDetail(); buildList();
+    };
+    box.append(input, button);
+    return;
+  }
+  const status = document.createElement("div"); status.className = "muted"; status.style.marginTop = "6px";
+  status.textContent = `Marked as "${mk.title}" (region ${mk.region}). ` + (mk.built ? "Place built." : "No place yet.");
+  const gen = document.createElement("button"); gen.className = "primary"; gen.textContent = mk.built ? "Build again" : "Generate place";
+  const open = document.createElement("button"); open.textContent = "Open place"; open.disabled = !mk.built;
+  open.onclick = () => window.open("/#region=" + mk.region + "&3d", "_blank");
+  const remove = document.createElement("button"); remove.textContent = "Remove mark";
+  remove.onclick = async () => { marks = await json("/marks.json", marks.filter(x => x.unique !== m.unique)); drawMarks(); buildLayerSwitches(); showDetail(); buildList(); };
+  const log = document.createElement("pre"); log.style.display = "none";
+  gen.onclick = async () => {
+    gen.disabled = true; log.style.display = ""; log.textContent = "Starting...";
+    await json("/build/" + mk.region, {});
+    const poll = async () => {
+      const state = await json("/build/" + mk.region);
+      log.textContent = state.log.join("\n") || "Working...";
+      log.scrollTop = log.scrollHeight;
+      if (state.state === "running") return setTimeout(poll, 1500);
+      marks = await json("/marks.json"); showDetail();
+      document.getElementById("detail").querySelector("pre").style.display = "";
+      document.getElementById("detail").querySelector("pre").textContent = state.log.slice(-6).join("\n") + "\n" + (state.state === "done" ? "Done." : "Failed.");
+    };
+    poll();
+  };
+  box.append(status, gen, open, remove, log);
+}
+
+// Pan and zoom (wheel, drag, W/A/S/D, Q/E).
+let vb = { x: 0, y: 0, w: W, h: H };
+function apply() {
+  svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  const k = vb.w / Math.max(1, svg.clientWidth || 1000);
+  for (const e of svg.querySelectorAll(".mk")) {
+    const s = e.dataset.s * k * 1.4;
+    const x = +e.dataset.cx, y = +e.dataset.cy;
+    if (e.tagName === "circle") e.setAttribute("r", s / 2);
+    else e.setAttribute("d", `M${x},${y - s} l${s},${s} l${-s},${s} l${-s},${-s} z`);
+  }
+}
+function centre(m) { const s = Math.min(vb.w, W / 4), ratio = vb.h / vb.w;
+  vb = { x: X(m.at[0]) - s / 2, y: Y(m.at[1]) - s * ratio / 2, w: s, h: s * ratio }; apply(); }
+function toMap(ev) { const r = svg.getBoundingClientRect(), s = Math.max(vb.w / r.width, vb.h / r.height);
+  return { x: vb.x + (vb.w - r.width * s) / 2 + (ev.clientX - r.left) * s, y: vb.y + (vb.h - r.height * s) / 2 + (ev.clientY - r.top) * s }; }
+svg.addEventListener("wheel", ev => { ev.preventDefault(); const p = toMap(ev), f = ev.deltaY < 0 ? 0.8 : 1.25;
+  vb = { x: p.x - (p.x - vb.x) * f, y: p.y - (p.y - vb.y) * f, w: vb.w * f, h: vb.h * f }; apply(); }, { passive: false });
+let drag = null;
+svg.addEventListener("mousedown", ev => { drag = toMap(ev); svg.classList.add("dragging"); });
+window.addEventListener("mouseup", () => { drag = null; svg.classList.remove("dragging"); });
+svg.addEventListener("mousemove", ev => { const p = toMap(ev);
+  document.getElementById("readout").textContent = (p.x * 100 / W).toFixed(2) + ", " + (p.y * 100 / H).toFixed(2);
+  if (drag) { vb.x -= p.x - drag.x; vb.y -= p.y - drag.y; apply(); } });
+const held = new Set();
+window.addEventListener("keydown", ev => { if (["INPUT", "SELECT"].includes(ev.target.tagName)) return; const k = ev.key.toLowerCase();
+  if ("wasdqe".includes(k) && k.length === 1) { if (!held.size) requestAnimationFrame(step); held.add(k); } if (k === "shift") held.add(k); });
+window.addEventListener("keyup", ev => held.delete(ev.key.toLowerCase()));
+let last = 0;
+function step(t) {
+  if (![...held].some(k => k !== "shift")) { last = 0; return; }
+  const dt = last ? Math.min(0.05, (t - last) / 1000) : 0.016; last = t;
+  const s = dt * (held.has("shift") ? 3 : 1);
+  if (held.has("w")) vb.y -= vb.h * 0.8 * s; if (held.has("s")) vb.y += vb.h * 0.8 * s;
+  if (held.has("a")) vb.x -= vb.w * 0.8 * s; if (held.has("d")) vb.x += vb.w * 0.8 * s;
+  for (const [k, g] of [["q", 1 + 1.5 * s], ["e", 1 / (1 + 1.5 * s)]]) if (held.has(k)) {
+    const cx = vb.x + vb.w / 2, cy = vb.y + vb.h / 2; vb = { x: cx - vb.w * g / 2, y: cy - vb.h * g / 2, w: vb.w * g, h: vb.h * g }; }
+  apply(); requestAnimationFrame(step);
+}
+start().catch(e => { document.getElementById("list").textContent = "Error: " + e.message; });
+</script></body></html>

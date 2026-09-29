@@ -146,7 +146,8 @@ function BugReport:AddSection(name, title, build)
 end
 
 -- Registers a kind: `{ label, sections, categories = { { key, label, tip,
--- sections }, ... } }`. The last category is where an unknown category lands,
+-- sections }, ... } }`, and for the form (UI/Screens/BugReportForm.lua)
+-- `caption` and `tooltip` for its button. The last category is where an unknown category lands,
 -- so it is the "something else" one.
 function BugReport:AddKind(key, kind)
     assert(type(key) == "string" and type(kind) == "table" and type(kind.label) == "string", "AddKind(key, { label = ... })")

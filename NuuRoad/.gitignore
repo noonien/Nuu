@@ -1,0 +1,5 @@
+# Place recorder trails written by Tools/SessionLog/places.py
+Tools/SessionLog/places/
+# Client data tools: CascLib build, listfile, extracted geometry
+Tools/ClientMap/.cache/
+__pycache__/

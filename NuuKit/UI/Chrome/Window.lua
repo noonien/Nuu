@@ -211,7 +211,11 @@ local function paintWindow(win, t)
     end
     local fill = win.kitInPlay and t.surfaceBg or t.windowBg
     if tiled then fill = nil end
-    win.plate:Flat(fill, (not framed) and (win.kitInPlay and t.border or t.hairline) or nil)
+    if win.kitNoPlate then
+        win.plate:Hide()
+    else
+        win.plate:Flat(fill, (not framed) and (win.kitInPlay and t.border or t.hairline) or nil)
+    end
     local inset = framed and ART_INSET or 1
     if inset ~= win.kitInset then
         win.kitInset = inset
@@ -469,6 +473,7 @@ local function shell(ui, opts, inPlay)
     win.kitIsWindow, win.kitInPlay = true, inPlay
     win.kitKey, win.kitPlace = opts.key, opts.place
     win.kitOnCollapse = opts.onCollapse
+    win.kitNoPlate = inPlay and opts.plate == false
     win:SetFrameStrata(opts.strata or (inPlay and "MEDIUM" or "HIGH"))
     if win.SetToplevel then pcall(win.SetToplevel, win, true) end
     win:SetClampedToScreen(true)
@@ -617,7 +622,8 @@ end
 -- A frame over the world: always flat and translucent, following the look's
 -- opacity, with a band only when it has a title or folds. The same spec as
 -- a window; it has no close mark and does not close on Escape (`escape`
--- only gives its frame a name).
+-- only gives its frame a name). `plate = false` leaves out the plate and
+-- border, so only what the addon draws on it shows.
 function Proto:Panel(opts)
     return shell(self, opts or {}, true)
 end

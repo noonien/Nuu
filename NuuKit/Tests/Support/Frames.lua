@@ -143,6 +143,7 @@ function Object:SetShown(on) if on then self:Show() else self:Hide() end end
 function Object:IsShown() return self.shown end
 function Object:SetAlpha(a) self.alpha = a end
 function Object:EnableMouseWheel(on) self.wheel = on and true or false end
+function Object:IsMouseWheelEnabled() return self.wheel or false end
 function Object:GetAlpha() return self.alpha or 1 end
 function Object:IsVisible()
     local o = self
@@ -195,7 +196,16 @@ function Object:SetValue(v) self.value = v; self:Fire("OnValueChanged", v) end
 function Object:GetValue() return self.value end
 function Object:Click(mouse) self:Fire("PreClick", mouse or "LeftButton"); self:Fire("OnClick", mouse or "LeftButton") end
 
-_G.CreateFrame = function(kind, _, parent) return new(kind, parent) end
+-- A named frame is a global of that name, as in the client.
+_G.CreateFrame = function(kind, name, parent)
+    local o = new(kind, parent)
+    if name then
+        rawset(o, "frameName", name)
+        _G[name] = o
+    end
+    return o
+end
+function Object:GetName() return rawget(self, "frameName") end
 _G.UIParent = new("Frame")
 _G.GameTooltip = new("GameTooltip", _G.UIParent)
 _G.GetCursorPosition = function() return 300, 300 end

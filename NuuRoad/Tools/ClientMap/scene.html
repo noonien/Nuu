@@ -1,0 +1,376 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Zone explorer</title>
+<style>
+:root { --bg: #16181c; --panel: #202329; --text: #e4e6ea; --muted: #9aa0aa; --line: #333842; --accent: #3b6fd8; }
+@media (prefers-color-scheme: light) { :root { --bg: #f3f4f6; --panel: #ffffff; --text: #1d2026; --muted: #5d6470; --line: #d5d9e0; } }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
+#app { display: flex; height: 100%; }
+#side { width: 260px; padding: 12px; background: var(--panel); border-right: 1px solid var(--line); overflow: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; }
+select { width: 100%; padding: 5px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+label { display: block; margin: 2px 0; cursor: pointer; }
+.muted { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.section { border-top: 1px solid var(--line); padding-top: 8px; }
+button { padding: 5px 9px; border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 4px; cursor: pointer; font: inherit; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+pre { white-space: pre-wrap; font-size: 11px; max-height: 180px; overflow: auto; background: var(--bg); padding: 6px; border-radius: 4px; margin: 6px 0 0; }
+#view { flex: 1; position: relative; overflow: hidden; }
+canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+#status { position: absolute; left: 10px; bottom: 10px; background: rgba(0,0,0,.7); color: #fff; padding: 4px 8px; border-radius: 4px; font: 12px monospace; pointer-events: none; }
+a { color: #6ea8fe; }
+@media (max-width: 700px) { #app { flex-direction: column; } #side { width: 100%; max-height: 40%; } }
+</style>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+</head>
+<body><div id="app"><div id="side">
+<select id="zone"></select>
+<div id="bake"></div>
+<div id="layers"></div>
+<div class="section muted">Fly like a character with no gravity: drag to look round, W/S forward and back where you look, A/D step sideways, Q/E turn, Space/R up, X/F down, Shift faster; the wheel sets the speed.</div>
+<div class="section muted">Places: red lines, red junctions, blue bends, yellow ends, green ways in, purple lifts. Caves are found and marked in the <a href="/zones.html">zone browser</a>.</div>
+<div class="section muted">Models baked with <a href="https://github.com/Kruithne/wow.export">wow.export</a>'s exporters (MIT); drawn with three.js (MIT).</div>
+</div>
+<div id="view"><canvas id="scene"></canvas><div id="status">Starting...</div></div></div>
+<script type="module">
+// The zone explorer: a zone baked tile by tile (scene/bake.py), streamed
+// round the camera: the ground near and far, the buildings and props near,
+// each model loaded once and drawn instanced. Built places are drawn as
+// lines. Frame: x = 17066.67 - world Y, y = height, z = 17066.67 - world X
+// (north is -z), the frame the game's placements are written in.
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const TILE = 51200 / 3 / 32;
+const NEAR_GROUND = 2, FAR_GROUND = 4, MODELS = 1;   // tiles round the camera
+const $ = id => document.getElementById(id);
+const status = t => { $('status').textContent = t; };
+const json = async url => { const r = await fetch(url); if (!r.ok) throw new Error(url + ': ' + r.status); return r.json(); };
+
+const canvas = $('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9ec3e6);
+scene.fog = new THREE.Fog(0x9ec3e6, TILE * 2.5, TILE * FAR_GROUND);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x7a6a50, 1.6));
+const sun = new THREE.DirectionalLight(0xfff2dd, 1.4); sun.position.set(0.4, 1, 0.3); scene.add(sun);
+const camera = new THREE.PerspectiveCamera(65, 1, 0.5, TILE * FAR_GROUND);
+camera.rotation.order = 'YXZ';
+function fit() { const r = canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width, r.height, false); camera.aspect = r.width / r.height; camera.updateProjectionMatrix(); }
+window.addEventListener('resize', fit); fit();
+
+// --- Flying ------------------------------------------------------------------------------
+const fly = { yaw: 0, pitch: -0.5, speed: 40, keys: new Set() };
+let drag = null;
+canvas.addEventListener('mousedown', e => { e.preventDefault(); drag = [e.clientX, e.clientY]; });
+document.addEventListener('mouseup', () => { drag = null; });
+document.addEventListener('mousemove', e => { if (!drag) return;
+  fly.yaw -= (e.clientX - drag[0]) * 0.003; fly.pitch = Math.max(-1.55, Math.min(1.55, fly.pitch - (e.clientY - drag[1]) * 0.003)); drag = [e.clientX, e.clientY]; });
+canvas.addEventListener('wheel', e => { e.preventDefault(); fly.speed = Math.min(1500, Math.max(3, fly.speed * (e.deltaY < 0 ? 1.25 : 0.8))); }, { passive: false });
+document.addEventListener('keydown', e => { if (['INPUT', 'SELECT'].includes(e.target.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase(); if ('wasdqerfx '.includes(k) || k === 'shift') { fly.keys.add(k); if (k === ' ') e.preventDefault(); } });
+document.addEventListener('keyup', e => fly.keys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => fly.keys.clear());
+function move(dt) {
+  const k = fly.keys, step = fly.speed * dt * (k.has('shift') ? 4 : 1);
+  const c = Math.cos(fly.pitch), f = new THREE.Vector3(-Math.sin(fly.yaw) * c, Math.sin(fly.pitch), -Math.cos(fly.yaw) * c);
+  const r = new THREE.Vector3(Math.cos(fly.yaw), 0, -Math.sin(fly.yaw));
+  if (k.has('w')) camera.position.addScaledVector(f, step);
+  if (k.has('s')) camera.position.addScaledVector(f, -step);
+  if (k.has('d')) camera.position.addScaledVector(r, step);
+  if (k.has('a')) camera.position.addScaledVector(r, -step);
+  if (k.has(' ') || k.has('r')) camera.position.y += step;
+  if (k.has('x') || k.has('f')) camera.position.y -= step;
+  if (k.has('q')) fly.yaw += 1.8 * dt;
+  if (k.has('e')) fly.yaw -= 1.8 * dt;
+  camera.rotation.set(fly.pitch, fly.yaw, 0);
+}
+
+// --- Streaming ------------------------------------------------------------------------------
+const loader = new GLTFLoader();
+const load = url => new Promise((ok, fail) => loader.load(url, ok, undefined, fail));
+const models = new Map();          // file id -> Promise<[{geometry, material, matrix}]>
+function model(id) {
+  if (!models.has(id))
+    models.set(id, load('/scene/models/' + id + '.glb').then(gltf => {
+      gltf.scene.updateMatrixWorld(true);
+      const parts = [];
+      gltf.scene.traverse(o => { if (o.isMesh) parts.push({ geometry: o.geometry, material: o.material, matrix: o.matrixWorld.clone() }); });
+      for (const p of parts) for (const m of [].concat(p.material)) { if (m.map) m.map.anisotropy = 4; m.side = THREE.DoubleSide; }
+      return parts;
+    }).catch(() => []));
+  return models.get(id);
+}
+let zone = null, show = { ground: true, wmo: true, m2: true, places: true, top: false };
+const tiles = new Map();           // "tx_ty" -> { ground: group, level, models: group, info }
+const queue = [];                  // loads waiting, nearest first
+let running = 0;
+function schedule(job) { queue.push(job); pump(); }
+function pump() {
+  queue.sort((a, b) => a.distance() - b.distance());
+  while (running < 4 && queue.length) { const job = queue.shift(); running++; job.run().finally(() => { running--; pump(); }); }
+}
+function camTile() { return [Math.floor(camera.position.x / TILE), Math.floor(camera.position.z / TILE)]; }
+function dist(tx, ty) { const [cx, cy] = camTile(); return Math.max(Math.abs(tx - cx), Math.abs(ty - cy)); }
+
+// --- The ground's own textures ---------------------------------------------------------
+// Near ground is drawn as the game draws it: each chunk blends up to eight
+// tiling textures by its alpha maps (baked into two RGBA atlases per tile).
+// Each texture is projected from above and from the two sides, weighted by
+// the slope, so cliffs get rock, not the top's pixels drawn out down them.
+const LAYER_SIZE = 256;
+const pixels = new Map();          // texture file id -> Promise<Uint8ClampedArray>
+function texturePixels(id) {
+  if (!pixels.has(id))
+    pixels.set(id, (async () => {
+      const canvas = new OffscreenCanvas(LAYER_SIZE, LAYER_SIZE), ctx = canvas.getContext('2d');
+      if (id) {
+        try { const image = await createImageBitmap(await (await fetch('/scene/textures/' + id + '.jpg')).blob()); ctx.drawImage(image, 0, 0, LAYER_SIZE, LAYER_SIZE); }
+        catch { ctx.fillStyle = '#7a6a50'; ctx.fillRect(0, 0, LAYER_SIZE, LAYER_SIZE); }
+      }
+      return ctx.getImageData(0, 0, LAYER_SIZE, LAYER_SIZE).data;
+    })());
+  return pixels.get(id);
+}
+const textureLoader = new THREE.TextureLoader();
+const loadTexture = url => new Promise((ok, fail) => textureLoader.load(url, ok, undefined, fail));
+
+const GROUND_VS = `
+in vec4 _layers0; in vec4 _layers1;
+out vec3 vWorld; out vec3 vNormal; out vec2 vUv; flat out vec4 vLayers0; flat out vec4 vLayers1;
+#include <fog_pars_vertex>
+void main() {
+  vWorld = position; vNormal = normal; vUv = uv; vLayers0 = _layers0; vLayers1 = _layers1;
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
+}`;
+const GROUND_FS = `
+// (With glslVersion GLSL3 three.js leaves the output to the shader; its fog
+// code writes gl_FragColor.)
+layout(location = 0) out highp vec4 pc_fragColor;
+#define gl_FragColor pc_fragColor
+precision highp sampler2DArray;
+uniform sampler2DArray layers; uniform sampler2D alpha0, alpha1; uniform float scales[32];
+uniform vec3 sunDir, sunColour, skyColour, groundColour;
+in vec3 vWorld; in vec3 vNormal; in vec2 vUv; flat in vec4 vLayers0; flat in vec4 vLayers1;
+#include <fog_pars_fragment>
+vec3 sampleLayer(float id, vec3 w) {
+  int i = int(id + 0.5);
+  // The game repeats a layer 8 / scale times across a 33.3 yd chunk.
+  float f = 8.0 / (scales[i] * 33.3333);
+  vec3 n = abs(normalize(vNormal)); n = pow(n, vec3(4.0)); n /= (n.x + n.y + n.z);
+  vec3 top = texture(layers, vec3(w.xz * f, id)).rgb;
+  vec3 sx = texture(layers, vec3(w.zy * f, id)).rgb;
+  vec3 sz = texture(layers, vec3(w.xy * f, id)).rgb;
+  return top * n.y + sx * n.x + sz * n.z;
+}
+void main() {
+  vec4 a0 = texture(alpha0, vUv), a1 = texture(alpha1, vUv);
+  float ids[8] = float[8](vLayers0.x, vLayers0.y, vLayers0.z, vLayers0.w, vLayers1.x, vLayers1.y, vLayers1.z, vLayers1.w);
+  float alphas[8] = float[8](1.0, a0.r, a0.g, a0.b, a0.a, a1.r, a1.g, a1.b);
+  vec3 colour = sampleLayer(ids[0] > 250.0 ? 0.0 : ids[0], vWorld);
+  for (int k = 1; k < 8; k++) {
+    if (ids[k] > 250.0) break;   // 255: no layer
+    colour = mix(colour, sampleLayer(ids[k], vWorld), alphas[k]);
+  }
+  vec3 n = normalize(vNormal);
+  vec3 light = mix(groundColour, skyColour, n.y * 0.5 + 0.5) + sunColour * max(dot(n, sunDir), 0.0);
+  gl_FragColor = vec4(colour * light, 1.0);
+  #include <fog_fragment>
+}`;
+
+async function layeredMaterial(key, info) {
+  const ids = info.textures.slice(0, 32);
+  const data = new Uint8Array(LAYER_SIZE * LAYER_SIZE * 4 * ids.length);
+  (await Promise.all(ids.map(texturePixels))).forEach((p, i) => data.set(p, i * LAYER_SIZE * LAYER_SIZE * 4));
+  const array = new THREE.DataArrayTexture(data, LAYER_SIZE, LAYER_SIZE, ids.length);
+  array.wrapS = array.wrapT = THREE.RepeatWrapping;
+  array.minFilter = THREE.LinearMipmapLinearFilter; array.magFilter = THREE.LinearFilter;
+  array.generateMipmaps = true; array.colorSpace = THREE.SRGBColorSpace; array.anisotropy = 4; array.needsUpdate = true;
+  const base = '/scene/' + zone.continent + '/' + key;
+  const [alpha0, alpha1] = await Promise.all([loadTexture(base + '.alpha0.png'), loadTexture(base + '.alpha1.png')]);
+  for (const t of [alpha0, alpha1]) { t.colorSpace = THREE.NoColorSpace; t.flipY = false; }
+  const scales = new Float32Array(32).fill(1); info.scales.slice(0, 32).forEach((v, i) => { scales[i] = v; });
+  return new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3, vertexShader: GROUND_VS, fragmentShader: GROUND_FS, fog: true,
+    uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, {
+      layers: { value: array }, alpha0: { value: alpha0 }, alpha1: { value: alpha1 }, scales: { value: scales },
+      sunDir: { value: sun.position.clone().normalize() }, sunColour: { value: new THREE.Color(0.55, 0.52, 0.47) },
+      skyColour: { value: new THREE.Color(0.62, 0.62, 0.66) }, groundColour: { value: new THREE.Color(0.36, 0.33, 0.28) },
+    }]),
+  });
+}
+
+function tileInfo(key, tile) {
+  return tile.infoPromise || (tile.infoPromise = json('/scene/' + zone.continent + '/' + key + '.json').then(i => (tile.info = i)));
+}
+
+async function groundFor(key, tile, level) {
+  const url = '/scene/' + zone.continent + '/' + key + (level === 'far' ? '.low.glb' : '.glb');
+  const gltf = await load(url);
+  if (level === 'near') {
+    const info = await tileInfo(key, tile);
+    if (info.layers) {
+      const material = await layeredMaterial(key, info);
+      gltf.scene.traverse(o => { if (o.isMesh) { o.geometry.computeVertexNormals(); o.material.map?.dispose(); o.material.dispose(); o.material = material; } });
+    }
+  }
+  if (tile.wantGround !== level) { disposeGround(gltf.scene); return; }   // moved on meanwhile
+  if (tile.ground) { scene.remove(tile.ground); disposeGround(tile.ground); }
+  tile.ground = gltf.scene; tile.groundLevel = level;
+  tile.ground.visible = show.ground;
+  scene.add(tile.ground);
+}
+function disposeGround(g) {
+  g.traverse(o => { if (!o.isMesh) return; o.geometry.dispose();
+    const u = o.material.uniforms; if (u) { u.layers.value.dispose(); u.alpha0.value.dispose(); u.alpha1.value.dispose(); }
+    o.material.map?.dispose(); o.material.dispose(); });
+}
+
+async function modelsFor(key, tile) {
+  const info = await tileInfo(key, tile);
+  const group = new THREE.Group();
+  for (const [kind, list] of [['wmo', info.wmo], ['m2', info.m2]]) {
+    const byFile = new Map();
+    for (const p of list) { if (!byFile.has(p.file)) byFile.set(p.file, []); byFile.get(p.file).push(p.m); }
+    await Promise.all([...byFile].map(async ([file, matrices]) => {
+      const parts = await model(file);
+      const place = new THREE.Matrix4();
+      for (const part of parts) {
+        const mesh = new THREE.InstancedMesh(part.geometry, part.material, matrices.length);
+        matrices.forEach((m, i) => { place.fromArray(m).multiply(part.matrix); mesh.setMatrixAt(i, place); });
+        mesh.userData.kind = kind; mesh.visible = show[kind]; mesh.computeBoundingSphere();
+        group.add(mesh);
+      }
+    }));
+  }
+  if (!tile.wantModels) return;
+  tile.models = group; scene.add(group);
+}
+
+function stream() {
+  if (!zone) return;
+  const [cx, cy] = camTile();
+  for (const [tx, ty] of zone.tiles) {
+    const key = tx + '_' + ty, d = Math.max(Math.abs(tx - cx), Math.abs(ty - cy));
+    let tile = tiles.get(key);
+    const wantGround = d <= NEAR_GROUND ? 'near' : d <= FAR_GROUND ? 'far' : null;
+    const wantModels = d <= MODELS;
+    if (!tile) { if (!wantGround) continue; tile = { }; tiles.set(key, tile); }
+    if (wantGround !== tile.wantGround) {
+      tile.wantGround = wantGround;
+      if (!wantGround) { if (tile.ground) { scene.remove(tile.ground); disposeGround(tile.ground); tile.ground = null; } }
+      else if (tile.groundLevel !== wantGround) schedule({ distance: () => dist(tx, ty), run: () => groundFor(key, tile, wantGround).catch(e => console.error('ground', key, e)) });
+    }
+    if (wantModels !== !!tile.wantModels) {
+      tile.wantModels = wantModels;
+      if (!wantModels && tile.models) { scene.remove(tile.models); tile.models.traverse(o => o.isInstancedMesh && o.dispose()); tile.models = null; }
+      else if (wantModels && !tile.models) schedule({ distance: () => dist(tx, ty) - 0.5, run: () => modelsFor(key, tile).catch(e => console.error(e)) });
+    }
+  }
+}
+
+// --- Places -------------------------------------------------------------------------------------
+const placeGroup = new THREE.Group(); scene.add(placeGroup);
+async function loadPlaces(continent) {
+  placeGroup.clear();
+  const places = await json('/scene/places-' + continent + '.json');
+  const colour = { junction: 0xff3b3b, end: 0xffd000, bend: 0x4ad1ff, entrance: 0x3ddc84 };
+  for (const place of places) {
+    const lifts = new Set(place.lifts.map(c => c[0] + ',' + c[1]));
+    const lift = 0.4, at = i => new THREE.Vector3(place.points[i][0], place.points[i][1] + lift, place.points[i][2]);
+    const line = [], liftLine = [];
+    for (const [a, b] of place.connections) (lifts.has(a + ',' + b) ? liftLine : line).push(at(a), at(b));
+    const lines = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(line), new THREE.LineBasicMaterial({ color: 0xff4040, fog: false }));
+    const liftLines = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(liftLine), new THREE.LineBasicMaterial({ color: 0xd06bff, fog: false }));
+    const pos = [], col = [];
+    place.points.forEach((p, i) => { const v = at(i); pos.push(v.x, v.y, v.z); const c = new THREE.Color(colour[place.kinds[i]] || 0xffffff); col.push(c.r, c.g, c.b); });
+    const dots = new THREE.BufferGeometry();
+    dots.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    dots.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const points = new THREE.Points(dots, new THREE.PointsMaterial({ size: 6, sizeAttenuation: false, vertexColors: true, fog: false }));
+    for (const o of [lines, liftLines, points]) { o.renderOrder = 10; placeGroup.add(o); }
+  }
+  setOnTop(show.top);
+}
+function setOnTop(on) { placeGroup.traverse(o => { if (o.material) { o.material.depthTest = !on; o.material.needsUpdate = true; } }); }
+
+// --- The page ---------------------------------------------------------------------------------
+function layerSwitches() {
+  const box = $('layers'); box.innerHTML = '';
+  const labels = { ground: 'Ground', wmo: 'Buildings and caves (WMO)', m2: 'Props (M2)', places: 'Built places', top: 'Places on top of everything' };
+  for (const key of Object.keys(labels)) {
+    const l = document.createElement('label'), i = document.createElement('input');
+    i.type = 'checkbox'; i.checked = show[key];
+    i.onchange = () => {
+      show[key] = i.checked;
+      if (key === 'places') placeGroup.visible = i.checked;
+      else if (key === 'top') setOnTop(i.checked);
+      else for (const t of tiles.values()) {
+        if (key === 'ground' && t.ground) t.ground.visible = i.checked;
+        if (t.models) t.models.traverse(o => { if (o.userData.kind === key) o.visible = i.checked; });
+      }
+    };
+    l.append(i, ' ' + labels[key]); box.appendChild(l);
+  }
+}
+
+async function bakePanel(mapId, name) {
+  const box = $('bake');
+  box.innerHTML = `<div class="muted">${name} is not baked for 3D yet. Baking reads every tile and model of the zone once (a few minutes for a whole zone).</div>`;
+  const button = document.createElement('button'); button.className = 'primary'; button.textContent = 'Bake ' + name;
+  const log = document.createElement('pre'); log.style.display = 'none';
+  button.onclick = async () => {
+    button.disabled = true; log.style.display = '';
+    await fetch('/bake/' + mapId, { method: 'POST', body: '{}' });
+    const poll = async () => {
+      const state = await json('/bake/' + mapId);
+      log.textContent = state.log.slice(-14).join('\n') || 'Working...'; log.scrollTop = log.scrollHeight;
+      if (state.state === 'running') return setTimeout(poll, 2000);
+      if (state.state === 'done') location.reload(); else log.textContent += '\nFailed.';
+    };
+    poll();
+  };
+  box.append(button, log);
+}
+
+async function start() {
+  const zones = await json('/zones.json');
+  const pick = $('zone'), want = new URLSearchParams(location.search).get('zone') || '1412';
+  for (const [id, name] of Object.entries(zones).sort((a, b) => a[1].localeCompare(b[1]))) {
+    const o = document.createElement('option'); o.value = id; o.textContent = name + ' (' + id + ')'; o.selected = id === want; pick.appendChild(o);
+  }
+  pick.onchange = () => { location.search = '?zone=' + pick.value; };
+  layerSwitches();
+  try { zone = await json('/scene/zone-' + want + '.json'); }
+  catch { status('Not baked yet'); return bakePanel(want, zones[want] || want); }
+  const [x, z] = zone.centre;
+  camera.position.set(x, 400, z + 250);
+  const at = new URLSearchParams(location.search).get('at');     // "x,z" in the scene's frame
+  if (at) {
+    // Stand back south of the spot and above it, looking down at it.
+    const [ax, az] = at.split(',').map(Number), h = +(new URLSearchParams(location.search).get('h') || 150);
+    camera.position.set(ax, h + 230, az + 150); fly.pitch = -0.95;
+  }
+  loadPlaces(zone.continent);
+  setInterval(stream, 400); stream();
+}
+
+let last = performance.now(), frames = 0, fps = 0, lastFps = last;
+function frame(now) {
+  const dt = Math.min(0.1, (now - last) / 1000); last = now;
+  move(dt);
+  renderer.render(scene, camera);
+  frames++; if (now - lastFps > 1000) { fps = frames; frames = 0; lastFps = now; }
+  if (zone) {
+    const loaded = [...tiles.values()].filter(t => t.ground).length, withModels = [...tiles.values()].filter(t => t.models).length;
+    const wx = 51200 / 3 - camera.position.z, wy = 51200 / 3 - camera.position.x;
+    status(`${zone.name}: ${loaded} tiles, ${withModels} with models, ${queue.length + running} loading | ${fps} fps | speed ${fly.speed.toFixed(0)} yd/s | world ${wx.toFixed(0)}, ${wy.toFixed(0)}, ${camera.position.y.toFixed(0)}`);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.explorer = { camera, fly, tiles, renderer, scene, THREE };   // for poking at from the console
+start().catch(e => { status('Error: ' + e.message); console.error(e); });
+</script></body></html>

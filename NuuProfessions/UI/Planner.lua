@@ -1180,11 +1180,12 @@ ns.API = {
         return true
     end,
 
-    -- A plain recipe table of the planner's data, or nil.
+    -- A plain recipe table of the planner's data and its spell, or nil.
     Recipe = function(profession, spellID, itemID)
         if type(profession) ~= "string" then return nil end
         local data = Panel:Data(profession)
-        return data and ns.Kit.Crafting:Recipe(data, spellID, itemID) or nil
+        if not data then return nil end
+        return ns.Kit.Crafting:Recipe(data, spellID, itemID)
     end,
 
     -- A recipe's skill levels as the plan uses them: a trainer may teach it before

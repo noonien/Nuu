@@ -9,8 +9,9 @@ Where the NuuKit UI kit stands (2026-09-28), what is known to be wrong or untrie
 **Design.** Mockups on a claude.ai canvas, pinned in the sidebar: <https://claude.ai/artifact/2b8Q697XdKeYNaHMsn96QX>,
 with a source copy in `docs/ui-kit/mockups/`. Decisions made along the way:
 
-- The kit ships reusable parts only. The tracker, guide browser, planner, options windows and bug report form
-  are the addons' own, built from kit parts.
+- The kit ships reusable parts. The tracker, guide browser, planner and options windows are the addons' own,
+  built from kit parts. The exception (2026-09-29): the diagnostics, session log and bug report windows are
+  shared (`Screens/`), with what only an addon knows passed in through their specs.
 - The kit holds no settings. Addons pass in their own look table, window-placement table, and (`bind`) the
   tables their settings live in.
 - Captions and labels are sentence case, never all capitals.
@@ -68,6 +69,7 @@ made with `UI.NewFrame`, which marks them, so neither the `parts` reset nor the 
 | `Display/Lists.lua`, `Tables.lua` | `ScrollArea`, `List` (a screenful of rows, reused), `Tree`, `SplitPanes`; `Table`, `Pager`, `Figures` |
 | `Display/Feedback.lua`, `Slots.lua` | `ProgressBar`, `SegmentBar`; `UI:StripPanel`, `Slot` (secure slots never pooled) |
 | `Theme/LookPicker.lua` | the Appearance section |
+| `Screens/Diagnostics.lua`, `SessionLog.lua`, `BugReportForm.lua` | `ui:DiagnosticsWindow` (report lines from the addon), `ui:SessionLogWindow` (a recorder's channel, the addon's row descriptions and marks, its recording switch and days bound to its own settings), `ui:BugReportWindow` (a `Kit.NewBugReports` object, with the addon's own fields, check and request); each returns a controller (`Show`, `Hide`, `Toggle`, `Refresh`, `.win`) |
 | `../Core/SkillUp.lua`, `../Core/Crafting.lua` | not UI: the skill-up model and what a Make button asks for, pure Lua, moved from OpenRoad for both addons |
 | `../Dev/Gallery.lua`, `../Dev/Report.lua` | development only: `/nuukit ui` (every widget, and a Pooling tab), `/nuukit report` |
 
@@ -80,6 +82,37 @@ the costs that matter (hover
 sets no font and lays nothing out, a text change lays out only its row). `lua Tests/UI/Smoke/Run.lua --copy` runs
 them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench screen) and `Tests/Bench/Gallery.lua`
 (the whole gallery) count client calls, to compare before and after a change.
+
+**Added for NuuRoad** (2026-09-29, while porting OpenRoad's guide screens):
+
+- A type defined after stacks were made (`UI.Define` late, by either addon on the shared development kit) gets its
+  maker on the stack classes made before it. Frames with copied methods (`UI.sharedMethods` false) do not.
+- `Slot{ secure = ..., name = ... }`: a secure slot's global name, for a key binding. A secure slot now says it is
+  not secure (`IsSecure`) when the client refused the template.
+- The stand-in (`Tests/Support/Frames.lua`) keeps a named frame's name (`GetName`) and makes it a global.
+
+**Gaps NuuRoad worked around** (each noted where it is worked around), for a later change to the kit:
+
+- `Tree`: no `tooltip` in its spec, no header or separator rows, `SetNodes` cannot keep the scroll place, and no
+  way to select a node from code but through `GetItems()`.
+- `Window{ tabs }` pages always fill the whole body: the editor needs them in one pane beside its step list, and
+  builds the band's tabs by hand.
+- No way to put an open window back where it started once its place is forgotten (`win:ResetPlace()`).
+- A `Panel` cannot follow its content's height; the tracker and the materials list measure and size themselves.
+- A `Row` measures a wrapping `Text` at its one-line width; the tracker sizes such rows itself.
+- A window's title is not cut short when the band's controls need the room.
+- `SegmentBar` has one track, so no section bands behind the steps.
+- `StripPanel`'s body is one row and cannot wrap (the NPC strip stacks rows in a column).
+- A panel with no band has no drag handle.
+- Fields take no `tooltip`; `Input` has no callback for losing focus without committing; `TextArea` has no
+  `readOnly` and no select-all.
+
+**Added for NuuRoad's NPC strip** (2026-09-29):
+
+- A slot's ring is four edges, so its colour no longer tints the whole slot through the translucent backing.
+- `slot:HoldModel(model)` makes a PlayerModel the picture, under the key, count and marker;
+  `slot:FadePicture(alpha)` fades only the icon and that model.
+- `slot:SetCount(text, tone)` writes a short note in a tone, with no shaded strip.
 
 **Added for the planner** (2026-09-29, while porting OpenRoad's planner to NuuProfessions on the kit):
 
@@ -175,12 +208,15 @@ client features the kit uses are all there; see [docs/api-compatibility.md](../.
 
 ## How to continue
 
-1. **Adopt it in the addons.** NuuProfessions does (below); NuuRoad does not yet. For NuuRoad:
-   - Add `look` and `windows` to its SavedVariables.
-   - Add `ns.UI = ns.Kit.NewUI(ns, db.look)` to `Core.lua`.
-   - Build its options window with a `LookPicker` section (the Setup and Looks examples in `examples.lua`).
-2. **Port the screens** from OpenRoad into the addons, built from kit parts: NuuRoad's tracker, guide browser and
-   editor. NuuProfessions' planner is ported (`NuuProfessions/UI/`, 2026-09-29): a Window with the profession in
+1. **Adopt it in the addons.** Both do: NuuProfessions (below) and NuuRoad (2026-09-29, `ns:GetUI()`,
+   `NuuRoadDB.look` and `.windows`, a `LookPicker` in `UI/Options.lua`).
+2. **Port the screens** from OpenRoad into the addons, built from kit parts. NuuRoad's are ported (2026-09-29, not
+   yet run in the client): the tracker (`UI/MainWindow.lua`: an in-play Panel, a SegmentBar for progress, cards,
+   a List of steps, the menu), the guide browser (SplitPanes with a Tree, a List and details), the editor (tabs in
+   the band, a Pager for choices and places), the NPC and item strips (StripPanel with named secure Slots), the
+   materials list, the arrow window (an in-play Panel over the arrow art), options (Settings and a LookPicker),
+   the session log and the bug report form (on the kit's shared windows), the travel test window and the audit's text window; each has a smoke
+   suite in `NuuRoad/Tests/UI/`. NuuProfessions' planner is ported (`NuuProfessions/UI/`, 2026-09-29): a Window with the profession in
    its band, Tabs, the route on a List whose rows draw their skill axis with `SegmentBar`s, Recipes on a List,
    Materials on a Table with money fields in its cells, Options as Settings with a LookPicker. Its smoke test
    (`NuuProfessions/Tests/UISmokeTests.lua`) builds it on the stand-in with the audit on; not yet run in the

@@ -40,11 +40,15 @@ Once everything has moved over and OpenRoad is retired, remove this section.
 ## UI kit
 
 - The kit's UI (widgets, themes, window chrome) follows `docs/ui-kit/PLAN.md`; the mockups are linked from
-  `docs/ui-kit/README.md`. The kit ships reusable parts only; each addon builds its own windows from them.
+  `docs/ui-kit/README.md`. The kit ships reusable parts; each addon builds its own windows from them, except the diagnostics,
+  session log and bug report windows, which are the kit's (`NuuKit/UI/Screens/`) and take the addon's parts in
+  their specs.
 - Captions and labels are sentence case, never all capitals.
 - Where the kit stands and what to do next: `NuuKit/UI/status.md`. How widgets are written (and the costs a change
   must keep): `NuuKit/UI/README.md`. Client results go in `docs/api-compatibility.md`; `/nuukit report` measures the
   kit in the client.
 - Tests: from `NuuKit/`, `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"`. `NuuKit.lua`, `Dev/`, `Tests/`
-  and `Tools/` are never shipped. NuuProfessions has its own runner, the same command from `NuuProfessions/`; it
-  loads the kit from `../NuuKit` and ends with the planner window on the kit's stand-in for the client.
+  and `Tools/` are never shipped. NuuProfessions and NuuRoad have their own runners, the same command from
+  `NuuProfessions/` or `NuuRoad/`; they load the kit from `../NuuKit` and end with their windows on the kit's
+  stand-in for the client (NuuRoad: `Tests/UI/Harness.lua` loads the whole addon once for its UI suites; one suite
+  alone is `lua Tests/TestRunner.lua '<suite name>'`).

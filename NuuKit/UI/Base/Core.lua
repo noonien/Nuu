@@ -241,6 +241,15 @@ function UI.Define(name, def)
         target:Append(w)
         return w
     end
+    -- Stack classes made before this type was defined (a type an addon
+    -- defines late, on a kit another addon already built with) take its
+    -- maker too. Frames with copied methods (UI.sharedMethods false) do not.
+    for _, byBase in pairs(UI.classes or {}) do
+        for _, class in pairs(byBase) do
+            local index = class.kitIndex
+            if index and rawget(index, "kitMakers") then index[name] = Makers[name] end
+        end
+    end
 end
 
 local function copyInto(target, methods)
@@ -285,6 +294,9 @@ local function classFor(key, frame, sources, extra)
     local index = {}
     for _, source in ipairs(sources) do copyInto(index, source) end
     if extra then copyInto(index, extra) end
+    for _, source in ipairs(sources) do
+        if source == Makers then index.kitMakers = true end
+    end
     local original = base.__index
     for _, name in ipairs(RAW) do index["kitRaw" .. name] = rawOf(original, name, frame) end
     index.kitClass = key

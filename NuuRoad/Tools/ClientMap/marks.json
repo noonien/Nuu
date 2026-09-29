@@ -1,0 +1,20 @@
+[
+ {
+  "at": [
+   34.52,
+   43.44
+  ],
+  "box": [
+   33.95,
+   42.66,
+   35.09,
+   44.21
+  ],
+  "map": 1412,
+  "model": 110497,
+  "name": "world/wmo/dungeon/md_caveden/md_mushroomden.wmo",
+  "region": "palemanerock",
+  "title": "Palemane Rock",
+  "unique": 175997
+ }
+]

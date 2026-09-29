@@ -170,6 +170,24 @@ assertTrue(areaCommits[1] == "a line", "leaving commits")
 notes.boxFrame:GetScript("OnMouseDown")(notes.boxFrame)
 assertTrue(nbox:HasFocus(), "a click anywhere on the box focuses the text")
 nbox:ClearFocus()
+nbox:Fire("OnEnter")
+assertTrue(scroll.wheel == not UI.PageScrolls(notes), "on hover, it takes the wheel only where the page does not scroll")
+do
+    local _, abody = testWindow(ui, 400, 200)
+    local pageArea = abody:ScrollArea{}
+    local inner = pageArea:TextArea{ boxHeight = 60 }
+    for i = 1, 20 do pageArea:Text{ "Line " .. i } end
+    layout()
+    inner.box:Fire("OnEnter")
+    assertTrue(UI.PageScrolls(inner) and not inner.scroll.wheel, "in a page that scrolls, hover leaves it to the page")
+    pageArea:Clear()
+    layout()
+    local alone = abody:TextArea{ boxHeight = 60 }
+    layout()
+    alone.box:Fire("OnEnter")
+    assertTrue(not UI.PageScrolls(alone) and alone.scroll.wheel, "in one that does not, hover takes it")
+    alone:Release()
+end
 
 -- Money -------------------------------------------------------------------------------------
 

@@ -105,6 +105,16 @@ local Planner = ns.modules.ProfessionPlanner
 check(Panel and ns.modules.PlannerTabPlan and ns.modules.PlannerTabRecipes and ns.modules.PlannerTabMaterials
     and ns.modules.PlannerTabOptions, "the window and its four tabs are registered")
 check(ns.API and ns.API.apiVersion == 1 and type(ns.API.Open) == "function", "the optional API")
+-- Recipe answers the spell as well as the recipe, found by the item it makes.
+do
+    local spell, recipe
+    for id, entry in pairs(ns.professionData.Leatherworking.recipes) do
+        if entry.makes and (not spell or id < spell) then spell, recipe = id, entry end
+    end
+    local found, foundSpell = ns.API.Recipe("Leatherworking", nil, recipe.makes)
+    check(found and foundSpell and ns.professionData.Leatherworking.recipes[foundSpell] == found,
+        "the API's Recipe gives the recipe and its spell: " .. tostring(spell))
+end
 
 -- Opening: a plan for Leatherworking from the shipped data, even with the
 -- profession not learned (the stand-in knows no skills).

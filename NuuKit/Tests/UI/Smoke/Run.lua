@@ -60,7 +60,7 @@ for line in io.lines("NuuKit.toc") do
     end
 end
 
-local PARTS = { "Base", "Buttons", "Chrome", "Fields", "Menus", "Lists", "Display", "Pooling", "Reset", "Gallery", "Examples", "Report" }
+local PARTS = { "Base", "Buttons", "Chrome", "Fields", "Menus", "Lists", "Display", "Screens", "Pooling", "Reset", "Gallery", "Examples", "Report" }
 
 -- Named parts run alone; none, all of them. `--copy` runs with methods
 -- copied onto frames: the path a client that refuses frames a metatable
