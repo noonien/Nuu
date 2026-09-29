@@ -21,6 +21,7 @@ local suites = {
     { "logging", "Tests/Core/LoggingTests.lua" },
     { "recorder", "Tests/Core/RecorderTests.lua" },
     { "bug report", "Tests/Core/BugReportTests.lua" },
+    { "errors", "Tests/Core/ErrorsTests.lua" },
     { "skill-up model", "Tests/Core/SkillUpTests.lua" },
     { "crafting", "Tests/Core/CraftingTests.lua" },
     { "ui theme", "Tests/UI/ThemeTests.lua" },

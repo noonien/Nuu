@@ -41,6 +41,8 @@ UI/Screens/BugReportForm.lua
 Dev/Gallery.lua
 Dev/Report.lua
 Dev/Audit.lua
+# Development only: every Lua error of a Nuu addon kept in its session log (the `error` channel).
+Dev/Errors.lua
 # Development only: publishes _G.NuuKit. Never shipped; must stay last.
 NuuKit.lua
 #@end-debug@

@@ -8,6 +8,7 @@
     python3 Tools/SessionLog/sessions.py --since 20260922-2300
     python3 Tools/SessionLog/sessions.py --unguided      quests seen in play that no packaged guide names
     python3 Tools/SessionLog/sessions.py --bugs          bug reports not yet listed in fixed-bugs.md
+    python3 Tools/SessionLog/sessions.py --errors        Lua errors a development build kept, with their stacks
     python3 Tools/SessionLog/sessions.py --steps         what the step viewer showed, each change as a diff
     python3 Tools/SessionLog/sessions.py --steps --step 39   only the rows about guide step 39
     python3 Tools/SessionLog/sessions.py --quest 97253 --full   every field, quest text and all
@@ -346,6 +347,9 @@ def say(row, book):
         return "%-7s %s" % (row.get("c"), json.dumps(d))
     if row.get("c") == "travel":
         return "travel " + say_travel(d)
+    if row.get("c") == "error":
+        count = d.get("count") or 1
+        return "ERROR%s %s" % (" x%d" % count if count > 1 else "", first_line(d.get("message")))
     if row.get("c") == "bug":
         return "BUG %s/%s %s step %s (on %s): %s" % (d.get("kind"), d.get("category"), d.get("guide"), d.get("step"),
                                                    d.get("current"), (d.get("description") or "").replace("\n", " "))
@@ -459,6 +463,34 @@ def bugs(sessions, show_all=False):
         print("no open bug reports in the log")
     if skipped:
         print("(%d fixed report(s) left out, listed in %s; --all shows them)" % (skipped, os.path.relpath(FIXED_BUGS, ADDON_ROOT)))
+
+
+def first_line(text):
+    return str(text or "").split("\n", 1)[0]
+
+
+def errors(sessions):
+    """Every Lua error a development build kept (NuuKit/Dev/Errors.lua), once
+    per session, with how often it happened and its stack."""
+    found = 0
+    for name, rows in sessions:
+        for row in rows:
+            d = row.get("d")
+            if row.get("c") != "error" or not isinstance(d, dict):
+                continue
+            found += 1
+            count = d.get("count") or 1
+            print("== %s  %s  %s  %s%s" % (name, when(row.get("t")), where(d), d.get("kind") or "lua",
+                                           ", %d times, last %s" % (count, when(d.get("last"))) if count > 1 else ""))
+            print(d.get("message") or "")
+            if d.get("stack"):
+                print(d["stack"].rstrip())
+            if d.get("locals"):
+                print("-- locals")
+                print(d["locals"].rstrip())
+            print()
+    if not found:
+        print("no Lua errors in the log (only development builds keep them)")
 
 
 STATE_ORDER = ("step", "of", "title", "kind", "status", "held", "only", "open", "completion", "observed",
@@ -586,6 +618,7 @@ def main():
     parser.add_argument("--jsonl", action="store_true", help="print the rows as JSON lines, each tagged with its session")
     parser.add_argument("--unguided", action="store_true", help="quests seen in play that no packaged guide mentions")
     parser.add_argument("--bugs", action="store_true", help="every open bug report filed from the game, in full")
+    parser.add_argument("--errors", action="store_true", help="every Lua error a development build kept, with its stack")
     parser.add_argument("--all", action="store_true", help="with --bugs, the fixed ones in fixed-bugs.md too")
     parser.add_argument("--steps", action="store_true", help="the step viewer's history: moves and every change of state")
     parser.add_argument("--step", type=int, help="with --steps, only rows about this guide step")
@@ -612,6 +645,8 @@ def main():
     book = Book(sessions)
     if args.bugs:
         bugs(sessions, args.all)
+    elif args.errors:
+        errors(sessions)
     elif args.steps:
         steps(sessions, args)
     elif args.unguided:

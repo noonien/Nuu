@@ -40,6 +40,12 @@ ns.recorder = ns.Kit.NewRecorder({
     end,
 })
 
+--@debug@
+-- Development builds keep every Lua error of this addon on the session log's
+-- `error` channel (NuuKit/Dev/Errors.lua).
+if ns.Kit.Errors then ns.Kit.Errors.Watch(addonName, ns.recorder) end
+--@end-debug@
+
 -- Every file registers what it makes through here, and finds the others in
 -- ns.modules. A module's Initialize, if any, runs at PLAYER_LOGIN in load
 -- order, once the saved variables are in.
