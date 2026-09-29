@@ -1564,8 +1564,11 @@ function MainWindow:DrawStep(guide, node, state)
     end
     -- A purchase is often one the player has no need of (they already have
     -- the bag, or a better weapon), and buying is what finishes it, so the
-    -- card offers the skip the top bar already has.
-    if node.kind == "buy" and not stepDone(node) then
+    -- card offers the skip the top bar already has. A purchase settled by the
+    -- work after it still needs moving on, so only one recorded or in the
+    -- bags drops the button.
+    local bought = Progress:IsDone(state.statuses[node.index]) or (GuideScan and GuideScan:NodeCompleted(node))
+    if node.kind == "buy" and not bought then
         self:AddCardButton("Skip - I do not need it", function()
             if not self:AcceptAction() then return end
             M("Progress"):Forward(guide)

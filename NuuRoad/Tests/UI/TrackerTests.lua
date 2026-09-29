@@ -183,6 +183,16 @@ do
         MainWindow:Refresh(); settle()
         local skipBuy = button("Skip - I do not need it")
         check(skipBuy and not button("Done - next step"), "a buy step offers skip, not done")
+        -- Proven work past the purchase settles it, but the guide still sits
+        -- on it, so the card keeps its skip.
+        local GuideScan = ns.modules.GuideScan
+        local settled = GuideScan.Settled
+        GuideScan.Settled = function() return true end
+        MainWindow:Refresh(); settle()
+        check(button("Skip - I do not need it"), "a settled purchase still offers skip")
+        GuideScan.Settled = settled
+        MainWindow:Refresh(); settle()
+        skipBuy = button("Skip - I do not need it")
         if skipBuy then
             click(skipBuy)
             check(current() ~= buy.index, "the card's skip moves the guide on")
