@@ -374,6 +374,13 @@ assert(Client:MatchesObservedCompletion({ type = "spell", ids = { 100 } }))
 assert(not Client:MatchesObservedCompletion({ type = "spell", ids = { 100, 772 } }), "Rend not learned yet")
 knownSpells[772] = true
 assert(Client:MatchesObservedCompletion({ type = "spell", ids = { 100, 772 } }))
+-- A pet's spell (Blood Pact, read to the imp from its grimoire) is in the
+-- pet's spellbook, not the player's.
+local savedSpellKnown = _G.IsSpellKnown
+_G.IsSpellKnown = function(id, isPet) return isPet == true and id == 6307 end
+assert(Client:IsSpellKnown(6307), "a pet's spell counts as known")
+assert(not Client:IsSpellKnown(6308))
+_G.IsSpellKnown = savedSpellKnown
 local castsSoFar = 0
 ns.modules.Progress = { GetActiveGuide = function() return {} end, CastCount = function() return castsSoFar end }
 assert(not Client:MatchesObservedCompletion({ type = "cast", spellID = 1259686, count = 1 }, nil, 4))

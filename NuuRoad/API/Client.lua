@@ -2057,11 +2057,15 @@ local function cooldownLeft(getter, id)
     return math.max(0, start + duration - now)
 end
 
+-- The player's own spells, and the pet's: a grimoire read to the imp (Blood
+-- Pact) is in the pet's spellbook, which IsPlayerSpell never looks at. The
+-- pet's is read while the pet is out.
 function Client:IsSpellKnown(spellID)
     if type(spellID) ~= "number" then return false end
-    local known = self:Read(rawget(_G, "IsPlayerSpell"), spellID)
-    if known == nil then known = self:Read(rawget(_G, "IsSpellKnown"), spellID) end
-    return known == true
+    if self:Read(rawget(_G, "IsPlayerSpell"), spellID) == true then return true end
+    local isSpellKnown = rawget(_G, "IsSpellKnown")
+    if self:Read(isSpellKnown, spellID) == true then return true end
+    return self:Read(isSpellKnown, spellID, true) == true
 end
 
 function Client:GetSpellName(spellID)
