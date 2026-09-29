@@ -131,6 +131,7 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
         { section = "The fields west of Brill", steps = {
             { track = 5481, note = "Gloom Weed grows on the ground along the road west. Pick it up whenever you pass one." },
             { track = 367, note = "Darkhounds drop their blood for A New Plague and their hides for Hides for the Forsaken. Kill any that come near." },
+            { track = 97558 },
             { objective = 404, part = 1, collect = 2855, count = 7, kill = { 1525, 1526 }, radius = 0.06,
                 at = { { 54.95, 50.53 }, { 53.35, 50.29 }, { 52.12, 50.38 }, { 51.28, 51.63 }, { 52.03, 53.74 },
                        { 52.29, 56.72 }, { 53.95, 56.53 }, { 53.55, 58.25 }, { 52.63, 56.98 } },
@@ -162,11 +163,13 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
                 at = { { 33.73, 49.34 }, { 33.65, 51.07 }, { 31.78, 51.36 }, { 30.02, 50.48 }, { 29.91, 49.24 },
                        { 30.62, 47.53 }, { 31.01, 46.50 }, { 32.15, 44.83 }, { 33.73, 45.29 }, { 34.10, 47.88 } } },
             { untrack = 367 },
-            { objective = 367, part = 1, collect = 2858, count = 5, kill = 1547, radius = 0.06,
-                at = { { 39.72, 46.89 }, { 40.47, 42.97 }, { 42.28, 47.82 } },
-                note = "Loot the hides as well." },
-            { objective = 97558, part = 2, collect = 278243, count = 6, kill = 1547, radius = 0.06,
-                at = { { 39.72, 46.89 }, { 40.47, 42.97 }, { 42.28, 47.82 } } },
+            { group = {
+                { objective = 367, part = 1, collect = 2858, count = 5, kill = 1547, radius = 0.06,
+                    at = { { 39.72, 46.89 }, { 40.47, 42.97 }, { 42.28, 47.82 } } },
+                { objective = 97558, part = 2, collect = 278243, count = 6, kill = 1547, radius = 0.06,
+                    at = { { 39.72, 46.89 }, { 40.47, 42.97 }, { 42.28, 47.82 } } },
+            } },
+            { untrack = 97558 },
         } },
 
         { section = "Back to Brill", steps = {
@@ -244,6 +247,7 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
         } },
 
         { section = "The gnoll camps north of Brill", steps = {
+            { track = 97558 },
             { track = 5482, note = "Doom Weed grows by the trees around the gnoll camps. Pick it up as you pass." },
             { objective = 358, part = 1, kill = 1941, count = 8, radius = 0.06,
                 at = { { 56.31, 39.67 }, { 54.71, 41.19 }, { 53.90, 43.93 }, { 55.24, 42.54 }, { 56.43, 43.92 } },
@@ -274,6 +278,7 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
                 at = { { 64.07, 33.46 }, { 64.45, 36.85 }, { 64.31, 41.02 }, { 62.45, 42.89 }, { 63.89, 47.45 },
                        { 65.03, 50.64 }, { 66.24, 52.76 }, { 70.16, 54.16 }, { 71.35, 48.13 } },
                 note = "Duskbats on the way back south. Loot the wing membranes as well." },
+            { untrack = 97558 },
             { objective = 97558, part = 1, collect = 278242, count = 8, kill = { 1553, 1554 }, radius = 0.06,
                 at = { { 64.07, 33.46 }, { 64.45, 36.85 }, { 64.31, 41.02 }, { 62.45, 42.89 }, { 63.89, 47.45 },
                        { 65.03, 50.64 }, { 66.24, 52.76 }, { 70.16, 54.16 }, { 71.35, 48.13 } } },
