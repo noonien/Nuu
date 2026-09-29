@@ -84,6 +84,9 @@ UI.Define("ScrollArea", {
 --   value(item)        a muted figure at the right of each row (a distance)
 --   gap                between a row's parts (10)
 --   wheelRows          rows a notch of the wheel moves (3)
+--   dividers           false for no hairline under each row (true)
+--   padLeft            room before a row's first part (10); the selection
+--                      rail is 3 wide
 -- In draw, `row:SetDisabled(on, reason)` dims a row and refuses the pick.
 --
 -- Rows are the hot path: scrolling draws the rows again and lays out only
@@ -110,7 +113,9 @@ end
 local function rowStep(w) return UI.Snap(w, w.kitRowHeight) end
 
 local function visibleCount(w)
-    return math.max(1, math.floor(((w:GetHeight() or 0) - 2 * UI.Pixels(w, 1)) / rowStep(w)))
+    -- A hair over, so a height measured for whole rows is not a row short
+    -- to rounding.
+    return math.max(1, math.floor(((w:GetHeight() or 0) - 2 * UI.Pixels(w, 1)) / rowStep(w) + 0.01))
 end
 
 local function maxOffset(w)
@@ -128,7 +133,7 @@ local function paintRow(w, row, t)
     end
     UI.TexColor(row.bg, wash)
     UI.TexColor(row.bar, selected and t.accent or nil)
-    UI.TexColor(row.line, t.hairline)
+    UI.TexColor(row.line, w.kitDividers and t.hairline or nil)
     local hook = w.kitHook
     if hook and hook.paintRow then hook.paintRow(w, row, t, selected) end
 end
@@ -529,11 +534,12 @@ local function initList(w, spec, hook)
     w.kitTooltip = spec.tooltip
     w.kitFilterFn, w.kitEmpty = spec.filter, spec.empty
     w.kitWheelRows = spec.wheelRows or 3
+    w.kitDividers = spec.dividers ~= false
     w.items, w.view, w.offset, w.filterText, w.selected = {}, {}, 0, "", nil
     w.kitHeld = false
     w:EnableMouseWheel(false)
     w.kitSizedW, w.kitSizedH = nil, nil
-    local rowOpts = { gap = spec.gap or 10, padding = 0, padLeft = 10, padRight = 8 }
+    local rowOpts = { gap = spec.gap or 10, padding = 0, padLeft = spec.padLeft or 10, padRight = 8 }
     w.kitRowOpts = rowOpts
     for index, row in ipairs(w.rows) do
         UI.SetStack(row, "row", rowOpts)
@@ -559,7 +565,9 @@ local function releaseList(w)
 end
 
 local listMethods = {
-    Measure = function(self) return 0, self.kitRowsWanted * self.kitRowHeight + 2 end,
+    -- Rows on the pixel grid and the edge above and below: a row snapped
+    -- taller than its units must not push the last row out.
+    Measure = function(self) return 0, self.kitRowsWanted * rowStep(self) + 2 * UI.Pixels(self, 1) end,
     Sized = function(self) listResized(self) end,
     Paint = function(self, t)
         if self.emptyText then UI.ApplyStyle(self.emptyText, "body", t, "muted") end

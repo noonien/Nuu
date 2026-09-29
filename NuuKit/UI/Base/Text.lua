@@ -73,7 +73,14 @@ UI.Define("Text", {
         Measure = function(self, width)
             local natural = math.ceil(UI.StringWidth(self)) + 1
             if self.kitWrap and width and width > 0 then self:SetWidth(width) end
+            -- A font string held to a height (the one it was last placed
+            -- at, one line for a text made again from the pool) answers only
+            -- the lines that fit, so a wrapped one is measured unheld, then
+            -- put back where it was placed.
+            local held = self.kitWrap and self.kitPH
+            if held then self:SetHeight(0) end
             local height = self:GetStringHeight() or 0
+            if held then self:SetHeight(held) end
             if height <= 0 then height = (self.ui.tokens.sizes[self.kitStyle] or 11) + 2 end
             return natural, math.ceil(height)
         end,

@@ -249,7 +249,9 @@ step("SetToDefaults", function()
     pcall(probe.SetResizable, probe, true)
     pcall(probe.SetResizeBounds, probe, 10, 10, 500, 500)
     pcall(probe.EnableKeyboard, probe, true)
-    pcall(probe.SetPropagateKeyboardInput, probe, true)
+    -- Protected in combat: the client reports ADDON_ACTION_BLOCKED even
+    -- under pcall (1.60.1, 70058), so the report leaves it out there.
+    if not (InCombatLockdown and InCombatLockdown()) then pcall(probe.SetPropagateKeyboardInput, probe, true) end
     pcall(probe.SetToplevel, probe, true)
     pcall(probe.CreateAnimationGroup, probe)
     local texture = probe:CreateTexture()

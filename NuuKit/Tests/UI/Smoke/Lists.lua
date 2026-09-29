@@ -85,6 +85,38 @@ assertTrue(rows[1].number:GetText() == "1" and rows[1].valueText:GetText() == "1
 assertTrue(rows[1].name.kitPW > 150, "a row's content is laid out: " .. tostring(rows[1].name.kitPW))
 assertTrue(rows[1].kitPW == list.kitPW - UI.SCROLLBAR - 2, "a row leaves the bar's room")
 
+-- A hairline under each row, unless the list asks for none.
+do
+    local _, plainBody = testWindow(ui, 300, 200)
+    local plain = plainBody:List{ make = makeGuide, draw = drawGuide, dividers = false }
+    plain:SetItems(GUIDES)
+    layout()
+    local seen = {}
+    local function watch(line) line.SetColorTexture = function(_, r, g, b, a) seen[line] = a end end
+    watch(rows[1].line); watch(plain.rows[1].line)
+    list:PaintState(ui.tokens); plain:PaintState(ui.tokens)
+    assertTrue((seen[rows[1].line] or 0) > 0, "a row has its hairline")
+    assertTrue(seen[plain.rows[1].line] == 0, "dividers = false draws none")
+    rows[1].line.SetColorTexture, plain.rows[1].line.SetColorTexture = nil, nil
+end
+
+-- At a scale where a row snaps taller than its units (19 units at 1.5
+-- pixels a unit: 29 pixels, not 28.5), the list still asks for room for
+-- every row it wants.
+do
+    local saved = rawget(_G, "GetPhysicalScreenSize")
+    GetPhysicalScreenSize = function() return 2048, 1152 end
+    UI.PixelScaleChanged()
+    local _, snapBody = testWindow(ui, 300, 400)
+    local col = snapBody:Column{ gap = 0 }
+    local snapped = col:List{ rows = 8, rowHeight = 19, make = makeGuide, draw = drawGuide }
+    snapped:SetItems(GUIDES)
+    layout()
+    assertTrue(shownRows(snapped) == 8, "every row wanted shows at a snapped scale: " .. shownRows(snapped))
+    GetPhysicalScreenSize = saved
+    UI.PixelScaleChanged()
+end
+
 -- Disabled rows: dimmed, with a reason, and no pick.
 local horde = rows[7]
 assertTrue(horde.kitDisabled and horde.kitReason == "Horde only" and horde:GetAlpha() == 0.5, "a disabled row is dimmed with its reason")
