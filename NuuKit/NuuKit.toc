@@ -9,6 +9,8 @@ Core/Safe.lua
 Core/Logging.lua
 Core/Recorder.lua
 Core/BugReport.lua
+Core/SkillUp.lua
+Core/Crafting.lua
 UI/Theme/Themes.lua
 UI/Theme/Look.lua
 UI/Base/Core.lua
