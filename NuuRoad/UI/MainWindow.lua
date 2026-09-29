@@ -27,10 +27,13 @@ local WIDTH, MIN_WIDTH, MAX_WIDTH = 360, 300, 640
 -- The body's padding and the room between its parts (bar, cards, list).
 local PAD, GAP = 10, 6
 -- A card's padding, and the width of its rail (the kit's Card).
-local CARD_PAD, RAIL = 8, 3
+local CARD_PAD, RAIL = 5, 3
 -- A goal line: the icon, the room between the line's parts, the smallest
 -- height, the gap between two lines, the indent of a detail line.
-local ICON, SPACING, LINE, LINE_GAP = 13, 6, 17, 1
+-- OpenRoad's measure: a 12 icon, text at 10 (the "fine" size, in the text
+-- colour), 15 the shortest line.
+local ICON, SPACING, LINE, LINE_GAP = 12, 6, 15, 1
+local LINE_STYLE = "fine"
 local INDENT = ICON + SPACING
 -- The distance column on a goal line. The width is fixed and reserved
 -- whether or not the number is short, so the text beside it keeps its wrap
@@ -38,7 +41,9 @@ local INDENT = ICON + SPACING
 local AWAY_WIDTH = 42
 -- The guide list under the cards: one step per row, every row the same
 -- height, which is what lets the wheel move it a whole step at a time.
-local LIST_ROW, LIST_NUMBER = 19, 26
+-- The number column fits three digits, and the row starts just clear of
+-- the selection rail, so the list has no margin of its own at the left.
+local LIST_ROW, LIST_NUMBER, LIST_PAD, LIST_ICON = 19, 22, 5, 13
 -- The progress bar's strip.
 local BAR_HEIGHT = 6
 -- The height the tracker never goes under.
@@ -292,7 +297,7 @@ end
 -- so a goal line's height is worked out here and given to its row.
 function MainWindow:Measure(text, width)
     local probe = self.probe
-    ns.Kit.UI.ApplyStyle(probe, "body", tokens())
+    ns.Kit.UI.ApplyStyle(probe, LINE_STYLE, tokens())
     if width then
         probe:SetWidth(math.max(1, width))
         probe:SetText(text or "")
@@ -317,6 +322,15 @@ function MainWindow:OpenCard(holder, tone)
     return self.card
 end
 
+-- A line that already says how many ("Collect 9 ...", what is still owed)
+-- does not repeat it as a figure at the right; the tooltip keeps have/need.
+local function saysCount(goal)
+    for _, piece in ipairs(goal.parts or NO_OPTS) do
+        if piece.role == "count" and piece.text ~= "" then return true end
+    end
+    return false
+end
+
 -- One goal line on the open card. opts: icon (goal verb), iconPath (a
 -- texture instead of the verb's own), iconColor (a token or colour), marker
 -- (a glyph instead of an icon), status (todo/active/done/settled/moot),
@@ -331,35 +345,41 @@ function MainWindow:AddLine(text, opts)
     text = text or ""
     local indent = opts.indent and INDENT or 0
     local countWidth = opts.count and self:Measure(opts.count) or 0
-    local textWidth = self.lineWidth - indent - ICON - SPACING
+    -- An indent is a part of the row of its own, so the row's gap follows it.
+    local textWidth = self.lineWidth - indent - (indent > 0 and SPACING or 0) - ICON - SPACING
         - (opts.count and (countWidth + SPACING) or 0) - (opts.away and (AWAY_WIDTH + SPACING) or 0)
-    local height = math.max(LINE, self:Measure(text, textWidth) + 4)
+    local height = math.max(LINE, self:Measure(text, textWidth) + 2)
     local links = string.find(text, "|H", 1, true) ~= nil
-    local row = card:Row{ gap = SPACING, padding = 2, padLeft = 0, padRight = 0, height = height,
+    local row = card:Row{ gap = SPACING, padding = 1, padLeft = 0, padRight = 0, height = height,
         tooltip = opts.tooltip, data = opts.onClick }
     if indent > 0 then row:Spacer{ size = indent } end
     row:Spacer{ size = ICON }
-    row:Text{ text, wrap = true, grow = true, valign = "top", color = opts.color or "text" }
+    -- The text is held to the height measured for it: the row is that tall
+    -- already, and the text is not measured again.
+    row:Text{ text, style = LINE_STYLE, wrap = true, grow = true, valign = "top", color = opts.color or "text",
+        height = height - 2 }
     if opts.count then
-        row:Text{ opts.count, valign = "top", width = countWidth, color = opts.countColor or "text" }
+        row:Text{ opts.count, style = LINE_STYLE, valign = "top", width = countWidth, color = opts.countColor or "text" }
     end
+    -- How far the step's place is, in the accent, where the eye already goes
+    -- to compare one line against another (OpenRoad's).
     local away
     if opts.away then
-        away = row:Text{ "", valign = "top", width = AWAY_WIDTH, justify = "RIGHT", style = "number", color = "muted" }
+        away = row:Text{ "", valign = "top", width = AWAY_WIDTH, justify = "RIGHT", style = "key", color = "accent" }
     end
 
     -- The icon, its glyph when the art is missing, and the status wash
-    -- behind it: decorations the kit keeps with the row.
+    -- across the whole line, as OpenRoad drew it: amber under way, green
+    -- done, red not yours. Decorations the kit keeps with the row.
     local tint = opts.status and statusTints[opts.status]
     if tint then
         local wash = row:AddTexture("BACKGROUND")
-        wash:SetSize(ICON + 2, ICON + 2)
-        wash:SetPoint("TOPLEFT", row, "TOPLEFT", indent - 1, -1)
-        ns.Kit.UI.TexColor(wash, ns.Kit.UI.Faded(t, color(tint), 0.3))
+        wash:SetAllPoints()
+        ns.Kit.UI.TexColor(wash, ns.Kit.UI.Faded(t, color(tint), tint == "done" and 0.18 or 0.16))
     end
     local icon = row:AddTexture("ARTWORK")
     icon:SetSize(ICON, ICON)
-    icon:SetPoint("TOPLEFT", row, "TOPLEFT", indent, -2)
+    icon:SetPoint("TOPLEFT", row, "TOPLEFT", indent, -1)
     local glyph = row:AddText("fine")
     glyph:SetWidth(ICON + 4)
     glyph:SetJustifyH("CENTER")
@@ -1161,14 +1181,12 @@ local LIST_TIP = { anchor = "ANCHOR_RIGHT" }
 
 local function listNumber(node) return tostring(node.index) end
 
--- Once per row: the bracket of a group, the icon's slot and the icon (or its
--- glyph), and the step's one-line title.
+-- Once per row: the icon's slot and the icon (or its glyph), and the step's
+-- one-line title.
 local function makeListRow(row)
-    row.bracket = row:AddTexture("ARTWORK")
-    row.bracket:SetWidth(2)
-    row.slot = row:Spacer{ size = ICON }
+    row.slot = row:Spacer{ size = LIST_ICON }
     row.icon = row:AddTexture("ARTWORK")
-    row.icon:SetSize(ICON - 1, ICON - 1)
+    row.icon:SetSize(LIST_ICON - 1, LIST_ICON - 1)
     row.icon:SetPoint("CENTER", row.slot, "CENTER", 0, 0)
     row.glyph = row:AddText("fine")
     row.glyph:SetPoint("CENTER", row.slot, "CENTER", 0, 0)
@@ -1192,7 +1210,7 @@ function MainWindow:BuildList(rows)
     end
     self.listHolder:Show()
     self.list = self.listHolder:List{
-        rows = rows, rowHeight = LIST_ROW, gap = SPACING, wheelRows = 1,
+        rows = rows, rowHeight = LIST_ROW, gap = SPACING, wheelRows = 1, dividers = false, padLeft = LIST_PAD,
         numbers = listNumber, numberWidth = LIST_NUMBER,
         make = makeListRow, draw = drawListRow, onPick = listPicked, tooltip = listTooltip,
     }
@@ -1219,12 +1237,6 @@ function MainWindow:LayoutStepList(guide, node)
     local Progress = M("Progress")
     self.listNodes, self.listCurrent, self.listGuide = nodes, current, guide
     self.listState = Progress:PeekState(guide)
-    local Schema = M("Schema")
-    self.listGroups = {}
-    for _, candidate in ipairs(nodes) do
-        self.listGroups[candidate] = Schema and Schema:GroupAt(guide, candidate.index) or false
-    end
-    self.listCurrentGroup = current and self.listGroups[nodes[current]] or false
     local list = self.list
     -- A step change takes the list back to the step, two rows down so the
     -- ones just done stay in view; a list the player scrolled stays put
@@ -1267,23 +1279,6 @@ function MainWindow:DrawListRow(row, node, at)
     -- into their colour; the current row shows the art as it is.
     local tint = (isDone and "done") or (moot and "danger") or (isCurrent and "text") or "muted"
     setIcon(row.icon, row.glyph, kindIcon[node.kind] or "note", color(tint))
-    -- A bracket in the gutter joins the rows of one authored group, which
-    -- the card shows together once the guide reaches it; open at the
-    -- group's ends so two groups back to back read as two.
-    local group = self.listGroups and self.listGroups[node]
-    if group then
-        local view = self.list and self.list:GetView() or {}
-        local top = (self.listGroups[view[at - 1] or false] == group) and 0 or -3
-        local bottom = (self.listGroups[view[at + 1] or false] == group) and 0 or 3
-        row.bracket:ClearAllPoints()
-        row.bracket:SetPoint("TOPRIGHT", row.slot, "TOPLEFT", -3, 3 + top)
-        row.bracket:SetPoint("BOTTOMRIGHT", row.slot, "BOTTOMLEFT", -3, -3 + bottom)
-        local current = group == self.listCurrentGroup
-        ns.Kit.UI.TexColor(row.bracket, color(current and "accent" or "muted"), current and 0.9 or 0.6)
-        row.bracket:Show()
-    else
-        row.bracket:Hide()
-    end
 end
 
 function MainWindow:ListTooltip(node)
@@ -1292,11 +1287,8 @@ function MainWindow:ListTooltip(node)
     local isDone = not isCurrent and self:ListDone(node)
     local gated = not isCurrent and not isDone and not Progress:IsAvailable(node)
     local moot = not isDone and not gated and GuideScan and GuideScan:NodeIsMoot(node)
-    local group = self.listGroups and self.listGroups[node]
     return self:StepTooltip(node,
-        (group and string.format("Steps %d-%d are one group: they show together, and you do them in any order. ",
-            group.first, group.last) or "")
-        .. (gated and "Not open to you yet; the guide will wait on it."
+        (gated and "Not open to you yet; the guide will wait on it."
             or moot and "You do not have this quest; the guide will wait on it." or ""))
 end
 
@@ -1514,7 +1506,7 @@ function MainWindow:DrawStep(guide, node, state)
                 tooltip = self:StepTooltip(companion, nil, true),
             })
             if companion.body and companion.body ~= "" then
-                self:AddLine(companion.body, { color = "muted", indent = true, marker = "-", iconColor = "muted" })
+                self:AddLine(companion.body, { color = "muted" })
             end
         end
     end
@@ -1545,7 +1537,7 @@ function MainWindow:DrawStep(guide, node, state)
         self:DrawGoals(guide, node, group)
     end
     for _, line in ipairs(self:LiveObjectiveLines(node)) do
-        self:AddLine(line, { indent = true, marker = "-", iconColor = "muted" })
+        self:AddLine(line)
     end
     -- The travel route, one muted line. A click picks the next route on offer
     -- (a teleport, walking, the default again), for this step: the route is
@@ -1660,7 +1652,7 @@ function MainWindow:DrawGoals(guide, node, group)
             end
             self:AddLine(text, {
                 icon = goal.verb, iconPath = iconPath, status = status, away = place,
-                count = progress,
+                count = not saysCount(goal) and progress or nil,
                 countColor = (checked and "done") or (status == "active" and "warning") or "text",
                 -- A goal the player has no quest for keeps its own icon, in red.
                 iconColor = (status == "moot" and "danger") or ((not checked and goal.verb == "travel") and "accent") or nil,
@@ -1697,10 +1689,10 @@ function MainWindow:DrawGoals(guide, node, group)
         })
     end
     if node.wait then
-        self:AddLine("Takes about " .. tostring(node.wait) .. " seconds", { color = "muted", indent = true, marker = "-", iconColor = "muted" })
+        self:AddLine("Takes about " .. tostring(node.wait) .. " seconds", { color = "muted" })
     end
     for _, id in ipairs(node.watch or {}) do
-        self:AddLine("Watch for " .. Names:DescribeNPC(id), { color = "muted", indent = true, marker = "-", iconColor = "muted" })
+        self:AddLine("Watch for " .. Names:DescribeNPC(id), { color = "muted" })
     end
     if node.body and node.body ~= "" then self:AddLine(node.body) end
 end
