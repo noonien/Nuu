@@ -46,4 +46,5 @@ Once everything has moved over and OpenRoad is retired, remove this section.
   must keep): `NuuKit/UI/README.md`. Client results go in `docs/api-compatibility.md`; `/nuukit report` measures the
   kit in the client.
 - Tests: from `NuuKit/`, `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"`. `NuuKit.lua`, `Dev/`, `Tests/`
-  and `Tools/` are never shipped.
+  and `Tools/` are never shipped. NuuProfessions has its own runner, the same command from `NuuProfessions/`; it
+  loads the kit from `../NuuKit` and ends with the planner window on the kit's stand-in for the client.
