@@ -167,8 +167,8 @@ function ObservedProgress:CheckSpellCast(unit, ...)
     return true
 end
 
--- A step held by a plain BACK or SKIP is not walked past while it reads done
--- or moot. The moment it reads incomplete the hold has nothing left to guard,
+-- A step held by a plain BACK, SKIP or jump is not walked past while it reads
+-- done, moot, or passed over. The moment it reads incomplete the hold has nothing left to guard,
 -- so it lapses and finishing the step advances the guide as usual, unpausing
 -- as soon as the step it paused on is no longer complete.
 function ObservedProgress:LapseHold()
@@ -182,6 +182,9 @@ function ObservedProgress:LapseHold()
     -- A travel or a note the flow would pass over reads done for the hold too,
     -- or BACK onto one would be undone at once.
     if self.PassedTo and self:PassedTo(guide, node) then return end
+    -- So does a step whose condition no longer holds ("now gold 150" after
+    -- training): the flow would pass it over, and the player picked it anyway.
+    if Progress:IsBypassed(node) then return end
     Progress:Release(guide)
 end
 

@@ -102,6 +102,33 @@ assert(Progress:Back(guide) and Progress:IsHeld(guide))
 ObservedProgress:LapseHold()
 assert(Progress:IsHeld(guide), "landing on a done step keeps it")
 
+-- A step jumped to whose condition no longer holds (bought water gated on
+-- "now gold 150", jumped back to after training) keeps its hold: the flow
+-- would pass it over and walk on through every done step after it.
+local gated = Steps:Expand({
+    schema = 2, id = "test:gated", updated = 1789862400, map = 1413, meta = { title = "Gated", category = "test" },
+    steps = {
+    { section = "Steps", steps = {
+        { buy = 159, count = 20, npc = 2115, only = "now gold 150" },
+        { accept = 870, npc = 3448 },
+        { accept = 869, npc = 3464 },
+        { accept = 872, npc = 3429 },
+    } },
+},
+})
+ns.modules.GuideRepository = { Get = function(_, id) return id == gated.id and gated or nil end }
+local client = ns.modules.Client
+client.CouldOpen = function(_, predicate) return predicate.type ~= "now" end
+client.MatchesCondition = function(_, predicate) return predicate.type ~= "now" end
+Progress:Select(gated)
+assert((Progress:GetCurrentNode(gated)).index == 2, "the gated step is passed over by the flow")
+assert(ObservedProgress:Refresh() and (Progress:GetCurrentNode(gated)).index == 4, "and the done steps after it, to the first still to do")
+assert(Progress:GoTo(gated, 1))
+ObservedProgress:LapseHold()
+assert(Progress:IsHeld(gated), "a gated step jumped to keeps its hold")
+assert(not ObservedProgress:Refresh() and (Progress:GetCurrentNode(gated)).index == 1, "and the guide stays on it")
+client.CouldOpen, client.MatchesCondition = nil, nil
+
 -- A quest accepted or handed in at a step further down the guide is called
 -- out in chat: the step card cannot show work that far ahead.
 local ahead = Steps:Expand({
