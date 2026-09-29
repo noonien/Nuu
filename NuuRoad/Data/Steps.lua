@@ -1644,8 +1644,11 @@ function Steps:ActiveTracks(guide, node)
             active[auto.untrack] = nil
         end
     end
-    local result = {}
-    for _, questID in ipairs(order) do if active[questID] then table.insert(result, questID) end end
+    -- A quest tracked again after an untrack is in `order` twice; it is one line.
+    local result, seen = {}, {}
+    for _, questID in ipairs(order) do
+        if active[questID] and not seen[questID] then seen[questID] = true; table.insert(result, questID) end
+    end
     return result
 end
 

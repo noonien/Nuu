@@ -167,6 +167,14 @@ local tracks = Steps:ActiveTracks(more, m[6])
 assert(#tracks == 1 and tracks[1] == 869, "a track is active between track and untrack")
 assert(#Steps:ActiveTracks(more, m[10]) == 0, "untrack closes it")
 assert(#Steps:ActiveTracks(more, m[4]) == 0, "the track step itself is not yet active")
+do
+    local again = Steps:Expand({ schema = 2, id = "test:retrack", updated = 1789862400, map = 1413,
+        meta = { title = "R", category = "test" }, steps = { { section = "S", steps = {
+            { track = 869 }, { untrack = 869 }, { track = 869 }, { note = "Here." },
+        } } } })
+    local open = Steps:ActiveTracks(again, again.nodes[4])
+    assert(#open == 1 and open[1] == 869, "a quest tracked again is one line, not two")
+end
 
 -- A note on a step is that step's body; a bare note is still its own step.
 local noted = Steps:Expand({ schema = 2, id = "test:noted", updated = 1789862400, map = 1413, meta = { title = "N", category = "test" },

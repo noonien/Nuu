@@ -281,6 +281,31 @@ Progress.store.activeGuideID = nil
 Progress:SaveResume()
 assert(Progress.store.resume == nil, "no active guide saves no step")
 
+-- Forward passes over reminders: they are done on arrival, and are no stop.
+do
+    local tracked = {
+        schema = 2, id = "test:progress-reminder", updated = 1789862400,
+        meta = { title = "Reminders", category = "test" },
+        sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3, 4 } } },
+        nodes = {
+            { kind = "action", title = "Start" },
+            { kind = "reminder", title = "Track", auto = { verb = "track", track = 1 } },
+            { kind = "reminder", title = "Untrack", auto = { verb = "untrack", untrack = 2 } },
+            { kind = "end", title = "Finish" },
+        },
+    }
+    local repository = ns.modules.GuideRepository
+    ns.modules.GuideRepository = { Get = function(_, id) return id == tracked.id and tracked or nil end }
+    Progress:Select(tracked)
+    assert(Progress:Forward(tracked))
+    local node, trackedState = Progress:GetCurrentNode(tracked)
+    assert(node.index == 4, "forward lands past the reminders")
+    assert(Progress:IsDone(trackedState.statuses[2]) and Progress:IsDone(trackedState.statuses[3]), "passed reminders read done")
+    assert(Progress:Back(tracked) and Progress:GetCurrentNode(tracked).index == 1, "back skips them too")
+    ns.modules.GuideRepository = repository
+    Progress:Select(guide)
+end
+
 -- Deselect leaves the tracker with no guide and no step to resume.
 Progress.store = { activeGuideID = gated.id, resume = { guideID = gated.id, step = 2 } }
 Progress:Deselect()

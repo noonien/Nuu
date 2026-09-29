@@ -427,6 +427,15 @@ function Progress:Forward(guide, release)
     table.insert(state.trail, node.index)
     state.statuses[node.index] = self:IsDone(existing) and existing or "skipped"
     state.currentStep = self:NextIndex(guide, node)
+    -- A reminder (track, untrack) is done the moment the flow reaches it and
+    -- is no stop: holding on one would show its card with no list row under
+    -- it, so forward carries on past it to the next real step.
+    for _ = 1, #guide.nodes do
+        local landed = guide.nodes[state.currentStep]
+        if not landed or landed.kind ~= "reminder" then break end
+        if not self:IsDone(state.statuses[landed.index]) then state.statuses[landed.index] = "observed" end
+        state.currentStep = self:NextIndex(guide, landed)
+    end
     recordMove(guide, "forward", node.index, state.currentStep)
     state.holdStep = not release and state.currentStep or nil
     return true
