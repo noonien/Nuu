@@ -18,6 +18,8 @@ ns.Kit = Kit
 --               nil. Without it, RecordHere records no position.
 --     version   the addon's version, named in each session's identity.
 --     log       function(message): where misuse is reported (`ns:Log`).
+--     lasting   the channels age and Clear never drop (`lastingChannels`,
+--               the bug reports, unless given).
 --
 -- The log runs across sessions: each login adds itself and carries on, and
 -- records older than the days kept are dropped at login or when the player
@@ -37,6 +39,10 @@ ns.Kit = Kit
 -- A channel says which part of the addon spoke, not what kind of row it is.
 -- The recorder itself writes `session` (logging in, reloading, logging out),
 -- and bug reports write `bug`; every other name is the addon's.
+--
+-- A lasting channel is the exception to dropping by age: a bug report is read
+-- whenever someone gets to it, which may be weeks later, so the `bug` channel
+-- stays in the saved file until it is emptied by hand.
 --
 -- A record is two fields: when it happened, and what the caller had. There is
 -- no sequence number and no offset into the session, because the position in
@@ -87,10 +93,14 @@ Recorder.maxDepth = 6
 Recorder.defaultKeepDays = 10
 Recorder.traceSessions = 3
 Recorder.traceRunaway = 5000
+Recorder.lastingChannels = { "bug" }
 
 function Kit.NewRecorder(options)
     options = options or {}
+    local lasting = {}
+    for _, channel in ipairs(options.lasting or Recorder.lastingChannels) do lasting[channel] = true end
     return setmetatable({
+        lasting = lasting,
         dbSource = options.db,
         keepDaysSource = options.keepDays,
         whereSource = options.where,
@@ -358,7 +368,7 @@ end
 -- A channel is in the order its records were made, so what goes is a run at
 -- its front: everything up to the last record stamped before the cutoff,
 -- including an unstamped one among them. A channel left empty goes too.
--- Returns how many records were dropped.
+-- A lasting channel is left as it is. Returns how many records were dropped.
 function Recorder:Prune(days, now)
     local store = self:Store()
     now = now or epoch()
@@ -366,33 +376,39 @@ function Recorder:Prune(days, now)
     local cutoff = now - (days or self:KeepDays()) * 86400
     local dropped = 0
     for channel, records in pairs(store.channels) do
-        local last = 0
-        for index, record in ipairs(records) do
-            local at = type(record) == "table" and record.at
-            if type(at) == "number" then
-                if at >= cutoff then break end
-                last = index
+        -- A lasting channel is kept whatever its age.
+        if not self.lasting[channel] then
+            local last = 0
+            for index, record in ipairs(records) do
+                local at = type(record) == "table" and record.at
+                if type(at) == "number" then
+                    if at >= cutoff then break end
+                    last = index
+                end
             end
+            if last > 0 then
+                local kept = {}
+                for index = last + 1, #records do kept[#kept + 1] = records[index] end
+                store.channels[channel] = kept
+                dropped = dropped + last
+            end
+            if #store.channels[channel] == 0 then store.channels[channel] = nil end
         end
-        if last > 0 then
-            local kept = {}
-            for index = last + 1, #records do kept[#kept + 1] = records[index] end
-            store.channels[channel] = kept
-            dropped = dropped + last
-        end
-        if #store.channels[channel] == 0 then store.channels[channel] = nil end
     end
     return dropped
 end
 
--- Empties the log (not the trace). Returns how many records went.
+-- Empties the log (not the trace), but for the lasting channels. Returns how
+-- many records went.
 function Recorder:Clear()
     local store = self:Store()
     if not store then return 0 end
-    local kept = self:Survey()
+    local before = self:Survey()
+    local kept = {}
+    for channel in pairs(self.lasting) do kept[channel] = store.channels[channel] end
     self:DB().log = nil
-    self:Store()
-    return kept
+    self:Store().channels = kept
+    return before - (self:Survey())
 end
 
 -- Who was playing, on what, and when. Read once at login.
@@ -500,7 +516,8 @@ function Recorder:DiagnosticLines()
     for channel in pairs((store and store.channels) or {}) do table.insert(names, channel) end
     table.sort(names)
     for _, channel in ipairs(names) do
-        table.insert(lines, string.format("  %-12s %5d kept", channel, #store.channels[channel]))
+        table.insert(lines, string.format("  %-12s %5d kept%s", channel, #store.channels[channel],
+            self.lasting[channel] and " (never dropped)" or ""))
     end
     local traces = self:TraceStore()
     local keptTraces = traces and #traces.sessions or 0

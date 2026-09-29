@@ -87,7 +87,7 @@ BugReport:AddKind("guide", {
         { key = "early", label = "Finished or skipped early", tip = "The step went green or was skipped before you did it." },
         { key = "order", label = "Order or missing step", tip = "Steps in a poor order, a missing step, or a step you could not do yet." },
         { key = "text", label = "Text or note", tip = "The wording, a note, or advice that is wrong or unclear." },
-        { key = "other", label = "Something else", tip = "Anything else about this guide." },
+        { key = "other", label = "Other", tip = "Anything else about this guide." },
     },
     sections = { "step", "neighbours", "trail", "stepQuests", "stepState", "stepHistory", "findings" },
 })
@@ -115,7 +115,7 @@ BugReport:AddKind("addon", {
             sections = { "step", "saved", "recorder" } },
         { key = "error", label = "Lua error", tip = "An error message popped up. Paste its text into the description.",
             sections = { "step", "neighbours", "trail", "api" } },
-        { key = "other", label = "Something else", tip = "Anything else about the addon.",
+        { key = "other", label = "Other", tip = "Anything else about the addon.",
             sections = { "step", "api" } },
     },
     -- Every addon report says how the addon was set up.

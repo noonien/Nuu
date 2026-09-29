@@ -61,7 +61,7 @@ reports:AddKind("guide", {
     sections = { "step" },
     categories = {
         { key = "stuck", label = "Step will not finish", tip = "You did what the step asks and it did not go green." },
-        { key = "other", label = "Something else", tip = "Anything else about this guide." },
+        { key = "other", label = "Other", tip = "Anything else about this guide." },
     },
 })
 reports:AddKind("addon", {
@@ -69,7 +69,7 @@ reports:AddKind("addon", {
     sections = { "recorder" },
     categories = {
         { key = "navigation", label = "Arrow and map pins", tip = "The arrow or the pins.", sections = { "step", "navigation", "empty" } },
-        { key = "other", label = "Something else", tip = "Anything else about the addon.", sections = { "step" } },
+        { key = "other", label = "Other", tip = "Anything else about the addon.", sections = { "step" } },
     },
 })
 reports.leading = { "player", "where" }
@@ -128,7 +128,7 @@ assertHas(text, "== What the player did last ==", "the report still reaches the 
 
 -- An unknown kind or category falls back rather than failing.
 text = reports:Build({ kind = "nonsense", category = "nonsense" }).text
-assertHas(text, "NuuRoad addon report: Something else", "unknown input becomes the default kind's last category")
+assertHas(text, "NuuRoad addon report: Other", "unknown input becomes the default kind's last category")
 
 -- No subject: the sections say so.
 running = nil
@@ -138,7 +138,7 @@ running = guide
 
 -- A subject that throws is said once, and every section still runs.
 local brokenSubject = Kit.NewBugReports({ name = "Broken", recorder = recorder, subject = function() error("progress not loaded") end })
-brokenSubject:AddKind("addon", { label = "Addon", categories = { { key = "other", label = "Something else", tip = "" } } })
+brokenSubject:AddKind("addon", { label = "Addon", categories = { { key = "other", label = "Other", tip = "" } } })
 text = brokenSubject:Build({}).text
 assertHas(text, "What the report is about could not be read: ", "the broken subject is one line")
 assertHas(text, "progress not loaded", "saying why")
@@ -147,7 +147,7 @@ assertHas(text, "== Player ==", "and the rest of the report is there")
 -- An addon that registered nothing still gets a report.
 local bare = Kit.NewBugReports({ name = "Bare" })
 text = bare:Build({ description = "x" }).text
-assertHas(text, "Bare addon report: Something else", "no kinds still makes a report")
+assertHas(text, "Bare addon report: Other", "no kinds still makes a report")
 assertHas(text, "Nothing recorded", "and without a recorder the recent section says so")
 
 -- The recent section reads the addon's own words for a row when it has them.
@@ -175,7 +175,7 @@ local bugs = recorder:Records("bug")
 assertEquals(#bugs, 1, "one row")
 assertEquals(filed.record, bugs[1], "the report knows its row")
 assertEquals(bugs[1].d.category, "other", "with the category")
-assertEquals(bugs[1].d.lines[1], "NuuRoad guide report: Something else", "and the report line for line")
+assertEquals(bugs[1].d.lines[1], "NuuRoad guide report: Other", "and the report line for line")
 assertEquals(bugs[1].d.map, 1413, "and the place")
 assertEquals(reports.sessionCount, 1, "counted for the session")
 assert(filed.text:find("Typo.", 1, true), "the text comes back to show")

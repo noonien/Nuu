@@ -115,11 +115,11 @@ function Proto:SessionLogWindow(spec)
         for key, value in pairs(spec.keepDays) do days[key] = value end
         log.keepDays = foot:NumberInput(days)
     end
-    foot:Button{ "Clean up", tooltip = "Drop every record older than that now. It also happens at every login.",
+    foot:Button{ "Clean up", tooltip = "Drop every record older than that now. It also happens at every login. Bug reports are kept.",
         onClick = function() log:Prune() end }
     foot:Spacer{}
     foot:ConfirmButton{ "Clear log", tone = "danger", tooltip = "Empties the session log: every record of every"
-        .. " session kept. Click twice to confirm.", onConfirm = function() log:Clear() end }
+        .. " session kept, but for bug reports. Click twice to confirm.", onConfirm = function() log:Clear() end }
     return log
 end
 

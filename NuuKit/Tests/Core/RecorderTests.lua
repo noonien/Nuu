@@ -154,9 +154,11 @@ do
         old = { { at = 1000, d = 1 }, { at = 2000, d = 2 } },
         mixed = { { at = 1000, d = "a" }, { d = "unstamped" }, { at = 1000 + 5 * day, d = "b" }, { at = 1000 + 20 * day, d = "c" } },
         fresh = { { at = 1000 + 20 * day, d = "x" } },
+        bug = { { at = 1000, d = "an old report" } },
     } }
     local now = 1000 + 20 * day
     assertEquals(Recorder:Prune(10, now), 5, "everything older than ten days goes")
+    assertEquals(#db.log.channels.bug, 1, "but for a bug report, which is kept whatever its age")
     assertEquals(db.log.channels.old, nil, "a channel left empty goes too")
     assertEquals(#db.log.channels.mixed, 1, "an unstamped record among the old ones goes with them")
     assertEquals(db.log.channels.mixed[1].d, "c", "and the recent one stays")
@@ -219,10 +221,19 @@ _G.UnitName = function() return "Dill Douse" end
 _G.UnitClass = function() return "Druid", "DRUID", 11 end
 _G.GetRealmName = function() return "Classic Beta PvP" end
 
--- Clearing is the one thing that empties the log.
+-- Clearing is the one thing that empties the log, and it leaves the bug
+-- reports.
+Recorder:Record("bug", { description = "kept" })
+local before = Recorder:Survey()
 local cleared = Recorder:Clear()
-assert(cleared > 0, "clearing reports what it threw away")
-assertEquals(Recorder:Survey(), 0, "and the log is empty afterwards")
+assertEquals(cleared, before - 1, "clearing reports what it threw away")
+assertEquals(Recorder:Survey(), 1, "and the log is empty afterwards but for the report")
+assertEquals(Recorder:Records("bug")[1].d.description, "kept", "which is kept as it was")
+db.log.channels.bug = nil
+local lastingNone = Kit.NewRecorder({ db = function() return db end, lasting = {} })
+lastingNone:Record("bug", "gone")
+lastingNone:Clear()
+assertEquals(lastingNone:Survey(), 0, "an addon can say no channel lasts")
 
 -- Initialize registers for events rather than assuming any of them fire.
 Recorder:Initialize()

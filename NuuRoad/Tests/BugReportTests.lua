@@ -150,7 +150,7 @@ assertHas(text, "== What the player did last ==", "the report still reaches the 
 
 -- An unknown kind or category falls back rather than failing.
 text = BugReport:Build({ kind = "nonsense", category = "nonsense" }).text
-assertHas(text, "NuuRoad addon report: Something else", "unknown input becomes an addon report of the last category")
+assertHas(text, "NuuRoad addon report: Other", "unknown input becomes an addon report of the last category")
 
 -- No guide running: the step sections say so.
 ns.modules.Progress.active = nil

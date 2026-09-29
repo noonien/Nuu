@@ -24,7 +24,7 @@ ns.Kit = Kit
 --     reports:AddSection("where", "Where", function(subject) return { "..." } end)
 --     reports:AddKind("addon", { label = "Addon", sections = { "settings" }, categories = {
 --         { key = "travel", label = "Travel route", tip = "...", sections = { "travel" } },
---         { key = "other", label = "Something else", tip = "..." },
+--         { key = "other", label = "Other", tip = "..." },
 --     } })
 --     reports.leading = { "player", "where" }
 --
@@ -148,7 +148,7 @@ end
 -- Registers a kind: `{ label, sections, categories = { { key, label, tip,
 -- sections }, ... } }`, and for the form (UI/Screens/BugReportForm.lua)
 -- `caption` and `tooltip` for its button. The last category is where an unknown category lands,
--- so it is the "something else" one.
+-- so it is the catch-all ("Other"); the form also opens on it.
 function BugReport:AddKind(key, kind)
     assert(type(key) == "string" and type(kind) == "table" and type(kind.label) == "string", "AddKind(key, { label = ... })")
     assert(type(kind.categories) == "table" and #kind.categories > 0, "AddKind: a kind needs at least one category")
@@ -259,7 +259,7 @@ function BugReport:Build(request)
     local entry = kind and self.kinds[kind]
     local category = self:Category(kind, request.category)
         or (entry and entry.categories[#entry.categories])
-        or { key = "other", label = "Something else" }
+        or { key = "other", label = "Other" }
     local description = tostring(request.description or ""):gsub("^%s+", ""):gsub("%s+$", "")
 
     -- The subject is read under pcall like any section: the part that says

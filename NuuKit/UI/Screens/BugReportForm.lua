@@ -36,7 +36,8 @@ local Proto = UI.Proto
 -- (adds the addon's fields to what is filed), readyHint (the status while
 -- it can be filed), submitTooltip, placeholder (the description's).
 -- A kind added to the reports object may carry `caption` and `tooltip` for
--- its button; its `label` otherwise. `form.win` is the window; `form.kind`
+-- its button; its `label` otherwise. A kind opens on its last category, the
+-- catch-all, so a player who is not sure can just describe it and report. `form.win` is the window; `form.kind`
 -- and `form.category` what is chosen.
 
 local Form = {}
@@ -102,8 +103,17 @@ function Form:LayoutCategories()
     self.categories = box:Choices(options)
 end
 
+-- The category a kind opens on: its last, where the reports object also
+-- files anything it does not know.
+function Form:DefaultCategory(kind)
+    local entry = kind and self.reports:Kind(kind)
+    local categories = entry and entry.categories
+    local last = categories and categories[#categories]
+    return last and last.key or nil
+end
+
 function Form:SelectKind(kind)
-    if kind ~= self.kind then self.category = nil end
+    if kind ~= self.kind or not self.category then self.category = self:DefaultCategory(kind) end
     self.kind = kind
     if self.kinds:GetValue() ~= kind then self.kinds:SetValue(kind) end
     self:LayoutCategories()
@@ -160,7 +170,7 @@ function Form:Submit()
 end
 
 -- Opens the form afresh on `kind`, else the addon's default, else the first
--- kind; no category is picked.
+-- kind, on that kind's catch-all category.
 function Form:Show(kind)
     self.filed, self.category = false, nil
     self.reportSection:Hide()

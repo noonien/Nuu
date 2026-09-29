@@ -67,9 +67,9 @@ assertTrue(not log:IsShown(), "the log toggles away")
 local reports = Kit.NewBugReports({ name = "Smoke", recorder = recorder, fields = function(_, request)
     return { where = request.where } end })
 reports:AddKind("content", { label = "Content", caption = "The content", tooltip = "What it shows.",
-    categories = { { key = "wrong", label = "Wrong", tip = "It is wrong." }, { key = "other", label = "Something else" } } })
+    categories = { { key = "wrong", label = "Wrong", tip = "It is wrong." }, { key = "other", label = "Other" } } })
 reports:AddKind("addon", { label = "Addon", categories = { { key = "error", label = "Lua error" },
-    { key = "other", label = "Something else" } } })
+    { key = "other", label = "Other" } } })
 local ready = false
 local form = ui:BugReportWindow{
     reports = reports,
@@ -87,13 +87,13 @@ layout()
 assertTrue(form:IsShown() and form.kind == "addon", "the addon's default kind")
 assertTrue(form.kinds.buttons[1]:GetText() == "The content", "a kind's caption on its button")
 assertTrue(form.data.where:GetText() == "here", "the addon's field is set on showing")
-assertTrue(not form.submit:IsEnabled(), "nothing to file before a category")
+assertTrue(form.category == "other" and form.submit:IsEnabled(), "the kind opens on its catch-all, ready to file")
 form.categories.buttons[1]:Click()
 assertTrue(form.category == "error" and form.submit:IsEnabled(), "a category makes it ready")
 assertTrue(form.about:GetText() == "About: addon", "the addon says what it is about")
 form.kinds.buttons[1]:Click()
 layout()
-assertTrue(form.kind == "content" and form.category == nil, "another kind forgets the category")
+assertTrue(form.kind == "content" and form.category == "other", "another kind opens on its own catch-all")
 form.categories.buttons[1]:Click()
 assertTrue(not form.submit:IsEnabled(), "the addon's check holds it back")
 ready = true
@@ -107,6 +107,6 @@ assertTrue(form.filed and #filed == 1 and filed[1].d.where == "here" and filed[1
     "filed with the addon's field")
 assertTrue(form.reportSection:IsShown() and form.reportText:GetText():find("It broke.", 1, true), "the report to copy")
 form:Show()
-assertTrue(not form.reportSection:IsShown() and form.category == nil, "opening again starts afresh")
+assertTrue(not form.reportSection:IsShown() and form.category == "other", "opening again starts afresh")
 form:Toggle()
 assertTrue(not form:IsShown(), "the form toggles away")

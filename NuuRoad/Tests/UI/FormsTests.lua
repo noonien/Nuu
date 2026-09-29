@@ -178,7 +178,7 @@ local function file(kind)
     form = BugReportPanel.form
     settle()
     check(BugReportPanel.win:IsShown(), "the form shows")
-    check(not form.submit:IsEnabled(), "nothing to file before a category")
+    check(form.category == "other", "the form opens on the catch-all category")
     local buttons = form.categories.buttons
     check(#buttons > 1, "the kind's categories")
     buttons[1]:Click()
@@ -200,7 +200,7 @@ check(#ns.recorder:Records("bug") == bugs + 1, "the report is on the bug channel
 form.kinds.buttons[1]:Click()
 settle()
 check(form.kind == form.kinds.buttons[1].kitChoiceValue, "the kind picked")
-check(form.category == nil, "a new kind forgets the category")
+check(form.category == "other", "a new kind opens on its own catch-all")
 
 -- A guide report, with a guide running.
 local Repository, Progress = ns.modules.GuideRepository, ns.modules.Progress
