@@ -290,7 +290,6 @@ do
     for _, caption in ipairs({ "Guides", "Edit this guide", "Reset this guide", "Authoring", "Report a bug", "Options" }) do
         check(menuRow(menu, caption), "the menu has " .. caption)
     end
-    check(not menuRow(menu, "Profession planner"), "no planner entry without NuuProfessions")
     click(MainWindow.menuButton)
     check(not menu:IsShown(), "a second click on the button closes it")
 
@@ -342,18 +341,10 @@ do
     check(menuRow(menu, "Reset this guide"), "a new opening is not armed")
     ctx.UI:CloseMenu()
 
-    -- With NuuProfessions' API, the planner entry opens it.
-    local opened
-    _G.NuuProfessions = { API = { apiVersion = 1, Open = function(profession) opened = profession or "last" end } }
+    -- The planner is NuuProfessions' own to open; the menu has no entry for it.
+    _G.NuuProfessions = { API = { apiVersion = 1, Open = function() end } }
     menu = openMenu()
-    local planner = menuRow(menu, "Profession planner")
-    check(planner, "the planner entry shows with NuuProfessions")
-    click(planner)
-    check(opened ~= nil, "the planner entry opens the planner")
-    -- Another version of the API is not used.
-    _G.NuuProfessions.API.apiVersion = 2
-    menu = openMenu()
-    check(not menuRow(menu, "Profession planner"), "an API of another version is not used")
+    check(not menuRow(menu, "Profession planner"), "no planner entry, even with NuuProfessions")
     ctx.UI:CloseMenu()
     _G.NuuProfessions = nil
 end

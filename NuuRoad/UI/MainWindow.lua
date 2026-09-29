@@ -1744,8 +1744,7 @@ end
 
 -- Its entries are built fresh on every opening, because what belongs on it
 -- depends on the moment: whether a guide is running at all, whether that
--- guide asks for materials, how much of it is still missing, and whether
--- NuuProfessions is there to plan with.
+-- guide asks for materials, and how much of it is still missing.
 function MainWindow:MenuItems()
     local Progress, Config = M("Progress"), M("Config")
     local guide = Progress and Progress:GetActiveGuide()
@@ -1782,17 +1781,6 @@ function MainWindow:MenuItems()
                 M("Config"):Set("materials.shown", on and true or false)
                 self:Refresh()
             end })
-    end
-    -- The planner is NuuProfessions'; on a craft step it opens on the step's
-    -- profession.
-    local api = professionsAPI()
-    if api and api.Open then
-        table.insert(items, { caption = "Profession planner", onClick = function()
-            local auto = self.currentNode and self.currentNode.auto
-            local profession = auto and type(auto.skill) == "string" and auto.skill or nil
-            local ok, err = pcall(api.Open, profession)
-            if not ok then report(err) end
-        end })
     end
     -- The tools for writing guides rather than playing them, one level down
     -- so the menu a player reads is about playing.
