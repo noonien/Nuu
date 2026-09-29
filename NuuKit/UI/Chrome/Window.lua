@@ -180,7 +180,7 @@ local function paintStrip(win, t)
     if not strip then return end
     UI.TexColor(strip.bg, win.kitInPlay and t.raisedBg or t.bandBg)
     UI.TexColor(strip.line, t.hairline)
-    UI.ApplyStyle(strip.text, "label", t)
+    UI.ApplyStyle(strip.text, "label", t, strip.kitTone)
 end
 
 -- The look: background, frame, band art, fonts.
@@ -337,7 +337,9 @@ end
 function Window:IsCollapsed() return self.kitCollapsed or false end
 
 -- The strip at the foot: what a change just did, with Undo when `opts.undo`
--- is given. nil text puts the strip away, or, in a window made with
+-- is given, in `opts.tone` (a token name or a colour: "text" for news,
+-- "danger" for what went wrong; muted, as a hint, without). nil text puts
+-- the strip away, or, in a window made with
 -- `status`, empties it (to the window's hint, if `status` was one): that
 -- window keeps its strip, so its body never changes size when a message
 -- comes or goes. A body that changes size redraws what scrolls in it, and
@@ -363,6 +365,11 @@ function Window:Status(text, opts)
         paintStrip(self, self.ui.tokens)
     end
     local undo = opts and opts.undo
+    local tone = text ~= nil and opts and opts.tone or nil
+    if tone ~= strip.kitTone then
+        strip.kitTone = tone
+        UI.ApplyStyle(strip.text, "label", self.ui.tokens, tone)
+    end
     strip.kitHasText = text ~= nil or self.kitStatusKept
     strip.text:SetText(text or self.kitStatusHint or "")
     strip.kitUndo = undo
@@ -399,6 +406,51 @@ function Window:TakeKeyboard(on)
 end
 
 function Window:SetLocked(locked) self.kitLocked = locked and true or false end
+
+-- Tabs in the band ----------------------------------------------------------------------
+
+-- A window's tabs sit in its band after the title; their pages are columns
+-- of its body, the chosen one shown (a hidden column takes no room, so the
+-- chosen page fills the window). The Tabs widget in the band is used for its
+-- strip alone. The addon's own band controls (`win.header`) follow them at
+-- the right.
+local function showPage(win, key)
+    for pageKey, page in pairs(win.kitPages) do page:SetShown(pageKey == key) end
+end
+
+local function tabChosen(key, tabs)
+    local win = tabs.kitTabsWindow
+    showPage(win, key)
+    if win.kitOnTab then win.kitOnTab(key, win) end
+end
+
+local function buildTabs(win, spec)
+    local header = win.header
+    header:Spacer{ size = spec.offset or 24 }
+    local entries = { value = spec.value, onChange = tabChosen, rule = false }
+    for index, entry in ipairs(spec) do entries[index] = entry end
+    local tabs = header:Tabs(entries)
+    tabs.kitTabsWindow = win
+    -- What the addon puts in the band after this goes to the right.
+    header:Spacer{}
+    win.tabs, win.kitOnTab, win.kitPages = tabs, spec.onChange, {}
+    for _, entry in ipairs(spec) do
+        win.kitPages[entry.key] = win:Column{ padding = spec.padding or 12, gap = spec.gap or 8 }
+    end
+    showPage(win, tabs:GetValue())
+end
+
+-- The page of tab `key` (a window made with `tabs`).
+function Window:Page(key) return self.kitPages and self.kitPages[key] end
+
+-- Chooses a tab from code: its page shows, and onChange does not hear it.
+function Window:SetTab(key)
+    if not self.tabs then return end
+    self.tabs:SetValue(key)
+    showPage(self, self.tabs:GetValue())
+end
+
+function Window:GetTab() return self.tabs and self.tabs:GetValue() end
 
 -- The shell ------------------------------------------------------------------------------
 
@@ -529,6 +581,7 @@ local function shell(ui, opts, inPlay)
     -- no stack of its own to lay out, and never pooled.
     ui:Paint(win, function(t) paintWindow(win, t) end)
     arrange(win)
+    if opts.tabs then buildTabs(win, opts.tabs) end
     if placed and placed.collapsed then win:SetCollapsed(true) end
     if opts.shown == false or opts.hidden then win:Hide() end
     return win
@@ -543,6 +596,13 @@ end
 -- not close it), gap and padding of the body, hidden (or shown = false).
 -- `status`: true (or a hint to show while it is empty) keeps the status
 -- strip at the foot always, rather than only while it has a message.
+-- `tabs`: tabs in the band after the title, each with a page in the body:
+-- the entries are its array part ({ key, caption, badge, disabled }, as a
+-- Tabs'), with value (the tab chosen first), onChange(key, win) (the
+-- player's choice), offset (room after the title, 24), padding and gap of
+-- each page (12, 8). `win:Page(key)` is a tab's page, `win:SetTab(key)`
+-- chooses one from code, `win:GetTab()` answers the chosen one, and
+-- `win.header` controls made after follow the tabs at the right.
 function Proto:Window(opts)
     opts = opts or {}
     local win = shell(self, opts, false)

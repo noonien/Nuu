@@ -15,7 +15,8 @@ local types = UI.types
 -- Spec: the entries are the array part, each { key, caption, badge,
 -- disabled }; value (the tab chosen first, else the first), bind, default,
 -- onChange(key, tabs) (the player's choice only: a click or an arrow key),
--- padding (around the pages), pagePadding and gap (in each page).
+-- padding (around the pages), pagePadding and gap (in each page), rule
+-- (false: no hairline under the strip, as in a window's band).
 -- `tabs:Page(key)` is the column that tab shows; it fills the room under
 -- the strip.
 --
@@ -176,6 +177,7 @@ UI.Define("Tabs", {
         local ui = w.ui
         UI.SetStack(w, "column", NO_GAP)
         UI.SetStack(w.holder, "column", { gap = 0, padding = spec.padding or 0 })
+        w.strip.rule:SetShown(spec.rule ~= false)
         -- A released stack gave its parts up: they come back.
         if #w.kitChildren == 0 then
             w.strip:Show()

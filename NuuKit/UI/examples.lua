@@ -179,6 +179,17 @@ local function SectionsAndTabs(win)
 
     tabs:SetBadge("materials", nil)  -- clear the count
     tabs:SetValue("recipes")         -- from code: onChange is not called
+
+    -- Or the tabs in the window's band, after its title: a page per tab
+    -- fills the body, and the band's own controls follow at the right.
+    local planner = ns.UI:Window({ title = "Profession planner", tabs = {
+        { key = "plan", caption = "Plan" }, { key = "recipes", caption = "Recipes" },
+        value = "plan", onChange = function(key, window) end,
+    } })
+    planner.header:Select{ boxWidth = 180, options = { { value = "tailoring", caption = "Tailoring" } } }
+    planner:Page("plan"):Text{ "The route" }
+    planner:SetTab("recipes")  -- from code: onChange is not called
+    planner:Hide()
     return prices
 end
 

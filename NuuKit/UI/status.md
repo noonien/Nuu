@@ -68,6 +68,7 @@ made with `UI.NewFrame`, which marks them, so neither the `parts` reset nor the 
 | `Display/Lists.lua`, `Tables.lua` | `ScrollArea`, `List` (a screenful of rows, reused), `Tree`, `SplitPanes`; `Table`, `Pager`, `Figures` |
 | `Display/Feedback.lua`, `Slots.lua` | `ProgressBar`, `SegmentBar`; `UI:StripPanel`, `Slot` (secure slots never pooled) |
 | `Theme/LookPicker.lua` | the Appearance section |
+| `../Core/SkillUp.lua`, `../Core/Crafting.lua` | not UI: the skill-up model and what a Make button asks for, pure Lua, moved from OpenRoad for both addons |
 | `../Dev/Gallery.lua`, `../Dev/Report.lua` | development only: `/nuukit ui` (every widget, and a Pooling tab), `/nuukit report` |
 
 **Tests.** `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"` from `NuuKit/` runs six suites: the core, the
@@ -79,6 +80,20 @@ the costs that matter (hover
 sets no font and lays nothing out, a text change lays out only its row). `lua Tests/UI/Smoke/Run.lua --copy` runs
 them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench screen) and `Tests/Bench/Gallery.lua`
 (the whole gallery) count client calls, to compare before and after a change.
+
+**Added for the planner** (2026-09-29, while porting OpenRoad's planner to NuuProfessions on the kit):
+
+- `List` and `Table` take `tooltip(item, row)`: a row's tooltip, answered with a filler and `{ links, anchor }`.
+- `list:SetItems(items, keep)` and `table:SetItems(items, keep)` / `table:Refresh(keep)` hold the scroll place;
+  folding a table's group keeps it too (it went back to the top).
+- `ui:Window{ tabs = { { key, caption }, ..., value, onChange } }`: tabs in the band after the title, a page
+  per tab in the body (`win:Page(key)`, `win:SetTab(key)`, `win:GetTab()`); `win.header` controls follow at the
+  right. `Tabs{ rule = false }` leaves out the strip's hairline.
+- `win:Status(text, { undo, tone })`: the message in a tone ("text", "danger"); the hint stays muted.
+- Fields take `compact` and `onInvalid(message, field)`: no line under the box (a table's cell has no room), what
+  is wrong goes to the window. `MoneyInput{ preview = false }` leaves out the rounded amount beside the box.
+
+The benches' client calls are what they were before these (`Tests/Bench/Run.lua UI`, `Tests/Bench/Gallery.lua`).
 
 ## Measured in the client
 
@@ -160,12 +175,16 @@ client features the kit uses are all there; see [docs/api-compatibility.md](../.
 
 ## How to continue
 
-1. **Adopt it in the addons.** Neither addon uses the kit's UI yet. For each addon:
+1. **Adopt it in the addons.** NuuProfessions does (below); NuuRoad does not yet. For NuuRoad:
    - Add `look` and `windows` to its SavedVariables.
    - Add `ns.UI = ns.Kit.NewUI(ns, db.look)` to `Core.lua`.
    - Build its options window with a `LookPicker` section (the Setup and Looks examples in `examples.lua`).
 2. **Port the screens** from OpenRoad into the addons, built from kit parts: NuuRoad's tracker, guide browser and
-   editor, then NuuProfessions' planner. Follow AGENTS.md: take OpenRoad's behaviour, and write sentence-case
+   editor. NuuProfessions' planner is ported (`NuuProfessions/UI/`, 2026-09-29): a Window with the profession in
+   its band, Tabs, the route on a List whose rows draw their skill axis with `SegmentBar`s, Recipes on a List,
+   Materials on a Table with money fields in its cells, Options as Settings with a LookPicker. Its smoke test
+   (`NuuProfessions/Tests/UISmokeTests.lua`) builds it on the stand-in with the audit on; not yet run in the
+   client. Follow AGENTS.md: take OpenRoad's behaviour, and write sentence-case
    captions. Most of OpenRoad's refreshes change screens in place (`SetText`, `SetValue`, `list:SetItems`); a
    screen that changes shape clears and builds again. Long content goes in a `List`. Not worth porting from
    OpenRoad: tracker refreshes that skip its throttle (kills, step advances), the guide browser re-filtering on

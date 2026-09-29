@@ -195,6 +195,10 @@ do
     win:Status(nil)
     assertTrue(strip:IsShown() and strip.text:GetText():match("^What") and win.body.points[2][5] == bottom,
         "clearing it shows the hint")
+    win:Status("Could not save.", { tone = "danger" })
+    assertTrue(strip.kitTone == "danger", "a message in a tone")
+    win:Status(nil)
+    assertTrue(strip.kitTone == nil, "the hint in the strip's own colour")
 
     local plain = ui:Window({ title = "Plain" })
     local plainBottom = plain.body.points[2][5]
@@ -205,6 +209,35 @@ do
     assertTrue(not contains(UISpecialFrames, "TestChrome__Window"), "a window without a key has no name")
     plain.closeButton:Click()
     assertTrue(not plain:IsShown(), "the close mark shuts it")
+end
+
+-- Tabs in the band: the strip after the title, a page per tab in the body,
+-- the band's own controls at the right.
+do
+    local heard = {}
+    local tabbed = ui:Window({ title = "Planner", width = 700, height = 400, tabs = {
+        { key = "plan", caption = "Plan" }, { key = "recipes", caption = "Recipes" },
+        value = "recipes", onChange = function(key, w) heard[#heard + 1] = key end,
+    } })
+    local control = tabbed.header:Button{ "Right" }
+    tabbed:Show()
+    ctx.layout()
+    local header = tabbed.header.kitChildren
+    assertTrue(tabbed.tabs and header[2] == tabbed.tabs and header[#header] == control,
+        "the strip in the band after the title, the band's controls after it")
+    assertTrue(not tabbed.tabs.strip.rule:IsShown(), "no hairline under a strip in the band")
+    assertTrue(control.kitPX > tabbed.tabs.kitPX + tabbed.tabs.kitPW, "the band's controls at the right")
+    assertTrue(tabbed:GetTab() == "recipes" and tabbed:Page("recipes"):IsShown() and not tabbed:Page("plan"):IsShown(),
+        "the chosen tab's page shows")
+    tabbed:Page("plan"):Text{ "On the plan page" }
+    ctx.layout()
+    assertTrue(tabbed:Page("recipes").kitPH > 300, "a page fills the body: " .. tostring(tabbed:Page("recipes").kitPH))
+    tabbed.tabs.kitTabs.plan:Click()
+    assertTrue(tabbed:Page("plan"):IsShown() and not tabbed:Page("recipes"):IsShown() and heard[1] == "plan",
+        "a click shows its page and is heard")
+    tabbed:SetTab("recipes")
+    assertTrue(tabbed:Page("recipes"):IsShown() and #heard == 1, "SetTab from code is not heard")
+    tabbed:Hide()
 end
 
 -- Moving, sizing, locking; the place is kept. The stand-in's frames are

@@ -209,6 +209,49 @@ do
     long:Release()
 end
 
+-- New items can keep the place; a row shows the tooltip its item asks for.
+do
+    local _, body = testWindow(ui, 400, 300)
+    local tipped
+    local kept = body:List{ make = makeGuide, draw = drawGuide,
+        tooltip = function(guide) tipped = guide; return guide.name, { links = { item = 6948 } } end }
+    kept:SetItems(GUIDES)
+    layout()
+    kept:ScrollSet(10)
+    kept:SetItems(GUIDES, true)
+    assertTrue(kept:ScrollAt() == 10, "keep holds the place: " .. kept:ScrollAt())
+    kept:SetItems(GUIDES)
+    assertTrue(kept:ScrollAt() == 0, "new items otherwise go back to the top")
+    local row = kept.rows[1]
+    row:GetScript("OnEnter")(row)
+    assertTrue(tipped == GUIDES[1] and UI.tipOwner == row, "a row's tooltip is its item's")
+    row:GetScript("OnLeave")(row)
+    assertTrue(UI.tipOwner == nil, "and goes with the pointer")
+    kept:Release()
+end
+
+-- At a pixel scale that is not whole (1329 screen pixels high: 1.73 a unit),
+-- every row still starts and ends on a whole screen pixel.
+do
+    local saved = rawget(_G, "GetPhysicalScreenSize")
+    _G.GetPhysicalScreenSize = function() return 2360, 1329 end
+    UI.PixelScaleChanged()
+    local scale = UI.PixelsPerUnit()
+    local _, body = testWindow(ui, 400, 300)
+    local rows = body:List{ make = makeGuide, draw = drawGuide, rowHeight = 30 }
+    rows:SetItems(GUIDES)
+    layout()
+    local function whole(units) local px = units * scale; return math.abs(px - math.floor(px + 0.5)) < 1e-6 end
+    for index = 1, 4 do
+        local row = rows.rows[index]
+        assertTrue(whole(row.kitPY) and whole(row.kitPY + row.kitPH),
+            "row " .. index .. " sits on whole pixels: " .. row.kitPY * scale .. " to " .. (row.kitPY + row.kitPH) * scale)
+    end
+    rows:Release()
+    _G.GetPhysicalScreenSize = saved
+    UI.PixelScaleChanged()
+end
+
 -- Trees ---------------------------------------------------------------------------------
 
 local NODES = {

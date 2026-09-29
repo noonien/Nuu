@@ -208,6 +208,17 @@ local boundMoney = body:MoneyInput{ bind = { mdb, "price" } }
 assertTrue(boundMoney:GetValue() == 300 and boundMoney:IsStored(), "a bound amount")
 boundMoney:Reset()
 assertTrue(mdb.price == nil and boundMoney:GetValue() == nil and boundMoney:GetText() == "", "reset to nothing")
+-- In a table's cell: no amount beside it and no line under it; what is
+-- wrong goes to onInvalid.
+local invalid
+local cellMoney = body:MoneyInput{ boxWidth = 70, preview = false, compact = true, value = 100,
+    onInvalid = function(message) invalid = message end }
+assertTrue(not cellMoney.preview:IsShown() and cellMoney:NaturalWidth() == 70, "no amount beside it")
+cellMoney.box:SetFocus()
+type_(cellMoney.box, "lots")
+cellMoney.box:GetScript("OnEnterPressed")(cellMoney.box)
+assertTrue(cellMoney:IsInvalid() and invalid ~= nil and not cellMoney.message:IsShown() and cellMoney:GetValue() == 100,
+    "a typo goes to onInvalid, not under the box")
 
 -- Numbers ------------------------------------------------------------------------------------
 

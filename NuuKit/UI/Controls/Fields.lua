@@ -8,7 +8,10 @@ local UI = Kit.UI
 -- Fields, toggles and sliders.
 --
 -- A field is a small frame: an optional `label` over the box, and under it
--- a line for `help` or for why the text is wrong. Every field has GetText,
+-- a line for `help` or for why the text is wrong; a `compact` field (in a
+-- table's cell, which has no room under it) has no such line, and tells
+-- why the text is wrong to `onInvalid(message, field)` instead, for the
+-- window to say elsewhere. Every field has GetText,
 -- SetText, GetValue, SetValue, SetInvalid(message or nil), IsInvalid,
 -- ShowMessage, SetLabel, SetPlaceholder, SetFocus, ClearFocus, HasFocus,
 -- SetEnabled, and Reset / IsStored (Core). `field.box` is the EditBox.
@@ -225,6 +228,8 @@ local function initField(w, spec, boxHeight, hasBand)
     w.kitInvalid, w.kitMessageError = false, false
     w.kitValidate = spec.validate
     w.kitOnType = spec.onType
+    w.kitCompact = spec.compact or nil
+    w.kitOnInvalid = spec.onInvalid
     w.kitMinWidth = nil
     w.kitTextStyle = nil
     w.kitPlaceholderColor = nil
@@ -243,6 +248,7 @@ local function releaseField(w)
     -- Leaving now must not commit into the last use's callbacks.
     box.kitBaseline = nil
     if box:HasFocus() then box:ClearFocus() end
+    w.kitOnInvalid, w.kitOnType, w.kitValidate = nil, nil, nil
     box.kitPooled = true
     w.ui.focusables[box] = nil
 end
@@ -259,6 +265,16 @@ function Field:SetValue(text) setText(self, text) end
 function Field:ShowMessage(text, isError)
     local value = text or self.kitHelp
     self.kitMessageError = (text ~= nil and isError) and true or false
+    if self.kitCompact then
+        -- No line under it: an error goes to onInvalid, the edge shows it.
+        if self.message:IsShown() then
+            self.message:Hide()
+            self:Changed()
+        end
+        if self.kitMessageError and self.kitOnInvalid then self.kitOnInvalid(text, self) end
+        self:PaintState(self.ui.tokens)
+        return
+    end
     self.message:SetText(value or "")
     self.message:SetShown(value ~= nil and value ~= "")
     self:Changed()
@@ -540,7 +556,9 @@ UI.Define("TextArea", {
 -- and the rounded amount shows beside it. Spec: label, value, bind, default
 -- (nil: nothing set), guess (copper, shown as the placeholder in the
 -- estimate colour), placeholder, help, onChange(copper or nil, field),
--- boxWidth (120; `width` is the whole field's, as for any widget).
+-- boxWidth (120; `width` is the whole field's, as for any widget), preview
+-- (false: no rounded amount beside the box, where there is no room for it),
+-- compact and onInvalid (see the top of the file).
 
 -- Coloured coins, except under the player's cursor: colour codes in the
 -- text being edited would get in the way of typing.
@@ -564,12 +582,18 @@ UI.Define("MoneyInput", {
         w.box = box
         w.preview = UI.NewText(w.line)
         w.preview:SetPoint("LEFT", box, "RIGHT", 8, 0)
+        w.kitPreviewShown = true
     end,
     Init = function(w, spec)
         initField(w, spec, BOX_HEIGHT)
         local boxWidth = spec.boxWidth or 120
         w.box:SetWidth(boxWidth)
-        w.kitMinWidth = boxWidth + 90
+        w.kitPreview = spec.preview ~= false
+        if w.kitPreviewShown ~= w.kitPreview then
+            w.kitPreviewShown = w.kitPreview
+            w.preview:SetShown(w.kitPreview)
+        end
+        w.kitMinWidth = boxWidth + (w.kitPreview and 90 or 0)
         if spec.guess then
             w.box.placeholder:SetText("~" .. Kit.FormatMoney(spec.guess) .. ", a guess")
             w.kitPlaceholderColor = "estimate"

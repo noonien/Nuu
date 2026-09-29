@@ -71,6 +71,9 @@ UI.Define("ScrollArea", {
 --                      of the selection by the keys
 --   onActivate(item)   a double click, or Enter from the search field
 --   onRightClick(item, row)
+--   tooltip(item, row) what hovering a row shows: a filler (a string, or
+--                      fn(GameTooltip)) and optionally opts { links, anchor }
+--                      as for ui:Tooltip; nil shows none
 --   search             a Search field that filters the list as it is typed
 --   filter(item, text) whether an item matches, else its `name` or caption
 --   empty              what an empty list says
@@ -101,8 +104,13 @@ local function defaultFilter(item, text)
     return string.find(string.lower(tostring(name or "")), string.lower(text), 1, true) ~= nil
 end
 
+-- A row's height on whole screen pixels: rows stack from the list's top, so
+-- every row and everything laid out in it stays on the pixel grid (off it,
+-- the client drops some one-pixel edges, as a checkbox's).
+local function rowStep(w) return UI.Snap(w, w.kitRowHeight) end
+
 local function visibleCount(w)
-    return math.max(1, math.floor(((w:GetHeight() or 0) - 2) / w.kitRowHeight))
+    return math.max(1, math.floor(((w:GetHeight() or 0) - 2 * UI.Pixels(w, 1)) / rowStep(w)))
 end
 
 local function maxOffset(w)
@@ -205,18 +213,41 @@ local function rowSetDisabled(row, disabled, reason)
     end
 end
 
+-- A row's tooltip: what `tooltip(item, row)` answers (a filler, and opts
+-- with `links` and `anchor`), and the reason a disabled row gives. One
+-- table for the options, filled again on each hover.
+local TIP = {}
+
 local function rowEnter(row)
     row.hover = true
     local w = row.kitList
     paintRow(w, row, w.ui.tokens)
-    if row.kitReason then w.ui:Tooltip(row, nil, { reason = row.kitReason, anchor = "ANCHOR_RIGHT" }) end
+    local filler, opts
+    if row.item ~= nil then
+        local hook = w.kitHook
+        if hook and hook.tooltip then
+            filler, opts = hook.tooltip(w, row.item, row)
+        elseif w.kitTooltip then
+            filler, opts = w.kitTooltip(row.item, row)
+        end
+    end
+    if filler == nil and not row.kitReason then return end
+    TIP.anchor = opts and opts.anchor or "ANCHOR_RIGHT"
+    TIP.links = opts and opts.links or nil
+    TIP.reason = row.kitReason
+    w.ui:Tooltip(row, filler, TIP)
+    TIP.links = nil
+    row.kitTipShown = true
 end
 
 local function rowLeave(row)
     row.hover = false
     local w = row.kitList
     paintRow(w, row, w.ui.tokens)
-    if row.kitReason then w.ui:HideTooltip() end
+    if row.kitTipShown then
+        row.kitTipShown = nil
+        w.ui:HideTooltip()
+    end
     leave(row)
 end
 
@@ -269,11 +300,12 @@ UI.Define("ListRow", {
 -- less the bar's room. Answers whether its size changed.
 local function placeRow(w, row, index)
     local width = math.max(1, UI.Snap(w, (w:GetWidth() or 0) - UI.SCROLLBAR - 2))
-    local height = w.kitRowHeight
-    local y = 1 + (index - 1) * height
+    local height = rowStep(w)
+    local edge = UI.Pixels(w, 1)
+    local y = edge + (index - 1) * height
     if row.kitPY ~= y then
         row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", w, "TOPLEFT", 1, -y)
+        row:SetPoint("TOPLEFT", w, "TOPLEFT", edge, -y)
         row.kitPY = y
     end
     if row.kitPW ~= width or row.kitPH ~= height then
@@ -389,7 +421,9 @@ local function refresh(w)
     w.bar:Sync()
 end
 
-local function applyFilter(w)
+-- `keep` holds the place in the list (as far as it still goes), for new
+-- items of the same list; otherwise it goes back to the top.
+local function applyFilter(w, keep)
     local text = w.filterText
     if text == "" then
         w.view = w.items
@@ -401,7 +435,7 @@ local function applyFilter(w)
         end
         w.view = view
     end
-    w.offset = 0
+    if not keep then w.offset = 0 end
     refresh(w)
 end
 
@@ -481,6 +515,7 @@ local function initList(w, spec, hook)
     w.kitMake, w.kitDraw = spec.make, spec.draw
     w.kitNumbers, w.kitNumberWidth, w.kitValue = spec.numbers or nil, spec.numberWidth or 24, spec.value
     w.kitOnPick, w.kitOnActivate, w.kitOnRightClick = spec.onPick, spec.onActivate, spec.onRightClick
+    w.kitTooltip = spec.tooltip
     w.kitFilterFn, w.kitEmpty = spec.filter, spec.empty
     w.kitWheelRows = spec.wheelRows or 3
     w.items, w.view, w.offset, w.filterText, w.selected = {}, {}, 0, "", nil
@@ -504,9 +539,10 @@ local function releaseList(w)
     if w.kitSearch then UI.UnlinkSearch(w.kitSearch, w) end
     w.kitSearch = nil
     w.kitHeld = false
+    w.kitTooltip = nil
     w.selected, w.items, w.view = nil, {}, {}
     for _, row in ipairs(w.rows) do
-        row.item, row.hover = nil, nil
+        row.item, row.hover, row.kitTipShown = nil, nil, nil
         row:Hide()
     end
 end
@@ -525,9 +561,10 @@ local listMethods = {
         paintRows(self, t)
     end,
     Refresh = function(self) refresh(self) end,
-    SetItems = function(self, items)
+    -- New items; `keep` leaves the list scrolled where it was.
+    SetItems = function(self, items, keep)
         self.items = items or {}
-        applyFilter(self)
+        applyFilter(self, keep)
     end,
     GetItems = function(self) return self.items end,
     GetView = function(self) return self.view end,

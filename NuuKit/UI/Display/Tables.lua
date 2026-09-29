@@ -23,7 +23,8 @@ local L = UI.ListParts
 --   rowHeight  default 26, or 32 when a column makes a widget
 --   rows       how many rows tall it wants to be when not growing
 --   footer     true for a footer line (see SetFooter)
---   onPick(item), onActivate(item), onRightClick(item, row), search,
+--   onPick(item), onActivate(item), onRightClick(item, row), tooltip(item,
+--   row) (as a List's), search,
 --   filter(item, text) (else the first column's text), empty, grow
 -- Items are tables; one with `rows` is a group of them: { caption, rows,
 -- open }, folded by a click on its line (the kit keeps `open`).
@@ -271,13 +272,19 @@ local TABLE_HOOK = {
         local tbl = list.kitTable
         if not entry.isGroup and tbl.kitOnRightClick then tbl.kitOnRightClick(entry.item, row) end
     end,
+    -- A row's tooltip is the table's `tooltip(item, row)`; a group's line has none.
+    tooltip = function(list, entry, row)
+        local tbl = list.kitTable
+        if entry.isGroup or not tbl.kitTooltip then return nil end
+        return tbl.kitTooltip(entry.item, row)
+    end,
     -- A group's line folds it, and leaves the selection where it was.
     rowClick = function(list, _, entry)
         if not entry.isGroup then return end
         local tbl = list.kitTable
         entry.item.open = entry.item.open == false
         list:Select(tbl.kitPicked)
-        tbl:Refresh()
+        tbl:Refresh(true)
     end,
     -- A group's line sits on the surface, set apart from its rows.
     paintRow = function(_, row, t)
@@ -370,6 +377,7 @@ UI.Define("Table", {
         w.kitEntries = setmetatable({}, WEAK)
         w.kitFilterFn = spec.filter
         w.kitOnPick, w.kitOnActivate, w.kitOnRightClick = spec.onPick, spec.onActivate, spec.onRightClick
+        w.kitTooltip = spec.tooltip
 
         setLineColumns(w.head, columns, true)
         w:Append(w.head)
@@ -392,13 +400,15 @@ UI.Define("Table", {
     end,
     Release = function(w)
         if w.kitSearch then UI.UnlinkSearch(w.kitSearch, w) end
-        w.kitSearch, w.list, w.kitPicked = nil, nil, nil
+        w.kitSearch, w.list, w.kitPicked, w.kitTooltip = nil, nil, nil, nil
     end,
     methods = {
-        Refresh = function(self) self.list:SetItems(flatten(self)) end,
-        SetItems = function(self, items)
+        -- `keep` leaves the table scrolled where it was (a fold, new items
+        -- of the same table); otherwise it goes back to the top.
+        Refresh = function(self, keep) self.list:SetItems(flatten(self), keep) end,
+        SetItems = function(self, items, keep)
             self.kitItems = items or {}
-            self:Refresh()
+            self:Refresh(keep)
         end,
         GetItems = function(self) return self.kitItems end,
         SetFilter = function(self, text)
