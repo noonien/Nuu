@@ -1280,8 +1280,16 @@ Names.spells = {
     [1259705] = "Read Ley Line",
     [1296017] = "Comprehend Scroll",
     [1310185] = "Tactical Mastery",
-    -- Tirisfal Glades (HordeTirisfal612.lua).
+    -- Tirisfal Glades (HordeTirisfal16.lua, HordeTirisfal612.lua).
+    [17] = "Power Word: Shield",
+    [172] = "Corruption",
     [201] = "One-Handed Swords",
+    [348] = "Immolate",
+    [589] = "Shadow Word: Pain",
+    [591] = "Smite",
+    [695] = "Shadow Bolt",
+    [2053] = "Lesser Heal",
+    [20271] = "Judgement",
 }
 
 -- Standing 1 to 8, as the reputation pane names them. Fixed by the client,
