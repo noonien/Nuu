@@ -1562,6 +1562,17 @@ function MainWindow:DrawStep(guide, node, state)
             self:Refresh()
         end, true, "Nothing in the game says when this step is done. Click once you have done it; skip (>) at the top passes it over instead.", "accent")
     end
+    -- A purchase is often one the player has no need of (they already have
+    -- the bag, or a better weapon), and buying is what finishes it, so the
+    -- card offers the skip the top bar already has.
+    if node.kind == "buy" and not stepDone(node) then
+        self:AddCardButton("Skip - I do not need it", function()
+            if not self:AcceptAction() then return end
+            M("Progress"):Forward(guide)
+            self:Landed()
+            self:Refresh()
+        end, true, "Passes this purchase over, the same as skip (>) at the top.")
+    end
     self:AddMakeButton(node)
     if #choices > 0 then self:AddLine("Pick one to continue:", { color = "muted", indent = true }) end
     for index, choice in ipairs(choices) do self:AddChoiceButton(guide, choice, index) end

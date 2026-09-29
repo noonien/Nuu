@@ -170,6 +170,26 @@ if done then
     check(current() ~= at, "done moves the guide on")
 end
 check(done, "a step nothing in the game finishes has a Done button")
+-- A purchase is finished by buying, so it has no Done button; its card
+-- offers a skip instead, recorded as skipped.
+do
+    local buy
+    for _, node in ipairs(guide.nodes) do
+        if node.kind == "buy" and node.index > current() then buy = node break end
+    end
+    check(buy, "the Mulgore guide has a purchase to skip")
+    if buy then
+        Progress:GoTo(guide, buy.index)
+        MainWindow:Refresh(); settle()
+        local skipBuy = button("Skip - I do not need it")
+        check(skipBuy and not button("Done - next step"), "a buy step offers skip, not done")
+        if skipBuy then
+            click(skipBuy)
+            check(current() ~= buy.index, "the card's skip moves the guide on")
+            check(Progress:GetState(guide).statuses[buy.index] == "skipped", "the purchase is recorded as skipped")
+        end
+    end
+end
 -- Back near the start for what follows.
 Progress:GoTo(guide, first)
 Progress:Forward(guide)
