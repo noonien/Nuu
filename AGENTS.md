@@ -35,6 +35,16 @@ Once everything has moved over and OpenRoad is retired, remove this section.
 - Each addon's one intentional global is its `ns` table (`_G.NuuRoad`, `_G.NuuProfessions`). Kit code reaches the
   addons as `ns.Kit`, which development builds fill through `ns.Kit = ns.Kit or _G.NuuKit`.
 - `NuuKit/NuuKit.lua` is development-only, publishes `_G.NuuKit`, is never shipped, and must stay last in the TOC.
+- Development-only code stays out of releases. Files go in the addon's `Dev/` folder, listed in its TOC between
+  `#@debug@` and `#@end-debug@`; lines inside shipped `.lua` files go between `--@debug@` and `--@end-debug@`.
+
+## Releases
+
+`python3 Tools/Build.py [--version X] [Addon ...]` writes each addon to `dist/<Addon>/` (and a zip and changelog)
+with its own copy of the kit under `Libs/NuuKit/` and no development code: only the files its TOC lists outside the
+debug blocks, `Bindings.xml`, the `Art/` it names, and the kit's shipped files and `Media/`. It stops on a missing
+or non-ASCII file or a dev file in the output, then loads the built addons on the kit's stand-in for the client,
+alone and together (`Tools/BuildTests.lua`; Lua from PATH or nix-shell). `--tag` tags `<Addon>-v<version>`.
 - `NuuRoad` and `NuuProfessions` are optional dependencies of each other; neither may require the other to load.
 
 ## UI kit

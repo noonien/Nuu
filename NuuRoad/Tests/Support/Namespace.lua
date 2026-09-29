@@ -3,7 +3,7 @@
 --
 --   local ns = NewNamespace()           -- a stand-in for the addon's ns
 --   Load(ns, "Domain/Progress.lua")     -- one file, as the client runs it
---   LoadBuiltIns(ns)                    -- every Data/BuiltIn file the TOC lists
+--   LoadBuiltIns(ns)                    -- every Data/BuiltIn and Dev/Fixtures file the TOC lists
 _G = _G or _ENV
 
 local KIT = "../NuuKit/"
@@ -55,7 +55,7 @@ end
 -- Every packaged guide NuuRoad.toc lists (fixtures included), in its order.
 function LoadBuiltIns(ns)
     for line in io.lines("NuuRoad.toc") do
-        local file = line:match("^%s*(Data/BuiltIn/[^%s]*%.lua)%s*$")
+        local file = line:match("^%s*(Data/BuiltIn/[^%s]*%.lua)%s*$") or line:match("^%s*(Dev/Fixtures/[^%s]*%.lua)%s*$")
         if file then Load(ns, file) end
     end
 end

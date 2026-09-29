@@ -93,7 +93,7 @@ assert(kept and kept.places[1].points[1].note == "kept")
 
 -- The packaged cave fixture validates and every step resolves.
 ns.builtInGuides = {}
-Load(ns, "Data/BuiltIn/CavePlaceFixture.lua")
+Load(ns, "Dev/Fixtures/CavePlaceFixture.lua")
 local fixture = expand(ns.builtInGuides["nuuroad:fixture:cave-place"])
 assert(fixture and fixture.nodes[1].location.point == "bristleback.den")
 

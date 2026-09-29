@@ -6,9 +6,10 @@ ns.Kit = ns.Kit or LoadKit()
 Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
--- Load every packaged guide listed in the real addon manifest.
+-- Load every packaged guide listed in the real addon manifest, and the
+-- development fixtures.
 for line in io.lines("NuuRoad.toc") do
-    if line:match("^Data/BuiltIn/.*%.lua$") then Load(ns, line) end
+    if line:match("^Data/BuiltIn/.*%.lua$") or line:match("^Dev/Fixtures/.*%.lua$") then Load(ns, line) end
 end
 for _, source in pairs(ns.builtInGuides) do
     local expanded = ns.modules.Steps:Expand(source)

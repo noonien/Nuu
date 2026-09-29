@@ -188,7 +188,7 @@ end
 -- The shipped condition fixture is the parity case: every keyword it uses must
 -- parse, validate, and render back as the text it was written with.
 ns.builtInGuides = {}
-Load(ns, "Data/BuiltIn/ConditionFixture.lua")
+Load(ns, "Dev/Fixtures/ConditionFixture.lua")
 local fixture = Steps:Expand(ns.builtInGuides["nuuroad:fixture:conditions"])
 ok, problems = Schema:Validate(fixture)
 assert(ok, "condition fixture: " .. table.concat(problems or {}, "; "))

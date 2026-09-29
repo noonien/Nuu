@@ -201,7 +201,6 @@ client features the kit uses are all there; see [docs/api-compatibility.md](../.
   - `LookPicker`'s theme cards are a fixed 4 per row at 118 px, so the picker wants about 500 px.
   - `Tree` rows draw their own regions rather than kit text widgets.
 - **Open questions** from the plan, still open:
-  - Where an embedded kit sits in a release. `Kit.folder` or `Kit.mediaRoot` must be set for the textures.
   - Whether NuuProfessions can follow NuuRoad's look.
   - The accents that clash with status colours: Gold, Rose, Ember and the Paladin colour.
   - Themed tooltips, or Blizzard's.
@@ -227,8 +226,10 @@ client features the kit uses are all there; see [docs/api-compatibility.md](../.
    every tracker refresh while open, and search boxes without a debounce.
 3. **Keep the tests green, and the costs.** After a change, run the suites and compare the two benches' client
    calls; in the client, `/nuukit report`.
-4. **Releases.** Embed the kit's `Kit.lua`, `Core/`, `UI/` (not `examples.lua`, `status.md` or `README.md`) and
-   `Media/` into each addon, and set `Kit.folder`. Never ship `NuuKit.lua`, `Dev/`, `Tests/` or `Tools/`.
+4. **Releases.** `python3 Tools/Build.py` (from the repository root) embeds the kit in each addon under
+   `Libs/NuuKit/`: the files `NuuKit.toc` lists outside its `#@debug@` block, and `Media/`, with a generated
+   `Embed.lua` that sets `Kit.folder`. `NuuKit.lua`, `Dev/`, `Tests/` and `Tools/` never ship. Not yet run in the
+   client.
 5. **Textures.** Change colours, grain or corner sizes in `Tools/Textures.py`, then run
    `uv run --no-project --with numpy --with pillow python NuuKit/Tools/Textures.py` (`--png` also writes PNG copies
    to look at). Corner sizes must stay in step with `UI/Theme/Themes.lua`.

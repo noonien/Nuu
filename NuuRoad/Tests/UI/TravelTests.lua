@@ -1,5 +1,5 @@
 -- The travel planner in the running game (UI/TravelRoute.lua) and the travel
--- test window (UI/TravelTestPanel.lua), on the kit's stand-in for the client.
+-- test window (Dev/TravelTestPanel.lua), on the kit's stand-in for the client.
 -- The client's map, position, faction, speed, taxi and clock calls are
 -- stubbed here (and put back at the end, so a later suite sees the
 -- stand-in as it was): a small world where Orgrimmar sits in the north of

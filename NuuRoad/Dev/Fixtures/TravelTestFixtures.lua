@@ -1,7 +1,7 @@
 local _, ns = ...
 
 -- The step guides of the travel tests (`/nuuroad traveltest`,
--- UI/TravelTestPanel.lua). Each test that runs with a guide loads one of
+-- Dev/TravelTestPanel.lua). Each test that runs with a guide loads one of
 -- these; the test panel finds its steps by label. They are ordinary travel
 -- steps, so they also check that a real guide step is routed the way a typed-in
 -- waypoint is. Coordinates are the ones the planner's data and the packaged

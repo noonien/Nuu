@@ -86,4 +86,6 @@ if type(CreateFrame) == "function" then
     end)
 end
 
+--@debug@
 ns.Kit.Loaded(addonName, "Core.lua")
+--@end-debug@

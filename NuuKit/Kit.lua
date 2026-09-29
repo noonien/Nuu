@@ -5,6 +5,7 @@ local addonName, ns = ...
 local Kit = ns.Kit or {}
 ns.Kit = Kit
 
+--@debug@
 -- Load probe for the split scaffolding. In development all addons share this
 -- one list; in a release each addon's embedded kit has its own.
 Kit.loadOrder = Kit.loadOrder or {}
@@ -54,3 +55,4 @@ function Kit.ReportLoad(owner, addonNS, firstFile)
 end
 
 Kit.Loaded(addonName, "Kit.lua")
+--@end-debug@

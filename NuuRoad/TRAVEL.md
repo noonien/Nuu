@@ -483,10 +483,10 @@ Each stage can ship on its own and has tests.
 
 ## Testing in the client
 
-`/nuuroad traveltest` opens a list of short tests (`UI/TravelTestPanel.lua`): Orgrimmar's gates, the flight
+`/nuuroad traveltest` opens a list of short tests (`Dev/TravelTestPanel.lua`): Orgrimmar's gates, the flight
 master, the Undercity zeppelin, the hearthstone with and without a guide, flying somewhere else, Thunder Bluff's
 lifts, and the Bristleback cave. Each says where to stand first, so a failed one is rerun on its own. A test with
-a step guide (`Data/BuiltIn/TravelTestFixtures.lua`, and the cave fixture) opens it and follows its steps by label,
+a step guide (`Dev/Fixtures/TravelTestFixtures.lua`, and the cave fixture) opens it and follows its steps by label,
 since the tracker's route line, the numbered pins and a step done on arrival only exist with a guide open; the
 rest point the arrow at a waypoint, since travel without a guide must work too. Each step says where to go and
 what to do, points the arrow there, says what should happen, and checks what it can against the planner live. Pass, Fail, Skip and Flag each write a row with a snapshot of the route to the recorder's

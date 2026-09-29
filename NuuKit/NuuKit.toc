@@ -35,6 +35,7 @@ UI/Theme/LookPicker.lua
 UI/Screens/Diagnostics.lua
 UI/Screens/SessionLog.lua
 UI/Screens/BugReportForm.lua
+#@debug@
 # Development only: the widget gallery (/nuukit ui), the report (/nuukit report) and the reset audit
 # (/nuukit audit). Never shipped.
 Dev/Gallery.lua
@@ -42,3 +43,4 @@ Dev/Report.lua
 Dev/Audit.lua
 # Development only: publishes _G.NuuKit. Never shipped; must stay last.
 NuuKit.lua
+#@end-debug@

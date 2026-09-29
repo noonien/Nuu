@@ -976,9 +976,11 @@ local function slashCommand(text)
         end
     elseif command:match("^dump") then
         GuideAudit:Dump(((text or ""):gsub("^%s*[Dd][Uu][Mm][Pp]%s*", ""):gsub("%s+$", "")))
+    --@debug@
     elseif command == "traveltest" then
         local Panel = ns.modules.TravelTestPanel
         if Panel then Panel:Toggle() end
+    --@end-debug@
     elseif command == "debug" then
         local Config = ns.modules.Config
         Config:Set("debug", not Config:Get("debug"))
@@ -987,7 +989,11 @@ local function slashCommand(text)
     elseif command == "" then
         if ns.modules.MainWindow then ns.modules.MainWindow:Toggle() end
     else
-        ns:Print("/nuuroad - toggle the window; /nuuroad audit - check the active guide's IDs; /nuuroad log - copyable list of every finding (log clear to empty it); /nuuroad db - saved-data state; /nuuroad where - copyable map/position diagnostics for the arrow; /nuuroad way [mapID] <x> <y> - point the arrow at a place until you arrive (way clear to put it away); /nuuroad markkey <KEY> - bind the key that marks the targeted step NPC (markkey none to unbind); /nuuroad markallkey <KEY> - bind the key that marks every step NPC in view; /nuuroad marks - target marking diagnostics; /nuuroad markall - what a Mark all press would run, block by block; /nuuroad dump <Global.path> - show a global value or table keys; /nuuroad questtip <questID> - copyable lines of the client's quest-link tooltip; /nuuroad poi - everything the POI log holds, in one report. The parts on their own: poi correct (apply this session's coordinate corrections), poi corrections, poi observed, poi quests, poi maps, poi sweep, poi clear; /nuuroad traveltest - the step-by-step in-game test of the travel planner, logged to the travel channel; /nuuroad debug - toggle the debug log.")
+        ns:Print("/nuuroad - toggle the window; /nuuroad audit - check the active guide's IDs; /nuuroad log - copyable list of every finding (log clear to empty it); /nuuroad db - saved-data state; /nuuroad where - copyable map/position diagnostics for the arrow; /nuuroad way [mapID] <x> <y> - point the arrow at a place until you arrive (way clear to put it away); /nuuroad markkey <KEY> - bind the key that marks the targeted step NPC (markkey none to unbind); /nuuroad markallkey <KEY> - bind the key that marks every step NPC in view; /nuuroad marks - target marking diagnostics; /nuuroad markall - what a Mark all press would run, block by block; /nuuroad dump <Global.path> - show a global value or table keys; /nuuroad questtip <questID> - copyable lines of the client's quest-link tooltip; /nuuroad poi - everything the POI log holds, in one report. The parts on their own: poi correct (apply this session's coordinate corrections), poi corrections, poi observed, poi quests, poi maps, poi sweep, poi clear; "
+        --@debug@
+            .. "/nuuroad traveltest - the step-by-step in-game test of the travel planner, logged to the travel channel; "
+        --@end-debug@
+            .. "/nuuroad debug - toggle the debug log.")
     end
 end
 
