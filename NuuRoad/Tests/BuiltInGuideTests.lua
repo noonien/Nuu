@@ -165,6 +165,35 @@ for _, id in ipairs({ "nuuroad:leveling:horde-tirisfal-1-6", "nuuroad:leveling:h
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
+-- The ported RestedXP Silverpine Forest guide, from the Tirisfal border to Far Watch Post.
+do
+    local id = "nuuroad:leveling:horde-silverpine-12-14"
+    local source = ns.builtInGuides[id]
+    assert(source, id .. " must register")
+    assert(source.only == "Horde" and source.map == 1421, id .. " is a Horde guide on the Silverpine map")
+    local ported = ns.modules.Steps:Expand(source)
+    local valid, problems = ns.modules.Schema:Validate(ported)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
+    local maps = { [1421] = true, [1458] = true, [1420] = true, [1411] = true, [1413] = true }
+    for _, node in ipairs(ported.nodes) do
+        if node.location then
+            assert(node.location.x <= 1 and node.location.y <= 1, id .. ": percent coordinates normalize at " .. node.index)
+            assert(maps[node.location.mapID], id .. ": known map at " .. node.index)
+        end
+        local title = ns.modules.Steps:Title(node)
+        assert(#title > 0, id .. ": every step renders a title at " .. node.index)
+        assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d") and not title:find("spell %d"),
+            id .. ": every referenced quest, NPC, item, and spell is named -> " .. title)
+        assert(not title:find(", objective %d+$"),
+            id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
+        if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
+    end
+    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
+    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
+    assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
+end
+
 -- The ported RestedXP Skyborne start: one guide for a race that picks either faction.
 local skyborneID = "nuuroad:leveling:skyborne-zephras-isle"
 local skyborneSource = ns.builtInGuides[skyborneID]

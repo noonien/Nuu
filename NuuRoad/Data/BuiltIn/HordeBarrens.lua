@@ -58,10 +58,11 @@ ns.builtInGuides["nuuroad:leveling:horde-barrens-13-21"] = {
                 note = "Innkeeper Boorand Plainswind is inside the inn." },
             { group = {
                 { accept = 870, npc = 3448, at = { 52.26, 31.93 } },
-                { turnin = 842, npc = 3338, only = "Tauren", at = { 52.24, 31.01 } },
+                { turnin = 842, npc = 3338, only = "quest 842", at = { 52.24, 31.01 } },
                 { accept = 844, npc = 3338, at = { 52.24, 31.01 } },
                 { accept = 869, npc = 3464, at = { 51.93, 30.32 } },
                 { accept = 871, npc = 3429, at = { 51.50, 30.87 } },
+                { turnin = 1358, npc = 3390, only = "quest 1358", at = { 51.44, 30.15 } },
                 { accept = { 1492, 848 }, npc = 3390, at = { 51.44, 30.15 } },
                 { turnin = 6386, npc = 3489, only = "Orc or Troll", at = { 52.62, 29.84 } },
             } },
