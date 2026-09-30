@@ -509,16 +509,13 @@ end
 
 -- The arrow window's look: the texts in the kit's text styles and colours,
 -- and the colour of a special state's icon. Run when the window is made and
--- on every look change (ui:Paint). What Update writes into the texts (the
--- muted step under a leg, the accent offer) takes the new colours on its
--- next beat.
+-- on every look change (ui:Paint).
 local specialColors = { arrived = "done", taxi = "accent", unreachable = "muted" }
 
 local function paintArrowWindow(frame, t)
     local ApplyStyle = ns.Kit.UI.ApplyStyle
     ApplyStyle(frame.destination, "body", t)
     ApplyStyle(frame.status, "body", t, "accent")
-    ApplyStyle(frame.route.text, "fine", t)
     local color = t[specialColors[frame.arrowState or ""] or "text"]
     if color then frame.special:SetVertexColor(color[1], color[2], color[3], 1) end
 end
@@ -604,44 +601,10 @@ function Navigation:CreateFrame()
     frame.status:SetWordWrap(true)
     frame.status:SetMaxLines(3)
     frame.status:SetJustifyH("CENTER")
-    -- The travel route under everything else: the route the arrow follows,
-    -- and, when there is another on offer, what a click switches to. The
-    -- same choice as the tracker's route line, where the player is looking.
-    local routeRow = CreateFrame("Button", nil, frame)
-    routeRow.text = newText(routeRow)
-    routeRow.text:SetPoint("TOPLEFT")
-    routeRow.text:SetPoint("RIGHT")
-    routeRow.text:SetWordWrap(true)
-    routeRow.text:SetMaxLines(4)
-    routeRow:SetScript("OnClick", function(_, button)
-        if button == "RightButton" then return end
-        local Route = ns.modules.TravelRoute
-        if not Route or not routeRow.offer then return end
-        Route:CycleChoice(Route.node)
-        self.forceAngleUpdate = true
-        self:Update(self:Target())
-    end)
-    routeRow:SetScript("OnEnter", function()
-        ui:Tooltip(routeRow, function(tip)
-            local t = ui.tokens
-            tip:SetText("Travel route", t.text[1], t.text[2], t.text[3])
-            tip:AddLine("The way the arrow is leading you, one waypoint at a time, with every waypoint on the world map.",
-                t.muted[1], t.muted[2], t.muted[3], true)
-            if routeRow.offer then
-                tip:AddLine("Click to take the other route on offer: " .. routeRow.offer
-                    .. ". Keep clicking to go round every route and back, or right-click to pick one."
-                    .. " The pick is for this step only.",
-                    t.accent[1], t.accent[2], t.accent[3], true)
-            end
-        end, { anchor = "ANCHOR_BOTTOM" })
-    end)
-    routeRow:SetScript("OnLeave", function() ui:HideTooltip() end)
-    routeRow:Hide()
-    frame.route = routeRow
-    -- A right-click anywhere on the window, the route line too, opens its menu.
-    local function rightClicked() self:OpenMenu() end
-    ns.Kit.UI.OnRightClick(frame, rightClicked)
-    ns.Kit.UI.OnRightClick(routeRow, rightClicked)
+    -- A right-click anywhere on the window opens its menu: the routes on
+    -- offer, and a typed-in waypoint to put away. The route itself is not
+    -- written out; the arrow shows it one leg at a time.
+    ns.Kit.UI.OnRightClick(frame, function() self:OpenMenu() end)
     frame:Hide()
     self.frame = frame
     -- The texts and the special icon follow the look. Keyed on a text, not
@@ -1235,13 +1198,9 @@ function Navigation:Update(node)
     local label = ns.modules.Steps:Title(node) or "Destination"
     local stepTitle = label
     -- A travel leg takes the arrow: it points at the leg's end and says the
-    -- leg ("Fly to Ratchet"), with the step under it in muted text.
+    -- leg ("Fly to Ratchet"), with the step under it.
     local leg = self:CurrentLeg(node)
-    if leg then
-        local muted = themeColor("muted", { 0.56, 0.62, 0.7 })
-        label = leg.text .. "\n" .. string.format("|cff%02x%02x%02x%s|r",
-            math.floor(muted[1] * 255), math.floor(muted[2] * 255), math.floor(muted[3] * 255), label)
-    end
+    if leg then label = leg.text .. "\n" .. label end
     -- On a taxi the flight is what matters, whatever the route's next leg
     -- is: where it lands, how far, how long. The route takes over again on
     -- landing.
@@ -1329,44 +1288,16 @@ function Navigation:FitArrowWindow(node)
     local frame = self.frame
     local column = (arrowCentreY - arrowHeight / 2) + arrowHeight + 2 + frame.status:GetStringHeight() + 6
     local label = arrowCentreY + frame.destination:GetStringHeight() / 2 + 8
-    local height = math.ceil(math.max(column, label))
-    -- The route row, when there is a route worth saying.
-    local Route = ns.modules.TravelRoute
-    local summary, offer
-    if Route then summary, offer = Route:RouteParts(node) end
-    local row = frame.route
-    if summary then
-        local accent = themeColor("accent", { 0.3, 0.79, 0.94 })
-        local text = "Route: " .. summary
-        if offer then
-            text = text .. "\n" .. string.format("|cff%02x%02x%02xClick: %s|r",
-                math.floor(accent[1] * 255), math.floor(accent[2] * 255), math.floor(accent[3] * 255), offer)
-        end
-        row.offer = offer
-        row.text:SetText(text)
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", 8, -height)
-        row:SetPoint("RIGHT", -8, 0)
-        local rowHeight = math.ceil(row.text:GetStringHeight()) + 2
-        row:SetHeight(rowHeight)
-        row:Show()
-        height = height + rowHeight + 6
-    else
-        row.offer = nil
-        row:Hide()
-    end
-    frame:SetHeight(height)
+    frame:SetHeight(math.ceil(math.max(column, label)))
     self:ShowArrowWindow(node)
 end
 
--- On a taxi: the wing, "Flying to Crossroads" with the step muted under it,
+-- On a taxi: the wing, "Flying to Crossroads" with the step under it,
 -- and the distance and time left to the landing when they are known.
 function Navigation:ShowFlight(node, flight, stepLabel)
     local frame = self.frame
-    local muted = themeColor("muted", { 0.56, 0.62, 0.7 })
     local name = flight and flight.name
-    frame.destination:SetText((name and ("Flying to " .. name) or "Flying") .. "\n" .. string.format("|cff%02x%02x%02x%s|r",
-        math.floor(muted[1] * 255), math.floor(muted[2] * 255), math.floor(muted[3] * 255), stepLabel))
+    frame.destination:SetText((name and ("Flying to " .. name) or "Flying") .. "\n" .. stepLabel)
     self:ShowState("taxi")
     local measured, away, inYards
     if flight and flight.spot then measured, away, inYards = self:Measure(flight.spot) end

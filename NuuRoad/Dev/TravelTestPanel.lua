@@ -94,10 +94,10 @@ TravelTestPanel.tests = {
           check = { summary = "^fly Crossroads" } },
         { id = "tracker-line", guideStep = "crossroads",
           todo = "In the NuuRoad window (the tracker, listing this guide's steps), under the current step 'Travel to the Crossroads', is a grey line starting 'Route:'. Click it.",
-          expect = "The route switches to walking, in the tracker and under the arrow.",
+          expect = "The route switches to walking: the tracker's line says so and the arrow points straight at the Crossroads.",
           check = { choice = "^walk$" } },
         { id = "arrow-line", guideStep = "crossroads",
-          todo = "Now click the route line under the arrow.",
+          todo = "Now right-click the arrow and pick 'fly Crossroads > walk'.",
           expect = "Back to the flight: 'fly Crossroads > walk' in both places.",
           check = { choice = "^default$", summary = "^fly Crossroads" } },
         { id = "in-flight", guideStep = "crossroads",
@@ -149,11 +149,11 @@ TravelTestPanel.tests = {
           todo = "Fly to Orgrimmar from the Crossroads flight master. Answer after landing.",
           expect = "Orgrimmar glows on the flight map, and you land at the Orgrimmar flight master." },
         { id = "offer", guideStep = "home",
-          todo = "Stand in Orgrimmar and look at the route, in the tracker and under the arrow.",
-          expect = "The route is the flight, and both lines offer 'hearth > walk' (under the arrow in blue).",
+          todo = "Stand in Orgrimmar and look at the route in the tracker, then right-click the arrow.",
+          expect = "The route is the flight. The tracker's line offers 'hearth > walk', and so does the arrow's right-click menu.",
           check = { choice = "^default$", offers = "^teleport" } },
         { id = "pick", guideStep = "home",
-          todo = "Click the route line under the arrow until it reads the hearth. Then walk 60 yards.",
+          todo = "Right-click the arrow and pick the hearth. Then walk 60 yards.",
           expect = "The arrow window says 'Hearth to The Crossroads' and shows the hearthstone in place of the arrow, with 'Click to use' and no distance. The pick stays after the walk.",
           check = { choice = "^teleport", shows = "teleport", clickable = true } },
         { id = "use", guideStep = "home",
@@ -161,7 +161,7 @@ TravelTestPanel.tests = {
           expect = "The hearth casts from that click. You land at the Crossroads and the route is back to the default.",
           check = { choice = "^default$" } },
         { id = "cooldown", guideStep = "far",
-          todo = "With the hearth on cooldown, look at the route under the arrow.",
+          todo = "With the hearth on cooldown, look at the tracker's route line and right-click the arrow.",
           expect = "No hearth anywhere: nothing offers it.",
           check = { withhold = "^teleport" } },
       } },
@@ -171,10 +171,10 @@ TravelTestPanel.tests = {
       steps = {
         { id = "tracker-closed", target = "bind",
           todo = "Close the NuuRoad window (the tracker).",
-          expect = "The arrow stays up, with 'Route: ...' under it and 'Click: hearth > walk' in blue.",
+          expect = "The arrow stays up, and its right-click menu offers 'hearth > walk'.",
           check = { offers = "^teleport" } },
         { id = "pick", target = "bind",
-          todo = "Click the route line under the arrow until it reads the hearth.",
+          todo = "Right-click the arrow and pick the hearth.",
           expect = "The arrow window says 'Hearth to ...' and shows the hearthstone in place of the arrow, clickable, although no guide is open.",
           check = { choice = "^teleport", shows = "teleport", clickable = true } },
         { id = "use", target = "bind",
@@ -187,7 +187,7 @@ TravelTestPanel.tests = {
       steps = {
         { id = "teleport", target = { 1450, 44.29, 45.87, "Test: Bunthen Plainswind, Nighthaven" },
           todo = "Look at the arrow window.",
-          expect = "No arrow and no distance: the Teleport: Moonglade spell icon stands in the arrow's place, with 'Click to use'. The route line under it offers walking instead.",
+          expect = "No arrow and no distance: the Teleport: Moonglade spell icon stands in the arrow's place, with 'Click to use'. Its right-click menu offers walking instead.",
           check = { choice = "^default$", leg = "^Teleport: Moonglade", shows = "teleport", clickable = true } },
         { id = "combat", target = { 1450, 44.29, 45.87, "Test: Bunthen Plainswind, Nighthaven" },
           todo = "Optional: get into a fight with the icon showing, and look at it again once the fight is over. Skip if there is nothing to fight nearby.",
@@ -514,7 +514,8 @@ function TravelTestPanel:Tick()
     self:Refresh()
 end
 
--- The player follows the next route on offer, as a click on the route line.
+-- The player follows the next route on offer, as a click on the tracker's
+-- route line.
 function TravelTestPanel:SwitchRoute()
     local Route = route()
     if Route then Route:CycleChoice(Route.node) end
@@ -611,7 +612,7 @@ function TravelTestPanel:RenderStep()
         self.liveText = sees:Text{ "", style = "fine", wrap = true }
         local actions = sees:Row{ gap = 6 }
         self.switchButton = actions:Button{ "Switch route",
-            tooltip = "Follow the next route on offer, the same as clicking the route line under the arrow.",
+            tooltip = "Follow the next route on offer, the same as clicking the tracker's route line.",
             onClick = function() self:SwitchRoute() end }
         if step.target ~= nil or step.guideStep ~= nil then
             self.pointButton = actions:Button{ "Point the arrow again",

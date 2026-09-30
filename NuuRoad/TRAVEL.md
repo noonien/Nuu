@@ -236,10 +236,10 @@ Zygor also replans from wherever an off-route player is. NuuRoad never tells the
   "Flying to Crossroads", and the distance and time left to the landing, until it lands and the route takes over
   again. The landing is the flight master clicked on the taxi map (a secure post-hook on `TakeTaxiNode`, the way
   RestedXP times its flights), else the route's own leg (a druid's flight is not taken from a taxi map). The time
-  left is the learned flight time less the time flown, else the straight distance left at taxi speed. Under the arrow, a muted
-  `Route: fly Crossroads > walk (~2m20s, walking ~8m)` row, and when another route is on offer a second line in the
-  accent colour, `Click: hearth > walk (~40s)`. Clicking the row takes that route, the same as the tracker's line;
-  it is the one place the choice shows while the arrow follows a typed-in waypoint with no guide open.
+  left is the learned flight time less the time flown, else the straight distance left at taxi speed. No route is
+  written out under the arrow; the arrow shows it one leg at a time. A right-click anywhere on the window opens its
+  menu: every route on offer with its time and the one followed checked, and Clear waypoint while one is set. It is
+  the one place to pick while the arrow follows a typed-in waypoint with no guide open.
 - **Tracker:** under the current step, one muted route line such as `Route: walk > fly Crossroads > walk (~2m10s,
   walking ~6m)`, drawn the way `with = "next"` lines already are. When there is something else to pick, the line
   names the next choice (`- click: hearth > walk ~1m10s`), and clicking it moves to that route for this step,
