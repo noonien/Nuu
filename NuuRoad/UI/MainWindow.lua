@@ -780,6 +780,29 @@ function MainWindow:ApplyDisplaySettings()
 end
 MainWindow.ApplyPanelOpacity = MainWindow.ApplyDisplaySettings
 
+-- Which way the tracker grows ("Grow upward"). Downward, from the band at
+-- the top: tabs, bar, carried work, the step's card, the step list. Upward
+-- the band is at the foot and the same parts stack up from it, so the list
+-- is on top; its rows still count up the page.
+function MainWindow:Upward()
+    local Config = M("Config")
+    return Config and Config:Get("tracker.upward") and true or false
+end
+
+function MainWindow:ApplyDirection()
+    local frame = self.frame
+    if not frame then return end
+    local upward = self:Upward()
+    frame:SetUpward(upward)
+    local order = { self.tabRow, self.bar, self.stickyHolder, self.cardHolder, self.listHolder }
+    if upward then
+        for index = 1, math.floor(#order / 2) do
+            order[index], order[#order + 1 - index] = order[#order + 1 - index], order[index]
+        end
+    end
+    self.content:Order(order)
+end
+
 function MainWindow:CreateTracker()
     if self.frame then return self.frame end
     local ui = self:UI()
@@ -787,6 +810,7 @@ function MainWindow:CreateTracker()
     local frame = ui:Panel({
         key = "tracker", place = places, inPlay = true, title = "NuuRoad",
         width = WIDTH, height = 160, resizable = "width", minWidth = MIN_WIDTH, maxWidth = MAX_WIDTH,
+        upward = self:Upward(),
         point = { "RIGHT", UIParent, "RIGHT", -60, 120 },
         hidden = true,
     })
@@ -839,6 +863,7 @@ function MainWindow:CreateTracker()
     self.probe = probe
 
     self:BuildList()
+    self:ApplyDirection()
     return frame
 end
 
@@ -997,7 +1022,7 @@ function MainWindow:OpenMoreTabs(anchor)
         local id = guide.id
         table.insert(items, { caption = guide.meta and guide.meta.title or id, onClick = function() self:ShowGuide(id) end })
     end
-    self:UI():OpenMenu(items, { anchor = anchor, align = "right" })
+    self:UI():OpenMenu(items, { anchor = anchor, align = "right", above = self:Upward() })
 end
 
 -- The strip shows while two or more guides are open. Each tab is cut to
@@ -1918,7 +1943,7 @@ end
 function MainWindow:ToggleMenu()
     local ui = self:UI()
     self.menuItems = self:MenuItems()
-    ui:OpenMenu(self.menuItems, { anchor = self.menuButton, align = "right" })
+    ui:OpenMenu(self.menuItems, { anchor = self.menuButton, align = "right", above = self:Upward() })
 end
 
 -- The minimap launcher ---------------------------------------------------------------------------
@@ -2010,6 +2035,9 @@ function MainWindow:OnSettingChanged(path)
         self:RequestRefresh()
     elseif path == "tracker.scale" then
         self:ApplyDisplaySettings()
+    elseif path == "tracker.upward" then
+        self:ApplyDirection()
+        self:Refresh()
     elseif path == "stepList.rows" or path == "stepList" or string.sub(path, 1, 6) == "realm." then
         self:Refresh()
     elseif path == "minimap.angle" or path == "minimap" then

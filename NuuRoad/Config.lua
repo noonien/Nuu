@@ -13,8 +13,10 @@ local Config = {
         -- tracker's height is always laid out from the step it is showing.
         -- `markWaiting` paints the steps the guide will wait on (a quest to
         -- take first, a level) amber on the progress bar; off, they read as
-        -- the steps around them do.
-        tracker = { shown = true, collapsed = false, scale = 1, markWaiting = false },
+        -- the steps around them do. `upward` holds the tracker by its foot:
+        -- its band at the bottom, it grows up, and its parts stack above
+        -- the band in reverse.
+        tracker = { shown = true, collapsed = false, scale = 1, markWaiting = false, upward = false },
         -- `mapPinsAhead` is how many steps past the current one get a
         -- numbered pin on the world map. `standalone` shows the arrow in
         -- its own window.

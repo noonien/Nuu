@@ -123,6 +123,9 @@ local SECTIONS = {
             help = "How many steps of the guide list show under the current one. 0 puts the list away." },
         { path = "tracker.markWaiting", kind = "toggle", label = "Steps not open yet", caption = "Mark them on the bar",
             help = "Paints amber the steps the guide will wait on: a quest to take first, a level, an item." },
+        { path = "tracker.upward", kind = "toggle", label = "Tracker growth", caption = "Grow upward",
+            help = "Its controls at the foot and the tracker growing up from them: tabs, bar and step card stack"
+                .. " above in reverse, the step list on top." },
     } },
     { title = "Arrow and map", rows = {
         { path = "navigation.standalone", kind = "toggle", label = "Arrow window", caption = "Show the arrow window",

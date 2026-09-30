@@ -460,6 +460,38 @@ do
 end
 ctx.noErrors("settings")
 
+-- Growing upward: the band at the foot, the parts above it in reverse, the
+-- bottom edge held while the height changes.
+do
+    local frame, content = MainWindow.frame, MainWindow.content
+    local function order()
+        local at = {}
+        for index, child in ipairs(content:GetChildren()) do at[child] = index end
+        return at
+    end
+    Config:Set("tracker.upward", true)
+    settle()
+    check(frame:IsUpward(), "the setting turns the tracker upward")
+    local at = order()
+    check(at[MainWindow.listHolder] < at[MainWindow.cardHolder] and at[MainWindow.cardHolder] < at[MainWindow.stickyHolder]
+        and at[MainWindow.stickyHolder] < at[MainWindow.bar] and at[MainWindow.bar] < at[MainWindow.tabRow],
+        "upward, the list is on top and the tabs sit on the band")
+    -- The stand-in does not resolve anchors: the points are what is checked.
+    check(frame.band:GetPoint(1) == "BOTTOMLEFT", "the band is at the foot")
+    check(frame:GetPoint(1) == "BOTTOMLEFT", "the tracker is held by its bottom edge")
+    Config:Set("stepList.rows", 12)
+    settle()
+    check(frame:GetPoint(1) == "BOTTOMLEFT", "and still is after it grows")
+    Config:Reset("stepList.rows")
+    Config:Reset("tracker.upward")
+    settle()
+    check(not frame:IsUpward(), "reset, it grows down again")
+    at = order()
+    check(at[MainWindow.tabRow] < at[MainWindow.bar] and at[MainWindow.bar] < at[MainWindow.listHolder], "and the parts are back in order")
+    check(frame.band:GetPoint(1) == "TOPLEFT" and frame:GetPoint(1) == "TOPLEFT", "the band is back on top")
+end
+ctx.noErrors("upward")
+
 -- The tabs -------------------------------------------------------------------------------
 
 do

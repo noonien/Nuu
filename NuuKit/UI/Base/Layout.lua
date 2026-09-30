@@ -373,11 +373,36 @@ end
 function Stack:GetChildren() return (self.kitInner or self).kitChildren end
 function Stack:Relayout() UI.Invalidate(self) end
 
+-- Lays the children out in the order of `list`: the stack's own children,
+-- each once. Those it leaves out follow, in the order they had.
+function Stack:Order(list)
+    local inner = self.kitInner or self
+    local children, listed, ordered = inner.kitChildren, {}, {}
+    for _, child in ipairs(list) do
+        if child.kitParent == inner and not listed[child] then
+            listed[child] = true
+            ordered[#ordered + 1] = child
+        end
+    end
+    for _, child in ipairs(children) do
+        if not listed[child] then ordered[#ordered + 1] = child end
+    end
+    local same = true
+    for index = 1, #children do
+        if children[index] ~= ordered[index] then same = false end
+        children[index] = ordered[index]
+    end
+    if same then return end
+    layouts[inner] = true
+    UI.Changed(inner)
+end
+
 -- A widget holding a stack answers for it.
 Holder.Clear = Stack.Clear
 Holder.Remove = Stack.Remove
 Holder.Relayout = Stack.Relayout
 Holder.GetChildren = Stack.GetChildren
+Holder.Order = Stack.Order
 
 -- The room a state message takes.
 local function statePad(self, height)

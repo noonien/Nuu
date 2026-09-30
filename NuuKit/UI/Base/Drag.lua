@@ -10,7 +10,8 @@ local UI = Kit.UI
 -- since, so no motion is lost and the point grabbed stays under the cursor.
 -- `mode`: "move", "size" (the right and bottom edges) or "width". `opts`:
 -- can(frame) false refuses a drag, bounds { minW, minH, maxW, maxH },
--- onStop(frame) when let go.
+-- onStop(frame) when let go. A window that grows upward (kitUpward) is held
+-- by its bottom-left corner instead, and "size" moves its top edge.
 
 local function cursor(frame)
     local x, y = GetCursorPosition()
@@ -41,11 +42,17 @@ local function follow(driver)
     local dx, dy = x - from.x, y - from.y
     if driver.kitMode == "move" then
         frame:ClearAllPoints()
-        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, from.left + dx), UI.Snap(frame, from.top + dy))
+        if frame.kitUpward then
+            frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, from.left + dx), UI.Snap(frame, from.bottom + dy))
+        else
+            frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, from.left + dx), UI.Snap(frame, from.top + dy))
+        end
     else
         local b = driver.kitOpts.bounds or {}
         frame:SetWidth(UI.Snap(frame, clamp(from.w + dx, b.minW, b.maxW)))
-        if driver.kitMode == "size" then frame:SetHeight(UI.Snap(frame, clamp(from.h - dy, b.minH, b.maxH))) end
+        if driver.kitMode == "size" then
+            frame:SetHeight(UI.Snap(frame, clamp(from.h + (frame.kitUpward and dy or -dy), b.minH, b.maxH)))
+        end
     end
 end
 
@@ -54,13 +61,18 @@ local function grab(handle, button)
     if button ~= "LeftButton" or type(GetCursorPosition) ~= "function" then return end
     local opts, frame = driver.kitOpts, driver.kitFrame
     if opts.can and not opts.can(frame) then return end
-    local left, top = frame:GetLeft(), frame:GetTop()
-    if not left or not top then return end
+    local left, top, bottom = frame:GetLeft(), frame:GetTop(), frame:GetBottom()
+    if not left or not top or not bottom then return end
     local x, y = cursor(frame)
-    driver.kitFrom = { x = x, y = y, left = left, top = top, w = frame:GetWidth(), h = frame:GetHeight() }
-    -- Held by its top-left corner, so sizing grows it right and down.
+    driver.kitFrom = { x = x, y = y, left = left, top = top, bottom = bottom, w = frame:GetWidth(), h = frame:GetHeight() }
+    -- Held by its top-left corner, so sizing grows it right and down; one
+    -- that grows upward by its bottom-left.
     frame:ClearAllPoints()
-    frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, left), UI.Snap(frame, top))
+    if frame.kitUpward then
+        frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, left), UI.Snap(frame, bottom))
+    else
+        frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(frame, left), UI.Snap(frame, top))
+    end
     driver:Show()
 end
 

@@ -42,15 +42,19 @@ function MaterialsPanel:Initialize()
 end
 
 -- Beside the tracker, following it, until the player places it. The tracker
--- grows downward as a step changes, so the list sits to its right rather
--- than under it.
+-- grows (down, or up) as a step changes, so the list sits to its right
+-- rather than past it, level with the edge that stays put.
 function MaterialsPanel:Anchor()
     local tracker = ns.modules.MainWindow and ns.modules.MainWindow.frame
     if not self.frame or not tracker then return end
     local placed = ns.db.windows and ns.db.windows.materials
     if placed and placed.x then return end
     self.frame:ClearAllPoints()
-    self.frame:SetPoint("TOPLEFT", tracker, "TOPRIGHT", 6, 0)
+    if tracker.IsUpward and tracker:IsUpward() then
+        self.frame:SetPoint("BOTTOMLEFT", tracker, "BOTTOMRIGHT", 6, 0)
+    else
+        self.frame:SetPoint("TOPLEFT", tracker, "TOPRIGHT", 6, 0)
+    end
 end
 
 -- The shape of the list: its groups and items in order. The same shape is
@@ -131,6 +135,7 @@ end
 -- What OpenRoad's Config:Changed refreshed for these settings, and the
 -- tracker's own: the list follows the tracker's visibility and scale.
 function MaterialsPanel:OnSettingChanged(path)
+    if path == "tracker.upward" then self:Anchor() end
     if path:sub(1, 10) == "materials." or path == "tracker.shown" or path == "tracker.scale" then
         self:Refresh()
     end

@@ -39,7 +39,7 @@ for path in pairs(rows) do
     count = count + 1
     check(Config:Default(path) ~= nil or path:match("^realm%."), "a row for a real setting: " .. path)
 end
-check(count == 26, "a row for every option (" .. count .. ")")
+check(count == 27, "a row for every option (" .. count .. ")")
 
 -- Changing ----------------------------------------------------------------------------
 

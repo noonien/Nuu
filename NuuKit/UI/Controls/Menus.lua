@@ -21,7 +21,7 @@ local Proto = UI.Proto
 --   { header = "text" }  or  { separator = true }
 --
 -- ui:OpenMenu(items, opts): `opts.anchor` a frame to hang under (by its left
--- edge, or `align = "right"`), or `at = "cursor"`; `current` the value to
+-- edge, or `align = "right"`; over it with `above`), or `at = "cursor"`; `current` the value to
 -- mark as chosen and `onChoose(value, item, opts)` for a select;
 -- `onChange(group, value, item)` for radios; `search` for a filter box on
 -- top; `onClose(opts)`. The trailing `opts` of onChoose and onClose is new:
@@ -381,6 +381,9 @@ function Menu:Fill(items, opts, keepPlace)
             local x, y = GetCursorPosition()
             local scale = self:GetEffectiveScale() or 1
             self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(self, x / scale), UI.Snap(self, y / scale))
+        elseif opts.above then
+            local side = opts.align == "right" and "RIGHT" or "LEFT"
+            self:SetPoint("BOTTOM" .. side, opts.anchor, "TOP" .. side, 0, UI.Snap(self, 3))
         elseif opts.align == "right" then
             self:SetPoint("TOPRIGHT", opts.anchor, "BOTTOMRIGHT", 0, -UI.Snap(self, 3))
         else

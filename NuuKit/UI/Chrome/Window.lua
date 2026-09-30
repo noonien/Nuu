@@ -36,21 +36,33 @@ local function frameName(ui, key)
     return (tostring(owner) .. "_" .. tostring(key) .. "_Window"):gsub("[^%w_]", "")
 end
 
--- Writes the window's place into the addon's table, and anchors it by its
--- top-left corner, so a change of size leaves it put.
+-- Anchors the window by the corner it does not grow from, on whole pixels:
+-- its top left, or its bottom left when it grows upward.
+local function hold(win, left, top, bottom)
+    win:ClearAllPoints()
+    if win.kitUpward then
+        win:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", UI.Snap(win, left), UI.Snap(win, bottom))
+    else
+        win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(win, left), UI.Snap(win, top))
+    end
+end
+
+-- Writes the window's place into the addon's table, and anchors it by the
+-- corner it does not grow from, so a change of size leaves it put. `x`, `y`
+-- are its top left; one that grows upward keeps its bottom as `bottom` too.
 local function save(win)
+    local left, top, bottom = win:GetLeft(), win:GetTop(), win:GetBottom()
+    if not left or not top or not bottom then return end
+    hold(win, left, top, bottom)
     local place, key = win.kitPlace, win.kitKey
     if not place or not key then return end
-    local left, top = win:GetLeft(), win:GetTop()
-    if not left or not top then return end
     local entry = place[key] or {}
     entry.x, entry.y = UI.Snap(win, left), UI.Snap(win, top)
+    entry.bottom = win.kitUpward and UI.Snap(win, bottom) or nil
     entry.w = UI.Snap(win, win.kitCollapsed and win.kitExpandedWidth or win:GetWidth())
     entry.h = UI.Snap(win, win.kitCollapsed and win.kitExpandedHeight or win:GetHeight())
     entry.collapsed = win.kitCollapsed or nil
     place[key] = entry
-    win:ClearAllPoints()
-    win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", entry.x, entry.y)
 end
 
 local function setBounds(win, opts)
@@ -99,26 +111,41 @@ local function arrange(win)
     local inset = UI.Snap(win, win.kitInset or 1)
     local band = win.band
     local bandHeight = band:IsShown() and UI.Snap(win, BAND) or 0
+    -- A window that grows upward wears its band at the foot, under the
+    -- status strip, and its grip at the top.
+    local upward = win.kitUpward
+    local top, bottom = inset, inset
     band:ClearAllPoints()
-    band:SetPoint("TOPLEFT", win, "TOPLEFT", inset, -inset)
-    band:SetPoint("TOPRIGHT", win, "TOPRIGHT", -inset, -inset)
+    if upward then
+        band:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", inset, inset)
+        band:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -inset, inset)
+        bottom = inset + bandHeight
+    else
+        band:SetPoint("TOPLEFT", win, "TOPLEFT", inset, -inset)
+        band:SetPoint("TOPRIGHT", win, "TOPRIGHT", -inset, -inset)
+        top = inset + bandHeight
+    end
     band:SetHeight(UI.Snap(win, BAND))
     local status = win.statusStrip
-    local bottom = inset
     if status and status:IsShown() and not win.kitCollapsed then
         status:ClearAllPoints()
-        status:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", inset, inset)
-        status:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -inset, inset)
+        status:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", inset, bottom)
+        status:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -inset, bottom)
         status:SetHeight(UI.Snap(win, STATUS))
-        bottom = inset + UI.Snap(win, STATUS)
+        bottom = bottom + UI.Snap(win, STATUS)
     end
     win.body:ClearAllPoints()
-    win.body:SetPoint("TOPLEFT", win, "TOPLEFT", inset, -(inset + bandHeight))
+    win.body:SetPoint("TOPLEFT", win, "TOPLEFT", inset, -top)
     win.body:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -inset, bottom)
     if win.grip then
         win.grip:ClearAllPoints()
         local corner = UI.Snap(win, math.max(1, inset - 6))
-        win.grip:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -corner, corner)
+        if upward then
+            win.grip:SetPoint("TOPRIGHT", win, "TOPRIGHT", -corner, -corner)
+        else
+            win.grip:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -corner, corner)
+        end
+        win.grip.glyph:SetFlipped(upward)
     end
     UI.Invalidate(win.body)
     UI.Invalidate(win.header)
@@ -151,15 +178,14 @@ end
 local function pin(win, point)
     local width, height = win:GetWidth() or 0, win:GetHeight() or 0
     local left, top = topLeftOn(point[1], point[3] or point[1], point[4], point[5], width, height)
-    win:ClearAllPoints()
-    win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", UI.Snap(win, left), UI.Snap(win, top))
+    hold(win, left, top, top - height)
 end
 
 local function settle(win)
     win:SetSize(UI.Snap(win, win:GetWidth() or 0), UI.Snap(win, win:GetHeight() or 0))
     arrange(win)
-    local left, top = win:GetLeft(), win:GetTop()
-    if not left or not top then
+    local left, top, bottom = win:GetLeft(), win:GetTop(), win:GetBottom()
+    if not left or not top or not bottom then
         -- Not placed yet: again on the next frame.
         if C_Timer and C_Timer.After and not win.kitSettleWaiting then
             win.kitSettleWaiting = true
@@ -167,10 +193,9 @@ local function settle(win)
         end
         return
     end
-    local x, y = UI.Snap(win, left), UI.Snap(win, top)
-    if math.abs(x - left) < 0.001 and math.abs(y - top) < 0.001 then return end
-    win:ClearAllPoints()
-    win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x, y)
+    local y = win.kitUpward and bottom or top
+    if math.abs(UI.Snap(win, left) - left) < 0.001 and math.abs(UI.Snap(win, y) - y) < 0.001 then return end
+    hold(win, left, top, bottom)
 end
 
 -- Painting ---------------------------------------------------------------------------
@@ -340,6 +365,19 @@ end
 
 function Window:IsCollapsed() return self.kitCollapsed or false end
 
+-- Upward (true): the window is held by its bottom-left corner, so a change
+-- of height moves its top, and wears its band at the foot. Its place is
+-- kept where it stands now.
+function Window:SetUpward(upward)
+    upward = upward and true or false
+    if upward == (self.kitUpward or false) then return end
+    self.kitUpward = upward
+    arrange(self)
+    save(self)
+end
+
+function Window:IsUpward() return self.kitUpward or false end
+
 -- The strip at the foot: what a change just did, with Undo when `opts.undo`
 -- is given, in `opts.tone` (a token name or a colour: "text" for news,
 -- "danger" for what went wrong; muted, as a hint, without). nil text puts
@@ -472,6 +510,7 @@ local function shell(ui, opts, inPlay)
     win.ui, win.kitLayout = ui, NO_LAYOUT
     win.kitIsWindow, win.kitInPlay = true, inPlay
     win.kitKey, win.kitPlace = opts.key, opts.place
+    win.kitUpward = opts.upward and true or nil
     win.kitOnCollapse = opts.onCollapse
     win.kitNoPlate = inPlay and opts.plate == false
     win:SetFrameStrata(opts.strata or (inPlay and "MEDIUM" or "HIGH"))
@@ -565,10 +604,11 @@ local function shell(ui, opts, inPlay)
     -- Where it was, or where the addon asks.
     local placed = opts.place and opts.key and opts.place[opts.key]
     if placed and placed.x and placed.y then
-        win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", placed.x, placed.y)
         if opts.resizable and placed.w and placed.h then
             win:SetSize(placed.w, opts.resizable == "width" and (opts.height or placed.h) or placed.h)
         end
+        local height = win:GetHeight() or 0
+        hold(win, placed.x, placed.y, placed.bottom or (placed.y - height))
     else
         local point = opts.point or { "CENTER", UIParent, "CENTER", 0, 0 }
         if (point[2] or UIParent) == UIParent then
@@ -596,7 +636,8 @@ end
 
 -- Spec: title, subtitle, key and place (where it is kept), width, height,
 -- point, parent, strata, resizable (true, or "width"), minWidth, minHeight,
--- maxWidth, maxHeight, collapsible, onCollapse(collapsed, win) (the
+-- maxWidth, maxHeight, upward (held by its bottom left, band at the foot:
+-- see SetUpward), collapsible, onCollapse(collapsed, win) (the
 -- player's fold), close (false: no close mark), escape (false: Escape does
 -- not close it), gap and padding of the body, hidden (or shown = false).
 -- `status`: true (or a hint to show while it is empty) keeps the status

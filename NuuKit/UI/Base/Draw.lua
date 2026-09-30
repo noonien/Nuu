@@ -228,10 +228,11 @@ end
 
 function Glyph:Place()
     local frame = self.frame
+    local flip = self.flipped and -1 or 1
     for _, line in ipairs(self.lines) do
         local s = line.kitSegment
-        line:SetStartPoint("CENTER", frame, s[1] + self.dx, s[2] + self.dy)
-        line:SetEndPoint("CENTER", frame, s[3] + self.dx, s[4] + self.dy)
+        line:SetStartPoint("CENTER", frame, s[1] + self.dx, flip * s[2] + self.dy)
+        line:SetEndPoint("CENTER", frame, s[3] + self.dx, flip * s[4] + self.dy)
     end
     if self.text then
         self.text:ClearAllPoints()
@@ -258,3 +259,11 @@ function Glyph:Offset(dx, dy)
 end
 
 function Glyph:Nudge(dx, dy) self:Offset(self.dx + dx, self.dy + dy) end
+
+-- Upside down (true): the grip of a window held by its bottom, say.
+function Glyph:SetFlipped(flipped)
+    flipped = flipped and true or false
+    if flipped == (self.flipped or false) then return end
+    self.flipped = flipped
+    self:Place()
+end
