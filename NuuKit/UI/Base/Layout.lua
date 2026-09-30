@@ -108,6 +108,9 @@ function schedule()
                 held[w] = nil
                 if how == "fit" then
                     UI.Fit(w)
+                    if w.StackLayout and w.StackLayout ~= UI.Stack.StackLayout then layouts[w] = true end
+                elseif how == "self" then
+                    if not w.kitPooled then layouts[w] = true end
                 elseif not w.kitPooled then
                     layouts[w.kitInner or w] = true
                 end
@@ -222,7 +225,13 @@ function UI.LayoutNow()
             local layout = stack.StackLayout
             if layout and (stack.kitChildren or layout ~= UI.Stack.StackLayout)
                 and not done[stack] and not stack.kitPooled then
-                stack:StackLayout()
+                -- A type's own layout sizes its parts directly: a protected
+                -- one (a strip of secure slots) waits for combat to end.
+                if layout ~= UI.Stack.StackLayout and locked(stack) then
+                    hold(stack, "self")
+                else
+                    stack:StackLayout()
+                end
             end
         end
         for stack in pairs(done) do done[stack] = nil end

@@ -187,15 +187,25 @@ end
 _G.InCombatLockdown = function() return true end
 strip.IsProtected = function() return true end
 sec.IsProtected = function() return true end
+strip.header.IsProtected = function() return true end
+local headerSized = false
+local headerSetWidth = strip.header.SetWidth
+strip.header.SetWidth = function(...) headerSized = true; return headerSetWidth(...) end
 local calm = strip.kitPW
 strip:SetTitle("A title long enough to need a longer strip than before, in combat")
 layout()
 assertTrue(strip.kitPW == calm and strip.width == calm, "in combat a protected strip keeps its size")
+headerSized = false
+local late = strip:Slot{ item = 6948 }
+layout()
+assertTrue(not headerSized, "nor is its header, the body's anchor, when a slot comes")
 _G.InCombatLockdown = function() return false end
 layoutDriver.scripts.OnEvent(layoutDriver, "PLAYER_REGEN_ENABLED")
 layout()
 assertTrue(strip.kitPW > calm and strip.header.width == strip.kitPW, "and fits its title when combat ends")
-_G.InCombatLockdown, strip.IsProtected, sec.IsProtected = nil, nil, nil
+_G.InCombatLockdown, strip.IsProtected, sec.IsProtected, strip.header.IsProtected = nil, nil, nil, nil
+strip.header.SetWidth = headerSetWidth
+late:Release()
 strip:SetTitle("Quest items")
 strip:Fit()
 
