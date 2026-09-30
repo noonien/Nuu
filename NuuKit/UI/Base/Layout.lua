@@ -51,6 +51,19 @@ function UI.AlignStart(align, available, total)
     return 0
 end
 
+-- In combat the client refuses to move or size a protected frame: a secure
+-- button, or a frame holding one (a strip of secure slots). Such a frame is
+-- left as it is and held; when combat ends, what was held is laid out again.
+local held, schedule = {}, nil
+local function hold(w, how)
+    if held[w] ~= "fit" then held[w] = how end
+    schedule()
+end
+local function locked(frame)
+    return type(InCombatLockdown) == "function" and InCombatLockdown()
+        and frame.IsProtected ~= nil and frame:IsProtected() and true or false
+end
+
 -- Puts `child` at x, y (down from `parent`'s top left) sized w by h, on
 -- whole screen pixels, skipping what did not move. Answers whether its size
 -- changed.
@@ -58,6 +71,10 @@ local function place(parent, child, x, y, w, h)
     local left, top = UI.Snap(parent, x), UI.Snap(parent, y)
     local width = math.max(0.01, UI.Snap(parent, x + w) - left)
     local height = math.max(0.01, UI.Snap(parent, y + h) - top)
+    if locked(child) then
+        hold(parent, true)
+        return false
+    end
     if child.kitPX ~= left or child.kitPY ~= top then
         child:ClearAllPoints()
         child:SetPoint("TOPLEFT", parent, "TOPLEFT", left, -top)
@@ -79,12 +96,24 @@ end
 local oldW, oldH, layouts = {}, {}, {}
 local driver
 
-local function schedule()
+function schedule()
     if driver then
         driver:Show()
     elseif type(CreateFrame) == "function" then
         driver = UI.NewFrame("Frame")
         driver:SetScript("OnUpdate", function() UI.LayoutNow() end)
+        pcall(driver.RegisterEvent, driver, "PLAYER_REGEN_ENABLED")
+        driver:SetScript("OnEvent", function()
+            for w, how in pairs(held) do
+                held[w] = nil
+                if how == "fit" then
+                    UI.Fit(w)
+                elseif not w.kitPooled then
+                    layouts[w.kitInner or w] = true
+                end
+            end
+            schedule()
+        end)
     end
 end
 
@@ -214,6 +243,7 @@ function UI.Fit(w)
     local height = w:NaturalHeight(width)
     width, height = UI.Snap(w, width), UI.Snap(w, height)
     if w.kitPW ~= width or w.kitPH ~= height then
+        if locked(w) then hold(w, "fit"); return end
         w:SetSize(math.max(0.01, width), math.max(0.01, height))
         w.kitPW, w.kitPH = width, height
         if w.Sized then w:Sized(width, height) end
@@ -426,7 +456,9 @@ local function columnLayout(self, width, height)
     local kids, sizes, grows, mins, offsets, out, widths = scratchLists()
     if self.kitAutoHeight then
         local _, natural = self:Measure(width)
-        if math.abs(height - natural) > 0.5 then
+        if math.abs(height - natural) > 0.5 and locked(self) then
+            hold(self, true)
+        elseif math.abs(height - natural) > 0.5 then
             height = UI.Snap(self, natural)
             self:SetHeight(height)
             self.kitPH = height

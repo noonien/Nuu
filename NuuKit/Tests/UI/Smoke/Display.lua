@@ -178,6 +178,27 @@ strip:SetSummary("")
 strip:Fit()
 assertTrue(UI.LayoutSettled(), "Fit lays it out now")
 
+-- In combat a strip holding a secure slot is protected: it is left as it
+-- is, and laid out when combat ends.
+local layoutDriver
+for _, o in ipairs(objects) do
+    if o.scripts and o.scripts.OnEvent and o.scripts.OnUpdate then layoutDriver = o end
+end
+_G.InCombatLockdown = function() return true end
+strip.IsProtected = function() return true end
+sec.IsProtected = function() return true end
+local calm = strip.kitPW
+strip:SetTitle("A title long enough to need a longer strip than before, in combat")
+layout()
+assertTrue(strip.kitPW == calm and strip.width == calm, "in combat a protected strip keeps its size")
+_G.InCombatLockdown = function() return false end
+layoutDriver.scripts.OnEvent(layoutDriver, "PLAYER_REGEN_ENABLED")
+layout()
+assertTrue(strip.kitPW > calm and strip.header.width == strip.kitPW, "and fits its title when combat ends")
+_G.InCombatLockdown, strip.IsProtected, sec.IsProtected = nil, nil, nil
+strip:SetTitle("Quest items")
+strip:Fit()
+
 -- Every setter.
 assertTrue(s1.icon.texture == "Interface\\Icons\\item6948" and s1.kitLinks.item == 6948, "an item's icon, and its tooltip link")
 assertTrue(same(s1.ring[1].color, { 1, 1, 1, 1 }), "a ring in the item's quality colour")
