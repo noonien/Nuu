@@ -25,7 +25,7 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-1-6"] = {
     map = 1420,
     only = "Horde",
     meta = {
-        title = "Tirisfal Glades: Deathknell",
+        title = "Deathknell",
         author = "NuuRoad",
         category = "Leveling/Tirisfal Glades",
         tags = { "horde", "undead", "tirisfal", "deathknell" },
@@ -220,7 +220,7 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-1-6"] = {
                 note = "Grind on your way north-east until you are 1850 experience into level 5." },
             { accept = 8, npc = 6784, at = { 38.24, 56.77 },
                 note = "Calvin Montague stands by the house outside Deathknell. His letter turns in at Brill." },
-            { finish = "Deathknell is done. Continue with Tirisfal Glades: Brill and the Undercity." },
+            { finish = "Deathknell is done. Continue with Brill and the Undercity." },
         } },
     },
 }

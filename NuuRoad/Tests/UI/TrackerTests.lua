@@ -473,7 +473,7 @@ do
     check(tabs and tabs.kitType == "Tabs", "two guides open show the strip")
     check(row.kitChildren[1] == tabs and MainWindow.content.kitChildren[1] == row, "the strip heads the tracker's body")
     check(tabs:GetValue() == guide.id and tabs.kitTabs[fixture.id] ~= nil, "a tab for each, the shown guide chosen")
-    check(tabs.kitTabs[guide.id].label:GetText() == "Mulgore: Camp Narache", "the caption is the title: " .. tostring(tabs.kitTabs[guide.id].label:GetText()))
+    check(tabs.kitTabs[guide.id].label:GetText() == "Camp Narache", "the caption is the title: " .. tostring(tabs.kitTabs[guide.id].label:GetText()))
     check(tabs.kitTabs[guide.id].tooltip == guide.meta.title, "the tooltip names the whole guide")
     local fixtureTab = tabs.kitTabs[fixture.id]
     check(fixtureTab.divider and fixtureTab.divider:IsShown(), "a hairline divides the tabs")

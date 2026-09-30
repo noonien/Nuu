@@ -19,7 +19,7 @@ ns.builtInGuides["nuuroad:leveling:horde-mulgore-1-6"] = {
     map = 1412,
     only = "Horde",
     meta = {
-        title = "Mulgore: Camp Narache",
+        title = "Camp Narache",
         author = "NuuRoad",
         category = "Leveling/Mulgore",
         tags = { "horde", "tauren", "mulgore", "camp narache" },
@@ -156,7 +156,7 @@ ns.builtInGuides["nuuroad:leveling:horde-mulgore-1-6"] = {
             { only = "Warrior", npc = 3059, at = { 44.02, 76.14 }, note = "Train Parry from Harutt Thunderhorn, and Thunder Clap as well if you can afford both." },
             { accept = 1656, npc = 6775, at = { 38.51, 81.54 },
                 note = "Antur Fallow waits on the road west out of the camp. Take his quest with you: it turns in at Bloodhoof Village." },
-            { finish = "Camp Narache is done. Continue with Mulgore: Bloodhoof and Thunder Bluff." },
+            { finish = "Camp Narache is done. Continue with Bloodhoof and Thunder Bluff." },
         } },
     },
 }

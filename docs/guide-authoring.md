@@ -41,7 +41,7 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
     updated = 1790640000,
     map = 1420,
     only = "Horde",
-    meta = { title = "Tirisfal Glades: Brill and the Undercity", author = "NuuRoad", category = "Leveling/Tirisfal Glades",
+    meta = { title = "Brill and the Undercity", author = "NuuRoad", category = "Leveling/Tirisfal Glades",
              tags = { "horde", "undead", "tirisfal" }, levels = { 6, 12 } },
     steps = { ... },
 }
