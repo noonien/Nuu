@@ -578,19 +578,40 @@ function TravelRoute:NextChoice()
     return list[1]
 end
 
--- The player picks the next route on offer (a teleport, walking, or back to
--- the default), for this step only: the route is the player's call.
+-- The routes on offer for this node, the one followed among them (its id is
+-- `plan.choice`), for the arrow's menu: nil when the route does not follow
+-- the node, on a taxi, or with nothing to pick between.
+function TravelRoute:Choices(node)
+    if not node or node ~= self.node or not self.plan or client():IsOnTaxi() then return nil end
+    local list = self.plan.choices or {}
+    if #list < 2 then return nil end
+    return list, self.plan.choice
+end
+
+-- The player picks a route on offer by its id (a teleport, walking, or back
+-- to the default), for this step only: the route is the player's call.
+function TravelRoute:PickChoice(node, id)
+    node = node or self.node
+    local list, current = self:Choices(node)
+    if not list or id == current then return end
+    local picked
+    for _, choice in ipairs(list) do if choice.id == id then picked = choice end end
+    if not picked then return end
+    log("choice", { from = current, to = picked.id, outline = picked.outline })
+    self.choiceNode = node
+    self.choice = picked.id ~= "default" and picked.id or nil
+    self.plan = nil
+    self:Replan("choice")
+    self:Changed()
+end
+
+-- The next route on offer, round to the default again: a click on the
+-- route line.
 function TravelRoute:CycleChoice(node)
     node = node or self.node
     if node ~= self.node then return end
     local nextChoice = self:NextChoice()
-    if not nextChoice then return end
-    log("choice", { from = self.plan.choice, to = nextChoice.id, outline = nextChoice.outline })
-    self.choiceNode = node
-    self.choice = nextChoice.id ~= "default" and nextChoice.id or nil
-    self.plan = nil
-    self:Replan("choice")
-    self:Changed()
+    if nextChoice then self:PickChoice(node, nextChoice.id) end
 end
 
 -- The route for this node in two parts: the route followed ("fly

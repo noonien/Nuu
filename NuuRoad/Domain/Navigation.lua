@@ -238,6 +238,9 @@ end
 
 function Navigation:ClearWaypoint()
     if not self.waypoint then return end
+    -- A route RouteTo asked for is put away with it.
+    local Route = ns.modules.TravelRoute
+    if Route and Route.requested == self.waypoint then Route.requested = nil end
     self.waypoint = nil
     self:Retarget()
 end
@@ -610,7 +613,8 @@ function Navigation:CreateFrame()
     routeRow.text:SetPoint("RIGHT")
     routeRow.text:SetWordWrap(true)
     routeRow.text:SetMaxLines(4)
-    routeRow:SetScript("OnClick", function()
+    routeRow:SetScript("OnClick", function(_, button)
+        if button == "RightButton" then return end
         local Route = ns.modules.TravelRoute
         if not Route or not routeRow.offer then return end
         Route:CycleChoice(Route.node)
@@ -625,7 +629,8 @@ function Navigation:CreateFrame()
                 t.muted[1], t.muted[2], t.muted[3], true)
             if routeRow.offer then
                 tip:AddLine("Click to take the other route on offer: " .. routeRow.offer
-                    .. ". Keep clicking to go round every route and back. The pick is for this step only.",
+                    .. ". Keep clicking to go round every route and back, or right-click to pick one."
+                    .. " The pick is for this step only.",
                     t.accent[1], t.accent[2], t.accent[3], true)
             end
         end, { anchor = "ANCHOR_BOTTOM" })
@@ -633,6 +638,10 @@ function Navigation:CreateFrame()
     routeRow:SetScript("OnLeave", function() ui:HideTooltip() end)
     routeRow:Hide()
     frame.route = routeRow
+    -- A right-click anywhere on the window, the route line too, opens its menu.
+    local function rightClicked() self:OpenMenu() end
+    ns.Kit.UI.OnRightClick(frame, rightClicked)
+    ns.Kit.UI.OnRightClick(routeRow, rightClicked)
     frame:Hide()
     self.frame = frame
     -- The texts and the special icon follow the look. Keyed on a text, not
@@ -658,6 +667,41 @@ function Navigation:CreateFrame()
         if frame:IsShown() then self:AnimateArrow(elapsed) end
     end)
     self.driver = driver
+end
+
+-- The arrow's menu: the routes on offer to pick between (or a greyed line
+-- saying there is none, so a right-click always answers), and a way to put a
+-- typed-in waypoint away.
+function Navigation:MenuItems()
+    local node = self:Target()
+    local items = {}
+    local Route, Travel = ns.modules.TravelRoute, ns.modules.Travel
+    local choices, current
+    if Route then choices, current = Route:Choices(node) end
+    for _, choice in ipairs(choices or {}) do
+        table.insert(items, { caption = choice.outline, group = "route", value = choice.id, checked = choice.id == current,
+            desc = Travel and ("~" .. Travel.FormatSeconds(choice.cost)) or nil })
+    end
+    if not choices then table.insert(items, { caption = "No other route to pick", disabled = true }) end
+    if self.waypoint then
+        table.insert(items, { separator = true })
+        table.insert(items, { caption = "Clear waypoint", onClick = function() self:ClearWaypoint() end })
+    end
+    return items
+end
+
+local function routePicked(_, id)
+    local Route = ns.modules.TravelRoute
+    if not Route then return end
+    Route:PickChoice(Navigation:Target(), id)
+    Navigation.forceAngleUpdate = true
+    Navigation:Update(Navigation:Target())
+end
+
+local menuOpts = { at = "cursor", onChange = routePicked }
+
+function Navigation:OpenMenu()
+    ns:GetUI():OpenMenu(self:MenuItems(), menuOpts)
 end
 
 -- The steps that get a pin on the world map, in the order the guide reaches

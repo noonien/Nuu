@@ -90,8 +90,67 @@ check(Route.lastReason == "choice", "planned again for the choice")
 Route:CycleChoice(node)
 check(Route.plan and Route.plan.choice == "default" and Route.plan.summary:match("^fly Crossroads"), "and back to the flight")
 
+-- The arrow's menu: a right-click on the window lists the routes on offer,
+-- the one followed checked, and a pick follows it.
+local Navigation, Config = ns.modules.Navigation, ns.modules.Config
+local function menuRow(menu, match)
+    for index = 1, menu.count or #menu.rows do
+        local row = menu.rows[index]
+        if row and row:IsShown() and row.item and match(row.item) then return row end
+    end
+    return nil
+end
+local function openArrowMenu()
+    ctx.UI:CloseMenu()
+    Navigation.frame:Fire("OnMouseUp", "RightButton")
+    settle()
+    return ctx.UI.kitMenu
+end
+Navigation:Refresh(node, guide)
+local menu = openArrowMenu()
+check(menu and menu:IsShown(), "a right-click on the arrow opens its menu")
+check(not menu.rows[1].item.header, "with no header")
+local flightRow = menuRow(menu, function(item) return item.group == "route" and item.value == "default" end)
+local walkRow = menuRow(menu, function(item) return item.group == "route" and item.value == "walk" end)
+check(flightRow and flightRow.item.checked and walkRow and not walkRow.item.checked, "every route on offer, the flight checked")
+check(walkRow.item.desc and walkRow.item.desc:match("^~"), "with its time")
+check(not menuRow(menu, function(item) return item.caption == "Clear waypoint" end), "no waypoint to clear")
+walkRow:Click()
+settle()
+check(not menu:IsShown(), "a pick closes the menu")
+check(Route.plan and Route.plan.choice == "walk", "and follows walking: " .. tostring(Route.plan and Route.plan.choice))
+menu = openArrowMenu()
+menuRow(menu, function(item) return item.value == "default" end):Click()
+settle()
+check(Route.plan and Route.plan.choice == "default", "and back to the flight from the menu")
+Navigation.frame.route:Click("RightButton")
+settle()
+check(ctx.UI.kitMenu:IsShown() and Route.plan.choice == "default", "a right-click on the route line opens the menu, not the next route")
+ctx.UI:CloseMenu()
+-- One way only: the menu still opens, and says there is nothing to pick.
+Config:Set("navigation.travel.suggest", false)
+menu = openArrowMenu()
+check(menu and menu:IsShown(), "with no route to pick the menu still opens")
+local none = menuRow(menu, function(item) return item.caption == "No other route to pick" end)
+check(none and none.item.disabled, "and says so, greyed")
+check(not menuRow(menu, function(item) return item.group == "route" end), "with no route to pick from")
+ctx.UI:CloseMenu()
+Config:Reset("navigation.travel.suggest")
+
+-- A waypoint: the menu can put it away, and the arrow goes back to the step.
+check(Navigation:SetWaypoint(1413, 0.52, 0.31, "Test: the Crossroads inn"), "a waypoint for the arrow")
+menu = openArrowMenu()
+menuRow(menu, function(item) return item.caption == "Clear waypoint" end):Click()
+settle()
+check(Navigation.waypoint == nil and Navigation:Target() == Navigation.activeNode, "Clear waypoint puts it away")
+check(Route:RouteTo({ mapID = 1413, x = 52, y = 31, label = "Test: the Crossroads inn" }), "a route to any place")
+menuRow(openArrowMenu(), function(item) return item.caption == "Clear waypoint" end):Click()
+settle()
+check(not Route:IsRouting() and Route.requested == nil, "and a route asked for goes with its waypoint")
+Route:Sync(node, guide)
+ctx.noErrors("the arrow's menu")
+
 -- A travel switch plans again: no flights, so the route walks.
-local Config = ns.modules.Config
 Config:Set("navigation.travel.flights", false)
 check(Route.lastReason == "options", "a travel setting plans again")
 check(Route.plan and not Route.plan.summary:match("fly"), "without flights the route walks: " .. tostring(Route.plan and Route.plan.summary))
@@ -217,7 +276,6 @@ local gates
 for _, test in ipairs(Panel.tests) do if test.id == "gates" then gates = test end end
 Panel:Load(gates)
 settle()
-local Navigation = ns.modules.Navigation
 check(Navigation and Navigation.SetWaypoint, "the arrow takes a waypoint")
 do
     check(Navigation.waypoint and Navigation.waypoint.title == "Test: Razor Hill", "the waypoint test points the arrow")
