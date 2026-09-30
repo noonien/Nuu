@@ -111,6 +111,16 @@ check(Progress:GetActiveGuide() == nil, "no guide yet")
 check(has(texts(MainWindow.cardHolder), "Choose a guide to begin."), "the empty tracker asks for a guide")
 check(not MainWindow.skip:IsShown() and not MainWindow.back:IsShown(), "no back or skip without a guide")
 check(win.title:GetText() == "No guide selected", "the band says no guide")
+check(not MainWindow.bar:IsShown(), "no progress bar without a guide")
+do
+    local Browser = ns.modules.GuideBrowser
+    local browse = button("Browse guides")
+    check(browse, "the empty tracker has a button for the guide browser")
+    if Browser:IsShown() then Browser:Hide() end
+    click(browse)
+    check(Browser:IsShown(), "the button opens the guide browser")
+    Browser:Hide()
+end
 
 -- A packaged guide ----------------------------------------------------------------------
 
@@ -133,6 +143,7 @@ check(MainWindow.list ~= nil and #MainWindow.list:GetItems() > 0, "the step list
 check(MainWindow.list:GetSelected() == Progress:GetCurrentNode(guide), "the list's selection is the current step")
 local total = #MainWindow:CharacterSteps(guide)
 local _, maxValue = MainWindow.bar:GetRange()
+check(MainWindow.bar:IsShown(), "a guide brings the bar back")
 check(maxValue == total, "the bar spans the character's steps")
 
 -- A refresh builds from the pools: no new frames once warm.
@@ -667,6 +678,7 @@ ctx.noErrors("launcher")
 Progress:Deselect()
 MainWindow:Refresh(); settle()
 check(has(texts(MainWindow.cardHolder), "Choose a guide to begin."), "no guide again")
+check(not MainWindow.bar:IsShown(), "and the bar goes with it")
 MainWindow:BeginCards()
 settle()
 for name, refresh in pairs(stripRefresh) do ns.modules[name].Refresh = refresh end

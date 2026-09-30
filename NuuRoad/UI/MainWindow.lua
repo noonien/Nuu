@@ -1574,12 +1574,15 @@ function MainWindow:Refresh()
     local guide = Progress and Progress:GetActiveGuide()
     self:SyncTabs(guide)
     self:BeginCards()
+    -- The bar has nothing to show without a guide, so it takes no room.
+    self.bar:SetShown(guide ~= nil)
     if not guide then
         self:SetStatus("")
         self:PaintProgress(nil)
         self:OpenCard(self.cardHolder, "muted")
         self:AddLine("Choose a guide to begin.", { marker = ">" })
-        self:AddLine("Open the menu above, or right-click the minimap button.", { color = "muted", indent = true })
+        self:AddCardButton("Browse guides", function() call("GuideBrowser", "Show") end, true,
+            "Open the guide browser. The minimap button's right-click opens it too.")
         self:LayoutStepList(nil)
         self:FinishLayout()
         self:SetGuideTitle("No guide selected")
