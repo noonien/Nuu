@@ -221,6 +221,27 @@ function Client:IsQuestReadyToTurnIn(questID)
     return false
 end
 
+-- A quest in the log that can no longer be completed: an escort whose NPC
+-- died, or a timed quest that ran out. Only abandoning it and taking it again
+-- helps. `C_QuestLog.IsFailed` where the client has it, else the classic log
+-- row, whose completion flag is -1 for a failed quest. False when neither
+-- says, so an unreadable log never shows a quest as failed.
+function Client:IsQuestFailed(questID)
+    if type(questID) ~= "number" then return false end
+    if C_QuestLog and C_QuestLog.IsFailed then
+        local ok, failed = pcall(C_QuestLog.IsFailed, questID)
+        if ok then return failed == true end
+    end
+    if GetQuestLogIndexByID and GetQuestLogTitle then
+        local ok, index = pcall(GetQuestLogIndexByID, questID)
+        if ok and index and index > 0 then
+            local titleOK, _, _, _, _, _, isComplete = pcall(GetQuestLogTitle, index)
+            if titleOK then return isComplete == -1 end
+        end
+    end
+    return false
+end
+
 -- True once the client has handed over a quest log with something in it. The
 -- log is empty for the first frames after login, so nothing that reasons from
 -- the absence of a quest may believe it before this says so. Sticky: a log

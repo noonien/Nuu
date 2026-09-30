@@ -108,6 +108,7 @@ local goalIcons = {
     accept = "Interface/GossipFrame/AvailableQuestIcon",
     turnin = "Interface/GossipFrame/ActiveQuestIcon",
     objective = "Interface/GossipFrame/IncompleteQuestIcon",
+    escort = "Interface/GossipFrame/IncompleteQuestIcon",
     talk = "Interface/GossipFrame/ChatBubbleGossipIcon",
     kill = "Interface/TargetingFrame/UI-RaidTargetingIcon_8",
     collect = "Interface/GroupFrame/UI-Group-MasterLooter",
@@ -126,13 +127,13 @@ local goalIcons = {
     gather = "Interface/Minimap/Tracking/Profession",
 }
 local goalGlyphs = {
-    accept = "!", turnin = "?", objective = "x", talk = "?!", kill = "x", collect = "o", interact = "*", use = "*", travel = "->",
+    accept = "!", turnin = "?", objective = "x", escort = "&", talk = "?!", kill = "x", collect = "o", interact = "*", use = "*", travel = "->",
     hearth = "H", flight = "F", level = "L", done = "v", skipped = ">>", note = "-", choice = "Y", ["end"] = ".", reminder = "~",
     train = "T", skill = "S", craft = "C", buy = "$", equip = "E", reputation = "R", gather = "g",
 }
 -- Icon for a whole step, on the single-line rows.
 local kindIcon = {
-    acceptQuest = "accept", turnInQuest = "turnin", talk = "turnin", questObjective = "objective", objectiveGroup = "objective",
+    acceptQuest = "accept", turnInQuest = "turnin", talk = "turnin", questObjective = "objective", objectiveGroup = "objective", escort = "escort",
     kill = "kill", collect = "collect", loot = "collect", interact = "interact", travel = "travel", hearth = "hearth",
     flight = "flight", levelTarget = "level", note = "note", action = "note", choice = "choice", ["end"] = "end", reminder = "reminder",
     train = "train", cast = "use", skillTarget = "skill", craft = "craft", skillUp = "craft", gather = "gather", buy = "buy", equip = "equip", reputationTarget = "reputation",
@@ -237,6 +238,7 @@ local statusWords = {
     done = "Done", active = "In progress", todo = "Not done yet",
     settled = "Not needed: the work after this step is already done",
     moot = "Not yours to do: the quest is not in your log and was never finished",
+    failed = "Failed: abandon the quest and take it again",
 }
 -- Statuses that mean there is nothing here for the player to do.
 local quietStatus = { done = true, settled = true, moot = true }
@@ -581,7 +583,7 @@ end
 -- tooltip, the quest and NPCs it names, and a status the line shows only as
 -- a colour; the distance is on the line and the note on the card, so neither
 -- is repeated. A goal that names nothing more has no tooltip.
-local explainedStatus = { settled = true, moot = true }
+local explainedStatus = { settled = true, moot = true, failed = true }
 
 function MainWindow:GoalTooltip(goal, node, status)
     if not (goal.item or goal.upto or goal.quest or (goal.npcs and #goal.npcs > 0) or explainedStatus[status]) then return nil end
@@ -1669,7 +1671,7 @@ function MainWindow:DrawGoals(guide, node, group)
                 count = not saysCount(goal) and progress or nil,
                 countColor = (checked and "done") or (status == "active" and "warning") or "text",
                 -- A goal the player has no quest for keeps its own icon, in red.
-                iconColor = (status == "moot" and "danger") or ((not checked and goal.verb == "travel") and "accent") or nil,
+                iconColor = ((status == "moot" or status == "failed") and "danger") or ((not checked and goal.verb == "travel") and "accent") or nil,
                 color = quietStatus[status] and "muted" or "text",
                 tooltip = self:GoalTooltip(goal, row.member, status),
             })
@@ -1685,6 +1687,9 @@ function MainWindow:DrawGoals(guide, node, group)
     elseif GuideScan and GuideScan:NodeIsMoot(node) then
         self:AddLine("You do not have this quest. The guide waits here; pick it up, or skip it (>) to go on without it.",
             { color = "danger" })
+    elseif node.kind == "escort" and Steps:GoalStatus(Steps:Goals(node)[1], node) == "failed" then
+        self:AddLine("The escort failed. Abandon " .. paint("quest", Names:DescribeQuest(node.auto.quests[1]))
+            .. " and take it again; the NPC may need a while to come back.", { color = "danger" })
     end
     -- What this step asks the player to bring, and how much is missing. The
     -- whole guide's list is in the materials panel; this is only the step.

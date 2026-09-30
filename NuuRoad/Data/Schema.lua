@@ -19,6 +19,8 @@ local nodeKinds = {
     vendor = true,
     -- Cast a named spell where the step stands.
     cast = true,
+    -- Follow and guard a quest NPC to where the quest ends.
+    escort = true,
 }
 
 local completionTypes = { manual = true, observed = true, allChildren = true, anyChild = true }

@@ -163,6 +163,43 @@ do
     assert(Steps:GoalStatus(questItem, tied.nodes[2]) == "done", "used up, the quest is ready to hand in")
     ns.modules.Client = nil
 end
+-- Escorts: done when the quest is ready, titled by the NPC, and a failed
+-- quest says so instead of waiting as if under way.
+do
+    local escorts = Steps:Expand({
+        schema = 2, id = "test:escort", updated = 1789862400, map = 1413,
+        meta = { title = "Escort", category = "test" },
+        steps = { { section = "Drill site", steps = {
+            { escort = 863, npc = 3439, at = { 55.35, 7.70 } },
+        } } },
+    })
+    ok, errors = Schema:Validate(escorts)
+    assert(ok, table.concat(errors, "; "))
+    local node = escorts.nodes[1]
+    assert(node.kind == "escort" and node.completion.observed.state == "readyToTurnIn" and node.completion.observed.ids[1] == 863)
+    assert(node.refs.npcs[1] == 3439 and node.refs.quests[1] == 863 and node.location.arrivalRadiusNormalized == 0.05)
+    assert(Steps:Title(node) == "Escort Wizzlecrank's Shredder", Steps:Title(node))
+    local goals = Steps:Goals(node)
+    assert(#goals == 1 and goals[1].verb == "escort" and Steps:GoalText(goals[1]) == "Escort Wizzlecrank's Shredder")
+    local inLog, ready, failed = {}, {}, {}
+    ns.modules.Client = {
+        IsQuestInLog = function(_, id) return inLog[id] == true end,
+        IsQuestComplete = function() return false end,
+        IsQuestReadyToTurnIn = function(_, id) return ready[id] == true end,
+        IsQuestFailed = function(_, id) return failed[id] == true end,
+        IsQuestMoot = function(_, id) return not inLog[id] end,
+    }
+    assert(Steps:GoalStatus(goals[1], node) == "moot", "not taken")
+    inLog[863] = true
+    assert(Steps:GoalStatus(goals[1], node) == "active")
+    failed[863] = true
+    assert(Steps:GoalStatus(goals[1], node) == "failed", "the NPC died")
+    failed[863], ready[863] = nil, true
+    assert(Steps:GoalStatus(goals[1], node) == "done")
+    ns.modules.Client = nil
+    assert(not pcall(Steps.Expand, Steps, { schema = 2, id = "test:bad", updated = 1, map = 1413, meta = { title = "x", category = "test" },
+        steps = { { section = "s", steps = { { escort = 863, at = { 1, 1 } } } } } }), "an escort names its NPC")
+end
 local tracks = Steps:ActiveTracks(more, m[6])
 assert(#tracks == 1 and tracks[1] == 869, "a track is active between track and untrack")
 assert(#Steps:ActiveTracks(more, m[10]) == 0, "untrack closes it")

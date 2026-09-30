@@ -32,6 +32,7 @@ local _, ns = ...
 --   { objectives = { 871, 844 }, at = { ... } }           -- all readyToTurnIn
 --   { objective = 871, part = 1, kill = 3267, count = 8 }   -- fallback title "Kill 8 ..."
 --   { objective = 844, part = 1, collect = 5087, count = 7 } -- fallback title "Collect 7 ..."
+--   { escort = 99144, npc = 275954, at = { ... } }          -- "Escort <npc>" to `at`: readyToTurnIn
 --   { collect = 4926, object = "Chen's Empty Keg", at = { ... } } -- item in bags
 --   { collect = 4926, starts = 819, object = "Chen's Empty Keg" } -- item that begins quest 819
 --   { collect = 4986, quest = 924, object = "Flawed Power Stones" } -- quest item picked up for quest 924
@@ -92,9 +93,9 @@ local Steps = {}
 -- `kill` comes after `collect` so a collect step with kill targets stays a collect step.
 -- The profession verbs come before `skill`, which they carry as the
 -- profession they use, so a step that names its profession keeps its verb.
-local verbs = { "travel", "turnin", "accept", "objective", "objectives", "collect", "kill", "gather", "skillup", "craft", "buy", "vendor", "equip", "train", "learn", "cast", "skill", "reputation", "hearth", "flight", "track", "untrack", "level", "choice", "finish" }
+local verbs = { "travel", "turnin", "accept", "objective", "objectives", "escort", "collect", "kill", "gather", "skillup", "craft", "buy", "vendor", "equip", "train", "learn", "cast", "skill", "reputation", "hearth", "flight", "track", "untrack", "level", "choice", "finish" }
 local radiusByVerb = {
-    accept = 0.02, turnin = 0.02, talk = 0.02, travel = 0.03, objective = 0.05, objectives = 0.05,
+    accept = 0.02, turnin = 0.02, talk = 0.02, travel = 0.03, objective = 0.05, objectives = 0.05, escort = 0.05,
     level = 0.025, collect = 0.04, kill = 0.05, hearth = 0.02, interact = 0.02,
     train = 0.02, learn = 0.02, cast = 0.03, buy = 0.02, vendor = 0.02, craft = 0.03, skillup = 0.03, equip = 0.03, skill = 0.05, reputation = 0.05,
     gather = 0.05, flight = 0.02, finish = 0.02,
@@ -259,6 +260,7 @@ function Steps:Title(node, literal)
         if auto.collect then title = pressText .. "Collect " .. Steps:CountText(node, literal) .. joinNames(auto.collect, Names.DescribeItem) .. fromText end
         return title .. suffix
     end
+    if verb == "escort" then return "Escort " .. joinNames(auto.npc, Names.DescribeNPC) end
     if verb == "collect" then
         local Client = ns.modules.Client
         local have = Client and Client.GetItemCount and Client:GetItemCount(auto.collect[1])
@@ -625,6 +627,9 @@ function Steps:Goals(node)
                 add("objective", parts, { quest = id, state = "readyToTurnIn" })
             end
         end
+    elseif verb == "escort" then
+        add("escort", nameParts({ part("Escort ") }, auto.npc, Names.DescribeNPC, "npc"),
+            { quest = auto.quests[1], state = "readyToTurnIn", escort = true })
     elseif verb == "collect" then
         add("collect", withAt(withPress(withSource(nameParts({ part("Collect "), part(countText, "count") }, auto.collect, Names.DescribeItem, "item")))),
             { item = auto.collect[1], count = auto.count or 1, quest = auto.starts or auto.quest, startsQuest = auto.starts ~= nil or nil })
@@ -711,7 +716,8 @@ local function moot(Client, questID)
 end
 
 -- "done", "active" (started, not finished), "todo", "moot" (the quest is not
--- the player's to work on), or nil for a goal that has no state of its own,
+-- the player's to work on), "failed" (an escort that can only be taken
+-- again), or nil for a goal that has no state of its own,
 -- such as "Talk to ...". The second value is the client's progress figure,
 -- "2/8", when it has one.
 function Steps:GoalStatus(goal, node)
@@ -729,6 +735,9 @@ function Steps:GoalStatus(goal, node)
         if Client:IsQuestInLog(goal.objective.quest) then return "active", progress end
         return moot(Client, goal.objective.quest) and "moot" or "todo", progress
     end
+    -- The escorted NPC died, or the escort timed out: the quest stays in the
+    -- log but can never be ready, so waiting on it would wait forever.
+    if goal.escort and Client.IsQuestFailed and Client:IsQuestFailed(goal.quest) then return "failed" end
     if goal.quest and goal.state then
         local inLog, finished = Client:IsQuestInLog(goal.quest), Client:IsQuestComplete(goal.quest)
         if goal.state == "finished" then
@@ -1225,6 +1234,16 @@ local function build(step, verb, defaultMap)
         node.kind = verb == "objective" and "questObjective" or "objectiveGroup"
         node.completion = questCompletion("readyToTurnIn", quests, step.any and "any" or "all")
         if step.any then for _, id in ipairs(list(step.any)) do table.insert(quests, id) end end
+    elseif verb == "escort" then
+        -- Follow and guard an NPC to `at`. Done the way an objective is, once
+        -- the quest is ready to hand in; the NPC is named, since "Escort" is
+        -- the whole instruction, and followed like any step's NPC.
+        if type(step.escort) ~= "number" then error("NuuRoad: escort names one quest by ID") end
+        if step.npc == nil then error("NuuRoad: an escort step names the NPC escorted in `npc`") end
+        quests = { step.escort }
+        node.kind = "escort"
+        node.completion = questCompletion("readyToTurnIn", quests, "all")
+        node.auto = { verb = verb, quests = quests, npc = list(step.npc) }
     elseif verb == "collect" then
         node.kind = "collect"
         node.auto = { verb = verb, collect = list(step.collect), count = step.count, starts = step.starts, quest = step.quest }

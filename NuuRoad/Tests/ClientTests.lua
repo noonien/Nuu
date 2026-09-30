@@ -68,6 +68,20 @@ assert(Client:MatchesObservedCompletion({ type = "objective", questID = 821, ind
 assert(Client:MatchesObservedCompletion({ type = "all", children = { { type = "always" }, { type = "level", atLeast = 15 } } }))
 assert(not Client:MatchesObservedCompletion({ type = "all", children = { { type = "always" }, { type = "level", atLeast = 16 } } }))
 
+-- A failed quest: C_QuestLog.IsFailed where the client has it, else the
+-- classic log row's -1. Neither readable is never a failure.
+assert(Client:IsQuestFailed(863) == false, "no reader: not failed")
+GetQuestLogIndexByID = function(id) return id == 863 and 4 or 0 end
+local rowComplete
+GetQuestLogTitle = function(index) return "The Escape", 16, 0, false, false, rowComplete, 0, 863 end
+assert(Client:IsQuestFailed(863) == false)
+rowComplete = -1
+assert(Client:IsQuestFailed(863) == true, "the classic row says -1")
+assert(Client:IsQuestFailed(870) == false, "a quest not in the log")
+C_QuestLog.IsFailed = function(id) return id == 870 end
+assert(Client:IsQuestFailed(870) == true and Client:IsQuestFailed(863) == false, "IsFailed wins where it exists")
+C_QuestLog.IsFailed, GetQuestLogIndexByID, GetQuestLogTitle = nil, nil, nil
+
 -- Conditions: class and race tokens, quest state, and combinators.
 UnitClass = function() return "Warrior", "WARRIOR" end
 UnitRace = function() return "Tauren", "Tauren" end

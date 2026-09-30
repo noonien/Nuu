@@ -55,7 +55,7 @@ function QuestIndex:NodeQuests(node)
         elseif verb == "talk" then
             for _, id in ipairs(auto.turnin or {}) do add(found, id, "turnin") end
             for _, id in ipairs(auto.accept or {}) do add(found, id, "accept") end
-        elseif verb == "objective" or verb == "objectives" then
+        elseif verb == "objective" or verb == "objectives" or verb == "escort" then
             for _, id in ipairs(auto.quests or {}) do add(found, id, "objective") end
         elseif verb == "collect" then
             add(found, auto.starts, "collect")
