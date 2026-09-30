@@ -84,6 +84,16 @@ local function menuRow(menu, caption)
     return nil
 end
 
+-- The guide's own menu, from a right-click on its name in the band.
+local function openGuideMenu()
+    ctx.UI:CloseMenu()
+    MainWindow.frame.band:Fire("OnMouseUp", "RightButton")
+    settle()
+    local menu = ctx.UI.kitMenu
+    check(menu and menu:IsShown(), "a right-click on the band opens the guide's menu")
+    return menu
+end
+
 local function openMenu()
     ctx.UI:CloseMenu()
     click(MainWindow.menuButton)
@@ -297,14 +307,17 @@ end
 
 do
     local menu = openMenu()
-    for _, caption in ipairs({ "Guides", "Edit this guide", "Reset this guide", "Close this guide", "Authoring", "Report a bug", "Options" }) do
+    for _, caption in ipairs({ "Guides", "Authoring", "Report a bug", "Options" }) do
         check(menuRow(menu, caption), "the menu has " .. caption)
+    end
+    for _, caption in ipairs({ "Edit", "Reset progress", "Close" }) do
+        check(not menuRow(menu, caption), "the menu leaves " .. caption .. " to the guide's menu")
     end
     click(MainWindow.menuButton)
     check(not menu:IsShown(), "a second click on the button closes it")
 
     -- Each entry, taken; the other modules may still be placeholders.
-    for _, caption in ipairs({ "Guides", "Edit this guide", "Report a bug", "Options" }) do
+    for _, caption in ipairs({ "Guides", "Report a bug", "Options" }) do
         menu = openMenu()
         click(menuRow(menu, caption))
         check(not menu:IsShown(), caption .. " closes the menu")
@@ -314,6 +327,23 @@ do
     if Browser and Browser.Hide then Browser:Hide() end
     local Options = ns.modules.Options
     if Options and Options.win and Options.win.Hide then Options.win:Hide() end
+
+    -- The guide's own menu, under its name.
+    menu = openGuideMenu()
+    for _, caption in ipairs({ "Edit", "Reset progress", "Close" }) do
+        check(menuRow(menu, caption), "the guide's menu has " .. caption)
+    end
+    local titled = false
+    for index = 1, menu.count or #menu.rows do
+        local row = menu.rows[index]
+        local guide = Progress:GetActiveGuide()
+        if row and row:IsShown() and row.item and row.item.header == (guide.meta and guide.meta.title or guide.id) then titled = true end
+    end
+    check(titled, "the guide's menu is headed by its name")
+    click(menuRow(menu, "Edit"))
+    check(not menu:IsShown(), "Edit closes the menu")
+    ctx.noErrors("guide menu: Edit")
+    if ns.modules.Editor and ns.modules.Editor.Hide then ns.modules.Editor:Hide() end
 
     -- The authoring submenu.
     for _, caption in ipairs({ "Session log", "Place recorder", "Diagnostics" }) do
@@ -337,8 +367,8 @@ do
     -- Reset asks twice.
     click(MainWindow.skip)
     local moved = current()
-    menu = openMenu()
-    local row = menuRow(menu, "Reset this guide")
+    menu = openGuideMenu()
+    local row = menuRow(menu, "Reset progress")
     click(row)
     check(menu:IsShown(), "the first click keeps the menu open")
     check(menuRow(menu, "Sure? Click again"), "and asks again")
@@ -347,8 +377,8 @@ do
     check(not menu:IsShown(), "the second click closes the menu")
     check(current() <= first, "the guide is back at its start (" .. tostring(current()) .. ")")
     -- The next opening is disarmed again.
-    menu = openMenu()
-    check(menuRow(menu, "Reset this guide"), "a new opening is not armed")
+    menu = openGuideMenu()
+    check(menuRow(menu, "Reset progress"), "a new opening is not armed")
     ctx.UI:CloseMenu()
 
     -- The planner is NuuProfessions' own to open; the menu has no entry for it.
@@ -513,6 +543,13 @@ do
     fixtureTab:Fire("OnEnter")
     check(fixtureTab.closeButton:GetAlpha() == 1, "and shows under it")
     fixtureTab:Fire("OnLeave")
+    -- A right-click on a tab not shown opens that guide's menu, and shows no other.
+    click(fixtureTab, "RightButton")
+    local sheet = ctx.UI.kitMenu
+    check(sheet and sheet:IsShown() and sheet.rows[1].item.header == fixture.meta.title,
+        "a right-click on a tab opens its guide's menu")
+    check(Progress:GetActiveGuide() == guide, "and does not choose the tab")
+    ctx.UI:CloseMenu()
     local at = current()
     click(tabs.kitTabs[fixture.id])
     check(Progress:GetActiveGuide() == fixture and strip():GetValue() == fixture.id, "a tab shows its guide, and the strip follows")
@@ -564,9 +601,12 @@ do
     click(strip().kitTabs[guide.id].closeButton)
     check(Progress:GetActiveGuide() == extra[1] and not Progress:IsOpen(guide), "the mark shuts a tab not shown")
     check(not row:IsShown(), "one guide open has no strip")
-    click(menuRow(openMenu(), "Close this guide"))
-    check(Progress:GetActiveGuide() == nil and #Progress:OpenIDs() == 0, "the menu shuts the last guide")
+    click(menuRow(openGuideMenu(), "Close"))
+    check(Progress:GetActiveGuide() == nil and #Progress:OpenIDs() == 0, "the guide's menu shuts the last guide")
     check(has(texts(MainWindow.cardHolder), "Choose a guide to begin."), "and the tracker asks for one")
+    ctx.UI:CloseMenu()
+    MainWindow.frame.band:Fire("OnMouseUp", "RightButton")
+    check(not (ctx.UI.kitMenu and ctx.UI.kitMenu:IsShown()), "with no guide the band opens no menu")
     Progress:Select(guide)
     MainWindow:Refresh(); settle()
     check(Progress:GetCurrentIndex(guide) == at and not row:IsShown(), "opened again where it was, alone")

@@ -748,6 +748,7 @@ end
 local function backClicked() MainWindow:Step(-1) end
 local function skipClicked() MainWindow:Step(1) end
 local function menuClicked() MainWindow:ToggleMenu() end
+local function bandRightClicked() MainWindow:OpenGuideMenu() end
 local function closeClicked() MainWindow:Toggle() end
 local function counterClicked() MainWindow:ToggleJumpBox() end
 local function jumpCommitted(text) MainWindow:JumpToNumber(text) end
@@ -829,9 +830,11 @@ function MainWindow:CreateTracker()
     self.skip = header:GlyphButton{ "next", size = 22, glyphSize = 9, onClick = skipClicked,
         tooltip = "Skip one step. Shift: forward to the first step still to do." }
     self.menuButton = header:GlyphButton{ "menu", size = 22, glyphSize = 9, onClick = menuClicked,
-        tooltip = "Guides, this guide's own actions, and the addon's settings" }
+        tooltip = "Guides, options and tools. Right-click a guide's name for its own actions." }
     self.close = header:GlyphButton{ "close", size = 22, glyphSize = 9, onClick = closeClicked,
         tooltip = "Hide the tracker. The minimap button brings it back." }
+    -- The guide's name in the band opens its menu on a right-click.
+    ns.Kit.UI.OnRightClick(frame.band, bandRightClicked)
 
     local content = frame:Column{ padding = PAD, gap = GAP }
     self.content = content
@@ -996,6 +999,7 @@ end
 
 local function tabChosen(key) MainWindow:ShowGuide(key) end
 local function tabClosed(key) MainWindow:CloseGuide(key) end
+local function tabRightClicked(key) MainWindow:OpenGuideMenu(key) end
 local function moreClicked(link) MainWindow:OpenMoreTabs(link) end
 
 -- Shows an open guide: the tracker follows it from here, and the load-time
@@ -1068,7 +1072,8 @@ function MainWindow:SyncTabs(active)
         end
     end
     local spec = { value = active.id, pages = false, compact = true, divided = true, grow = 1,
-        maxTabWidth = math.min(TAB_MAX, width), onChange = tabChosen, onClose = tabClosed }
+        maxTabWidth = math.min(TAB_MAX, width), onChange = tabChosen, onClose = tabClosed,
+        onRightClick = tabRightClicked }
     for _, guide in ipairs(shown) do
         table.insert(spec, { key = guide.id, caption = tabCaption(guide),
             tooltip = guide.meta and guide.meta.title or guide.id })
@@ -1882,27 +1887,50 @@ end
 -- The menu -------------------------------------------------------------------------------------
 
 -- Its entries are built fresh on every opening, because what belongs on it
--- depends on the moment: whether a guide is running at all, whether that
--- guide asks for materials, and how much of it is still missing.
+-- depends on the moment: whether the guide shown asks for materials, and how
+-- much of it is still missing. A guide's own actions are on its menu instead.
 function MainWindow:MenuItems()
-    local Progress, Config = M("Progress"), M("Config")
-    local guide = Progress and Progress:GetActiveGuide()
-    local none = guide == nil
+    local Config = M("Config")
     local items = {}
     table.insert(items, { caption = "Guides", onClick = function() self:ToggleGuidePicker() end })
-    table.insert(items, { caption = "Edit this guide", disabled = none, reason = none and "Start a guide first." or nil,
-        onClick = function() call("Editor", "OpenGuide", M("Progress"):GetActiveGuide()) end })
+    local missing = self:MaterialsMissing()
+    if missing then
+        table.insert(items, { caption = missing > 0 and ("Materials list (" .. missing .. " missing)") or "Materials list",
+            check = true, value = Config and Config:Get("materials.shown") == true,
+            onChange = function(on)
+                M("Config"):Set("materials.shown", on and true or false)
+                self:Refresh()
+            end })
+    end
+    table.insert(items, { separator = true })
+    table.insert(items, { caption = "Options", onClick = function() self:ToggleOptions() end })
+    -- The tools for writing guides rather than playing them, one level down
+    -- so the menu a player reads is about playing.
+    table.insert(items, { caption = "Authoring", items = {
+        { caption = "Session log", onClick = function() call("RecordingPanel", "Toggle") end },
+        { caption = "Place recorder", onClick = function() call("PlaceRecorder", "Toggle") end },
+        { caption = "Diagnostics", onClick = function() self:ShowDiagnostics() end },
+    } })
+    table.insert(items, { caption = "Report a bug", onClick = function() call("BugReportPanel", "Show") end })
+    return items
+end
+
+-- One open guide's own actions, under its name: what a right-click on its
+-- tab, or on its name in the band, opens. The guide is the one clicked,
+-- which need not be the one shown.
+function MainWindow:GuideMenuItems(guide)
+    local id = guide.id
+    local function current() return M("GuideRepository"):Get(id) or guide end
+    local items = { { header = tabCaption(guide) } }
+    table.insert(items, { caption = "Edit", onClick = function() call("Editor", "OpenGuide", current()) end })
     -- A reset cannot be undone, so the entry asks for the click twice and the
     -- menu stays open in between to say so. An entry armed and then left
     -- alone is disarmed by the next opening, never carried into it.
-    local reset = { caption = "Reset this guide", keep = true, disabled = none,
-        reason = none and "Start a guide first." or nil }
+    local reset = { caption = "Reset progress", keep = true }
     reset.onClick = function(item)
-        local running = M("Progress"):GetActiveGuide()
-        if not running then return end
         if item.armedAt and now() - item.armedAt < 4 then
             item.armedAt = nil
-            M("Progress"):Reset(running)
+            M("Progress"):Reset(current())
             self:UI():CloseMenu()
             self:Refresh()
             return
@@ -1913,31 +1941,18 @@ function MainWindow:MenuItems()
     end
     table.insert(items, reset)
     -- Its tab shuts; its progress this session is kept, should it be opened
-    -- again. With one guide open there is no strip, so this is the way.
-    table.insert(items, { caption = "Close this guide", disabled = none, reason = none and "Start a guide first." or nil,
-        onClick = function()
-            local running = M("Progress"):GetActiveGuide()
-            if running then self:CloseGuide(running.id) end
-        end })
-    local missing = self:MaterialsMissing()
-    if missing then
-        table.insert(items, { caption = missing > 0 and ("Materials list (" .. missing .. " missing)") or "Materials list",
-            check = true, value = Config and Config:Get("materials.shown") == true,
-            onChange = function(on)
-                M("Config"):Set("materials.shown", on and true or false)
-                self:Refresh()
-            end })
-    end
-    -- The tools for writing guides rather than playing them, one level down
-    -- so the menu a player reads is about playing.
-    table.insert(items, { caption = "Authoring", items = {
-        { caption = "Session log", onClick = function() call("RecordingPanel", "Toggle") end },
-        { caption = "Place recorder", onClick = function() call("PlaceRecorder", "Toggle") end },
-        { caption = "Diagnostics", onClick = function() self:ShowDiagnostics() end },
-    } })
-    table.insert(items, { caption = "Report a bug", onClick = function() call("BugReportPanel", "Show") end })
-    table.insert(items, { caption = "Options", onClick = function() self:ToggleOptions() end })
+    -- again. With one guide open there is no strip, so the band is the way.
+    table.insert(items, { caption = "Close", onClick = function() self:CloseGuide(id) end })
     return items
+end
+
+-- `id` a tab's guide; none, the guide shown (the band's). No guide, no menu.
+function MainWindow:OpenGuideMenu(id)
+    local Progress = M("Progress")
+    local guide = id and M("GuideRepository"):Get(id) or (not id and Progress and Progress:GetActiveGuide())
+    if not guide then return end
+    self.menuItems = self:GuideMenuItems(guide)
+    self:UI():OpenMenu(self.menuItems, { at = "cursor" })
 end
 
 function MainWindow:ToggleMenu()

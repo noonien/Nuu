@@ -27,7 +27,9 @@ local types = UI.types
 -- puts a thin line between each two tabs, so a strip of them reads as tabs
 -- with nothing under it; pages = false makes the strip alone, with no pages
 -- under it; compact a lower strip; maxTabWidth cuts a longer caption short
--- with "..." (the entry's tooltip can carry the whole of it).
+-- with "..." (the entry's tooltip can carry the whole of it);
+-- onRightClick(key, tabs, tab) hears a right-click on a tab, which does not
+-- choose it (a menu for the thing the tab stands for).
 --
 -- The widget is a column of two parts it keeps for good: the strip (a row
 -- of tab frames) and the holder (a column of pages). Tab frames and pages
@@ -112,9 +114,13 @@ local function choose(w, key, byPlayer)
     if byPlayer then UI.Commit(w, key) end
 end
 
-local function tabClicked(tab)
+local function tabClicked(tab, button)
     if not tab:IsEnabled() then return end
     local w = tab.kitTabsWidget
+    if button == "RightButton" then
+        if w.kitOnRightClick then w.kitOnRightClick(tab.kitKey, w, tab) end
+        return
+    end
     UI.ClearTypingFocus(nil)
     if tab.kitKey ~= w.kitChosen then UI.ClickSound() end
     choose(w, tab.kitKey, true)
@@ -178,6 +184,7 @@ local function tabFrame(w, index)
     -- entry's tooltip when it has one.
     UI.Hover(tab)
     UI.HookTooltip(tab)
+    tab:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     tab:SetScript("OnClick", tabClicked)
     -- Painted on a look change and laid out again on a change of scale.
     ui.widgets[tab] = true
@@ -233,6 +240,7 @@ UI.Define("Tabs", {
         w.strip.rule:SetShown(spec.rule ~= false)
         local paged, height = spec.pages ~= false, spec.compact and COMPACT_HEIGHT or TAB_HEIGHT
         w.kitTabHeight, w.kitMaxTabWidth, w.kitOnClose = height, spec.maxTabWidth, spec.onClose
+        w.kitOnRightClick = spec.onRightClick
         local divided = spec.divided and true or false
         w.strip.kitLayout = spec.compact and COMPACT_LAYOUT or STRIP_LAYOUT
         -- A released stack gave its parts up: they come back.
@@ -322,7 +330,7 @@ UI.Define("Tabs", {
             tab.kitPooled = true
             tab.tooltip = nil
         end
-        w.kitOnClose = nil
+        w.kitOnClose, w.kitOnRightClick = nil, nil
     end,
     methods = {
         -- The column a tab shows.
