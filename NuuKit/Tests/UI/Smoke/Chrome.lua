@@ -353,6 +353,57 @@ assertTrue(win.kitInset == 1 and not win.bg:IsShown() and not win.nine.pieces[1]
 assertTrue(sameColor(win.bandBg, ui.tokens.bandBg) and sameColor(win.plate.fill, ui.tokens.windowBg), "flat colours")
 assertTrue(tabs.kitPH == 460 - 1 - 30 - 24 - 1, "and the body again")
 
+-- Tabs the player opens and shuts: a close mark on each, no pages, a low
+-- strip, long captions cut short; and back to plain tabs from the pool.
+do
+    local docs = ui:Window({ key = "docs", width = 500, height = 300, padding = 8, gap = 6 })
+    local closed, chosen = {}, {}
+    local strip
+    strip = docs:Tabs{
+        { key = "a", caption = "A short one" },
+        { key = "b", caption = "A caption far too long for its tab", tooltip = "A caption far too long for its tab" },
+        value = "b", pages = false, compact = true, maxTabWidth = 120, divided = true,
+        onClose = function(key, t) closed[#closed + 1] = key; assertTrue(t == strip, "onClose gets the tabs") end,
+        onChange = function(key) chosen[#chosen + 1] = key end,
+    }
+    local after = docs:Text{ "Under the strip" }
+    layout()
+    local a, b = strip.kitTabs.a, strip.kitTabs.b
+    assertTrue(strip:Page("a") == nil and not strip.holder:IsShown(), "no pages")
+    assertTrue(strip.kitPH == 24 and a.kitPH == 24, "a compact strip: " .. tostring(strip.kitPH))
+    assertTrue(after.kitPY <= strip.kitPY + 24 + 6, "what follows sits under the strip, not under pages")
+    assertTrue(a.label:GetText() == "A short one", "a caption that fits is whole")
+    assertTrue(b.kitPW <= 120 and b.label:GetText():sub(-3) == "..." and #b.label:GetText() < 35,
+        "a long caption is cut: " .. tostring(b.label:GetText()) .. " " .. tostring(b.kitPW))
+    assertTrue(b.tooltip == "A caption far too long for its tab" and a.tooltip == nil, "the entry's tooltip")
+    assertTrue(a.closeButton:IsShown() and b.closeButton:IsShown(), "every tab has a close mark")
+    assertTrue(a.closeButton:GetAlpha() == 0 and b.closeButton:GetAlpha() == 0, "unseen until the pointer comes")
+    a:GetScript("OnEnter")(a)
+    assertTrue(a.closeButton:GetAlpha() == 1 and b.closeButton:GetAlpha() == 0, "the pointer on a tab shows its mark")
+    a:GetScript("OnLeave")(a)
+    a.closeButton:Fire("OnEnter")
+    assertTrue(a.closeButton:GetAlpha() == 1, "and on the mark itself, it stays")
+    a.closeButton:Fire("OnLeave")
+    assertTrue(a.closeButton:GetAlpha() == 0, "gone again once the pointer leaves")
+    assertTrue(not a.divider and b.divider and b.divider:IsShown() and sameColor(b.divider, strip.ui.tokens.muted45),
+        "a hairline between two tabs, none before the first")
+    a.closeButton:Click()
+    assertTrue(closed[1] == "a" and #chosen == 0 and strip:GetValue() == "b", "the mark is heard, and chooses nothing")
+    a:Click()
+    assertTrue(chosen[1] == "a", "the tab itself still chooses")
+    docs:Clear()
+    local plain = docs:Tabs{ { key = "x", caption = "A caption far too long for its tab" } }
+    layout()
+    local x = plain.kitTabs.x
+    assertTrue(plain == strip, "the same tabs from the pool")
+    assertTrue(not x.closeButton:IsShown() and x.tooltip == nil and plain.kitOnClose == nil, "no close mark or tooltip left")
+    assertTrue(not (x.divider and x.divider:IsShown()), "no hairline left")
+    assertTrue(plain.holder:IsShown() and plain:Page("x") ~= nil and plain.kitPH > 30, "pages again, filling the body")
+    assertTrue(x.kitPH == 30 and x.label:GetText() == "A caption far too long for its tab", "full height, whole caption")
+    docs:Clear()
+    docs:Hide()
+end
+
 -- A body cleared and built again from the pool ----------------------------------------
 
 do

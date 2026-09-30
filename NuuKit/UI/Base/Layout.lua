@@ -320,7 +320,9 @@ function Stack:Append(child)
     -- A window, pane or page fills with what fills.
     if not child.kitGrow and self.kitFillChildren and child.kitLayout.grow == nil then
         local def = types[child.kitType]
-        if def and def.fills then child.kitGrow = 1 end
+        local fills = def and def.fills
+        if type(fills) == "function" then fills = fills(child.kitLayout) end
+        if fills then child.kitGrow = 1 end
     end
     -- A widget tells from its own Show and Hide; a plain frame through its
     -- scripts.

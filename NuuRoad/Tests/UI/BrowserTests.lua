@@ -188,8 +188,27 @@ end
 Browser.startButton:Click("LeftButton")
 settle()
 check(Progress:GetActiveGuide() and Progress:GetActiveGuide().id == barrens.id, "start makes it the active guide")
+check(Progress:IsOpen(barrens), "in a tab of its own")
 check(not win:IsShown(), "start closes the browser")
 ctx.noErrors("start")
+
+-- A guide open in a tab not shown offers to show it.
+do
+    local other = Repository:Get("nuuroad:leveling:horde-mulgore-1-6")
+    Progress:Select(other)
+    Progress:Select(barrens)
+    Browser:Toggle()
+    settle()
+    Browser:Pick(other)
+    check(Browser.startButton:GetText() == "Show", "a guide open in another tab offers Show")
+    Browser.startButton:Click("LeftButton")
+    settle()
+    check(Progress:GetActiveGuide() == other and #Progress:OpenIDs() >= 2, "Show switches to its tab, opening none")
+    Progress:Close(other)
+    check(Progress:GetActiveGuide() == barrens, "back on the Barrens")
+    Browser:Pick(barrens)
+    ctx.noErrors("open in a tab")
+end
 
 -- Opened again, the running guide says so, and a refresh after the guide
 -- moves on draws again.

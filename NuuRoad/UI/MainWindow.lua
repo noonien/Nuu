@@ -12,7 +12,8 @@ local _, ns = ...
 -- Built from kit parts: an in-play Panel (placed and sized by width through
 -- the kit's window placement, NuuRoadDB.windows.tracker), its band holding
 -- the guide's name and every control the tracker has (back, the step
--- counter that doubles as a jump box, skip, the menu, close), a SegmentBar
+-- counter that doubles as a jump box, skip, the menu, close), a strip of
+-- Tabs for the guides open (shown while there are two or more), a SegmentBar
 -- for the progress bar (a scrubber too), Cards for the step and the carried
 -- work, and a List for the steps. The tracker's height follows what the
 -- step asks for; only its width is the player's.
@@ -46,6 +47,10 @@ local AWAY_WIDTH = 42
 local LIST_ROW, LIST_NUMBER, LIST_PAD, LIST_ICON = 19, 22, 5, 13
 -- The progress bar's strip.
 local BAR_HEIGHT = 6
+-- A guide's tab: the widest and narrowest it is cut to. Below the narrowest
+-- the tabs that do not fit go into the "+N" menu at the end of the strip,
+-- which takes about MORE_WIDTH.
+local TAB_MAX, TAB_MIN, TAB_GAP, MORE_WIDTH = 170, 90, 2, 34
 -- The height the tracker never goes under.
 local MIN_HEIGHT = 95
 local ACTION_DEBOUNCE, REFRESH_THROTTLE, AWAY_THROTTLE = 0.3, 0.2, 0.25
@@ -806,6 +811,9 @@ function MainWindow:CreateTracker()
 
     local content = frame:Column{ padding = PAD, gap = GAP }
     self.content = content
+    -- The open guides' tabs, made again whenever the guides open change.
+    self.tabRow = content:Row{ gap = 4 }
+    self.tabRow:Hide()
     -- The bar is one continuous strip of the guide, and a scrubber: click or
     -- drag it to move there.
     self.bar = content:SegmentBar{ min = 0, max = 1, barHeight = BAR_HEIGHT, scrub = true,
@@ -951,6 +959,106 @@ function MainWindow:JumpToNumber(text)
     if not ok then ns:Print(err or "That step cannot be opened.") end
     self:Landed()
     self:Refresh()
+end
+
+-- The tabs -------------------------------------------------------------------------------------
+
+-- A tab's caption: the guide's title without the faction it is written
+-- for, which the guides one character runs share. Its tooltip has the whole.
+local function tabCaption(guide)
+    local title = guide.meta and guide.meta.title or guide.id
+    title = title:gsub("^Horde%s+", "")
+    title = title:gsub("^Alliance%s+", "")
+    return title
+end
+
+local function tabChosen(key) MainWindow:ShowGuide(key) end
+local function tabClosed(key) MainWindow:CloseGuide(key) end
+local function moreClicked(link) MainWindow:OpenMoreTabs(link) end
+
+-- Shows an open guide: the tracker follows it from here, and the load-time
+-- scan catches it up on what was done while it was not shown.
+function MainWindow:ShowGuide(id)
+    local guide = M("GuideRepository"):Get(id)
+    if not guide then return end
+    M("Progress"):Select(guide)
+    self:Landed()
+    self:Refresh()
+end
+
+function MainWindow:CloseGuide(id)
+    local guide = M("GuideRepository"):Get(id) or { id = id }
+    M("Progress"):Close(guide)
+    self:Landed()
+    self:Refresh()
+end
+
+-- The guides open that the strip had no room for, to show one.
+function MainWindow:OpenMoreTabs(anchor)
+    local items = {}
+    for _, guide in ipairs(self.moreGuides or {}) do
+        local id = guide.id
+        table.insert(items, { caption = guide.meta and guide.meta.title or id, onClick = function() self:ShowGuide(id) end })
+    end
+    self:UI():OpenMenu(items, { anchor = anchor, align = "right" })
+end
+
+-- The strip shows while two or more guides are open. Each tab is cut to
+-- share the width; when even the narrowest would not fit, the strip keeps
+-- as many as fit (always the shown guide) and the rest are behind "+N".
+-- It is made again only when the guides, the one shown or the width change.
+function MainWindow:SyncTabs(active)
+    local Progress = M("Progress")
+    local open = Progress and Progress.OpenGuides and Progress:OpenGuides() or {}
+    local row = self.tabRow
+    if not active or #open < 2 then
+        if self.tabsKey then
+            row:Clear()
+            row:Hide()
+            self.tabsKey, self.moreGuides = nil, nil
+        end
+        return
+    end
+    local room = math.floor(self:Width()) - 2 - 2 * PAD
+    local parts = { tostring(room), active.id }
+    for _, guide in ipairs(open) do
+        table.insert(parts, guide.id)
+        table.insert(parts, tostring(guide.updated))
+        table.insert(parts, tostring(guide.meta and guide.meta.title))
+    end
+    local key = table.concat(parts, "|")
+    if key == self.tabsKey then return end
+    self.tabsKey = key
+
+    local shown, more = open, {}
+    local width = math.floor((room - (#open - 1) * TAB_GAP) / #open)
+    if width < TAB_MIN then
+        local fit = math.max(1, math.floor((room - MORE_WIDTH - 4 + TAB_GAP) / (TAB_MIN + TAB_GAP)))
+        width = math.floor((room - MORE_WIDTH - 4 - (fit - 1) * TAB_GAP) / fit)
+        local activeAt = 1
+        for index, guide in ipairs(open) do
+            if guide.id == active.id then activeAt = index end
+        end
+        shown = {}
+        for index, guide in ipairs(open) do
+            local keep = index < fit or (index == fit and activeAt <= fit) or index == activeAt
+            if keep then table.insert(shown, guide) else table.insert(more, guide) end
+        end
+    end
+    local spec = { value = active.id, pages = false, compact = true, divided = true, grow = 1,
+        maxTabWidth = math.min(TAB_MAX, width), onChange = tabChosen, onClose = tabClosed }
+    for _, guide in ipairs(shown) do
+        table.insert(spec, { key = guide.id, caption = tabCaption(guide),
+            tooltip = guide.meta and guide.meta.title or guide.id })
+    end
+    row:Clear()
+    row:Tabs(spec)
+    if #more > 0 then
+        row:Link{ "+" .. #more, valign = "center", onClick = moreClicked,
+            tooltip = "More open guides" }
+    end
+    self.moreGuides = more
+    row:Show()
 end
 
 -- The progress bar -----------------------------------------------------------------------------
@@ -1437,6 +1545,7 @@ function MainWindow:Refresh()
     readMarkers()
     local Progress = M("Progress")
     local guide = Progress and Progress:GetActiveGuide()
+    self:SyncTabs(guide)
     self:BeginCards()
     if not guide then
         self:SetStatus("")
@@ -1781,6 +1890,13 @@ function MainWindow:MenuItems()
         item.tone = "danger"
     end
     table.insert(items, reset)
+    -- Its tab shuts; its progress this session is kept, should it be opened
+    -- again. With one guide open there is no strip, so this is the way.
+    table.insert(items, { caption = "Close this guide", disabled = none, reason = none and "Start a guide first." or nil,
+        onClick = function()
+            local running = M("Progress"):GetActiveGuide()
+            if running then self:CloseGuide(running.id) end
+        end })
     local missing = self:MaterialsMissing()
     if missing then
         table.insert(items, { caption = missing > 0 and ("Materials list (" .. missing .. " missing)") or "Materials list",

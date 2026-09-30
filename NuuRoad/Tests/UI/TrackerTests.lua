@@ -2,8 +2,8 @@
 -- for the client (Tests/UI/Harness.lua): the empty tracker, a packaged guide
 -- started and drawn, back, skip, the list, the scrubber, the jump box, the
 -- menu and each of its entries, a craft step's Make button with and without
--- NuuProfessions' API, the settings it shows, hiding and showing, the width,
--- and the minimap button. Nothing may reach the error handler, and the kit's
+-- NuuProfessions' API, the settings it shows, the tabs of the guides open,
+-- hiding and showing, the width, and the minimap button. Nothing may reach the error handler, and the kit's
 -- reset audit must find every change marked.
 local ctx = dofile("Tests/UI/Harness.lua")
 local ns, check, settle, frames = ctx.ns, ctx.check, ctx.settle, ctx.frames
@@ -297,7 +297,7 @@ end
 
 do
     local menu = openMenu()
-    for _, caption in ipairs({ "Guides", "Edit this guide", "Reset this guide", "Authoring", "Report a bug", "Options" }) do
+    for _, caption in ipairs({ "Guides", "Edit this guide", "Reset this guide", "Close this guide", "Authoring", "Report a bug", "Options" }) do
         check(menuRow(menu, caption), "the menu has " .. caption)
     end
     click(MainWindow.menuButton)
@@ -460,6 +460,87 @@ do
 end
 ctx.noErrors("settings")
 
+-- The tabs -------------------------------------------------------------------------------
+
+do
+    -- The craft fixture and the Mulgore guide are both open by now.
+    local fixture = Repository:Get("nuuroad:fixture:professions")
+    local row = MainWindow.tabRow
+    local function strip() return row:IsShown() and row.kitChildren[1] or nil end
+    Progress:Select(guide)
+    MainWindow:Refresh(); settle()
+    local tabs = strip()
+    check(tabs and tabs.kitType == "Tabs", "two guides open show the strip")
+    check(row.kitChildren[1] == tabs and MainWindow.content.kitChildren[1] == row, "the strip heads the tracker's body")
+    check(tabs:GetValue() == guide.id and tabs.kitTabs[fixture.id] ~= nil, "a tab for each, the shown guide chosen")
+    check(tabs.kitTabs[guide.id].label:GetText() == "1-6: Mulgore", "the caption drops the faction: " .. tostring(tabs.kitTabs[guide.id].label:GetText()))
+    check(tabs.kitTabs[guide.id].tooltip == guide.meta.title, "the tooltip names the whole guide")
+    local fixtureTab = tabs.kitTabs[fixture.id]
+    check(fixtureTab.divider and fixtureTab.divider:IsShown(), "a hairline divides the tabs")
+    check(fixtureTab.closeButton:GetAlpha() == 0, "a tab's close mark waits for the pointer")
+    fixtureTab:Fire("OnEnter")
+    check(fixtureTab.closeButton:GetAlpha() == 1, "and shows under it")
+    fixtureTab:Fire("OnLeave")
+    local at = current()
+    click(tabs.kitTabs[fixture.id])
+    check(Progress:GetActiveGuide() == fixture and strip():GetValue() == fixture.id, "a tab shows its guide, and the strip follows")
+    check(string.find(win.title:GetText() or "", fixture.meta.title:sub(1, 6), 1, true), "the band names it")
+    click(strip().kitTabs[guide.id])
+    check(Progress:GetActiveGuide() == guide and current() == at, "back to the first guide, where it was")
+    -- Switching tabs once warm makes no frames.
+    local made = #frames.objects
+    click(strip().kitTabs[fixture.id])
+    click(strip().kitTabs[guide.id])
+    check(#frames.objects == made, "a switch builds from the pools: " .. (#frames.objects - made) .. " new")
+    ctx.noErrors("tabs")
+
+    -- More guides than fit: the shown one keeps its tab, the rest go behind "+N".
+    local extra = {}
+    for _, id in ipairs({ "nuuroad:leveling:horde-tirisfal-1-6", "nuuroad:leveling:horde-barrens-13-21",
+        "nuuroad:leveling:horde-mulgore-6-12" }) do
+        local other = Repository:Get(id)
+        check(other, id .. " is packaged")
+        table.insert(extra, other)
+        Progress:Select(other)
+    end
+    MainWindow:Refresh(); settle()
+    local last = extra[#extra]
+    tabs = strip()
+    local more = row.kitChildren[2]
+    check(#tabs.kitOrder == 3 and tabs:GetValue() == last.id, "three tabs fit, the shown guide's among them: " .. #tabs.kitOrder)
+    check(more and more.kitType == "Link" and more:GetText() == "+2", "the rest behind +2")
+    local right = tabs.kitPX + tabs.kitPW
+    check(more.kitPX >= right and more.kitPX + more.kitPW <= win:GetWidth() - 10, "+2 fits at the end of the strip")
+    for _, key in ipairs(tabs.kitOrder) do
+        local tab = tabs.kitTabs[key]
+        check(tab.kitPW <= 170 and tab.label:GetText():sub(-3) == "..." or #tab.label:GetText() < 20, "a tab cut to share the width")
+    end
+    click(more)
+    local menu = ctx.UI.kitMenu
+    check(menu and menu:IsShown() and menuRow(menu, extra[1].meta.title), "+2 lists the guides without a tab")
+    click(menuRow(menu, extra[1].meta.title))
+    check(Progress:GetActiveGuide() == extra[1] and strip().kitTabs[extra[1].id] ~= nil, "one picked there is shown, with a tab")
+    ctx.noErrors("tabs: more")
+
+    -- Shutting tabs: one not shown, then the shown one, then by the menu.
+    for _, other in ipairs(extra) do
+        if other ~= extra[1] then Progress:Close(other) end
+    end
+    Progress:Close(fixture)
+    MainWindow:Refresh(); settle()
+    check(#strip().kitOrder == 2 and not row.kitChildren[2], "two left, no +N")
+    click(strip().kitTabs[guide.id].closeButton)
+    check(Progress:GetActiveGuide() == extra[1] and not Progress:IsOpen(guide), "the mark shuts a tab not shown")
+    check(not row:IsShown(), "one guide open has no strip")
+    click(menuRow(openMenu(), "Close this guide"))
+    check(Progress:GetActiveGuide() == nil and #Progress:OpenIDs() == 0, "the menu shuts the last guide")
+    check(has(texts(MainWindow.cardHolder), "Choose a guide to begin."), "and the tracker asks for one")
+    Progress:Select(guide)
+    MainWindow:Refresh(); settle()
+    check(Progress:GetCurrentIndex(guide) == at and not row:IsShown(), "opened again where it was, alone")
+end
+ctx.noErrors("tabs")
+
 -- The width ------------------------------------------------------------------------------
 
 do
@@ -511,7 +592,7 @@ ctx.noErrors("launcher")
 
 -- Last: the guide cleared, the empty tracker again, then every card back to
 -- the pools, so the audit sees the releases.
-Progress.store.activeGuideID = nil
+Progress:Deselect()
 MainWindow:Refresh(); settle()
 check(has(texts(MainWindow.cardHolder), "Choose a guide to begin."), "no guide again")
 MainWindow:BeginCards()

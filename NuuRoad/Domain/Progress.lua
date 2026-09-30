@@ -11,22 +11,24 @@ local function newState(guide)
 end
 
 function Progress:Initialize()
-    -- Saved per character: the active guide and the flight paths learned.
+    -- Saved per character: the guides open in the tracker's tabs, the one
+    -- shown, and the flight paths learned.
     self.store = ns.modules.Config:CharacterStore()
     -- Guide progress is deliberately not saved. It lives for the session only,
     -- and the load-time scan places the player afresh at every login from what
     -- the client still knows. Progress an earlier version saved is dropped.
     self.store.guides = nil
     self.session = {}
+    self:SettleOpenGuides()
     -- No guide is chosen for the player. A login that recovers none opens on
     -- the empty tracker, which asks them to pick one: a guessed guide is a
     -- route nobody asked for, on a character it may not even be written for.
-    local step = self:ResumeStep()
-    if step then
+    for _, guide in ipairs(self:OpenGuides()) do
+        local step = self:ResumeStep(guide)
         -- The step the player was on at logout. The login scan still walks
-        -- forward from it as the quest log arrives.
-        local guide = self:GetActiveGuide()
-        if self:LandOn(guide, step) then
+        -- forward from it as the quest log arrives (for a tab not shown,
+        -- when it is shown).
+        if step and self:LandOn(guide, step) then
             ns:Log("resuming '" .. guide.meta.title .. "' at step " .. step)
         end
     end
@@ -39,28 +41,108 @@ function Progress:Initialize()
     ns:Log("progress store for " .. tostring(ns.modules.Config.characterKey) .. ": active guide " .. tostring(self.store.activeGuideID))
 end
 
--- The one piece of progress that is saved: the active guide's current step,
+-- The one piece of progress that is saved: each open guide's current step,
 -- stamped with the guide's `updated` so a guide edited since cannot hand back
 -- a position that now means another step. Everything else about progress is
 -- rebuilt by the login scan.
 function Progress:SaveResume()
-    local guide = self.store and self:GetActiveGuide()
-    local state = guide and self:PeekState(guide)
-    if not state or type(state.currentStep) ~= "number" then
-        if self.store then self.store.resume = nil end
-        return
+    if not self.store then return end
+    local resumes = {}
+    for _, guide in ipairs(self:OpenGuides()) do
+        local state = self:PeekState(guide)
+        if state and type(state.currentStep) == "number" then
+            resumes[guide.id] = { step = state.currentStep, updated = guide.updated }
+        end
     end
-    self.store.resume = { guideID = guide.id, step = state.currentStep, updated = guide.updated }
+    self.store.resumes = next(resumes) and resumes or nil
 end
 
--- The saved step to resume the active guide at, or nil when there is none or
--- it no longer fits the guide.
-function Progress:ResumeStep()
-    local resume, guide = self.store.resume, self.store.activeGuideID and self:GetActiveGuide()
-    if type(resume) ~= "table" or not guide or resume.guideID ~= guide.id or resume.updated ~= guide.updated then return nil end
+-- The saved step to resume a guide at (the active one when none is named),
+-- or nil when there is none or it no longer fits the guide.
+function Progress:ResumeStep(guide)
+    guide = guide or (self.store.activeGuideID and self:GetActiveGuide())
+    local resumes = self.store.resumes
+    local resume = guide and type(resumes) == "table" and resumes[guide.id]
+    if type(resume) ~= "table" or resume.updated ~= guide.updated then return nil end
     local step = resume.step
     if type(step) ~= "number" or step % 1 ~= 0 or step <= 1 or step > #guide.nodes then return nil end
     return step
+end
+
+-- Tabs -------------------------------------------------------------------------------------
+
+-- The guides open in the tracker's tabs, as IDs in the tabs' order. The
+-- active guide is always one of them; the others wait, their session
+-- progress kept, and are followed again when they are shown.
+function Progress:OpenIDs()
+    local ids = self.store.openGuides
+    if type(ids) ~= "table" then
+        ids = {}
+        self.store.openGuides = ids
+    end
+    return ids
+end
+
+-- The saved tabs made to fit what is known now: a character saved before
+-- there were tabs has its one guide open, and its one saved step kept; a
+-- guide no longer in the repository (a guide of the player's deleted) is
+-- no longer open.
+function Progress:SettleOpenGuides()
+    local store, ids = self.store, self:OpenIDs()
+    local old = store.resume
+    if type(old) == "table" and old.guideID ~= nil and store.resumes == nil then
+        store.resumes = { [old.guideID] = { step = old.step, updated = old.updated } }
+    end
+    store.resume = nil
+    if store.activeGuideID and not self:IsOpen({ id = store.activeGuideID }) then
+        table.insert(ids, 1, store.activeGuideID)
+    end
+    local Repository = ns.modules.GuideRepository
+    for index = #ids, 1, -1 do
+        local id = ids[index]
+        if id ~= store.activeGuideID and not Repository:Get(id) then table.remove(ids, index) end
+    end
+end
+
+-- The open guides the repository has, in the tabs' order.
+function Progress:OpenGuides()
+    local list, Repository = {}, ns.modules.GuideRepository
+    for _, id in ipairs(self:OpenIDs()) do
+        local guide = Repository:Get(id)
+        if guide then table.insert(list, guide) end
+    end
+    return list
+end
+
+function Progress:IsOpen(guide)
+    for _, id in ipairs(self:OpenIDs()) do
+        if id == guide.id then return true end
+    end
+    return false
+end
+
+-- Shuts a guide's tab. Its session progress is kept, so opening it again
+-- picks up where it was. Shutting the active guide shows the tab that takes
+-- its place (the next, else the one before); shutting the last leaves the
+-- tracker with no guide. Returns the guide active after.
+function Progress:Close(guide)
+    local ids, at = self:OpenIDs(), nil
+    for index, id in ipairs(ids) do
+        if id == guide.id then at = index end
+    end
+    if not at then return self:GetActiveGuide() end
+    table.remove(ids, at)
+    if type(self.store.resumes) == "table" then self.store.resumes[guide.id] = nil end
+    if self.store.activeGuideID ~= guide.id then return self:GetActiveGuide() end
+    local Repository = ns.modules.GuideRepository
+    local nextID = ids[at] or ids[at - 1]
+    local nextGuide = nextID and Repository:Get(nextID)
+    if nextGuide then
+        self:Select(nextGuide)
+    else
+        self.store.activeGuideID = nil
+    end
+    return nextGuide
 end
 
 -- Moves a guide still on its first step ahead to the step at `index` (1-based
@@ -113,7 +195,10 @@ function Progress:GetState(guide)
     return state
 end
 
+-- Shows a guide, opening a tab for it when it has none: at the end, the
+-- way a new tab opens.
 function Progress:Select(guide)
+    if not self:IsOpen(guide) then table.insert(self:OpenIDs(), guide.id) end
     self.store.activeGuideID = guide.id
     local state = self:GetState(guide)
     state.holdStep = nil
@@ -545,11 +630,14 @@ function Progress:RecordTalk(guide, stepIndex, npcID)
     return true
 end
 
--- The tracker follows no guide: it asks for one, as at a login that recovers
--- none. The session's progress on the guide it left is kept.
+-- The tracker follows no guide and has no tabs: it asks for one, as at a
+-- login that recovers none. The session's progress on the guides it left is
+-- kept.
 function Progress:Deselect()
     if not self.store then return end
     self.store.activeGuideID = nil
+    self.store.openGuides = nil
+    self.store.resumes = nil
     self.store.resume = nil
 end
 

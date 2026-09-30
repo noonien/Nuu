@@ -260,26 +260,69 @@ assert(not Progress:LandOn(gated, 4), "with no reachable step at or past it, not
 assert((Progress:GetCurrentNode(gated)).index == 1, "the guide is left on its first step")
 ns.modules.Client = nil
 
--- The resume step: saved at logout for the active guide, used at the next
+-- The resume step: saved at logout for every open guide, used at the next
 -- login only while the guide is unchanged and the step still fits it.
 local repositoryGet = ns.modules.GuideRepository.Get
 ns.modules.GuideRepository.Get = function(_, id) return (id == gated.id and gated) or repositoryGet(nil, id) end
 gated.nodes[4].condition, gated.nodes[5].condition = nil, nil
-Progress.store, Progress.session = { activeGuideID = gated.id }, {}
+Progress.store, Progress.session = { activeGuideID = gated.id, openGuides = { gated.id } }, {}
 assert(Progress:LandOn(gated, 4))
 Progress:SaveResume()
-local resume = Progress.store.resume
-assert(resume.guideID == gated.id and resume.step == 4 and resume.updated == gated.updated)
-assert(Progress:ResumeStep() == 4)
+local resume = Progress.store.resumes[gated.id]
+assert(resume.step == 4 and resume.updated == gated.updated)
+assert(Progress:ResumeStep() == 4 and Progress:ResumeStep(gated) == 4)
 resume.updated = gated.updated - 1
 assert(Progress:ResumeStep() == nil, "a guide edited since the save discards the step")
 resume.updated, resume.step = gated.updated, 99
 assert(Progress:ResumeStep() == nil, "a step past the end is not restored")
-resume.step, resume.guideID = 4, "test:other"
+Progress.store.resumes = { ["test:other"] = { step = 4, updated = gated.updated } }
 assert(Progress:ResumeStep() == nil, "a step saved for another guide is not restored")
-Progress.store.activeGuideID = nil
+Progress.store.activeGuideID, Progress.store.openGuides = nil, nil
 Progress:SaveResume()
-assert(Progress.store.resume == nil, "no active guide saves no step")
+assert(Progress.store.resumes == nil, "no open guide saves no step")
+
+-- Tabs: a guide shown is open; shutting one moves to the tab in its place.
+do
+    local function tabGuide(id)
+        return { schema = 2, id = id, updated = 1789862400, meta = { title = id, category = "test" },
+            sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3 } } },
+            nodes = { { kind = "action", title = "A" }, { kind = "action", title = "B" }, { kind = "end", title = "C" } } }
+    end
+    local one, two, three = tabGuide("test:tab-one"), tabGuide("test:tab-two"), tabGuide("test:tab-three")
+    local byID = { [one.id] = one, [two.id] = two, [three.id] = three }
+    local repository, scan = ns.modules.GuideRepository, ns.modules.GuideScan
+    ns.modules.GuideRepository, ns.modules.GuideScan = { Get = function(_, id) return byID[id] end }, nil
+    local function open() return table.concat(Progress:OpenIDs(), ",") end
+    Progress.store, Progress.session = {}, {}
+    Progress:Select(one)
+    Progress:Select(two)
+    Progress:Select(three)
+    assert(open() == "test:tab-one,test:tab-two,test:tab-three" and Progress:GetActiveGuide() == three, "each guide opens a tab")
+    Progress:Forward(two)
+    Progress:Select(two)
+    assert(open() == "test:tab-one,test:tab-two,test:tab-three", "a guide already open keeps its tab")
+    assert(Progress:GetCurrentIndex(two) == 2, "and its place")
+    assert(Progress:IsOpen(one) and #Progress:OpenGuides() == 3)
+    -- The saved steps, one per open guide that has moved.
+    Progress:SaveResume()
+    assert(Progress.store.resumes[two.id].step == 2 and Progress.store.resumes[one.id].step == 1, "a step saved for each open guide")
+    assert(Progress:ResumeStep(two) == 2 and Progress:ResumeStep(one) == nil, "a guide on its first step has nothing to resume")
+    assert(Progress:Close(one) == two and open() == "test:tab-two,test:tab-three", "shutting a tab not shown leaves the shown one")
+    assert(Progress.store.resumes[one.id] == nil, "and forgets its saved step")
+    assert(Progress:Close(two) == three and Progress:GetActiveGuide() == three, "shutting the shown tab shows the next")
+    Progress:Select(two)
+    assert(open() == "test:tab-three,test:tab-two" and Progress:GetCurrentIndex(two) == 2, "opened again at the end, where it was")
+    assert(Progress:Close(two) == three, "shutting the last tab shows the one before")
+    assert(Progress:Close(three) == nil and Progress:GetActiveGuide() == nil and open() == "", "shutting every tab leaves no guide")
+    -- A character saved before tabs: its guide is open, its step kept; a
+    -- guide the repository no longer has is not.
+    Progress.store = { activeGuideID = two.id, resume = { guideID = two.id, step = 2, updated = two.updated },
+        openGuides = { "test:gone", one.id } }
+    Progress:SettleOpenGuides()
+    assert(open() == "test:tab-two,test:tab-one", "the active guide is open, the missing one is not: " .. open())
+    assert(Progress.store.resume == nil and Progress:ResumeStep(two) == 2, "the old saved step carries over")
+    ns.modules.GuideRepository, ns.modules.GuideScan = repository, scan
+end
 
 -- Forward passes over reminders: they are done on arrival, and are no stop.
 do
@@ -306,10 +349,11 @@ do
     Progress:Select(guide)
 end
 
--- Deselect leaves the tracker with no guide and no step to resume.
-Progress.store = { activeGuideID = gated.id, resume = { guideID = gated.id, step = 2 } }
+-- Deselect leaves the tracker with no guide, no tabs and no step to resume.
+Progress.store = { activeGuideID = gated.id, openGuides = { gated.id }, resumes = { [gated.id] = { step = 2 } } }
 Progress:Deselect()
-assert(Progress.store.activeGuideID == nil and Progress.store.resume == nil, "deselect clears the active guide")
+assert(Progress.store.activeGuideID == nil and Progress.store.resumes == nil and Progress.store.openGuides == nil,
+    "deselect clears the active guide and the tabs")
 assert(Progress:GetActiveGuide() == nil)
 
 -- A guide rebuilt under the same ID keeps the progress of the steps it still

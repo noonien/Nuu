@@ -87,6 +87,12 @@ local function isActive(guide)
     return active ~= nil and active.id == guide.id
 end
 
+-- Open in one of the tracker's tabs, shown or not.
+local function isOpen(guide)
+    local Progress = modules().Progress
+    return Progress ~= nil and Progress.store ~= nil and Progress:IsOpen(guide)
+end
+
 local function isPersonal(guide)
     local Repository = modules().GuideRepository
     return not Repository:IsBuiltIn(guide.id) and not Repository:IsSessionGuide(guide.id)
@@ -286,7 +292,7 @@ function Browser:ViewGuides(view, pool, tree, level)
         elseif view == "near" then
             keep = mapID and guideMaps(guide)[mapID]
         elseif view == "progress" then
-            keep = isActive(guide) or completedCount(guide) > 0
+            keep = isOpen(guide) or completedCount(guide) > 0
         elseif view == "mine" then
             keep = isPersonal(guide)
         end
@@ -437,9 +443,11 @@ local function stateKey()
     local Repository, Config = modules().GuideRepository, modules().Config
     local active = activeGuide()
     local mapID = currentMap()
+    local Progress = modules().Progress
     return table.concat({
         tostring(Repository.version),
         active and active.id or "-",
+        Progress and Progress.store and table.concat(Progress:OpenIDs(), ",") or "",
         active and completedCount(active) or 0,
         tostring(playerLevel()),
         tostring(mapID),
@@ -561,6 +569,7 @@ function Browser:DrawRow(row, guide)
     if not runnable then table.insert(parts, paint("danger", "not for this character")) end
     local done, total = completedCount(guide), stepCount(guide)
     if active then table.insert(parts, paint("accent", "active " .. done .. "/" .. total))
+    elseif isOpen(guide) then table.insert(parts, paint("accent", "open " .. done .. "/" .. total))
     elseif total > 0 and done >= total then table.insert(parts, paint("done", "finished"))
     elseif done > 0 then table.insert(parts, done .. "/" .. total) end
     if isPersonal(guide) then table.insert(parts, "yours") end
@@ -609,9 +618,12 @@ function Browser:DrawDetail(guide, level)
     end
     self.detailBody:SetText(table.concat(lines, "\n"))
 
-    self.startButton:SetText(active and "Show" or (done > 0 and "Resume" or "Start"))
+    local open = isOpen(guide)
+    self.startButton:SetText((active or open) and "Show" or (done > 0 and "Resume" or "Start"))
     self.startButton:SetTooltip(active and "This guide is running; show the tracker"
-        or (done > 0 and "Go back to this guide where you left it" or nil))
+        or (open and "This guide is open in a tab; show it")
+        or (done > 0 and "Go back to this guide where you left it, in a tab of its own")
+        or "Opens this guide in a tab of its own")
     self.startButton:Show()
     self.editButton:SetTooltip(not isPersonal(guide) and "Opens a copy. The packaged guide is never changed." or nil)
     self.editButton:Show()

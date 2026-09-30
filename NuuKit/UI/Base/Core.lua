@@ -214,7 +214,8 @@ end
 --   stretch     false: not stretched across a column (buttons, toggles)
 --   valign      where it sits across a row when the spec says nothing ("top")
 --   wraps       true: its height depends on its width (wrapped text)
---   fills       true: grows to fill a window, pane or page it is made in
+--   fills       true: grows to fill a window, pane or page it is made in;
+--               or fills(spec), for a type that fills only with some specs
 --   grow(spec, parent)  its grow weight when the spec gives none
 --   fit         false: made by the caller, it is not sized to its natural
 --               size (a column the caller anchors)

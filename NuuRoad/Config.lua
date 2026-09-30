@@ -88,9 +88,9 @@ local Config = {
     },
     -- A character's record lives in the per-character NuuRoadCharacterDB
     -- (see Config:CharacterStore) and is made when first needed, and so is
-    -- everything in it: the active guide, the saved resume step and the
-    -- flight paths learned (Domain/Progress.lua). Nothing is carried over
-    -- from OpenRoad's saved variables.
+    -- everything in it: the guides open in tabs and the one shown, their
+    -- saved resume steps and the flight paths learned (Domain/Progress.lua).
+    -- Nothing is carried over from OpenRoad's saved variables.
 }
 
 local function copyDefaults(target, defaults)
@@ -391,10 +391,18 @@ function Config:GetSavedDataLines()
         local count = 0
         for _ in pairs(Progress.session or {}) do count = count + 1 end
         table.insert(lines, "Guides with progress this session (never saved): " .. count)
-        local resume = store.resume
-        table.insert(lines, "Saved resume step: " .. (type(resume) == "table"
-            and (tostring(resume.step) .. " of " .. tostring(resume.guideID) .. (Progress.ResumeStep and Progress:ResumeStep() and "" or " (not used: guide changed or not active)"))
-            or "none"))
+        local open = {}
+        for _, id in ipairs(type(store.openGuides) == "table" and store.openGuides or {}) do table.insert(open, tostring(id)) end
+        table.insert(lines, "Open guides (tabs): " .. (#open > 0 and table.concat(open, ", ") or "none"))
+        local resumes, Repository = {}, ns.modules.GuideRepository
+        for id, resume in pairs(type(store.resumes) == "table" and store.resumes or {}) do
+            local guide = Repository and Repository:Get(id)
+            local used = guide and Progress:ResumeStep(guide)
+            table.insert(resumes, tostring(type(resume) == "table" and resume.step) .. " of " .. tostring(id)
+                .. (used and "" or " (not used: guide changed or gone)"))
+        end
+        table.sort(resumes)
+        table.insert(lines, "Saved resume steps: " .. (#resumes > 0 and table.concat(resumes, "; ") or "none"))
     end
     local names = {}
     for name, active in pairs(report.characters or {}) do table.insert(names, name .. " -> " .. tostring(active or "no active guide")) end

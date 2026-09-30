@@ -13,18 +13,30 @@ local types = UI.types
 -- hairline, so they never read as actions.
 --
 -- Spec: the entries are the array part, each { key, caption, badge,
--- disabled }; value (the tab chosen first, else the first), bind, default,
--- onChange(key, tabs) (the player's choice only: a click or an arrow key),
--- padding (around the pages), pagePadding and gap (in each page), rule
--- (false: no hairline under the strip, as in a window's band).
+-- disabled, tooltip }; value (the tab chosen first, else the first), bind,
+-- default, onChange(key, tabs) (the player's choice only: a click or an
+-- arrow key), padding (around the pages), pagePadding and gap (in each
+-- page), rule (false: no hairline under the strip, as in a window's band).
 -- `tabs:Page(key)` is the column that tab shows; it fills the room under
 -- the strip.
+--
+-- For tabs that stand for things the player opens and shuts (documents,
+-- guides) rather than parts of one window: onClose(key, tabs) puts a close
+-- mark on every tab, shown while the pointer is on the tab, and hears its
+-- click (the addon takes the tab away by making the tabs again); divided
+-- puts a thin line between each two tabs, so a strip of them reads as tabs
+-- with nothing under it; pages = false makes the strip alone, with no pages
+-- under it; compact a lower strip; maxTabWidth cuts a longer caption short
+-- with "..." (the entry's tooltip can carry the whole of it).
 --
 -- The widget is a column of two parts it keeps for good: the strip (a row
 -- of tab frames) and the holder (a column of pages). Tab frames and pages
 -- are made the first time a spec needs that many and reused after; on
 -- release, what the addon made in the pages goes back to its pools.
-local TAB_HEIGHT = 30
+local TAB_HEIGHT, COMPACT_HEIGHT = 30, 24
+local STRIP_LAYOUT, COMPACT_LAYOUT = { height = TAB_HEIGHT }, { height = COMPACT_HEIGHT }
+-- The close mark's square, and the width it adds to its tab.
+local CLOSE_SIZE, CLOSE_ROOM = 16, 12
 local TAB_LAYOUT = {}
 local NO_GAP = { gap = 0 }
 
@@ -39,24 +51,47 @@ local function paintTabState(tab, t)
     end
     UI.TextColor(tab.label, color)
     UI.TexColor(tab.line, tab.kitSelected and t.accent or nil)
+    -- The close mark is there only under the pointer. It fades rather than
+    -- hides, so the pointer moving from the tab onto it still finds it.
+    local close = tab.closeButton
+    if close and tab.kitClosable then close:SetAlpha((tab.hover or close.hover) and 1 or 0) end
 end
 
 local function paintTab(tab, t)
     UI.ApplyStyle(tab.label, "body", t, nil, true)
+    if tab.divider then UI.TexColor(tab.divider, t.muted45) end
     paintTabState(tab, t)
     tab:Changed()
 end
 
-local function tabMeasure(tab)
-    local width = UI.StringWidth(tab.label) + 28
-    if tab.badge:IsShown() then width = width + 5 + tab.badge:NaturalWidth() end
-    return math.ceil(width), TAB_HEIGHT
+-- The caption, cut short with "..." when it is wider than `room`.
+local function fitCaption(tab, room)
+    local label, caption = tab.label, tab.kitCaption
+    label:SetText(caption)
+    if not room or UI.StringWidth(label) <= room then return end
+    local low, high = 0, #caption
+    while low < high do
+        local mid = math.floor((low + high + 1) / 2)
+        label:SetText(caption:sub(1, mid) .. "...")
+        if UI.StringWidth(label) <= room then low = mid else high = mid - 1 end
+    end
+    label:SetText((caption:sub(1, low):gsub("%s+$", "")) .. "...")
 end
 
--- The caption and badge centred together.
+local function tabMeasure(tab)
+    local w = tab.kitTabsWidget
+    local extra = 28
+    if tab.badge:IsShown() then extra = extra + 5 + tab.badge:NaturalWidth() end
+    if tab.kitClosable then extra = extra + CLOSE_ROOM end
+    fitCaption(tab, w.kitMaxTabWidth and (w.kitMaxTabWidth - extra))
+    return math.ceil(UI.StringWidth(tab.label) + extra), w.kitTabHeight
+end
+
+-- The caption and badge centred together, clear of the close mark.
 local function tabSized(tab)
     local shift = 0
     if tab.badge:IsShown() then shift = -(5 + tab.badge:NaturalWidth()) / 2 end
+    if tab.kitClosable then shift = shift - CLOSE_ROOM / 2 end
     tab.label:ClearAllPoints()
     tab.label:SetPoint("CENTER", tab, "CENTER", UI.Snap(tab, shift), 1)
 end
@@ -70,7 +105,8 @@ local function choose(w, key, byPlayer)
         local tab = w.kitTabs[k]
         tab.kitSelected = k == key
         paintTabState(tab, t)
-        w.kitPages[k]:SetShown(k == key)
+        local page = w.kitPages[k]
+        if page then page:SetShown(k == key) end
     end
     UI.Invalidate(w.holder)
     if byPlayer then UI.Commit(w, key) end
@@ -82,6 +118,20 @@ local function tabClicked(tab)
     UI.ClearTypingFocus(nil)
     if tab.kitKey ~= w.kitChosen then UI.ClickSound() end
     choose(w, tab.kitKey, true)
+end
+
+-- The pointer on the close mark keeps it shown; leaving it for somewhere
+-- off the tab puts it away.
+local function closeHovered(button)
+    local tab = button.kitTab
+    paintTabState(tab, tab.ui.tokens)
+end
+
+local function closeClicked(button)
+    local tab = button.kitTab
+    local w = tab.kitTabsWidget
+    UI.ClearTypingFocus(nil)
+    if w.kitOnClose then w.kitOnClose(tab.kitKey, w) end
 end
 
 -- Left / up and right / down move to the next tab that can be chosen, and
@@ -124,8 +174,10 @@ local function tabFrame(w, index)
     tab.badge = UI.Make(ui, "Tag", tab, { "", tone = "estimate" })
     tab.badge.kitFree = true
     tab.badge:SetPoint("LEFT", tab.label, "RIGHT", 5, 0)
-    -- Hover repaints the tab alone (its own PaintState).
+    -- Hover repaints the tab alone (its own PaintState), and shows the
+    -- entry's tooltip when it has one.
     UI.Hover(tab)
+    UI.HookTooltip(tab)
     tab:SetScript("OnClick", tabClicked)
     -- Painted on a look change and laid out again on a change of scale.
     ui.widgets[tab] = true
@@ -152,13 +204,14 @@ local function emptyMap(map)
 end
 
 UI.Define("Tabs", {
-    stack = true, fills = true,
+    -- A strip alone has nothing to fill the room with.
+    stack = true, fills = function(spec) return spec.pages ~= false end,
     Build = function(w)
         local ui = w.ui
         w:SetSize(1, 1)
         UI.MakeStack(ui, w, "column", NO_GAP)
 
-        local strip = UI.Part(ui, w, "row", { gap = 2, padding = 0 }, { height = TAB_HEIGHT })
+        local strip = UI.Part(ui, w, "row", { gap = 2, padding = 0 }, STRIP_LAYOUT)
         strip.rule = strip:CreateTexture(nil, "BACKGROUND")
         strip.rule:SetPoint("BOTTOMLEFT")
         strip.rule:SetPoint("BOTTOMRIGHT")
@@ -178,10 +231,13 @@ UI.Define("Tabs", {
         UI.SetStack(w, "column", NO_GAP)
         UI.SetStack(w.holder, "column", { gap = 0, padding = spec.padding or 0 })
         w.strip.rule:SetShown(spec.rule ~= false)
+        local paged, height = spec.pages ~= false, spec.compact and COMPACT_HEIGHT or TAB_HEIGHT
+        w.kitTabHeight, w.kitMaxTabWidth, w.kitOnClose = height, spec.maxTabWidth, spec.onClose
+        local divided = spec.divided and true or false
+        w.strip.kitLayout = spec.compact and COMPACT_LAYOUT or STRIP_LAYOUT
         -- A released stack gave its parts up: they come back.
         if #w.kitChildren == 0 then
             w.strip:Show()
-            w.holder:Show()
             w:Append(w.strip)
             w:Append(w.holder)
         end
@@ -190,6 +246,7 @@ UI.Define("Tabs", {
         empty(w.kitOrder)
         empty(w.strip.kitChildren)
         empty(w.holder.kitChildren)
+        w.holder:SetShown(paged)
         local count = 0
         for index, entry in ipairs(spec) do
             count = index
@@ -197,7 +254,30 @@ UI.Define("Tabs", {
             tab.kitPooled = nil
             tab.kitKey = entry.key
             tab.kitSelected, tab.hover = false, nil
-            tab.label:SetText(entry.caption or entry.key)
+            tab.kitCaption = entry.caption or entry.key
+            tab.label:SetText(tab.kitCaption)
+            tab.tooltip = entry.tooltip
+            tab:SetHeight(height)
+            tab.kitClosable = spec.onClose ~= nil
+            if tab.kitClosable and not tab.closeButton then
+                local close = UI.Make(ui, "GlyphButton", tab, { "close", size = CLOSE_SIZE, glyphSize = 7, onClick = closeClicked })
+                close.kitFree = true
+                close.kitTab = tab
+                close:SetPoint("RIGHT", tab, "RIGHT", -6, 0)
+                close:HookScript("OnEnter", closeHovered)
+                close:HookScript("OnLeave", closeHovered)
+                tab.closeButton = close
+            end
+            if tab.closeButton then tab.closeButton:SetShown(tab.kitClosable) end
+            -- The hairline at a tab's left, from the second tab on.
+            if divided and index > 1 and not tab.divider then
+                tab.divider = tab:CreateTexture(nil, "ARTWORK")
+                tab.divider:SetPoint("LEFT", tab, "LEFT", -1, 0)
+                tab.divider:SetHeight(14)
+                UI.Hairline(tab.divider, "width")
+                UI.TexColor(tab.divider, ui.tokens.muted45)
+            end
+            if tab.divider then tab.divider:SetShown(divided and index > 1) end
             tab.badge:SetShown(entry.badge ~= nil)
             if entry.badge ~= nil then tab.badge:SetText(tostring(entry.badge)) end
             if entry.disabled then tab:Disable() else tab:Enable() end
@@ -206,14 +286,16 @@ UI.Define("Tabs", {
             UI.RegisterFocusable(ui, tab, false)
             w.strip:Append(tab)
 
-            local page = pageFrame(w, index)
-            UI.SetStack(page, "column", { gap = spec.gap or 8, padding = spec.pagePadding or 0 })
-            page.kitGrow = 1
-            page:Hide()
-            w.holder:Append(page)
+            if paged then
+                local page = pageFrame(w, index)
+                UI.SetStack(page, "column", { gap = spec.gap or 8, padding = spec.pagePadding or 0 })
+                page.kitGrow = 1
+                page:Hide()
+                w.holder:Append(page)
+                w.kitPages[entry.key] = page
+            end
 
             w.kitTabs[entry.key] = tab
-            w.kitPages[entry.key] = page
             w.kitOrder[index] = entry.key
         end
         -- Frames this spec does not use wait, hidden, for a longer one.
@@ -221,6 +303,9 @@ UI.Define("Tabs", {
             local tab = w.kitTabFrames[index]
             tab:Hide()
             tab.kitParent, tab.kitPooled = nil, true
+            tab.tooltip = nil
+        end
+        for index = paged and count + 1 or 1, #w.kitPageFrames do
             w.kitPageFrames[index]:Hide()
             w.kitPageFrames[index].kitParent = nil
         end
@@ -229,11 +314,15 @@ UI.Define("Tabs", {
         choose(w, w.kitTabs[value] and value or w.kitOrder[1], false)
     end,
     Release = function(w)
-        for index, page in ipairs(w.kitPageFrames) do
+        for _, page in ipairs(w.kitPageFrames) do
             page:ReleaseChildren()
             page:Hide()
-            w.kitTabFrames[index].kitPooled = true
         end
+        for _, tab in ipairs(w.kitTabFrames) do
+            tab.kitPooled = true
+            tab.tooltip = nil
+        end
+        w.kitOnClose = nil
     end,
     methods = {
         -- The column a tab shows.
