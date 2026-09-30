@@ -236,8 +236,6 @@ clear expected result, and includes a manual fallback where an API integration i
 fixture in the same change as every schema, progress, UI, navigation, or adapter change; do not let fixtures drift from
 the supported model. Keep fixture IDs stable so saved-progress and migration testing remains meaningful.
 
-- `nuuroad:getting-started` validates selection, one-line tracker rendering, manual complete/skip/undo/reset, close,
-  reopening, and reload-resume.
 - Add one narrowly scoped fixture per new slice (for example `nuuroad:fixture:choice`, `:travel-poi`,
   `:quest-objective`, `:objective-group`, and `:predicate`).
 - Fixtures must be short, understandable without developer tools, and tagged `fixture`; production guides must not

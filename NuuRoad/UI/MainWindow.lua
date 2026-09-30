@@ -963,13 +963,10 @@ end
 
 -- The tabs -------------------------------------------------------------------------------------
 
--- A tab's caption: the guide's title without the faction it is written
--- for, which the guides one character runs share. Its tooltip has the whole.
+-- A tab's caption: the guide's title. Its tooltip repeats it for a caption
+-- the tab cuts short.
 local function tabCaption(guide)
-    local title = guide.meta and guide.meta.title or guide.id
-    title = title:gsub("^Horde%s+", "")
-    title = title:gsub("^Alliance%s+", "")
-    return title
+    return guide.meta and guide.meta.title or guide.id
 end
 
 local function tabChosen(key) MainWindow:ShowGuide(key) end

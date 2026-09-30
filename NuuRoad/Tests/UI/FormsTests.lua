@@ -204,7 +204,7 @@ check(form.category == "other", "a new kind opens on its own catch-all")
 
 -- A guide report, with a guide running.
 local Repository, Progress = ns.modules.GuideRepository, ns.modules.Progress
-local guide = Repository:Get("nuuroad:getting-started")
+local guide = Repository:Get("nuuroad:leveling:horde-barrens-13-21")
 check(guide, "a packaged guide to report on")
 Progress:Select(guide)
 -- Without a guide a guide report cannot be filed.

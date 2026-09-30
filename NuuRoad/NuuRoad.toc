@@ -15,7 +15,6 @@ Data/Schema.lua
 Data/Names.lua
 Data/Steps.lua
 Data/Travel.lua
-Data/BuiltIn/GettingStarted.lua
 Data/BuiltIn/HordeBarrens.lua
 Data/BuiltIn/HordeMulgore16.lua
 Data/BuiltIn/HordeMulgore612.lua

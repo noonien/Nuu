@@ -278,7 +278,7 @@ end
 function Browser:ViewGuides(view, pool, tree, level)
     local Catalog, list = modules().GuideCatalog, {}
     if view:sub(1, 7) == "folder:" then
-        return Catalog:Under(tree.byKey[view:sub(8)])
+        return Catalog:Sort(Catalog:Under(tree.byKey[view:sub(8)]))
     end
     if view == "all" then
         for _, guide in ipairs(pool) do table.insert(list, guide) end

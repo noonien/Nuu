@@ -138,7 +138,7 @@ end
 -- Plain text grouped by guide, then by character, ready to paste anywhere:
 --
 --   NuuRoad 0.1.0-dev | client 1.15.8 (60000, Sep 1 2026, toc 11508) | exported 2026-09-19 14:02
---   Guide: Horde 13-21: The Barrens & Stonetalon (nuuroad:leveling:horde-barrens-13-21, updated 1789862400)
+--   Guide: The Barrens and Stonetalon (nuuroad:leveling:horde-barrens-13-21, updated 1789862400)
 --     Grom-Whitemane (Orc Warrior 14)
 --       09-19 14:02 @accept:870  quest 870 is 'The Zhevra' on this client, ...
 function GuideAudit:ExportText()

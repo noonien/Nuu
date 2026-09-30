@@ -21,7 +21,7 @@ ns.builtInGuides["nuuroad:leveling:horde-mulgore-6-12"] = {
     map = 1412,
     only = "Horde",
     meta = {
-        title = "Horde 6-12: Mulgore & Thunder Bluff",
+        title = "Mulgore: Bloodhoof and Thunder Bluff",
         author = "NuuRoad",
         category = "Leveling/Mulgore",
         tags = { "horde", "tauren", "mulgore", "bloodhoof", "thunder bluff" },
@@ -354,7 +354,7 @@ ns.builtInGuides["nuuroad:leveling:horde-mulgore-6-12"] = {
                 at = { { 39.34, 28.25, map = 1411 }, { 39.11, 30.76, map = 1411 }, { 39.11, 26.46, map = 1411 },
                        { 39.39, 25.05, map = 1411 }, { 40.00, 24.06, map = 1411 }, { 42.51, 24.29, map = 1411 } } },
             { turnin = 1498, accept = 1502, npc = 5810, only = "Warrior", at = { 61.40, 21.10 } },
-            { finish = "Mulgore is done and the Crossroads quests are in your log. Continue with Horde 13-21: The Barrens & Stonetalon." },
+            { finish = "Mulgore is done and the Crossroads quests are in your log. Continue with The Barrens and Stonetalon." },
         } },
     },
 }

@@ -32,8 +32,8 @@ assert(Catalog:IsFixture(guide("f", "Fixtures/Travel")) and Catalog:IsFixture(gu
 assert(not Catalog:IsFixture(guide("h", "Leveling/Fixtures")), "only a top folder marks a fixture")
 
 -- The tree: any depth, folders merged without regard to case (the first
--- spelling wins), counts over the whole subtree, folders by name and guides
--- by level then title.
+-- spelling wins), counts over the whole subtree, folders by their lowest
+-- level then name, and guides by level then title.
 local barrens2 = guide("barrens2", "Leveling/Kalimdor/The Barrens", { 20, 25 })
 local barrens1 = guide("barrens1", "leveling/kalimdor/the barrens", { 13, 21 })
 local mulgore = guide("mulgore", "Leveling/Kalimdor/Mulgore", { 1, 12 })
@@ -41,7 +41,8 @@ local kalimdor = guide("kalimdor", "Leveling/Kalimdor", { 1, 60 })
 local wc = guide("wc", "Dungeons/Wailing Caverns", { 17, 24 })
 local tree = Catalog:Tree({ barrens2, wc, barrens1, mulgore, kalimdor })
 assert(tree.total == 5)
-assert(#tree.children == 2 and tree.children[1].name == "Dungeons" and tree.children[2].name == "Leveling", "folders sort by name")
+assert(#tree.children == 2 and tree.children[1].name == "Leveling" and tree.children[2].name == "Dungeons", "folders sort by level")
+assert(tree.byKey["leveling"].level == 1 and tree.byKey["dungeons"].level == 17, "a folder's level is its lowest")
 local leveling = tree.byKey["leveling"]
 assert(leveling.total == 4 and #leveling.guides == 0 and leveling.depth == 1)
 local kalimdorFolder = tree.byKey["leveling/kalimdor"]
@@ -52,7 +53,10 @@ assert(barrens.path[1] == "Leveling" and barrens.path[2] == "Kalimdor" and barre
 assert(titles(barrens.guides) == "barrens1,barrens2", "guides by level")
 assert(titles(Catalog:Under(leveling)) == "kalimdor,mulgore,barrens1,barrens2", "a folder lists everything beneath it, in tree order")
 assert(#Catalog:Under(nil) == 0)
-assert(titles(Catalog:Sort({ barrens2, wc, mulgore, barrens1 })) == "wc,mulgore,barrens1,barrens2", "sorted by folder, then level")
+assert(titles(Catalog:Sort({ barrens2, wc, mulgore, barrens1 })) == "mulgore,barrens1,wc,barrens2", "sorted by level, whatever the folder")
+local rfc = guide("rfc", "Dungeons/Ragefire Chasm", { 13, 18 })
+local dungeons = Catalog:Tree({ wc, rfc }).byKey["dungeons"]
+assert(dungeons.children[1].name == "Ragefire Chasm", "folders by level, not name")
 
 -- Level fit.
 assert(Catalog:LevelFit(barrens1, 15) == "now" and Catalog:LevelFit(barrens1, 13) == "now" and Catalog:LevelFit(barrens1, 21) == "now")
@@ -66,7 +70,7 @@ assert(Catalog:ForCharacter(horde, function() return nil end) == true, "unknown 
 assert(Catalog:ForCharacter(barrens1, function() return false end) == true, "a guide with no condition is for everyone")
 
 -- Search: every word must match; a number is a level where the guide has a range.
-local tagged = guide("Horde 13-21: The Barrens", "Leveling/Kalimdor/The Barrens", { 13, 21 }, { tags = { "crossroads" } })
+local tagged = guide("The Barrens", "Leveling/Kalimdor/The Barrens", { 13, 21 }, { tags = { "crossroads" } })
 local text = Catalog:SearchText(tagged, "Chen's Empty Keg")
 assert(Catalog:Matches(tagged, "barrens", text) and Catalog:Matches(tagged, "KALIMDOR crossroads", text))
 assert(Catalog:Matches(tagged, "chen's", text), "extra text is searched")

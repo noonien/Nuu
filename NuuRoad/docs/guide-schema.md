@@ -13,7 +13,7 @@ A guide requires `schema = 2`, a stable `id`, `updated` (seconds since the epoch
     updated = 1789862400,
     map = 1413,
     only = "Horde",
-    meta = { title = "Horde 13-21: The Barrens", author = "NuuRoad", category = "Leveling/The Barrens",
+    meta = { title = "The Barrens", author = "NuuRoad", category = "Leveling/The Barrens",
              tags = { "horde", "barrens" }, levels = { 13, 21 }, source = "..." },
     steps = {
         { section = "Crossroads", steps = { ... } },
@@ -345,7 +345,5 @@ Every creature a step references is followed while that step is current. The ste
 ## Navigation
 
 The location shape is `{ mapID, x, y, arrivalRadiusNormalized, spots }`, where `spots` is an optional list of `{ x, y }` secondary points. When the client reports the map's world size, distances display in yards and bearings use the true map proportions; otherwise the tracker shows a percentage of the map and applies a conventional aspect correction. `mapID = 0` is reserved for portable fixtures and resolves to the player's current map; authored guides must use a real map ID.
-
-The included `nuuroad:getting-started` guide is the reference fixture for v1. It is deliberately playable, not a throwaway sample: update it whenever guide selection, tracker presentation, or manual progress behavior changes.
 
 Run `lua Tests/TestRunner.lua` from the addon root when a standalone Lua interpreter is available. The suite covers valid data, dangling numeric edges, group validation and editing, nested predicates, branch selection, back/forward, reset, arrow bearing math, and the observed-completion matcher.

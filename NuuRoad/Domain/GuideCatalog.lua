@@ -53,6 +53,12 @@ local function levelKey(guide)
     return levels and levels[1] or 0
 end
 
+-- A folder's level is the lowest of the guides beneath it.
+local function byLevelThenName(a, b)
+    if a.level ~= b.level then return a.level < b.level end
+    return string.lower(a.name) < string.lower(b.name)
+end
+
 local function byLevelThenTitle(a, b)
     local la, lb = levelKey(a), levelKey(b)
     if la ~= lb then return la < lb end
@@ -60,35 +66,39 @@ local function byLevelThenTitle(a, b)
 end
 
 -- The folder tree of `guides`. Every folder is
--- { name, path, key, depth, children = { folder... }, guides = { guide... }, total },
+-- { name, path, key, depth, children = { folder... }, guides = { guide... }, total, level },
 -- `path` the folder names from the top down to it, `guides` holding only the
--- ones filed directly in it, and `total` counting the whole subtree. Folders
--- sort by name, guides by level then title. The root's `byKey` finds any
+-- ones filed directly in it, `total` counting the whole subtree and `level`
+-- the lowest level in it. Folders sort by level then name, guides by level
+-- then title. The root's `byKey` finds any
 -- folder by its key.
 function Catalog:Tree(guides)
-    local root = { name = "", path = {}, key = "", depth = 0, children = {}, guides = {}, total = 0 }
+    local root = { name = "", path = {}, key = "", depth = 0, children = {}, guides = {}, total = 0, level = math.huge }
     local folders = { [""] = root }
     for _, guide in ipairs(guides) do
         local path = self:Path(guide)
         local parent = root
         root.total = root.total + 1
+        root.level = math.min(root.level, levelKey(guide))
         for depth = 1, #path do
             local key = self:Key(path, depth)
             local folder = folders[key]
             if not folder then
                 local names = {}
                 for index = 1, depth do names[index] = parent.path[index] or path[index] end
-                folder = { name = path[depth], path = names, key = key, depth = depth, children = {}, guides = {}, total = 0 }
+                folder = { name = path[depth], path = names, key = key, depth = depth, children = {}, guides = {}, total = 0,
+                    level = math.huge }
                 folders[key] = folder
                 table.insert(parent.children, folder)
             end
             folder.total = folder.total + 1
+            folder.level = math.min(folder.level, levelKey(guide))
             parent = folder
         end
         table.insert(parent.guides, guide)
     end
     local function order(folder)
-        table.sort(folder.children, function(a, b) return string.lower(a.name) < string.lower(b.name) end)
+        table.sort(folder.children, byLevelThenName)
         table.sort(folder.guides, byLevelThenTitle)
         for _, child in ipairs(folder.children) do order(child) end
     end
@@ -109,15 +119,10 @@ function Catalog:Under(folder)
     return list
 end
 
--- `guides` in the order the tree shows them: by folder, then by level and
--- title within one. Sorts in place and returns the list.
+-- `guides` by level, then title, whatever folders they are filed in. Sorts
+-- in place and returns the list.
 function Catalog:Sort(guides)
-    local keys = {}
-    for _, guide in ipairs(guides) do keys[guide] = self:Key(self:Path(guide)) end
-    table.sort(guides, function(a, b)
-        if keys[a] ~= keys[b] then return keys[a] < keys[b] end
-        return byLevelThenTitle(a, b)
-    end)
+    table.sort(guides, byLevelThenTitle)
     return guides
 end
 

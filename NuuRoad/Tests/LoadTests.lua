@@ -55,7 +55,7 @@ assert(db.settings.debug == nil)
 local store = Config:CharacterStore()
 assert(type(store) == "table" and rawget(_G, "NuuRoadCharacterDB")["unknown - unknown (no GUID)"] == store)
 assert(ns.modules.Client:GetPlayerPosition() == nil, "no map outside the client")
-assert(ns.modules.GuideRepository:Get("nuuroad:getting-started") or next(ns.modules.GuideRepository.builtIns),
+assert(next(ns.modules.GuideRepository.builtIns),
     "the repository has the packaged guides")
 
 -- The optional API (API.lua), on the loaded addon. The UI is not loaded here,
