@@ -524,9 +524,11 @@ local Names = {
         [260396] = "Whispering Horror",
         [265812] = "Eleanor Shackleton",
         [265944] = "William Pickman",
+        [267006] = "Dark Neophyte",
         [267008] = "Leonid Barthalomew the Revered",
         [267009] = "Hadric Harlson",
         [272526] = "Glix Xizzix",
+        [275437] = "Dark Enforcer",
         [275954] = "Bareth Dawnstone",
     },
     quests = {

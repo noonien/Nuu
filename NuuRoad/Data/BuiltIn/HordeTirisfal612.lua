@@ -459,10 +459,14 @@ ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
             { turnin = 370, accept = 371, npc = 1515, at = { 60.58, 51.77 } },
             { turnin = 1820, npc = 1500, only = "Warrior", at = { 61.72, 52.29 } },
             { turnin = 96895, accept = { 96897, 96898 }, npc = 267009, at = { 65.92, 61.11 } },
-            { objective = 96897, at = { 70.02, 64.06 },
-                note = "Kill 8 Dark Neophytes and 8 Dark Enforcers. They hit hard, and the Enforcers have an instant 50 to 70 damage attack; take them one at a time." },
-            { objective = 96898, part = 1, collect = 275851, count = 12, at = { 70.02, 64.06 },
-                note = "The cultists drop Necrotic Crystal Fragments, and more lie on the ground." },
+            { group = {
+                { objective = 96897, part = 1, kill = 267006, count = 8, at = { 70.02, 64.06 },
+                    note = "They hit hard; take them one at a time." },
+                { objective = 96897, part = 2, kill = 275437, count = 8, at = { 70.02, 64.06 },
+                    note = "The Enforcers have an instant 50 to 70 damage attack." },
+                { objective = 96898, part = 1, collect = 275851, count = 12, kill = { 267006, 275437 }, at = { 70.02, 64.06 },
+                    note = "More fragments lie on the ground." },
+            } },
             { turnin = { 96897, 96898 }, accept = 96899, npc = 267009, at = { 65.92, 61.12 } },
         } },
 
