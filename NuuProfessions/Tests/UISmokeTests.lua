@@ -204,6 +204,14 @@ settle()
 local Recipes = ns.modules.PlannerTabRecipes
 check(#Recipes.list:GetView() > 0, "recipes in range")
 local recipe = Recipes.list:GetView()[1]
+local priced, routed = false, false
+for _, item in ipairs(Recipes.list:GetView()) do
+    local profit = item.entry.profit
+    if profit and (profit.ah or profit.vendor) then priced = true end
+    if item.entry.use then routed = true end
+end
+check(priced, "a recipe in range has a profit at the auction house or a vendor")
+check(routed, "a recipe in range is in the route")
 Recipes.stocked = true
 Recipes:Render(Panel, true)
 Recipes.stocked = false

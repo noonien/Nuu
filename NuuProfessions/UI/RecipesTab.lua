@@ -2,7 +2,8 @@ local _, ns = ...
 
 -- The planner's Recipes tab (PROF_PLAN.md, "UI"): every recipe of the
 -- profession as a table row, with its colour bands against the live skill,
--- where it is learned, what the route does with it, and what the player
+-- where it is learned, what a craft makes at the auction house and at a
+-- vendor, a tint on the recipes the route uses, and what the player
 -- decides about it: Goal (make some on the way, with how many and when on a
 -- line under the row) and Plan with it (the planner decides, prefer it,
 -- never use it, or I have the pattern). A right-click on a row opens the
@@ -32,7 +33,7 @@ local function SkillUp() return ns.Kit.SkillUp end
 
 -- Geometry: the columns, left to right.
 local ROW_HEIGHT = 30
-local NAME_W, BAR_W, SOURCE_W, ROUTE_W, GOAL_W = 226, 160, 124, 96, 50
+local NAME_W, BAR_W, SOURCE_W, PROFIT_W, GOAL_W = 210, 150, 124, 122, 50
 local ROW_GAP = 10
 local NEVER_ALPHA = 0.55
 
@@ -147,6 +148,36 @@ local function routeUses(route)
         text[spell] = table.concat(words, ", ")
     end
     return text
+end
+
+-- What one craft makes, its reagents bought: { ah, vendor, estimated }, ah
+-- at the auction price less its cut (nil when unpriced, or the item is
+-- soulbound), vendor at the vendor price (nil without one). nil for a recipe
+-- that makes no item or whose reagents cannot be had. Every sale counts
+-- here, whatever the player chose to sell.
+local function profitOf(ctx, recipe)
+    if not ctx or not recipe.makes then return nil end
+    local cost, _, estimated = ctx:ReagentCost(recipe)
+    if not cost then return nil end
+    local made = Prices().AverageMade(recipe)
+    local profit = { estimated = estimated }
+    local item = ctx:Item(recipe.makes)
+    profit.bound = item and item.bind == "bop" or nil
+    if not profit.bound then
+        local listed = ctx:Fact(recipe.makes, "auctionSell")
+        if listed then profit.ah = math.floor(listed * (1 - Prices().auctionCut)) * made - cost end
+    end
+    local vendor = ctx:Fact(recipe.makes, "vendorSell")
+    if vendor then profit.vendor = vendor * made - cost end
+    return profit
+end
+
+-- "+12s", "-3s 20c", or "-" for no price.
+local function profitWords(panel, copper)
+    if not copper then return "-" end
+    copper = math.floor(copper + 0.5)
+    if copper > 0 then return panel:Tint("+" .. panel:Money(copper), "gain") end
+    return panel:Money(copper)
 end
 
 -- What the route made of each goal, by spell: where it is made, or why it
@@ -397,7 +428,7 @@ function Tab:Build(panel, page)
     head:Text{ "Recipe", style = "label", width = NAME_W }
     self.barHead = head:Text{ "Colours", style = "label", width = BAR_W }
     head:Text{ "Learned from", style = "label", width = SOURCE_W }
-    head:Text{ "In the route", style = "label", width = ROUTE_W }
+    head:Text{ "Profit AH / vendor", style = "label", width = PROFIT_W }
     head:Text{ "Goal", style = "label", width = GOAL_W }
     head:Text{ "Plan with it", style = "label", grow = true }
 
@@ -422,6 +453,11 @@ function Tab:MakeRow(row)
     row.rail:SetPoint("TOPLEFT", row, "TOPLEFT", 12, 0)
     row.rail:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 12, 8)
     row.rail:SetWidth(2)
+    -- The edge of a recipe the route uses.
+    row.edge = row:AddTexture("BORDER")
+    row.edge:SetPoint("TOPLEFT", row, "TOPLEFT", 2, -3)
+    row.edge:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 2, 3)
+    row.edge:SetWidth(3)
 
     -- A recipe.
     row.name = row:Text{ "", width = NAME_W }
@@ -436,7 +472,7 @@ function Tab:MakeRow(row)
         row.bands[index] = band
     end
     row.source = row:Text{ "", width = SOURCE_W }
-    row.route = row:Text{ "", width = ROUTE_W }
+    row.profit = row:Text{ "", width = PROFIT_W }
     row.goal = row:Toggle{ "", width = GOAL_W, data = row, onChange = goalToggled,
         tooltip = "Make some on the way: how many and when go on the line under it" }
     row.plan = row:Select{ boxWidth = 160, default = "auto", options = PLAN_PLAIN, data = row, onChange = planPicked }
@@ -451,7 +487,7 @@ function Tab:MakeRow(row)
     row.skill = row:Input{ width = 52, numeric = true, placeholder = "skill", data = row, onChange = skillCommitted,
         valign = "center" }
     row.note = row:Text{ "", grow = true }
-    row.recipeParts = { row.name, row.bars, row.source, row.route, row.goal, row.plan }
+    row.recipeParts = { row.name, row.bars, row.source, row.profit, row.goal, row.plan }
     row.goalParts = { row.indent, row.makeLabel, row.count, row.whenLabel, row.when, row.note }
 end
 
@@ -536,6 +572,7 @@ function Tab:DrawRow(row, item, at)
     for _, part in ipairs(row.goalParts) do part:SetShown(goalLine) end
     row.bed:SetShown(not goalLine)
     row.rail:SetShown(goalLine)
+    row.edge:SetShown(not goalLine and entry.use ~= nil)
     local context = self.context
     local inputs = panel.inputs or {}
 
@@ -573,13 +610,20 @@ function Tab:DrawRow(row, item, at)
     local words, color = sourceText(panel, entry)
     row.source:SetText(words)
     row.source:SetColor(color)
-    row.route:SetText(entry.use or "")
+    local profit = entry.profit
+    if profit then
+        row.profit:SetText(profitWords(panel, profit.ah) .. " / " .. profitWords(panel, profit.vendor)
+            .. (profit.estimated and " ~" or ""))
+    else
+        row.profit:SetText("")
+    end
+    fill(row.edge, t.accent)
     row.goal:SetValue(entry.goal ~= nil)
     row.plan:SetOptions(pattern and PLAN_OFFERED or PLAN_PLAIN)
     row.plan:SetValue(mode)
     -- Never used: the row dims, the choice that brings it back stays clear.
     local alpha = never and NEVER_ALPHA or 1
-    for _, part in ipairs({ row.name, row.source, row.route, row.goal }) do part:SetAlpha(alpha) end
+    for _, part in ipairs({ row.name, row.source, row.profit, row.goal }) do part:SetAlpha(alpha) end
     for _, band in ipairs(row.bands) do band:SetAlpha(alpha) end
 
     if spell == self.focus then
@@ -587,6 +631,9 @@ function Tab:DrawRow(row, item, at)
     elseif pattern and mode ~= "have" and not never then
         -- A pattern the character lacks: a pink background, as on Plan.
         fill(row.wash, t.pattern, 0.11)
+    elseif entry.use then
+        -- In the route: an accent wash under the accent edge.
+        fill(row.wash, t.accent, 0.06)
     else
         row.wash:SetColorTexture(0, 0, 0, 0)
     end
@@ -628,6 +675,7 @@ function Tab:Gather(panel)
                 local skills = Planner():Skills(ctx and ctx.book, spell, recipe)
                 local entry = { spell = spell, recipe = recipe, skills = skills, name = panel:RecipeName(spell), source = source,
                     cost = cost, known = isKnown and true or false, goal = goalOf[spell], use = uses[spell],
+                    profit = profitOf(ctx, recipe),
                     avoids = Planner():AvoidedReagent(recipe, avoided) }
                 if matches(panel, entry, search) then
                     local member = {
@@ -669,7 +717,8 @@ function Tab:Render(panel, toTop)
     self.sourceSelect:SetValue(self.source)
     self.stockedToggle:SetValue(self.stocked)
     self.legendNote:SetText("Names are coloured by how they craft at your skill now; muted text cannot be made yet; a "
-        .. panel:Tint("pink", "pattern") .. " row needs a pattern you lack.")
+        .. panel:Tint("pink", "pattern") .. " row needs a pattern you lack; an " .. panel:Tint("edged", "accent")
+        .. " row is in the route. Profit is a craft's, its reagents bought.")
 
     local list = lists[self.filter] or lists.all
     table.sort(list, function(a, b)
@@ -781,6 +830,13 @@ function Tab:RowTip(item)
             tooltip:AddLine(recipe.forever == "new" and "New in Forever" or "Changed in Forever", 0.5, 0.5, 0.5)
         end
         if entry.use then panel:TipLine(tooltip, "The route: " .. entry.use, "accent") end
+        local profit = entry.profit
+        if profit then
+            tooltip:AddDoubleLine("A craft at the auction house", profit.ah and panel:Money(math.floor(profit.ah + 0.5))
+                or (profit.bound and "soulbound" or "no price"), 0.7, 0.7, 0.7, 1, 1, 1)
+            tooltip:AddDoubleLine("A craft at a vendor", profit.vendor and panel:Money(math.floor(profit.vendor + 0.5))
+                or "no price", 0.7, 0.7, 0.7, 1, 1, 1)
+        end
         if entry.avoids then
             panel:TipLine(tooltip, "Needs " .. panel:ItemName(entry.avoids)
                 .. ", which you turned off in Materials: the route leaves it out.", "warning")

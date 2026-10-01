@@ -108,7 +108,11 @@ end
 -- goes back to `color`. Drawn again on every render, so a new look shows.
 function Panel:Tint(text, color)
     local open = ns.Kit.UI.ColorCode(self:Color(color))
-    return open .. tostring(text):gsub("|r", open) .. "|r"
+    -- The client stacks colours (|r goes back to the one before), so the tint
+    -- is closed before each colour inside it and opened again after it: a
+    -- coin letter's colour ends with its letter.
+    text = tostring(text):gsub("|r", "\001"):gsub("|c", "|r|c"):gsub("\001", "|r" .. open)
+    return open .. text .. "|r"
 end
 
 -- A recipe's difficulty colour: the profession window's orange, yellow,
