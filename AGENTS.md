@@ -7,6 +7,7 @@ This repository holds the Nuu addons for WoW: Forever (the `_classic_beta_` clie
 | `NuuKit` | Shared library. Development copy only; each release embeds its own copy of the kit files. |
 | `NuuRoad` | Offline, player-directed guides. |
 | `NuuProfessions` | Profession levelling planner. |
+| `NuuGear` | Gear upgrades scored against stat weights for the character's spec (`NuuGear/status.md`). |
 
 `link-addons.bat` junctions each addon folder into `../AddOns` so the client loads them from here.
 
@@ -58,7 +59,7 @@ alone and together (`Tools/BuildTests.lua`; Lua from PATH or nix-shell). `--tag`
   must keep): `NuuKit/UI/README.md`. Client results go in `docs/api-compatibility.md`; `/nuukit report` measures the
   kit in the client.
 - Tests: from `NuuKit/`, `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"`. `NuuKit.lua`, `Dev/`, `Tests/`
-  and `Tools/` are never shipped. NuuProfessions and NuuRoad have their own runners, the same command from
-  `NuuProfessions/` or `NuuRoad/`; they load the kit from `../NuuKit` and end with their windows on the kit's
+  and `Tools/` are never shipped. NuuProfessions, NuuRoad and NuuGear have their own runners, the same command from
+  `NuuProfessions/`, `NuuRoad/` or `NuuGear/`; they load the kit from `../NuuKit` and end with their windows on the kit's
   stand-in for the client (NuuRoad: `Tests/UI/Harness.lua` loads the whole addon once for its UI suites; one suite
   alone is `lua Tests/TestRunner.lua '<suite name>'`).

@@ -1,0 +1,19 @@
+## Interface: 16001
+## Title: NuuGear
+## Notes: Gear upgrades for WoW: Forever, scored against stat weights for your spec
+## Author: noonien
+## Version: 0.1.0-dev
+## SavedVariables: NuuGearDB
+## SavedVariablesPerCharacter: NuuGearCharacterDB
+## Dependencies: NuuKit
+## OptionalDeps: NuuRoad, NuuProfessions, EllesmereUIBags
+
+Core.lua
+Config.lua
+API/Client.lua
+Data/Weights.lua
+Domain/ItemStats.lua
+Domain/Specs.lua
+Domain/Upgrades.lua
+UI/Markers.lua
+UI/Commands.lua
