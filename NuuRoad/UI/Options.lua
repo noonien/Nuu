@@ -154,6 +154,8 @@ local SECTIONS = {
             help = "Opening the quest log lands on the step's quest, once per step." },
         { path = "automation.sellJunk", kind = "toggle", label = "Junk", caption = "Sell junk at vendors",
             help = "Sells grey items only; they can be bought back from the vendor." },
+        { path = "automation.lootReminder", kind = "toggle", label = "Loot", caption = "Remind me to loot quest drops",
+            help = "After a fight, names the item still on a boss or named creature the guide wants it from." },
     }, foot = "Hold Shift when talking to an NPC or opening a vendor to handle the whole visit yourself. Kills of a"
         .. " step's targets are counted from the combat log." },
     { title = "Beside the tracker", rows = {

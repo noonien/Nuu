@@ -32,8 +32,11 @@ local Config = {
         minimap = { angle = 220 },
         -- NPC conveniences. Every one can be paused by holding Shift; a dialog
         -- touched with Shift stays the player's until it closes. `sellJunk`
-        -- sells grey items at any vendor the player opens.
-        automation = { markTargets = true, acceptQuests = true, turnInQuests = true, selectQuestInLog = true, sellJunk = true },
+        -- sells grey items at any vendor the player opens. `lootReminder`
+        -- says so when a creature the guide wants an item from was killed
+        -- and not looted (Domain/LootReminder.lua).
+        automation = { markTargets = true, acceptQuests = true, turnInQuests = true, selectQuestInLog = true, sellJunk = true,
+            lootReminder = true },
         -- The strip of the current step's creatures, beside the tracker.
         -- `inViewOnly` keeps it to the ones the client can actually see.
         npcPanel = { shown = true, inViewOnly = false },

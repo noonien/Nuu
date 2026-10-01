@@ -23,6 +23,7 @@ local suites = {
     { "quest dialog", "Tests/QuestDialogTests.lua" },
     { "quest selection", "Tests/QuestSelectionTests.lua" },
     { "junk selling", "Tests/JunkSellingTests.lua" },
+    { "loot reminder", "Tests/LootReminderTests.lua" },
     { "quest POI log", "Tests/POILogTests.lua" },
     { "recording", "Tests/RecordingTests.lua" },
     { "bug report", "Tests/BugReportTests.lua" },

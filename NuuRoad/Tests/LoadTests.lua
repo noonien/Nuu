@@ -29,7 +29,7 @@ assert(ns.Kit == kit and ns.Kit.Crafting and ns.Kit.NewBugReports, "the kit")
 assert(ns.recorder and ns.recorder.Records, "the session log is the kit's recorder")
 for _, name in ipairs({ "Config", "Client", "Schema", "Names", "Steps", "Travel", "GuideRepository", "GuideEditing",
     "PlaceEditing", "Progress", "Experience", "ObservedProgress", "Materials", "GuideScan", "QuestIndex", "GuideCatalog",
-    "GuideAudit", "NPCTracking", "TargetMarking", "QuestDialog", "QuestSelection", "JunkSelling", "POILog", "Recording",
+    "GuideAudit", "NPCTracking", "TargetMarking", "QuestDialog", "QuestSelection", "JunkSelling", "LootReminder", "POILog", "Recording",
     "GuideCorrections", "Navigation", "BugReport", "StepState" }) do
     assert(ns.modules[name], name .. " is registered")
 end

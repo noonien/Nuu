@@ -520,9 +520,11 @@ function NPCTracking:OnCombatLog(...)
     if entry.subevent ~= "PARTY_KILL" then return end
     self.marked[entry.destGUID] = nil
     local id = Client:CreatureIDFromGUID(entry.destGUID)
-    local target = id and self.targets[id]
+    if not id or not Client:IsPlayerOrGroupGUID(entry.sourceGUID) then return end
+    local LootReminder = ns.modules.LootReminder
+    if LootReminder then LootReminder:OnKill(entry.destGUID, id) end
+    local target = self.targets[id]
     if not target or target.kind ~= "kill" then return end
-    if not Client:IsPlayerOrGroupGUID(entry.sourceGUID) then return end
     self:RecordKill(entry.destGUID, id)
 end
 
@@ -552,6 +554,9 @@ function NPCTracking:OnTargetHealth()
     -- say, and the guide being written may not exist yet.
     local Recording = ns.modules.Recording
     if Recording and id then Recording:OnTargetDied(guid, id, Client:GetUnitName("target")) end
+    -- Any kill the guide wants loot from, counted or not.
+    local LootReminder = ns.modules.LootReminder
+    if LootReminder and id then LootReminder:OnKill(guid, id) end
     local target = id and self.targets[id]
     if not target or target.kind ~= "kill" then return end
     self:RecordKill(guid, id)

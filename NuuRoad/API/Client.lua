@@ -1211,6 +1211,34 @@ function Client:GetCombatLogEvent(...)
     return { subevent = subevent, sourceGUID = sourceGUID, destGUID = destGUID, destName = destName }
 end
 
+-- Whether the loot window is open, the game's own or none known.
+function Client:IsLootWindowShown()
+    local frame = rawget(_G, "LootFrame")
+    if type(frame) ~= "table" or type(frame.IsShown) ~= "function" then return false end
+    local ok, shown = pcall(frame.IsShown, frame)
+    return ok and shown == true
+end
+
+-- A line in the middle of the screen the way a raid warning shows, with its
+-- sound. Without the raid warning frame it goes on the error line at the top.
+function Client:ShowAlert(message)
+    if type(message) ~= "string" then return false end
+    local frame, notice = rawget(_G, "RaidWarningFrame"), rawget(_G, "RaidNotice_AddMessage")
+    local chatInfo = rawget(_G, "ChatTypeInfo")
+    local color = type(chatInfo) == "table" and chatInfo.RAID_WARNING or { r = 1, g = 0.28, b = 0 }
+    local shown = frame ~= nil and type(notice) == "function" and pcall(notice, frame, message, color)
+    if not shown then
+        local errors = rawget(_G, "UIErrorsFrame")
+        shown = type(errors) == "table" and type(errors.AddMessage) == "function"
+            and pcall(errors.AddMessage, errors, message, 1, 0.82, 0) or false
+    end
+    local sounds = rawget(_G, "SOUNDKIT")
+    if type(PlaySound) == "function" and type(sounds) == "table" and sounds.RAID_WARNING then
+        pcall(PlaySound, sounds.RAID_WARNING)
+    end
+    return shown
+end
+
 function Client:IsPlayerOrGroupGUID(guid)
     if type(guid) ~= "string" then return false end
     local playerGUID = self:GetUnitGUID("player")
