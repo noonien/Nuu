@@ -1,5 +1,6 @@
 ## Interface: 16001
 ## Title: NuuKit
+## IconTexture: Interface\AddOns\NuuKit\Icon.tga
 ## Notes: Shared library for the Nuu addons (development copy; each release embeds its own)
 ## Author: noonien
 ## Version: 0.1.0-dev

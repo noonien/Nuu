@@ -1,5 +1,6 @@
 ## Interface: 16001
 ## Title: NuuRoad
+## IconTexture: Interface\AddOns\NuuRoad\Icon.tga
 ## Notes: Offline, player-directed guides for WoW: Forever
 ## Author: noonien
 ## Version: 0.1.0-dev

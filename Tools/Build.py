@@ -12,7 +12,7 @@ named after it, except NuuKit. For each addon it writes <out>/<Addon>/, <out>/<A
 - the kit, under Libs/NuuKit/: every file NuuKit.toc lists outside its `#@debug@` block (so never NuuKit.lua or
   Dev/), and all of Media/. A generated Libs/NuuKit/Embed.lua, loaded first, tells the kit where it sits;
 - Bindings.xml when the addon has one, since the client loads it by name;
-- every Art/ texture the shipped code names.
+- every Art/ texture the shipped code names, and the icon `## IconTexture` names (Tools/Icons.py makes them).
 
 In every shipped .lua file, the lines from `--@debug@` to `--@end-debug@` are left out. `ns.version` in Core.lua
 and `## Version` in the TOC are set to the version: --version, else the TOC's.
@@ -220,6 +220,14 @@ def build(addon, args, kit_lua, kit_media):
     if missing:
         fail("%s: textures named in code but missing: %s" % (addon, ", ".join(missing)))
     own += sorted(art)
+
+    icon_ref = re.compile(r"Interface[\\/]+AddOns[\\/]+" + addon + r"[\\/]+(.+)$", re.I)
+    icon = icon_ref.match(toc_field(toc_text, "IconTexture") or "")
+    if icon:
+        icon = re.sub(r"[\\/]+", "/", icon.group(1).strip())
+        if not (source / icon).is_file():
+            fail("%s: the icon its TOC names is missing: %s" % (addon, icon))
+        own.append(icon)
 
     known = set(listed) | set(debug_files)
     for d in RUNTIME_DIRS:

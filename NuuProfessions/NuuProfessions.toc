@@ -1,5 +1,6 @@
 ## Interface: 16001
 ## Title: NuuProfessions
+## IconTexture: Interface\AddOns\NuuProfessions\Icon.tga
 ## Notes: Profession levelling planner for WoW: Forever
 ## Author: noonien
 ## Version: 0.1.0-dev

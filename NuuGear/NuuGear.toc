@@ -1,5 +1,6 @@
 ## Interface: 16001
 ## Title: NuuGear
+## IconTexture: Interface\AddOns\NuuGear\Icon.tga
 ## Notes: Gear upgrades for WoW: Forever, scored against stat weights for your spec
 ## Author: noonien
 ## Version: 0.1.0-dev
