@@ -405,6 +405,13 @@ function Context:SellTotal(itemID, count)
     return count * value
 end
 
+-- What `count` copies bring in all when every one goes to a vendor: what is
+-- sold at all (SellValue above 0) at the vendor price, the rest nothing.
+function Context:VendorTotal(itemID, count)
+    if not count or count <= 0 or self:SellValue(itemID) <= 0 then return 0 end
+    return count * self:VendorSell(itemID)
+end
+
 -- Carried items are costed at what they would sell for: using them avoids a
 -- purchase but gives up the sale.
 function Context:BagValue(itemID)

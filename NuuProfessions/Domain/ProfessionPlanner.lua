@@ -2267,9 +2267,13 @@ function Planner:Plan(input)
         end
     end
     for item, quantity in pairs(expectedLedger.fromBags) do materials = materials + quantity * ctx:BagValue(item) end
-    local recovered = 0
+    -- What the stock sells for, at its best sale and all to a vendor.
+    local recovered, vendorRecovered = 0, 0
     for item, quantity in pairs(expectedLedger.stock) do
-        if quantity > 1e-9 then recovered = recovered + ctx:SellTotal(item, quantity) end
+        if quantity > 1e-9 then
+            recovered = recovered + ctx:SellTotal(item, quantity)
+            vendorRecovered = vendorRecovered + ctx:VendorTotal(item, quantity)
+        end
     end
     local spent = materials + training + learning
     local net = spent - recovered
@@ -2505,6 +2509,7 @@ function Planner:Plan(input)
     --   makes        { { itemID, spell, count, crafts, cost, each, gain, estimated, firstSkill } }:
     --                every intermediate made on the way, summed by item
     --   summary      { spent, materials, training, learning, recovered, net, low, high,
+    --                  vendorRecovered, vendorNet (the same, every sale at a vendor),
     --                  costUnknown, bands = { { tier, fromSkill, toSkill, net } },
     --                  estimated = n items priced by estimate, estimatedShare = 0..1 of spent,
     --                  auctionator = n items the route touches that Auctionator priced,
@@ -2546,6 +2551,8 @@ function Planner:Plan(input)
             spent = math.floor(spent + 0.5), materials = math.floor(materials + 0.5),
             training = math.floor(training + 0.5), learning = math.floor(learning + 0.5),
             recovered = math.floor(recovered + 0.5), net = math.floor(net + 0.5),
+            vendorRecovered = math.floor(vendorRecovered + 0.5),
+            vendorNet = math.floor(spent - vendorRecovered + 0.5),
             low = math.floor(net - spread + 0.5), high = math.floor(net + spread + 0.5),
             costUnknown = costUnknown or nil, bands = bands,
             estimated = #estimatedItems,

@@ -173,6 +173,7 @@ end
 -- The tooltips of the target and the figures read the route when shown.
 local function targetTip(tooltip) Tab:TargetTip(tooltip) end
 local function costTip(tooltip) Tab:CostTip(tooltip) end
+local function sellsTip(tooltip) Tab:SellsTip(tooltip) end
 local function netTip(tooltip) Tab:NetTip(tooltip) end
 
 local CARRIED_TIP = function(tooltip)
@@ -219,7 +220,7 @@ function Tab:BuildSummary(page)
     divider(top)
     self.figures = {
         cost = summaryFigure(top, "Cost", costTip),
-        sells = summaryFigure(top, "Sells"),
+        sells = summaryFigure(top, "Sells", sellsTip),
         net = summaryFigure(top, "Net", netTip),
         crafts = summaryFigure(top, "Crafts"),
     }
@@ -1180,6 +1181,24 @@ function Tab:CostTip(tooltip)
     if (summary.estimated or 0) > 0 then panel:TipLine(tooltip, ESTIMATE_TIP, "estimate") end
 end
 
+-- "a profit of 2s" or "a cost of 3s", for a net (a cost when above 0).
+local function netWords(panel, net)
+    if net < 0 then return "a profit of " .. panel:Money(-net) end
+    return "a cost of " .. panel:Money(net)
+end
+
+function Tab:SellsTip(tooltip)
+    local panel = self.panel
+    local route = panel.route
+    local summary = route and route.summary
+    tooltip:SetText("Sells", 1, 1, 1)
+    tooltip:AddLine("What the route's output sells for: each item at its best sale, the auction house less its cut"
+        .. " or a vendor.", 0.8, 0.8, 0.8, true)
+    if not summary then return end
+    tooltip:AddDoubleLine("At its best sale", panel:Money(summary.recovered or 0), 0.7, 0.7, 0.7, 1, 1, 1)
+    tooltip:AddDoubleLine("All to a vendor", panel:Money(summary.vendorRecovered or 0), 0.7, 0.7, 0.7, 1, 1, 1)
+end
+
 function Tab:NetTip(tooltip)
     local panel = self.panel
     local route = panel.route
@@ -1191,6 +1210,10 @@ function Tab:NetTip(tooltip)
     if summary.low and summary.high then
         tooltip:AddLine("At " .. tostring(route.confidence or "safe") .. " confidence it comes to "
             .. rangeText(panel, summary.low, summary.high) .. ".", 1, 1, 1, true)
+    end
+    if summary.vendorNet and (summary.recovered or 0) > 0 then
+        tooltip:AddLine("Selling it all to a vendor instead: " .. netWords(panel, summary.vendorNet) .. ".",
+            0.8, 0.8, 0.8, true)
     end
     if (summary.estimated or 0) > 0 then panel:TipLine(tooltip, ESTIMATE_TIP, "estimate") end
 end
