@@ -1181,17 +1181,28 @@ function Client:GetTrainerServiceSpell(index)
     return nil
 end
 
+-- A trainer service's name, tier subtext ("Journeyman") and state
+-- ("available", "unavailable", "used" or "header"). Forever answers name,
+-- state, icon, _, tier (seen 2026-10-02: the state read as the tier, the
+-- icon as the state); Classic's older order is name, tier, state.
+local TRAINER_STATES = { available = true, unavailable = true, used = true, header = true }
+local function trainerServiceInfo(index)
+    local name, second, third, _, fifth = readAll(global("GetTrainerServiceInfo"), index)
+    if TRAINER_STATES[second] then return plainString(name), plainString(fifth), second end
+    return plainString(name), plainString(second), plainString(third)
+end
+
 -- Every service the open trainer lists, headers left out, as
--- { key, name, tier, state, cost = copper, skill, skill, level, spellID, itemID }.
+-- { index, key, name, tier, state, cost = copper, profession, skill, level, spellID, itemID }.
 -- `tier` is the subtext ("Journeyman"), `state` "available", "unavailable"
 -- or "used". Only what the window's filters show is listed.
 function Client:ReadTrainerServices()
     local services = {}
     local count = plainNumber(readAll(global("GetNumTrainerServices")))
     for index = 1, count or 0 do
-        local name, tier, state = readAll(global("GetTrainerServiceInfo"), index)
-        if plainString(name) and state ~= "header" then
-            local service = { name = name, tier = plainString(tier), state = plainString(state) }
+        local name, tier, state = trainerServiceInfo(index)
+        if name and state ~= "header" then
+            local service = { index = index, name = name, tier = tier, state = state }
             service.cost = plainNumber((readAll(global("GetTrainerServiceCost"), index)))
             local profession, skill = readAll(global("GetTrainerServiceSkillReq"), index)
             service.profession, service.skill = plainString(profession), plainNumber(skill)
@@ -1205,6 +1216,30 @@ function Client:ReadTrainerServices()
         end
     end
     return services
+end
+
+-- Whether the open trainer teaches a profession: false for a class trainer,
+-- true where the client cannot say.
+function Client:IsTradeskillTrainer()
+    return readAll(global("IsTradeskillTrainer")) ~= false
+end
+
+-- What the open profession trainer offers, as ReadTrainerServices; empty
+-- with no trainer open or a class trainer's.
+function Client:TrainerOffers()
+    if not self.trainerOpen or not self:IsTradeskillTrainer() then return {} end
+    return self:ReadTrainerServices()
+end
+
+-- Trains the open trainer's service `index`, only while it is still the
+-- service named `name` and is available. Answers whether the call was made.
+function Client:BuyTrainerService(index, name)
+    if not self.trainerOpen then return false end
+    local shown, _, state = trainerServiceInfo(index)
+    if shown ~= name or state ~= "available" then return false end
+    local buy = global("BuyTrainerService")
+    if type(buy) ~= "function" then return false end
+    return (pcall(buy, index))
 end
 
 local function sameEntry(old, new, fields)

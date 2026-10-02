@@ -217,8 +217,9 @@ All of these are set in a GUI window, the **Profession planner**. None of them a
 6. **Confidence.** How safe the shopping list is: `typical` (the expected count), `safe` (about 90% of runs finish
    with it) or `sure` (about 99%). The default is `safe`. See the shopping list section.
 
-The planner **recommends**. It never buys, posts or trains, and it crafts only when the player presses a **Make**
-button (below), one batch a press, from the profession window the player opened. The player can override every
+The planner **recommends**. It never posts, it buys and trains only when the player presses **Buy** or **Train** on
+the strip under a vendor's or trainer's window they opened (below), and it crafts only when the player presses a
+**Make** button (below), one batch a press, from the profession window the player opened. The player can override every
 choice it makes, and the route is a plan they follow or skip. This keeps it inside the
 player-directed rule.
 Choosing between recipes is a cost recommendation the player asked for, not a combat, target, quest-order or reward
@@ -676,6 +677,19 @@ player's money, one call every fifth of a second, checking the vendor's slot sti
 the vendor closes, and saying in chat what it bought. Only money is spent: an item costing a currency or other
 items is left to the player. The strip and marks are our frames on the vendor window; nothing of the game's is
 changed. Nothing is searched or posted at the auction house.
+
+Training is on the trainer's own window the same way (`UI/TrainerStrip.lua`). Every plan keeps what it learns at a
+trainer (`training[profession]` in the character's record, `Domain/TrainerTraining.lua`): the trainer recipes its
+steps use, with where the route first makes each and where its last run ends, and the tiers it passes. While the
+open profession trainer teaches some of it, a strip under its window says "From your <profession> plan", with
+**Train all** and what everything trainable now costs, and a row per service, the tier first: its fee and
+**Train**, or, when the trainer will not teach it yet, the skill or level it asks for. What is known, trained, or
+behind the skill is left out, and so is everything the plan does not use, so the game's own list is no longer the
+easy way to learn recipes the route never makes. The planned services wear a mark on the trainer's list (an
+accent edge down the row, painted after the game draws its list). Pressed, Train trains one service every half
+second, finding each again by its key (a trained one leaves the list and moves the others up), only while it is
+still available, stopping when the trainer closes or the money runs out, and saying in chat what it trained.
+`BuyTrainerService` on Forever is unverified.
 
 The shared widgets are NuuKit's (`NuuKit/UI/`, see its `README.md` and `status.md`): `Select` (a drop-down),
 `UI:OpenMenu` (the one choice menu, under a control or at the cursor, with a check on the current choice, a second

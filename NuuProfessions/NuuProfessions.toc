@@ -35,6 +35,7 @@ Data/ProfessionsFull/Tailoring.lua
 Domain/Prices.lua
 Domain/ProfessionPlanner.lua
 Domain/MerchantBuying.lua
+Domain/TrainerTraining.lua
 UI/Planner.lua
 UI/PlanTab.lua
 UI/RecipesTab.lua
@@ -42,3 +43,4 @@ UI/MaterialsTab.lua
 UI/OptionsTab.lua
 UI/ShoppingList.lua
 UI/VendorStrip.lua
+UI/TrainerStrip.lua

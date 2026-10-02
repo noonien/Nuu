@@ -554,6 +554,12 @@ function Panel:Replan(reason)
         local kept, err = pcall(list.Keep, list, profession, route, self.sections)
         if not kept then report(err) end
     end
+    -- And what it learns at a trainer, for the strip under the trainer's window.
+    local training = ns.modules.TrainerTraining
+    if training then
+        local kept, err = pcall(training.Keep, training, profession, route, self.data)
+        if not kept then report(err) end
+    end
     if tracing then
         local traced, row = pcall(self.TraceRoute, self, route)
         if not traced then report(row) end

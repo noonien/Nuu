@@ -413,6 +413,69 @@ Client.merchantOpen = nil
 _G.GetMerchantNumItems, _G.GetMerchantItemInfo, _G.GetMerchantItemLink = nil, nil, nil
 _G.GetMerchantItemMaxStack, _G.GetMoney, _G.BuyMerchantItem = nil, nil, nil
 _G.GetMerchantItemCostInfo = nil
+
+-- The strip under the trainer's window: the plan keeps what it learns at a
+-- trainer, and a trainer teaching some of it shows those, and only those.
+local Training = ns.modules.TrainerTraining
+local keptTraining = Training:Record(false) and Training:Record(false).Leatherworking
+check(keptTraining and #keptTraining.recipes >= 2 and #keptTraining.tiers > 0, "the plan keeps what it learns at a trainer")
+local keptTier = keptTraining.tiers[#keptTraining.tiers]
+local services = {
+    { name = "Leatherworking", tier = keptTier.tier, state = "available", cost = 500, spell = keptTier.spell },
+    { name = "Recipe A", state = "available", cost = 100, spell = keptTraining.recipes[1].spell },
+    { name = "Recipe B", state = "unavailable", cost = 200, skill = 999, spell = keptTraining.recipes[2].spell },
+    { name = "Not planned", state = "available", cost = 50, spell = 1 },
+}
+local trained = {}
+_G.IsTradeskillTrainer = function() return true end
+_G.GetNumTrainerServices = function() return #services end
+-- Forever's order: name, state, icon, _, tier.
+_G.GetTrainerServiceInfo = function(i) local s = services[i]; if s then return s.name, s.state, 136243, nil, s.tier end end
+_G.GetTrainerServiceCost = function(i) return services[i] and services[i].cost end
+_G.GetTrainerServiceSkillReq = function(i) return "Leatherworking", services[i] and services[i].skill or 0 end
+_G.GetTrainerServiceLevelReq = function() return 0 end
+_G.C_TooltipInfo = { GetTrainerService = function(i) return services[i] and { id = services[i].spell } end }
+_G.BuyTrainerService = function(i) table.insert(trained, i); services[i].state = "used" end
+_G.GetMoney = function() return 1e9 end
+_G.ClassTrainerFrame = CreateFrame("Frame", "ClassTrainerFrame", UIParent)
+ClassTrainerFrame:SetSize(338, 424)
+local trainerRows = {}
+for index = 1, #services do
+    local row = CreateFrame("Button", nil, ClassTrainerFrame)
+    row.GetElementData = function() return index end
+    trainerRows[index] = row
+end
+ClassTrainerFrame.ScrollBox = { Update = function() end,
+    ForEachFrame = function(_, each) for _, row in ipairs(trainerRows) do each(row) end end }
+local TStrip = ns.modules.TrainerStrip
+TStrip:Refresh()
+check(not (TStrip.frame and TStrip.frame:IsShown()), "no trainer open, no strip")
+Client.trainerOpen = true
+TStrip:Refresh()
+settle()
+check(TStrip.frame:IsShown() and #TStrip.rows == 3, "the strip lists what the plan needs of this trainer")
+check(TStrip.rows[1].need.kind == "tier" and TStrip.rows[1].train, "the tier first, to train now")
+check(TStrip.rows[3].train == nil and TStrip.rows[3].why:GetText() == "at skill 999", "what is not taught yet says when")
+check(TStrip.trainAll:IsEnabled() and TStrip.trainAll:GetText():find("Train all", 1, true), "Train all is on")
+check(TStrip.badges[trainerRows[1]]:IsShown() and TStrip.badges[trainerRows[3]]:IsShown()
+    and not TStrip.badges[trainerRows[4]], "the planned services marked on the trainer's list, the rest not")
+_G.GetMoney = function() return 0 end
+TStrip:Refresh()
+check(not TStrip.trainAll:IsEnabled() and not TStrip.rows[1].train:IsEnabled(), "no money, no training")
+_G.GetMoney = function() return 1e9 end
+TStrip:Refresh()
+TStrip:Train(TStrip.lines)
+check(#trained == 2 and trained[1] == 1 and trained[2] == 2 and not Training:Busy(), "Train all trained what can be, nothing else")
+TStrip:Refresh()
+check(#TStrip.rows == 1 and not TStrip.trainAll:IsEnabled() and not TStrip.badges[trainerRows[1]]:IsShown(),
+    "what is trained leaves the strip and loses its mark")
+Client.trainerOpen = nil
+TStrip:Refresh()
+check(not TStrip.frame:IsShown() and not TStrip.badges[trainerRows[3]]:IsShown(), "the trainer shut: no strip, no marks")
+_G.IsTradeskillTrainer, _G.GetNumTrainerServices, _G.GetTrainerServiceInfo = nil, nil, nil
+_G.GetTrainerServiceCost, _G.GetTrainerServiceSkillReq, _G.GetTrainerServiceLevelReq = nil, nil, nil
+_G.C_TooltipInfo, _G.BuyTrainerService, _G.GetMoney, _G.ClassTrainerFrame = nil, nil, nil, nil
+noErrors("trainer strip")
 Shopping:Refresh()
 Panel.win:Hide()
 Shopping:Refresh()
