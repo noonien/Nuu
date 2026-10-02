@@ -331,6 +331,18 @@ do
     assertTrue(heard == 0, "a hide from code is not the player's close")
     closable.closeButton:Click()
     assertTrue(not closable:IsShown() and heard == 1, "the close mark shuts it and onClose hears it")
+    -- A note at the strip's right, its tooltip and its click.
+    local clicked = 0
+    closable:Show()
+    closable:Status("3 still needed", { aside = { text = "May be out of date", tooltip = "Open the planner",
+        onClick = function() clicked = clicked + 1 end } })
+    local aside = closable.statusStrip.aside
+    assertTrue(aside:IsShown() and aside:GetText() == "May be out of date" and aside.tooltip == "Open the planner",
+        "the strip's aside")
+    aside:Click()
+    assertTrue(clicked == 1, "its click")
+    closable:Status("3 still needed")
+    assertTrue(not aside:IsShown(), "gone at the next status without one")
 end
 assertTrue(steps.kitParent == panel.body and steps.kitPH == 180 - 2 - 30, "a column made on it fills it")
 assertTrue(sameColor(panel.bandBg, nil), "a panel's band is bare")

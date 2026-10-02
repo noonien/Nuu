@@ -287,6 +287,12 @@ local function collapseClicked(button)
     if win.kitOnCollapse then win.kitOnCollapse(win.kitCollapsed, win) end
 end
 
+-- The strip's aside (Window:Status, opts.aside): its click.
+local function asideClicked(link)
+    local aside = link.kitStrip.kitAside
+    if aside and aside.onClick then aside.onClick() end
+end
+
 local function undoClicked(link)
     local strip = link.kitStrip
     link:Hide()
@@ -391,6 +397,9 @@ function Window:IsUpward() return self.kitUpward or false end
 -- window keeps its strip, so its body never changes size when a message
 -- comes or goes. A body that changes size redraws what scrolls in it, and
 -- the client can draw its edges a pixel differently each time.
+-- `opts.aside` puts a note at the strip's right, kept until the next call:
+-- { text, tone (a token, "warning" by default), tooltip (a string or
+-- fn(GameTooltip)), onClick }, as "May be out of date" with how to fix it.
 function Window:Status(text, opts)
     local strip = self.statusStrip
     if not strip then
@@ -408,6 +417,10 @@ function Window:Status(text, opts)
         strip.undo = self.ui:Link(strip, { "Undo", onClick = undoClicked })
         strip.undo.kitStrip = strip
         strip.undo:SetPoint("LEFT", strip.text, "RIGHT", 8, 0)
+        strip.aside = self.ui:Link(strip, { "", color = "warning", onClick = asideClicked, tooltip = "" })
+        strip.aside.kitStrip = strip
+        strip.aside:SetPoint("RIGHT", strip, "RIGHT", -12, 0)
+        strip.aside:Hide()
         self.statusStrip = strip
         paintStrip(self, self.ui.tokens)
     end
@@ -421,6 +434,20 @@ function Window:Status(text, opts)
     strip.text:SetText(text or self.kitStatusHint or "")
     strip.kitUndo = undo
     strip.undo:SetShown(undo ~= nil)
+    local aside = opts and opts.aside
+    strip.kitAside = aside
+    if aside then
+        strip.aside:SetText(aside.text or "")
+        UI.Fit(strip.aside)
+        strip.aside.tooltip = aside.tooltip
+        strip.aside.kitColor = aside.tone or "warning"
+        strip.aside:PaintState(self.ui.tokens)
+    end
+    strip.aside:SetShown(aside ~= nil)
+    -- The message ends short of the aside, cut with an ellipsis if need be.
+    strip.text:ClearAllPoints()
+    strip.text:SetPoint("LEFT", strip, "LEFT", 12, 0)
+    if aside then strip.text:SetPoint("RIGHT", strip.aside, "LEFT", -12, 0) end
     local shown = strip.kitHasText and not self.kitCollapsed and true or false
     if shown ~= strip:IsShown() then
         strip:SetShown(shown)
