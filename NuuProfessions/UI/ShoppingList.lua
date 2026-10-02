@@ -35,12 +35,13 @@ local WIDTH, MAX_HEIGHT = 340, 520
 local SOURCE_ORDER = { vendor = 1, ah = 2, estimate = 2, gather = 3, carried = 4 }
 local GROUP_OF = { vendor = "vendor", ah = "ah", estimate = "ah", gather = "gather", carried = "carried" }
 local GROUP_WORDS = { vendor = "Vendor", ah = "Auction house", gather = "Gather", carried = "In your bags",
-    have = "Already have" }
+    have = "Collected" }
 
--- Done: the bags hold what it needs, or the player ticked it by hand.
+-- Done (collected): the bags hold what it needs, or the player ticked it
+-- by hand.
 local function isDone(item) return item.have >= item.count or item.ticked and true or false end
 
--- The group an item is listed under: what is done goes to Already have, at
+-- The group an item is listed under: what is done goes to Collected, at
 -- the end; the rest by where it is fetched.
 local function groupOf(item)
     if isDone(item) then return "have" end
@@ -238,7 +239,20 @@ end
 
 -- The panel -------------------------------------------------------------------------------
 
-local PICK_WIDTH = WIDTH - 2 * 12 - 12
+-- Collected is folded unless the player opened it (`haveOpen`).
+local function haveOpen()
+    local record = List:Record(false)
+    return record and record.haveOpen or false
+end
+
+-- Whether an item has a row: what is collected has none while folded.
+local function listed(item) return haveOpen() or not isDone(item) end
+
+local function haveToggled(open)
+    local record = List:Record(true)
+    if record then record.haveOpen = open or nil end
+    List:Refresh()
+end
 
 local function money(copper) return ns.Kit.FormatMoney(math.floor(copper + 0.5)) end
 
@@ -278,7 +292,8 @@ function List:Create()
     local win = ui:Panel({ key = "shopping", place = places, title = "Shopping list", width = WIDTH, height = 80,
         collapsible = true, close = true, onClose = closed, hidden = true,
         point = { "RIGHT", rawget(_G, "UIParent"), "RIGHT", -80, 60 } })
-    self.area = win:ScrollArea{ padding = 12, gap = 6 }
+    -- The right padding and the scrollbar's room make the left's 12.
+    self.area = win:ScrollArea{ padding = 12, padRight = 12 - (ns.Kit.UI.SCROLLBAR or 10), gap = 6 }
     self.frame = win
     ui:OnLook(function() self.shape = nil; self:Refresh() end)
 end
@@ -286,7 +301,7 @@ end
 -- What is in view, as one string: the same shape is painted again in
 -- place, another is built again.
 local function shapeOf(blocks, options, value, label)
-    local parts = { tostring(value), label }
+    local parts = { tostring(value), label, tostring(haveOpen()) }
     for _, option in ipairs(options or {}) do parts[#parts + 1] = tostring(option.value) .. "=" .. tostring(option.caption) end
     for _, block in ipairs(blocks) do
         parts[#parts + 1] = "|" .. tostring(block.heading)
@@ -296,7 +311,7 @@ local function shapeOf(blocks, options, value, label)
 end
 
 -- A section's items in the order they are fetched: vendors, the auction
--- house, gathering, the bags; what is already had last.
+-- house, gathering, the bags; what is collected last.
 local function ordered(items)
     local list = {}
     for index, item in ipairs(items) do list[index] = item end
@@ -316,7 +331,7 @@ function List:Build(blocks, options, value, label)
     area:Clear()
     self.rows, self.groups = {}, {}
     if options then
-        area:Select{ boxWidth = PICK_WIDTH, options = options, value = value, onChange = picked,
+        area:Select{ boxWidth = 120, stretch = true, options = options, value = value, onChange = picked,
             tooltip = "The list to show: a section of a plan, or all of one plan's sections" }
     else
         area:Text{ label, style = "label" }
@@ -330,25 +345,42 @@ function List:Build(blocks, options, value, label)
         for _, item in ipairs(block.items) do
             local key = groupOf(item)
             if key ~= group then
+                -- Room between one section and the next.
+                if group then area:Spacer{ size = 8 } end
                 group = key
                 local heading = area:Row{ gap = 8 }
-                heading:Text{ GROUP_WORDS[key], style = "fine", grow = true }
-                table.insert(self.groups, { key = key, block = index, cost = heading:Text{ "", style = "fine" } })
+                local entry = { key = key, block = index }
+                if key == "have" then
+                    -- Collected: a line across the list with a fold in the
+                    -- done colour at its middle.
+                    heading:Rule{ color = "border" }
+                    entry.fold = heading:Disclosure{ GROUP_WORDS.have, open = haveOpen(), onToggle = haveToggled,
+                        tone = "success", style = "outline", height = 22,
+                        tooltip = haveOpen() and "Hide what you have collected" or "Show what you have collected" }
+                    heading:Rule{ color = "border" }
+                else
+                    heading:Text{ GROUP_WORDS[key], style = "fine", grow = true, valign = "center" }
+                    entry.cost = heading:Text{ "", style = "fine", valign = "center" }
+                end
+                table.insert(self.groups, entry)
             end
+            if not listed(item) then break end
             local row = area:Row{ gap = 10 }
             local line = { item = item, row = row, block = index }
             line.slot = row:Slot{ item = item.itemID, size = 34, onClick = slotClicked, data = line,
                 tooltip = function(tip) tip:SetText(line.tip or "", 1, 1, 1, 1, true) end }
-            local words = row:Column{ gap = 1, grow = true, valign = "center" }
-            line.name = words:Text{ "" }
-            line.detail = words:Text{ "", style = "fine" }
-            line.cost = row:Text{ "", style = "number", valign = "center" }
+            -- The name with its price and what the rest costs; under them
+            -- a bar of what is carried, "15 / 21" at its end.
+            local words = row:Column{ gap = 4, grow = true, valign = "center" }
+            local top = words:Row{ gap = 8 }
+            line.name = top:Text{ "", grow = true }
+            line.cost = top:Text{ "", style = "number" }
+            local carried = words:Row{ gap = 6 }
+            line.bar = carried:ProgressBar{ showValue = false, barHeight = 3, grow = true }
+            line.count = carried:Text{ "", style = "fine" }
             table.insert(self.rows, line)
         end
     end
-    self.foot = area:Row{ gap = 8 }
-    self.left = self.foot:Text{ "", style = "fine", grow = true }
-    self.spend = self.foot:Text{ "", style = "fine" }
 end
 
 -- As tall as the list, up to MAX_HEIGHT, past which it scrolls.
@@ -360,26 +392,42 @@ function List:Fit()
     local band = win.band:IsShown() and win.band:GetHeight() or 0
     local inner = WIDTH - 2 * inset - (ns.Kit.UI.SCROLLBAR or 0)
     local _, tall = self.area.kitInner:Measure(inner)
-    win:SetHeight(math.ceil(math.min(MAX_HEIGHT, (tall or 0) + band + 2 * inset)))
+    local strip = win.statusStrip and win.statusStrip:IsShown() and win.statusStrip:GetHeight() or 0
+    win:SetHeight(math.ceil(math.min(MAX_HEIGHT, (tall or 0) + band + strip + 2 * inset)))
 end
 
--- An item's second line: where it comes from, its price, what is carried.
-local function detailOf(item, done)
-    if done then
-        if item.have >= item.count then return "Carried, " .. item.have .. " of " .. item.count end
-        return "Ticked by hand, " .. item.have .. " of " .. item.count .. " carried"
-    end
-    local have = item.have > 0 and ("you have " .. item.have .. " of " .. item.count) or "you have 0"
-    local each = item.each and money(item.each) or nil
+-- An item's name, and its price after it: "Coarse Thread | 10c" from a
+-- vendor, "Linen Cloth | 15c @ AH" at the auction house.
+local function nameOf(item)
+    local name = Planner() and Planner():ItemName(item.itemID) or ("item " .. item.itemID)
+    if not item.each then return name end
+    local guess = (item.estimated or item.source == "estimate") and "~" or ""
+    local price
     if item.source == "vendor" then
-        local name = item.npc and Planner() and Planner():NPCName(item.npc) or "A vendor"
-        return name .. (each and (", " .. each .. " each") or "") .. ", " .. have
+        price = guess .. money(item.each)
     elseif item.source == "ah" or item.source == "estimate" then
-        return "Auction house" .. (each and (", about " .. each) or "") .. ", " .. have
-    elseif item.source == "carried" then
-        return "From your bags, " .. have
+        price = guess .. money(item.each) .. " @ AH"
     end
-    return "Gather, " .. have
+    if not price then return name end
+    -- "||" is the client's escape for a "|" (a lone one starts a code).
+    return name .. " " .. (Planner() and Planner():Tint("|| " .. price, "muted") or ("|| " .. price))
+end
+
+-- What the icon's tooltip says: where the item comes from, and the tick.
+local function tipOf(item, done)
+    local from
+    if item.source == "vendor" then
+        local vendor = item.npc and Planner() and Planner():NPCName(item.npc)
+        from = vendor and ("Sold by " .. vendor .. ".") or "Sold by a vendor."
+    elseif item.source == "ah" or item.source == "estimate" then
+        from = "Bought at the auction house."
+    elseif item.source == "carried" then
+        from = "From your bags."
+    else
+        from = "Gathered."
+    end
+    if done and item.have < item.count then from = from .. " Ticked by hand." end
+    return from .. (done and " Click to take the tick off." or " Click to tick it by hand.")
 end
 
 function List:Refresh()
@@ -408,7 +456,9 @@ function List:Refresh()
     -- The rows in the shape's order, each painted with its item as read now.
     local fresh = {}
     for _, block in ipairs(blocks) do
-        for _, item in ipairs(block.items) do fresh[#fresh + 1] = item end
+        for _, item in ipairs(block.items) do
+            if listed(item) then fresh[#fresh + 1] = item end
+        end
     end
     local missing, spend, guessed = 0, 0, false
     -- Each group's heading: what is left to buy in it.
@@ -432,19 +482,24 @@ function List:Refresh()
         line.slot:SetCount(tostring(item.count))
         line.slot:SetEdge(done and "done" or nil)
         line.slot:FadePicture(done and 0.5 or 1)
-        line.tip = done and "Click to take the tick off" or "Click to tick it by hand"
-        line.name:SetText(Planner() and Planner():ItemName(item.itemID) or ("item " .. item.itemID))
+        line.tip = tipOf(item, done)
+        line.name:SetText(nameOf(item))
         line.name:SetColor(done and "muted" or "text")
-        line.detail:SetText(detailOf(item, done))
-        line.detail:SetColor(done and "done" or "muted")
         line.cost:SetText((not done and cost) and ((guess and "~" or "") .. money(cost)) or "")
+        line.bar:SetValue(math.min(item.have, item.count), math.max(1, item.count))
+        line.bar:SetTone(done and "success" or nil)
+        line.count:SetText(item.have .. " / " .. item.count)
+        line.count:SetColor(done and "done" or "muted")
     end
     for _, group in ipairs(self.groups) do
         local sum = groupCost[group.block .. ":" .. group.key]
-        group.cost:SetText(sum and ((sum.guess and "~" or "") .. money(sum.copper)) or "")
+        if group.cost then group.cost:SetText(sum and ((sum.guess and "~" or "") .. money(sum.copper)) or "") end
     end
-    self.left:SetText(missing == 0 and "All carried" or (missing .. " still needed"))
-    self.spend:SetText(spend > 0 and ("to buy " .. (guessed and "~" or "") .. money(spend)) or "")
+    -- The window's own strip at the foot says where the list stands.
+    local words = missing == 0 and "All carried" or (missing .. " still needed")
+    if spend > 0 then words = words .. ", " .. (guessed and "~" or "") .. money(spend) .. " left to buy" end
+    self.summary = words
+    self.frame:Status(words)
     self.frame:Show()
     if rebuilt then self:Fit() end
 end

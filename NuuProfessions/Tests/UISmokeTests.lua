@@ -251,9 +251,22 @@ local frameHeight = Shopping.frame:GetHeight()
 check(frameHeight > 0 and frameHeight <= 520, "as tall as the list, up to its cap (" .. frameHeight .. ")")
 _G.GetItemCount = function() return 1e9 end
 Shopping:Refresh()
-check(Shopping.left:GetText() == "All carried", "the bags tick everything off")
+check(Shopping.summary == "All carried", "the bags tick everything off")
 _G.GetItemCount = nil
 Shopping:Refresh()
+
+-- A row: the name with its price, "| 10c" from a vendor and "| 15c @ AH" at
+-- the auction house, and a bar of what is carried with "15 / 21" at its end.
+for _, line in ipairs(Shopping.rows) do
+    local item, name = line.item, line.name:GetText()
+    if item.each and (item.source == "ah" or item.source == "estimate") then
+        check(name:find("@ AH", 1, true) and name:find("| ", 1, true), "an auction house item says so: " .. name)
+    elseif item.each and item.source == "vendor" then
+        check(name:find("| ", 1, true) and not name:find("@ AH", 1, true), "a vendor item has its price: " .. name)
+    end
+    check(line.bar:GetValue() == math.min(item.have, item.count) and line.count:GetText() == item.have .. " / " .. item.count,
+        "the bar and its count")
+end
 
 -- No made items, no Buy buttons; a click on the icon ticks by hand.
 for _, line in ipairs(Shopping.rows) do
@@ -275,15 +288,23 @@ local function lineOf(itemID)
     end
 end
 local tickedID = Shopping.rows[1].item.itemID
-local before = Shopping.left:GetText()
+local before = Shopping.summary
 Shopping.rows[1].slot:Click()
-check(lineOf(tickedID).item.ticked and Shopping.left:GetText() ~= before, "a click on the icon ticks it by hand")
+check(Shopping.summary ~= before and not lineOf(tickedID), "a click on the icon ticks it: it leaves for Collected")
 local last = Shopping.groups[#Shopping.groups]
-check(last.key == "have" and Shopping.rows[#Shopping.rows].item.itemID == tickedID,
-    "what is already had goes to its own section, last")
+check(last.key == "have", "what is collected has its own section, last, folded")
+local fold = last.fold
+check(fold and not Shopping:Record(false).haveOpen and not lineOf(tickedID), "Collected folds")
+check(fold.kitType == "Disclosure" and not fold:IsOpen(), "a fold on a line across the list")
+fold:Activate()
+check(Shopping:Record(false).haveOpen and lineOf(tickedID) and lineOf(tickedID).item.ticked
+    and Shopping.rows[#Shopping.rows].item.itemID == tickedID, "opened, it lists what is had")
 lineOf(tickedID).slot:Click()
-check(not lineOf(tickedID).item.ticked and Shopping.left:GetText() == before, "and a second takes the tick off")
+check(not lineOf(tickedID).item.ticked and Shopping.summary == before, "and a second click takes the tick off")
 check(Shopping.rows[1].item.itemID == tickedID, "and it goes back to its shop")
+Shopping:Record(true).haveOpen = nil
+Shopping:Refresh()
+check(Shopping.frame.statusStrip and Shopping.frame.statusStrip:IsShown(), "where the list stands is in the strip at the foot")
 
 -- Buying: the batches and calls.
 local Buying = ns.modules.MerchantBuying

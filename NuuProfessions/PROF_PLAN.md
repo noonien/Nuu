@@ -649,12 +649,16 @@ sections that is the whole route, named under the title ("Tailoring: Whole route
 (another split, or a second profession planned) a full-width drop-down there picks one, each named
 `<Profession>: <section>`, and **All sections** shows every list of a profession under its section's heading.
 The rows stand under a heading per kind of shop (Vendor, Auction house, then Gather and In your bags), each shop's
-heading with what is left to buy there, and what is done (carried, or ticked by hand) under Already have, last; an
-item moves there when it is done and back when it is not. Each row is the item's icon with the count needed, its name, a second line saying where it comes from with its
-price and what is carried ("Abigail Shiel, 10c each, you have 0"), and what the rest costs; the foot says how
-many are still needed and what is left to buy. What the player makes on the way (a bolt of cloth) is a step, not
-shopping, and is left off. An item is done once the bags hold what it needs (a green ring, a faded icon,
-"Carried, 52 of 52"); a click on its icon ticks it by hand (what is in the bank, or what the player will do
+heading with what is left to buy there and some room before each heading but the first, and what is done
+(carried, or ticked by hand) under Collected, last: a line across the list with a fold in the done colour at its
+middle ("Collected"), folded unless the player
+opens it (kept per character, `haveOpen`); an item moves there when it is done and back
+when it is not. Each row is the item's icon with the count needed, its name with its price after it ("Coarse Thread | 10c" from
+a vendor, "Linen Cloth | 15c @ AH" at the auction house, `~` for a guess) and what the rest costs at the right,
+and under them a thin bar of what is carried with "15 / 21" at its end; the icon's tooltip names the vendor. The
+window's status strip says how many are still needed and what is left to buy. What the player makes on the way (a bolt of cloth) is a step, not
+shopping, and is left off. An item is done once the bags hold what it needs (a green ring, a faded icon, a full green bar);
+a click on its icon ticks it by hand (what is in the bank, or what the player will do
 without), kept until the item leaves the plan. The lists are what the planner last planned, kept per character
 (`shoppingList` in the character's record) after every plan, so they do not move while the player shops: only
 the bags and the skill are read live. The bags go to the earliest section first, an item goes once the skill
