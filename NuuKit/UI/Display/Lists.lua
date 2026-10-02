@@ -13,7 +13,9 @@ local Stack = UI.Stack
 
 -- Free-form content that scrolls. What is made in it stacks in a column as
 -- tall as its content; `area:ScrollToTop()`. Spec: gap (8), padding (0),
--- minHeight (100: the height it asks for when not growing).
+-- padLeft and padRight (the padding's, at a side: the content keeps room for
+-- the scrollbar at its right as well), minHeight (100: the height it asks for
+-- when not growing).
 local function fitContent(area, width)
     local content = area.kitInner
     width = math.max(1, UI.Snap(area, (width or area:GetWidth() or 0) - UI.SCROLLBAR))
@@ -44,7 +46,8 @@ UI.Define("ScrollArea", {
         w.kitInner, w.content, w.scroll = content, content, scroll
     end,
     Init = function(w, spec)
-        UI.SetStack(w.kitInner, "column", { gap = spec.gap or 8, padding = spec.padding or 0 })
+        UI.SetStack(w.kitInner, "column", { gap = spec.gap or 8, padding = spec.padding or 0, padLeft = spec.padLeft,
+            padRight = spec.padRight })
         w.scroll:ScrollTo(0)
     end,
     Release = function(w)

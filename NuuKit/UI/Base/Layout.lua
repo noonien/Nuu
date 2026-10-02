@@ -17,6 +17,9 @@ local types = UI.types
 -- centred, or `valign` ("top", "bottom", "stretch") on the row or the child;
 -- the row's `align` packs it when nothing grows.
 --
+-- A stack's own spec: `gap` between children and `padding` round them;
+-- `padLeft` and `padRight` give one side a padding of its own.
+--
 -- What changes a size calls w:Changed(). On the next frame (or at
 -- UI.LayoutNow) the pass measures again, deepest first, only what changed,
 -- and goes up only while a size really changes; then it lays out, top down,
@@ -422,7 +425,8 @@ end
 -- Column sums.
 local function columnMeasure(self, width)
     local p, gap = self.kitPadding, self.kitGap
-    local inner = (width or 0) - 2 * p
+    local sides = (self.kitPadLeft or p) + (self.kitPadRight or p)
+    local inner = (width or 0) - sides
     local tall, wide, count = 0, 0, 0
     for _, child in ipairs(self.kitChildren) do
         if shown(child) then
@@ -438,7 +442,7 @@ local function columnMeasure(self, width)
             count = count + 1
         end
     end
-    return wide + 2 * p, statePad(self, tall + 2 * p + math.max(0, count - 1) * gap)
+    return wide + sides, statePad(self, tall + 2 * p + math.max(0, count - 1) * gap)
 end
 
 -- Row sums.
@@ -501,7 +505,8 @@ local function columnLayout(self, width, height)
         end
     end
     local p, gap = self.kitPadding, self.kitGap
-    local inner = width - 2 * p
+    local padLeft = self.kitPadLeft or p
+    local inner = width - padLeft - (self.kitPadRight or p)
     local count = 0
     for _, child in ipairs(self.kitChildren) do
         if shown(child) then
@@ -520,9 +525,9 @@ local function columnLayout(self, width, height)
     distribute(count, sizes, grows, mins, height - 2 * p, gap, offsets, out)
     for i = 1, count do
         local child = kids[i]
-        local x = p
+        local x = padLeft
         if not stretches(child) then
-            x = p + UI.AlignStart(child.kitLayout.align or self.kitAlign, inner, widths[i])
+            x = padLeft + UI.AlignStart(child.kitLayout.align or self.kitAlign, inner, widths[i])
         end
         layChild(child, place(self, child, x, p + offsets[i], widths[i], out[i]))
         kids[i] = nil

@@ -48,6 +48,25 @@ do
     body.StackLayout = nil
 end
 
+-- A side's own padding: 12 at the left, 2 at the right, beside the bar's room.
+do
+    local _, body = testWindow(ui, 400, 300)
+    local area = body:ScrollArea{ gap = 6, padding = 12, padLeft = 12, padRight = 2 }
+    local line = area:Text{ "Line" }
+    local wide = area:Row{ gap = 4 }
+    wide:Text{ "Wide", grow = true }
+    layout()
+    local inner = area.content.kitPW
+    assertTrue(wide.kitPW == inner - 14, "a stretched child spans between the sides' paddings: " .. tostring(wide.kitPW))
+    local point = wide.points and wide.points[1]
+    assertTrue(point == nil or point[4] == 12, "and starts after the left one")
+    local column = body:Column{ padLeft = 20, padRight = 4, padding = 8 }
+    local text = column:Text{ "Row" }
+    layout()
+    assertTrue(text.kitPW == column.kitPW - 24, "a column takes each side's padding too: " .. tostring(text.kitPW))
+    assertTrue(line.kitParent == area.content, "lines still go in the content")
+end
+
 -- Lists --------------------------------------------------------------------------------
 
 local GUIDES = {}
