@@ -44,3 +44,6 @@ UI/OptionsTab.lua
 UI/ShoppingList.lua
 UI/VendorStrip.lua
 UI/TrainerStrip.lua
+#@debug@
+Dev/ColorAudit.lua
+#@end-debug@
