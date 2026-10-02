@@ -273,7 +273,12 @@ local function clearTyping() UI.ClearTypingFocus(nil) end
 -- A locked window does not move.
 local function canMove(win) return not win.kitLocked end
 
-local function closeClicked(button) button.kitOwner:Hide() end
+-- The player closes it: onClose hears it. Hide from code does not.
+local function closeClicked(button)
+    local win = button.kitOwner
+    win:Hide()
+    if win.kitOnClose then win.kitOnClose(win) end
+end
 
 -- The player folds it: onCollapse hears it. SetCollapsed from code does not.
 local function collapseClicked(button)
@@ -511,7 +516,7 @@ local function shell(ui, opts, inPlay)
     win.kitIsWindow, win.kitInPlay = true, inPlay
     win.kitKey, win.kitPlace = opts.key, opts.place
     win.kitUpward = opts.upward and true or nil
-    win.kitOnCollapse = opts.onCollapse
+    win.kitOnCollapse, win.kitOnClose = opts.onCollapse, opts.onClose
     win.kitNoPlate = inPlay and opts.plate == false
     win:SetFrameStrata(opts.strata or (inPlay and "MEDIUM" or "HIGH"))
     if win.SetToplevel then pcall(win.SetToplevel, win, true) end
@@ -545,7 +550,8 @@ local function shell(ui, opts, inPlay)
     win.subtitle:SetText(opts.subtitle or "")
 
     local right = -6
-    if opts.close ~= false and not inPlay then
+    -- A window has its close mark unless it says no; a panel only when it asks.
+    if (inPlay and opts.close == true) or (not inPlay and opts.close ~= false) then
         local close = ui:GlyphButton(band, { "close", size = 22, glyphSize = 9, boxed = true, bright = true,
             onClick = closeClicked })
         close.kitOwner = win
@@ -638,7 +644,8 @@ end
 -- point, parent, strata, resizable (true, or "width"), minWidth, minHeight,
 -- maxWidth, maxHeight, upward (held by its bottom left, band at the foot:
 -- see SetUpward), collapsible, onCollapse(collapsed, win) (the
--- player's fold), close (false: no close mark), escape (false: Escape does
+-- player's fold), close (false: no close mark; on a panel, true gives it
+-- one), onClose(win) (the player's close), escape (false: Escape does
 -- not close it), gap and padding of the body, hidden (or shown = false).
 -- `status`: true (or a hint to show while it is empty) keeps the status
 -- strip at the foot always, rather than only while it has a message.
@@ -662,8 +669,8 @@ end
 
 -- A frame over the world: always flat and translucent, following the look's
 -- opacity, with a band only when it has a title or folds. The same spec as
--- a window; it has no close mark and does not close on Escape (`escape`
--- only gives its frame a name). `plate = false` leaves out the plate and
+-- a window; it has no close mark unless `close = true`, and does not close
+-- on Escape (`escape` only gives its frame a name). `plate = false` leaves out the plate and
 -- border, so only what the addon draws on it shows.
 function Proto:Panel(opts)
     return shell(self, opts or {}, true)

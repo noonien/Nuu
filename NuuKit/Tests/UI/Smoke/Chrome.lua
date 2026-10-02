@@ -321,6 +321,17 @@ steps:Text{ "Kill Kobold Vermin 6/10", color = "warning" }
 layout()
 assertTrue(panel.kitInPlay and not panel.closeButton and panel.collapseButton, "a panel folds but has no close mark")
 assertTrue(not contains(UISpecialFrames, "TestChrome_tracker_Window"), "Escape leaves a panel be")
+do
+    local heard = 0
+    local closable = ui:Panel({ key = "closable", title = "List", width = 200, height = 80, close = true,
+        onClose = function() heard = heard + 1 end })
+    assertTrue(closable.closeButton, "a panel asking for a close mark has one")
+    closable:Hide()
+    closable:Show()
+    assertTrue(heard == 0, "a hide from code is not the player's close")
+    closable.closeButton:Click()
+    assertTrue(not closable:IsShown() and heard == 1, "the close mark shuts it and onClose hears it")
+end
 assertTrue(steps.kitParent == panel.body and steps.kitPH == 180 - 2 - 30, "a column made on it fills it")
 assertTrue(sameColor(panel.bandBg, nil), "a panel's band is bare")
 fonts = 0
