@@ -701,9 +701,10 @@ for _, row in ipairs(outline) do if row.kind == "make" then made = row end end
 assert(made and made.item == 2000 and made.estimated and made.source == "craft" and made.cost == made.count * 40,
     "the intermediate made from estimated parts is flagged")
 
--- How each material is had. An item a usable recipe makes is made by
--- default, even when a vendor sells it for less: 2000 costs 5c at a vendor
--- and 20c made (1g of 103 makes five). The consumer, recipe 1, is the grind.
+-- How each material is had. An item a usable recipe makes is on make or buy
+-- by default: whichever costs less per item. 2000 costs 5c at a vendor and
+-- 20c made (1g of 103 makes five). The consumer, recipe 1,
+-- is the grind. "make" pins making it, which the tests below use.
 local interData = { recipes = {
     [1] = recipe(1001, { 1, 30, 40, 50 }, { { 2000, 1 } }),
     [6] = recipe(2000, { 1, 10, 15, 20 }, { { 103, 1 } }, { made = { 5, 5 } }),
@@ -714,10 +715,14 @@ local function makesOf(r)
     for _, event in ipairs(r.events) do if event.kind == "make" then table.insert(list, event) end end
     return list
 end
+local makeIt = { [2000] = "make" }
 route = plan(interData, { target = 20, options = { optimize = "cost", sellOutput = "chosen" } })
+assert(#makesOf(route) == 0 and route.shopping[1].itemID == 2000 and route.shopping[1].source == "vendor",
+    "make or buy: bought, as 5c at a vendor beats 20c made")
+route = plan(interData, { target = 20, options = { optimize = "cost", sellOutput = "chosen", get = makeIt } })
 local makeEvents = makesOf(route)
-assert(#makeEvents == 1 and makeEvents[1].item == 2000 and makeEvents[1].spell == 6 and makeEvents[1].forSpell == 1,
-    "made, though buying is cheaper")
+assert(#makeEvents == 1 and makeEvents[1].item == 2000 and makeEvents[1].spell == 6 and makeEvents[1].forSpell == 1
+    , "make: made, though buying is cheaper")
 assert(route.runs[1].spell == 1 and route.shopping[1].itemID == 103, "its parts are what is bought: " .. spells(route))
 -- Its crafts, orange at skill 1, are points: the grind after them starts
 -- higher, and the make says how many.
@@ -731,7 +736,7 @@ for _, row in ipairs(Planner:Outline(route)) do if row.kind == "make" then makeR
 assert(makeRow and makeRow.gain == made1.gain and makeRow.toSkill == 1 + made1.gain and makeRow.forSpell == 1
     and makeRow.crafts == made1.crafts, "the outline's make row")
 -- Grey where it is made: no points, and the grind is the whole stretch.
-route = plan(interData, { skill = 20, target = 30, options = { optimize = "cost", sellOutput = "chosen" } })
+route = plan(interData, { skill = 20, target = 30, options = { optimize = "cost", sellOutput = "chosen", get = makeIt } })
 makeEvents = makesOf(route)
 assert(#makeEvents == 1 and makeEvents[1].gain == nil and spells(route) == "1:20-30", "grey intermediates give nothing")
 -- Buy: never made.
@@ -740,7 +745,7 @@ assert(#makesOf(route) == 0 and spells(route) == "1:1-20" and route.shopping[1].
     and route.shopping[1].source == "vendor", "bought, never made")
 -- Making at a loss: 2000 costs 20s made (1g of 103 makes five) and 5c at a
 -- vendor. The route still makes it (the default), but says so.
-local lossOptions = { optimize = "cost", sellOutput = "chosen" }
+local lossOptions = { optimize = "cost", sellOutput = "chosen", get = makeIt }
 local lossInput
 route, lossInput = plan(interData, { skill = 20, target = 30, options = lossOptions })
 local losses = Planner:MakeLosses(route, lossInput)
@@ -750,7 +755,7 @@ assert(#losses == 1 and losses[1].itemID == 2000 and losses[1].kind == "paid" an
 -- Grey where it is made, so nothing is lost by buying: buying saves.
 local saves, bought = Planner:BuyingSaves(lossInput, route, 2000)
 assert(saves and saves > 0 and #makesOf(bought) == 0, "buying it instead saves: " .. tostring(saves))
-assert(lossInput.options.get == nil, "the trial leaves the player's options alone")
+assert(lossInput.options.get[2000] == "make", "the trial leaves the player's options alone")
 -- Where its crafts give skill, the trial still runs; what it says depends on
 -- whether the skill is worth the loss.
 route, lossInput = plan(interData, { target = 20, options = lossOptions })
@@ -766,7 +771,7 @@ assert(#losses == 1 and losses[1].kind == "free" and losses[1].free[1] == 103 an
 -- Valued instead, they cost what they would sell for, even when only the
 -- output chosen counts as sold: the loss is then paid, and buying fixes it.
 route, lossInput = plan(interData, { skill = 20, target = 30,
-    options = { optimize = "cost", sellOutput = "chosen", gather = { [103] = "opportunity" } } })
+    options = { optimize = "cost", sellOutput = "chosen", gather = { [103] = "opportunity" }, get = makeIt } })
 losses = Planner:MakeLosses(route, lossInput)
 assert(#losses == 1 and losses[1].kind == "paid" and near(losses[1].make, 40), "valued parts are paid for")
 interData.items[103].sell = 1
@@ -774,35 +779,39 @@ route, lossInput = plan(interData, { skill = 20, target = 30,
     options = { optimize = "cost", sellOutput = "chosen", gather = { [103] = "zero" } } })
 assert(#Planner:MakeLosses(route, lossInput) == 0, "free parts worth less than it: no loss")
 interData.items[103].sell = nil
--- Made recursively, each part as its own mode says: 2001 is made of 2000,
--- which is bought here and made by default.
+-- Made recursively, each part as its own mode says: 2001 (made) is made of
+-- 2000, which is bought here and made in the next.
 interData.recipes[7] = recipe(2001, { 1, 2, 3, 4 }, { { 2000, 2 } })
 interData.recipes[8] = recipe(1008, { 1, 30, 40, 50 }, { { 2001, 1 } })
 interData.recipes[1] = nil
 interData.items[2001] = { buy = 1, vendor = true }
-route = plan(interData, { skill = 5, target = 20, options = { optimize = "cost", sellOutput = "chosen", get = { [2000] = "buy" } } })
+route = plan(interData, { skill = 5, target = 20,
+    options = { optimize = "cost", sellOutput = "chosen", get = { [2000] = "buy", [2001] = "make" } } })
 makeEvents = makesOf(route)
 assert(#makeEvents == 1 and makeEvents[1].item == 2001 and route.shopping[1].itemID == 2000, "the part to buy is bought")
-route = plan(interData, { skill = 5, target = 20, options = { optimize = "cost", sellOutput = "chosen" } })
+route = plan(interData, { skill = 5, target = 20,
+    options = { optimize = "cost", sellOutput = "chosen", get = { [2000] = "make", [2001] = "make" } } })
 makeEvents = makesOf(route)
 assert(#makeEvents == 2 and makeEvents[1].item == 2000 and makeEvents[2].item == 2001 and route.shopping[1].itemID == 103,
     "the part is made first, then what it makes")
 
 -- The modes as the Materials tab sets them, and saves from before them.
 local modeInputs = Planner:DefaultInputs()
-assert(Planner:GetMode(modeInputs, 2000, true) == "make" and Planner:GetMode(modeInputs, 100, false) == "buy")
+assert(Planner:GetMode(modeInputs, 2000, true) == "auto" and Planner:GetMode(modeInputs, 100, false) == "buy")
 assert(Planner:SetGetMode(modeInputs, 2000, "buy") and modeInputs.options.get[2000] == "buy"
     and Planner:GetMode(modeInputs, 2000, true) == "buy")
 assert(Planner:SetGetMode(modeInputs, 2000, "gather-free") and modeInputs.options.gather[2000] == "zero"
     and modeInputs.options.get[2000] == nil and Planner:GetMode(modeInputs, 2000, true) == "gather-free")
 assert(Planner:SetGetMode(modeInputs, 2000, "gather-valued") and modeInputs.options.gather[2000] == "opportunity")
 assert(Planner:SetGetMode(modeInputs, 2000, "make") and modeInputs.options.gather[2000] == nil
-    and Planner:GetMode(modeInputs, 2000, true) == "make")
+    and modeInputs.options.get[2000] == "make" and Planner:GetMode(modeInputs, 2000, true) == "make")
+assert(Planner:SetGetMode(modeInputs, 2000, "auto") and modeInputs.options.get[2000] == nil
+    and Planner:GetMode(modeInputs, 2000, true) == "auto")
 assert(Planner:SetGetMode(modeInputs, 2000, "steal") == false)
 local oldStore = { professionPlanner = { plans = { Alchemy = { options = { gather = { [100] = "zero", [101] = "opportunity" } } } } } }
 local oldInputs = Planner:LoadInputs(oldStore, "Alchemy")
 assert(type(oldInputs.options.get) == "table" and Planner:GetMode(oldInputs, 100, true) == "gather-free"
-    and Planner:GetMode(oldInputs, 101, false) == "gather-valued" and Planner:GetMode(oldInputs, 102, true) == "make",
+    and Planner:GetMode(oldInputs, 101, false) == "gather-valued" and Planner:GetMode(oldInputs, 102, true) == "auto",
     "a save from before the modes loads, its gathering kept")
 assert(Planner:Signature({ options = { get = { [1] = "buy" } } }) ~= Planner:Signature({ options = { get = {} } }),
     "a mode changed is a replan")

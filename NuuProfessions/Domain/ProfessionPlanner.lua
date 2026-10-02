@@ -99,7 +99,7 @@ end
 --             things the player wants made on the way, kept rather than sold
 --   options   the player's choices of Planner.defaultOptions (a default is not
 --             stored: see Planner:Option), plus gather = { [itemID] = "opportunity"|"zero" },
---             get = { [itemID] = "buy" } (never made; see Planner:GetMode)
+--             get = { [itemID] = "buy"|"make" } (only bought, or only made; see Planner:GetMode)
 --             and keep = { [itemID] = true } (sold at the vendor price only, never at the
 --             auction house), sell = { [itemID] = true } (sold, when sellOutput is "chosen")
 --             and nosell = { [itemID] = true } (never counted as sold); see Planner:SaleMode
@@ -303,11 +303,12 @@ function Planner:SetMaterialMode(inputs, itemID, mode)
 end
 
 -- How the player gets a material (Prices Context:GetMode says what each
--- does): "make", "buy", "gather-valued" or "gather-free". Stored as
--- options.gather (the two gather modes, as they always were) and options.get
--- (make or buy). `craftable`: whether a recipe the route may use makes it,
--- which makes "make" the default; otherwise it is "buy".
-Planner.getModes = { "make", "buy", "gather-valued", "gather-free" }
+-- does): "auto" (made or bought, whichever costs less per item), "make", "buy",
+-- "gather-valued" or "gather-free". Stored as options.gather (the two gather
+-- modes, as they always were) and options.get (make or buy). `craftable`:
+-- whether a recipe the route may use makes it, which makes "auto" the
+-- default; otherwise it is "buy".
+Planner.getModes = { "auto", "make", "buy", "gather-valued", "gather-free" }
 
 function Planner:GetMode(inputs, itemID, craftable)
     local options = inputs.options or {}
@@ -316,18 +317,18 @@ function Planner:GetMode(inputs, itemID, craftable)
     if gather then return "gather-valued" end
     local chosen = options.get and options.get[itemID]
     if chosen == "buy" or not craftable then return "buy" end
-    return "make"
+    return chosen == "make" and "make" or "auto"
 end
 
 function Planner:SetGetMode(inputs, itemID, mode)
     local gather = ({ ["gather-valued"] = "opportunity", ["gather-free"] = "zero" })[mode]
-    if mode ~= "make" and mode ~= "buy" and not gather then return false end
+    if mode ~= "auto" and mode ~= "make" and mode ~= "buy" and not gather then return false end
     inputs.options = inputs.options or {}
     local options = inputs.options
     options.gather, options.get = options.gather or {}, options.get or {}
     options.gather[itemID] = gather
-    -- Make is the default wherever it is possible, so only buy is kept.
-    options.get[itemID] = mode == "buy" and "buy" or nil
+    -- Auto is the default, so only make or buy is kept.
+    options.get[itemID] = (mode == "make" or mode == "buy") and mode or nil
     return true
 end
 
@@ -2377,6 +2378,9 @@ function Planner:Plan(input)
                 itemID = item, count = count, have = options.useBags and (bags(item) or 0) or 0,
                 buy = math.ceil(buy - 1e-9), source = source or "gather", each = cost, npc = detail and detail.npc,
                 estimated = estimated or nil,
+                -- The route also makes it (what is carried is used first):
+                -- not shopping, though it is counted here.
+                made = sizedLedger.made[item] or nil,
                 firstSkill = sizedLedger.firstSkill[item],
                 lastSkill = (not sizedLedger.noEscape[item]) and sizedLedger.lastSkill[item] or nil,
             })
@@ -2516,7 +2520,9 @@ function Planner:Plan(input)
     --                  patterns = n patterns the character lacks that the route learns,
     --                  patternsUnknown = how many of those have no known price }
     --   auctionator  true when Auctionator is installed and the plan uses it
-    --   shopping     { { itemID, count, have, buy, source, each, npc, firstSkill, lastSkill, estimated } }
+    --   shopping     { { itemID, count, have, buy, source, each, npc, firstSkill, lastSkill, estimated,
+    --                made = true when the route also makes it } }
+    --   made         { [itemID] = true }: what the route makes on the way (its intermediates)
     --   estimated    { itemID } whose price is an estimate, by the share of the cost they carry
     --   status       { kind = "ready"|"short"|"estimated"|"blocked"|"done", text }: see Planner:Status
     --   wanted       the skill asked for (the target given, or the default), before any ceiling
@@ -2561,7 +2567,7 @@ function Planner:Plan(input)
             patterns = patterns, patternsUnknown = patternsUnknown,
         },
         auctionator = ctx:UsesAuctionator() or nil,
-        shopping = shopping, makes = makes, selling = selling, suggestions = suggestions, ceiling = ceiling, gap = gap,
+        shopping = shopping, made = sizedLedger.made, makes = makes, selling = selling, suggestions = suggestions, ceiling = ceiling, gap = gap,
         materials = options.materials, ranOut = ranOutList,
         missingWhy = carriedOnly and "carried" or (not ctx.buyAH and "vendor") or "auction",
         warnings = warnings, unobtainable = missing, items = sortedKeys(touched),
@@ -2974,7 +2980,7 @@ local COSTED = { train = true, learn = true, skillup = true, goal = true }
 --
 --   { { title, kind = "shopping"|"tier"|"recipe"|"band"|"goals", fromSkill, toSkill,
 --       elements = { sequence elements, shopping first },
---       shopping = { { itemID, count, source, each, npc, estimated, lastSkill } },
+--       shopping = { { itemID, count, source, each, npc, estimated, made, lastSkill } },
 --       cost (copper, net), spent, earned (cost = spent - earned),
 --       estimated = true|nil, spell? (recipe sections) } }
 --
@@ -3088,7 +3094,8 @@ function Planner:Sections(route, input)
                 if count > 0 then
                     local info = listed[item] or {}
                     table.insert(section.shopping, { itemID = item, count = count, source = info.source or "gather",
-                        each = info.each, npc = info.npc, estimated = info.estimated, firstSkill = firstSkill[item],
+                        each = info.each, npc = info.npc, estimated = info.estimated,
+                        made = (route.made and route.made[item]) or info.made, firstSkill = firstSkill[item],
                         lastSkill = (not noEscape[item]) and lastSkill[item] or nil })
                 end
             end

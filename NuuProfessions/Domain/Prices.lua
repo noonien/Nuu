@@ -301,7 +301,7 @@ Context.__index = Context
 --   book     the price book (default ns.db.professions)
 --   data     one profession's recipe data (Data/Professions/*.lua)
 --   options  { auction = "both"|"buy"|"sell"|"none", gather = { [itemID] = "opportunity"|"zero" },
---              get = { [itemID] = "buy" } (never made; see Context:GetMode),
+--              get = { [itemID] = "buy"|"make" } (only bought, or only made; see Context:GetMode),
 --              keep = { [itemID] = true } (sold at the vendor price only),
 --              nosell = { [itemID] = true } (never counted as sold, in either sellOutput),
 --              estimateFactor = n (default Prices.estimateFactor),
@@ -481,23 +481,25 @@ function Context:Makers(itemID)
 end
 
 -- How the player gets an item, one of:
+--   auto           made or bought, whichever costs less per item (its parts'
+--                  prices against its own): the default for an item a
+--                  usable recipe makes
 --   make           made from its parts, even when buying would be cheaper
---                  (each part as its own mode says); the default for an item
---                  a usable recipe makes
+--                  (each part as its own mode says)
 --   buy            bought (a vendor, or the auction house when the player
 --                  buys there), never made; the default for any other item
 --   gather-valued  gathered, costed at what it would sell for (options.gather
 --                  "opportunity")
 --   gather-free    gathered, and free (options.gather "zero")
 -- A gathered item competes with the other sources, as it always has; the
--- player's buy is options.get (make needs no mark: it is the default).
+-- player's make or buy is options.get (auto needs no mark: it is the default).
 function Context:GetMode(itemID)
     local gather = self.options.gather and self.options.gather[itemID]
     if gather == "zero" then return "gather-free" end
     if gather then return "gather-valued" end
     local chosen = self.options.get and self.options.get[itemID]
     if chosen == "buy" then return "buy" end
-    if #self:Makers(itemID) > 0 then return "make" end
+    if #self:Makers(itemID) > 0 then return chosen == "make" and "make" or "auto" end
     return "buy"
 end
 
@@ -511,7 +513,8 @@ end
 --
 -- An item to make is only made, from the cheapest of its recipes; when none
 -- can be made (a part has no source) it is bought after all rather than
--- holding the route up. An item to buy is never made.
+-- holding the route up. An item to buy is never made. An item on auto is
+-- made or bought, whichever is cheaper.
 --
 -- Estimates only fill a gap: any real price wins over every estimate, and
 -- only when there is none do the estimate and making it from estimated parts

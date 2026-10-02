@@ -185,12 +185,16 @@ value, source, _, estimated = ctx:BuyCost(3000)
 assert(value == 500 and source == "ah" and not estimated, "a real price beats a cheaper estimate")
 ctx = Prices:Context({ book = estBook, data = est })
 value, source, _, estimated = ctx:BuyCost(3000)
-assert(value == 80 and source == "craft" and estimated, "but an item a usable recipe makes is made, by default")
+assert(value == 500 and source == "ah" and not estimated,
+    "by default (make or buy) a real price is bought rather than making it from guessed parts")
+ctx = Prices:Context({ book = estBook, data = est, options = { get = { [3000] = "make" } } })
+value, source, _, estimated = ctx:BuyCost(3000)
+assert(value == 80 and source == "craft" and estimated, "an item to make is made, from guesses if need be")
 
--- How each item is had: made by default when a usable recipe makes it,
--- bought otherwise; "buy" never makes it, even when making is cheaper; the
--- gather modes as they always were. Making it is kept even when buying is
--- cheaper, and each part follows its own mode.
+-- How each item is had: made or bought, whichever costs less per item
+-- (auto), by default when a usable recipe makes it, bought otherwise; "make"
+-- makes it even when buying is cheaper, "buy" never makes it; the gather
+-- modes as they always were. Each part follows its own mode.
 local modes = {
     recipes = {
         [70] = { makes = 4000, made = { 1, 1 }, skills = { 1, 10, 15, 20 }, reagents = { { 4001, 2 } }, learn = "start" },
@@ -200,13 +204,19 @@ local modes = {
 }
 local modeBook = { prices = {}, trainers = {}, merchants = {} }
 ctx = Prices:Context({ book = modeBook, data = modes })
-assert(ctx:GetMode(4000) == "make" and ctx:GetMode(4001) == "make" and ctx:GetMode(402) == "buy")
+assert(ctx:GetMode(4000) == "auto" and ctx:GetMode(4001) == "auto" and ctx:GetMode(402) == "buy")
+value, source = ctx:BuyCost(4000)
+assert(value == 10 and source == "craft" and select(2, ctx:BuyCost(4001)) == "vendor" and ctx:BuyCost(4001) == 5,
+    "make or buy: the part is bought (5c beats making it for 30c), the item made from two (10c beats 20c)")
+local both = ctx:MakeOrBuy(4000)
+assert(both.make == 10 and both.spell == 70 and both.buy == 20 and both.buyVia == "vendor",
+    "making (from bought parts) and buying, side by side")
+ctx = Prices:Context({ book = modeBook, data = modes, options = { get = { [4000] = "make", [4001] = "make" } } })
+assert(ctx:GetMode(4000) == "make")
 value, source, npc = ctx:BuyCost(4000)
 assert(value == 60 and source == "craft" and npc.spell == 70,
     "made from parts that are made too (2 x 3 x 10c), though a vendor sells it for 20c: " .. tostring(value))
-local both = ctx:MakeOrBuy(4000)
-assert(both.make == 60 and both.spell == 70 and both.buy == 20 and both.buyVia == "vendor", "making and buying, side by side")
-ctx = Prices:Context({ book = modeBook, data = modes, options = { get = { [4001] = "buy" } } })
+ctx = Prices:Context({ book = modeBook, data = modes, options = { get = { [4000] = "make", [4001] = "buy" } } })
 assert(ctx:BuyCost(4000) == 10, "a part to buy is bought (5c), the item itself still made")
 ctx = Prices:Context({ book = modeBook, data = modes, options = { get = { [4000] = "buy" } } })
 value, source = ctx:BuyCost(4000)

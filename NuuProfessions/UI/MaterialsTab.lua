@@ -62,18 +62,21 @@ local PLAN_WITH = {
     { value = "never", caption = "Never use it", desc = "Leave out every recipe that needs it" },
 }
 
--- Get it: make it, buy it, or gather it (valued at its sale price, or
--- free): Planner:GetMode. Make it is offered only for an item a recipe the
--- route may use makes, and is then the default.
+-- Get it: make or buy (the planner's choice), make it, buy it, or gather it
+-- (valued at its sale price, or free): Planner:GetMode. Make or buy and Make
+-- it are offered only for an item a recipe the route may use makes, and make
+-- or buy is then the default.
+local MAKE_OR_BUY = { value = "auto", caption = "Make or buy",
+    desc = "Made, or bought where buying it costs less than its parts" }
 local MAKE_IT = { value = "make", caption = "Make it",
     desc = "Made from its parts on the way, even when buying is cheaper; its crafts may give skill" }
 local BUY_IT = { value = "buy", caption = "Buy", desc = "From a vendor, or the auction house when you buy there; never made" }
 local GATHER_VALUED = { value = "gather-valued", caption = "Gather, valued",
     desc = "You gather it; costed at what it would sell for, since you could sell it instead" }
 local GATHER_FREE = { value = "gather-free", caption = "Gather, free", desc = "You gather it and it costs the plan nothing" }
-local GET_MADE = { MAKE_IT, BUY_IT, GATHER_VALUED, GATHER_FREE }
+local GET_MADE = { MAKE_OR_BUY, MAKE_IT, BUY_IT, GATHER_VALUED, GATHER_FREE }
 local GET_PLAIN = { BUY_IT, GATHER_VALUED, GATHER_FREE }
-local GET_CAPTION = { make = "made from its parts", buy = "bought", ["gather-valued"] = "gathered, valued at its sale price",
+local GET_CAPTION = { auto = "made or bought, whichever costs less", make = "made from its parts", buy = "bought", ["gather-valued"] = "gathered, valued at its sale price",
     ["gather-free"] = "gathered, free" }
 
 local SALE_CAPTION = { sell = "Sold, best price", vendor = "Sold to vendors only", keep = "Kept, never sold" }
