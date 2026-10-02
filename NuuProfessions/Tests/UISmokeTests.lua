@@ -198,6 +198,69 @@ Plan:MakeNext()
 settle()
 noErrors("plan tab")
 
+-- The note: hidden with nothing to say; a warning worth a line and the rest
+-- behind "and N more"; a dear end said apart, its steps marked, and Stop at
+-- setting the target, with Undo. The route is the shipped data's, given a
+-- warning and a tail by hand.
+do
+    local route = Panel.route
+    local target = Panel.inputs.target
+    route.warnings, route.tail = { { code = "tiersUnverified", text = "Trainer caps are unverified." } }, nil
+    Panel:Render()
+    settle()
+    check(not Plan.note:IsShown(), "the unverified tiers alone are no note")
+    route.warnings = { { code = "tiersUnverified", text = "Trainer caps are unverified." },
+        { code = "carriedShort", text = "You may need 3 more Light Leather than you carry." } }
+    Panel:Render()
+    settle()
+    check(Plan.note:IsShown() and Plan.noteText:GetText():find("Light Leather", 1, true), "a warning leads the note")
+    check(not Plan.stopAt:IsShown() and Plan.moreWarnings:IsShown() and Plan.moreWarnings:GetText() == "and 1 more",
+        "the rest behind and N more: " .. tostring(Plan.moreWarnings:GetText()))
+    local lines = {}
+    local tip = { SetText = function(_, text) lines[#lines + 1] = text end,
+        AddLine = function(_, text) lines[#lines + 1] = text end,
+        AddDoubleLine = function(_, text) lines[#lines + 1] = text end }
+    Plan:WarningsTip(tip)
+    check(lines[1] == "Also" and lines[2] == "Trainer caps are unverified.", "its tooltip lists them")
+
+    local last = route.runs[#route.runs]
+    check(last.fromSkill > route.startSkill, "the last step starts past the route's start")
+    route.tail = { fromSkill = last.fromSkill, toSkill = last.toSkill, runIndex = #route.runs, net = 3190000,
+        perPoint = 354800, times = 250 }
+    table.insert(route.warnings, { code = "expensive", text = "Skill " .. last.fromSkill .. "-" .. last.toSkill
+        .. " costs about 35g 48s a point.", skill = last.fromSkill, spell = last.spell })
+    Panel:Render()
+    settle()
+    local text = Plan.noteText:GetText()
+    check(Plan.note:IsShown() and text:find(" to " .. last.fromSkill .. "; " .. last.fromSkill .. "-" .. last.toSkill
+        .. " costs another ", 1, true), "the dear end said apart: " .. tostring(text))
+    check(Plan.stopAt:IsShown() and Plan.stopAt:GetText() == "Stop at " .. last.fromSkill, "Stop at its start")
+    check(Plan.moreWarnings:GetText() == "and 2 more", "the expensive warning is the note's own: "
+        .. tostring(Plan.moreWarnings:GetText()))
+    lines = {}
+    Plan:NoteTip(tip)
+    Plan:NetTip(tip)
+    local model
+    for _, item in ipairs(Plan.items) do if item.t == "run" and item.runIndex == #route.runs then model = item end end
+    check(model and Plan:InTail(model), "the dear end's step is marked")
+    lines = {}
+    Plan:RunTip(model)(tip)
+    local said = table.concat(lines, "\n")
+    check(said:find("Part of the dear end", 1, true), "its tooltip says so: " .. said)
+    Plan:OpenRunMenu(model)
+    Panel:UI():CloseMenu()
+    noErrors("the note")
+
+    Plan:StopAtTail()
+    settle()
+    check(Panel.inputs.target == last.fromSkill, "Stop at sets the target")
+    check(Panel.statusUndo ~= nil, "and can be undone")
+    Panel.statusUndo()
+    settle()
+    check(Panel.inputs.target == target, "Undo puts the target back")
+    noErrors("stop at")
+end
+
 -- Only what I have, and the target typed.
 Plan:CarriedToggled(true)
 settle()

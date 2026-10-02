@@ -662,8 +662,20 @@ route = plan(dear, { target = 60 })
 local found
 for _, warning in ipairs(route.warnings) do if warning.code == "expensive" then found = warning end end
 assert(found and found.spell == 2, "the 1g-a-point stretch is called out")
+-- The tail, for the window: where it starts, what it costs, and the cost
+-- said apart in the status sentence.
+local tail = route.tail
+assert(tail and tail.fromSkill == found.skill and tail.toSkill == 60 and tail.runIndex == #route.runs
+    and route.runs[tail.runIndex].spell == 2, "the tail is its runs: " .. spells(route))
+assert(tail.perPoint >= Planner.expensiveMinimum and tail.times >= Planner.expensiveFactor
+    and math.abs(tail.net - tail.perPoint * (tail.toSkill - tail.fromSkill)) <= tail.toSkill - tail.fromSkill,
+    "its net and cost a point agree")
+assert(tail.net < route.summary.net, "the tail is part of the route's net")
+assert(route.status.text:find(" to " .. tail.fromSkill .. ", then about ", 1, true)
+    and route.status.text:find("for " .. tail.fromSkill .. "-60.", 1, true), route.status.text)
 route = plan(chain, { target = 20 })
 for _, warning in ipairs(route.warnings) do assert(warning.code ~= "expensive", "an even route has no warning") end
+assert(route.tail == nil, "an even route has no tail")
 
 -- The last sale at the target closes the tier it finishes: no empty
 -- "Journeyman 75-75" section after an Apprentice route to 75.

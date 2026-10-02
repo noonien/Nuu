@@ -13,8 +13,10 @@ local suites = {
     { "planner fixtures", "Tests/PlannerFixtureTests.lua" },
     { "planner playthroughs", "Tests/PlannerPlaythroughTests.lua" },
     { "planner fuzz", "Tests/PlannerFuzzTests.lua" },
-    -- Last: it stands in for the client's frame API in _G.
+    { "colour audit", "Tests/ColorAuditTests.lua" },
+    -- Last: they stand in for the client's frame API in _G.
     { "planner window", "Tests/UISmokeTests.lua" },
+    { "replanning", "Tests/ReplanTests.lua" },
 }
 for _, suite in ipairs(suites) do
     local ok, err = pcall(dofile, suite[2])

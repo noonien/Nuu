@@ -25,9 +25,9 @@ local _, ns = ...
 -- through panel:Change or panel:Changed, which plan again at once.
 --
 -- Everything the window does is traced to the `planner` trace channel
--- (ns:Trace, kept for the last three sessions): each plan with its inputs
--- and route, each change with the inputs before and after, and the window's
--- own actions. The plan row is built once a replan, and only while the
+-- (ns:Trace, kept for every session that traced in the last day, at least
+-- the last three): each plan with its inputs and route, each change with the
+-- inputs before and after, and the window's own actions. The plan row is built once a replan, and only while the
 -- trace is kept.
 --
 -- Unlike OpenRoad's planner, the route is not exported to a guide tracker:
@@ -405,6 +405,7 @@ function Panel:TraceRoute(route)
         confidence = route.confidence, signature = route.signature,
         ceiling = pick(route.ceiling, { "skill", "reason", "text", "level", "tier" }),
         status = pick(route.status, { "kind", "text", "code" }),
+        tail = pick(route.tail, { "fromSkill", "toSkill", "runIndex", "net", "perPoint", "times" }),
         summary = pick(route.summary, { "spent", "recovered", "net", "materials", "training", "learning", "low", "high",
             "estimated", "estimatedShare", "costUnknown", "auctionator", "patterns", "patternsUnknown" }),
         runs = {}, events = {}, warnings = {}, suggestions = {}, shopping = {}, chosen = {},
@@ -500,8 +501,45 @@ local function replayTrace(input)
     return { known = known, helpers = input.data and input.data.helpers, bags = bags }
 end
 
--- Plans the route again from the live skill, bags and inputs.
-function Panel:Replan(reason)
+-- Whether a plan reads the bags: using what is carried first, or only that.
+local function readsBags(inputs)
+    if not inputs then return false end
+    return inputs.options.useBags ~= false or inputs.options.materials == "carried"
+end
+
+-- What the open tab draws from a route, as one string: when a replan gives
+-- the same, nothing on screen moved and the route need not be drawn again.
+local function routePrint(route, sections)
+    if not route then return "none" end
+    local out = { route.signature or "", route.startSkill or "", route.skill or "", route.target or "", tostring(route.committed),
+        route.status and route.status.kind or "", route.status and route.status.text or "",
+        route.ceiling and route.ceiling.skill or "", route.ceiling and route.ceiling.reason or "" }
+    local summary = route.summary or {}
+    for _, field in ipairs({ "spent", "recovered", "net", "materials", "training", "learning", "low", "high" }) do
+        table.insert(out, tostring(summary[field]))
+    end
+    for _, run in ipairs(route.runs or {}) do
+        table.insert(out, table.concat({ run.spell or "", run.fromSkill or "", run.toSkill or "", run.count or "",
+            run.low or "", run.high or "", tostring(run.committed), run.color or "" }, ":"))
+    end
+    table.insert(out, "e" .. #(route.events or {}))
+    for _, item in ipairs(route.shopping or {}) do
+        table.insert(out, table.concat({ item.itemID or "", item.count or "", item.have or "", item.buy or "" }, ":"))
+    end
+    table.insert(out, "w" .. #(route.warnings or {}) .. "s" .. #(route.suggestions or {}) .. "x" .. #(sections or {}))
+    return table.concat(out, "|")
+end
+
+-- What the band and the Make button read of the client besides the route.
+local function livePrint(live)
+    if not live then return "none" end
+    return table.concat({ tostring(live.learned), live.skill or "", live.maxSkill or "", live.level or "",
+        tostring(live.fullScope) }, ":")
+end
+
+-- Plans the route again from the live skill, bags and inputs. `triggers`:
+-- what the check that asked gathered ("crafted,bags,skill"), for the log.
+function Panel:Replan(reason, triggers)
     local profession = self.profession
     if not profession then return end
     self.data = self:Data(profession)
@@ -512,6 +550,7 @@ function Panel:Replan(reason)
     if not self.data then
         self.route, self.input, self.sections = nil, nil, nil
         self.problem = "No recipes for " .. profession .. " yet in this version of NuuProfessions."
+        self.routePrint, self.bagPrint = "problem:" .. self.problem, nil
         if tracing then
             self:Trace("plan", { reason = reason, data = false, problem = self.problem, live = liveTrace(live),
                 fullScope = live.fullScope or false, inputs = self.inputs })
@@ -536,6 +575,7 @@ function Panel:Replan(reason)
     if not ok then
         self.route, self.sections = nil, nil
         self.problem = "The planner could not plan this: " .. tostring(route)
+        self.routePrint, self.bagPrint = "problem:" .. self.problem, nil
         ns:Log("planner: " .. tostring(route))
         if tracing then
             self:Trace("plan-failed", { reason = reason, error = tostring(route), live = liveTrace(live),
@@ -548,6 +588,11 @@ function Panel:Replan(reason)
     local split, sections = pcall(Planner().Sections, Planner(), route, self:SplitInput())
     self.sections = split and sections or {}
     if not split then ns:Log("planner: sections failed: " .. tostring(sections)) end
+    -- What the route shows and the bags it read, for the next check
+    -- (CheckStale): the same route is not drawn again, and only bags that
+    -- moved plan again.
+    self.routePrint = routePrint(route, self.sections)
+    self.bagPrint = readsBags(self.inputs) and self:BagPrint() or nil
     -- The shopping list keeps what this plan buys, to show with the window shut.
     local list = ns.modules.ShoppingList
     if list then
@@ -563,7 +608,7 @@ function Panel:Replan(reason)
     if tracing then
         local traced, row = pcall(self.TraceRoute, self, route)
         if not traced then report(row) end
-        self:Trace("plan", { reason = reason, data = true, profession = profession, live = liveTrace(live),
+        self:Trace("plan", { reason = reason, triggers = triggers, data = true, profession = profession, live = liveTrace(live),
             fullScope = live.fullScope or false,
             inputs = self.inputs,
             input = { level = input.level, known = countKeys(input.known), target = input.target, skill = input.skill,
@@ -572,9 +617,12 @@ function Panel:Replan(reason)
             route = traced and row or nil, ms = took, sections = #self.sections,
             sectionsFailed = not split and tostring(sections) or nil })
     end
-    ns:Record("prof", { event = "plan", profession = profession, reason = reason, skill = live.skill, target = route.target,
-        net = route.summary.net, runs = #route.runs, suggestions = #route.suggestions,
-        status = route.status and route.status.kind, split = self.inputs.options.sections })
+    local first = route.runs[1]
+    ns:Record("prof", { event = "plan", profession = profession, reason = reason, triggers = triggers,
+        skill = live.skill, target = route.target, net = route.summary.net, runs = #route.runs,
+        suggestions = #route.suggestions, status = route.status and route.status.kind,
+        split = self.inputs.options.sections, committed = route.committed,
+        first = first and first.spell, firstCount = first and first.count })
     self:CheckColors()
 end
 
@@ -954,6 +1002,7 @@ end
 function Panel:Render()
     if not self.win or not self.win:IsShown() then return end
     self.waitingForItems = false
+    self.drawnLive = livePrint(self.live)
     self:RenderHeader()
     self:PaintStatus()
     local tab = self.tabByKey[self.tab]
@@ -968,38 +1017,154 @@ end
 
 -- Keeping the route current ------------------------------------------------------------------
 
+-- What changes the route needs a check for arrive in bursts: one craft is a
+-- "You create" line, a bag update, a skill line and a profession window
+-- read, a few tenths of a second apart, and the first of them sees the
+-- others' state half done (the skill not yet up). So every trigger feeds one
+-- settle timer, started again by each new one, and the check runs SETTLE
+-- seconds after the last: one check (and at most one plan) a craft, on the
+-- state the whole burst left.
+local SETTLE = 0.5
+-- While the Make button's batch runs, the bags change at every craft; what
+-- they change is planned again when the skill moves or the batch stops, and
+-- a batch quiet this long has stopped (one that ran out of materials short
+-- of its skill keeps its stop until the window shuts).
+local HOLD = 6
+
+-- The reason a coalesced check is traced and recorded under: the most telling
+-- of its triggers. A kind not named here ranks above the bags.
+local TRIGGER_RANK = { auction = 1, trainer = 2, merchant = 3, skill = 4, crafted = 5, tradeskill = 6, craft = 7,
+    window = 9, bags = 10 }
+
+local function rank(trigger) return TRIGGER_RANK[trigger] or 8 end
+
+-- The count carried of every item a recipe of the data takes or makes, as one
+-- string: the bags are not part of the inputs' signature, so a bag update
+-- replans only when one of these moved (loot of anything else does not).
+function Panel:BagPrint()
+    local data = self.data
+    if not data then return nil end
+    local items = self.bagItems
+    if not items or items.data ~= data then
+        local seen, list = {}, {}
+        for _, recipe in pairs(data.recipes or {}) do
+            if type(recipe) == "table" then
+                if recipe.makes and not seen[recipe.makes] then seen[recipe.makes] = true; table.insert(list, recipe.makes) end
+                for _, reagent in ipairs(recipe.reagents or {}) do
+                    if not seen[reagent[1]] then seen[reagent[1]] = true; table.insert(list, reagent[1]) end
+                end
+            end
+        end
+        table.sort(list)
+        items = { data = data, list = list }
+        self.bagItems = items
+    end
+    local api, counts = Client(), {}
+    for index, item in ipairs(items.list) do counts[index] = api:GetItemCount(item, true) or 0 end
+    return table.concat(counts, ",")
+end
+
+-- The Make button's batch, while it runs for the profession on screen.
+function Panel:MakeRunning()
+    local stop = Client().craftUntil
+    return type(stop) == "table" and self.profession ~= nil and type(stop.profession) == "string"
+        and stop.profession:lower() == self.profession:lower() or false
+end
+
 -- Plans again when something the route depends on changed: a price, a
--- trainer fee or merchant stock, a recipe learned, or the skill passing a run
--- (or falling behind where the route started). Only while the window is
--- open; otherwise the next opening plans.
-function Panel:CheckStale(reason)
+-- trainer fee or merchant stock, a recipe learned, the skill moving (or
+-- passing a run, or falling behind where the route started), or what is
+-- carried. Only while the window is open; otherwise the next opening plans.
+-- `pending` is what ScheduleCheck gathered: { triggers, force, quiet }.
+-- The route is drawn again only when the plan changed what it shows.
+function Panel:CheckStale(reason, pending)
+    pending = pending or { triggers = { reason } }
     if not self.profession or not self.data then return end
     if not self:IsOpen() then return end
     local live = self:Live(self.profession)
     -- The data afresh: what the other professions make changes with them.
     local signature = Planner():Signature(Planner():MakeInput(self.profession, self:Data(self.profession), self.inputs, live))
     local again = Planner():NeedsReplan(self.route, { skill = live.skill, signature = signature })
-    local forced = self.forceReplan
-    self.forceReplan = nil
+    local forced = pending.force
     local passed = Planner():PassedRun(self.route, live.skill)
-    self:Trace("check", { trigger = reason, replan = (again or forced or passed) and true or false,
-        stale = again and true or false, forced = forced or nil, passed = passed and true or false,
-        skill = live.skill, open = true })
-    if again or forced or passed then
-        self:Replan(reason)
+    -- The counts ahead were sized from the skill the route was planned at.
+    local moved = self.route ~= nil and self.route.skill ~= live.skill
+    local bags = readsBags(self.inputs) and self.bagPrint ~= nil and self:BagPrint() ~= self.bagPrint
+    -- During a Make batch the bags alone wait for the skill or the batch's end.
+    local held = bags and not (again or forced or passed or moved) and not pending.quiet and self:MakeRunning()
+    local replan = (again or forced or passed or moved or (bags and not held)) and true or false
+    local triggers = table.concat(pending.triggers, ",")
+    self:Trace("check", { trigger = reason, triggers = triggers, replan = replan, stale = again and true or false,
+        forced = forced or nil, passed = passed and true or false, moved = moved or nil, bags = bags or nil,
+        held = held or nil, skill = live.skill, open = true })
+    if held then
+        self:HoldCheck(pending)
+        return
+    end
+    local before = self.routePrint
+    if replan then
+        self:Replan(reason, triggers)
     else
         self.live = live
     end
-    self:Render()
+    if self.routePrint ~= before or livePrint(self.live) ~= self.drawnLive then
+        self:Render()
+    else
+        self:RefreshMake()
+    end
 end
 
-function Panel:ScheduleCheck(reason)
-    if self.checkPending then return end
-    self.checkPending = true
-    after(0.3, function()
-        self.checkPending = false
-        self:CheckStale(reason)
+-- Asks for a check once things settle, with what asked (`reason`: "skill",
+-- "bags", "crafted", "tradeskill", "auction", ...). Every call starts the
+-- settle timer again; the triggers gathered meanwhile go to the one check.
+function Panel:ScheduleCheck(reason, force)
+    local pending = self.pendingCheck
+    if not pending then
+        pending = { triggers = {}, seen = {} }
+        self.pendingCheck = pending
+    end
+    if not pending.seen[reason] then
+        pending.seen[reason] = true
+        table.insert(pending.triggers, reason)
+    end
+    if force then pending.force = true end
+    pending.quiet = nil
+    self:ArmCheck(pending, SETTLE)
+end
+
+-- `quiet`: the hold's timer, which fires only when nothing came since.
+function Panel:ArmCheck(pending, seconds, quiet)
+    self.checkGeneration = (self.checkGeneration or 0) + 1
+    local generation = self.checkGeneration
+    after(seconds, function()
+        if generation ~= self.checkGeneration then return end
+        self.pendingCheck = nil
+        pending.quiet = quiet
+        local reason = pending.triggers[1]
+        for _, trigger in ipairs(pending.triggers) do
+            if rank(trigger) < rank(reason) then reason = trigger end
+        end
+        self:CheckStale(reason, pending)
     end)
+end
+
+-- The bags moved during a Make batch: the triggers wait for the next one (a
+-- skill line, the window shutting), or for HOLD seconds without one, when
+-- the batch has stopped and the bags count.
+function Panel:HoldCheck(pending)
+    self.pendingCheck = pending
+    self:ArmCheck(pending, HOLD, true)
+end
+
+-- The Make button against the live profession window, when the route on
+-- screen stays as it is.
+function Panel:RefreshMake()
+    if not self.win or not self.win:IsShown() then return end
+    local tab = self.tabByKey and self.tabByKey[self.tab]
+    local module = tab and tab.module
+    if not module or type(module.RenderMake) ~= "function" then return end
+    local ok, err = pcall(module.RenderMake, module, self)
+    if not ok then report(err) end
 end
 
 -- Something was made (the "You create:" line): a goal making it counts it
@@ -1031,21 +1196,16 @@ function Panel:Crafted(itemID, count)
             end
         end
     end
-    -- Not a goal: the skill or the bags moved with it, so the plan on screen
-    -- is checked now rather than when the bags settle.
-    if self.profession and self:IsOpen() then
-        self.forceReplan = true
-        self:ScheduleCheck("crafted")
-    end
+    -- Not a goal: the skill and the bags move with it, and their own triggers
+    -- follow; this one joins them in the one check after the craft.
+    if self.profession and self:IsOpen() then self:ScheduleCheck("crafted") end
 end
 
 -- The bags changed: every tab shows what is carried somewhere, so the open
 -- one is drawn again (at most twice a second) while the window is open; and
--- a plan counting the bags is planned again once they have been still for a
--- moment, so crafting a stack does not replan at every craft.
+-- a plan counting the bags is checked once they have been still for a
+-- moment (planned again when what a recipe takes or makes moved).
 function Panel:BagsChanged()
-    self.bagGeneration = (self.bagGeneration or 0) + 1
-    local generation = self.bagGeneration
     if not self:IsOpen() then return end
     if not self.bagRenderPending then
         self.bagRenderPending = true
@@ -1057,14 +1217,7 @@ function Panel:BagsChanged()
     -- Planning with only what is carried, the bags are the route; and an
     -- intermediate made or a material bought changes what is left to make
     -- and buy.
-    local carried = self.inputs and self.inputs.options.materials == "carried"
-    if self.profession and self.inputs and (self.inputs.options.useBags ~= false or carried) then
-        after(0.5, function()
-            if generation ~= self.bagGeneration then return end
-            self.forceReplan = true
-            self:ScheduleCheck("bags")
-        end)
-    end
+    if self.profession and readsBags(self.inputs) then self:ScheduleCheck("bags") end
 end
 
 -- The profession window --------------------------------------------------------------------
@@ -1168,9 +1321,11 @@ function Panel:ProfessionChanged(kind, subject, data)
         self:Crafted(subject, data)
         return
     end
-    -- The window opened or shut: only the Plan tab's Make button cares.
+    -- The window opened or shut: only the Plan tab's Make button cares, and
+    -- a check held for a Make batch (shut, the batch is over).
     if kind == "window" then
         self:Render()
+        if self.pendingCheck then self:ScheduleCheck("window") end
         return
     end
     if kind == "tradeskill" and self.profession and type(subject) == "string"
@@ -1178,8 +1333,7 @@ function Panel:ProfessionChanged(kind, subject, data)
         and not (type(ns.professionData) == "table" and ns.professionData[Planner():DataKey(subject)]) then return end
     -- The auction house closed: Auctionator may have scanned new prices,
     -- which are not part of the inputs' signature.
-    if kind == "auction" then self.forceReplan = true end
-    self:ScheduleCheck(kind)
+    self:ScheduleCheck(kind, kind == "auction")
 end
 
 function Panel:Initialize()

@@ -8,6 +8,11 @@ local _, ns = ...
 --                (what the route costs, sells for, nets, and how many crafts
 --                it takes), Check prices (while prices are guessed), how the
 --                route is cut into sections, and Make
+--   the note     under it, only with something to say: a dear end of the
+--                route (route.tail) said apart, what the route costs to its
+--                start and what the end costs on top, with Stop at; else the
+--                first of the route's warnings; the rest behind "and N
+--                more", listed in its tooltip
 --   the table    the steps under their sections: a bar a recipe on a skill
 --                axis that follows the scroll (the rows in view set its
 --                range), the recipe, its crafts and its net. A recipe's
@@ -33,7 +38,9 @@ local _, ns = ...
 -- Ported from OpenRoad's UI/PlannerPlan.lua. Gone with the guide export:
 -- Start in tracker, Stop, Save as guide and Edit saved (docs/planner-split.md);
 -- Make is how the plan is worked through now. Every row is one height, as a
--- kit List's are.
+-- kit List's are. OpenRoad's verdict line is not back (the figures say the
+-- cost); its "and N more" is, on the note, which shows only when it has
+-- something to say.
 local Tab = { key = "plan", caption = "Plan", open = {}, all = {} }
 
 local function Planner() return ns.modules.ProfessionPlanner end
@@ -157,6 +164,7 @@ local function makeClicked() Tab:MakeNext() end
 local function checkClicked() panelOf():ShowTab("materials", { show = "guessed" }) end
 local function sectionsPicked(value) Tab:SectionsPicked(value) end
 local function sizeCommitted(text) Tab:SizeCommitted(text) end
+local function stopClicked() Tab:StopAtTail() end
 local function collapseClicked()
     Tab.open, Tab.all = {}, {}
     Tab.layoutWhy = "collapse-all"
@@ -175,6 +183,8 @@ local function targetTip(tooltip) Tab:TargetTip(tooltip) end
 local function costTip(tooltip) Tab:CostTip(tooltip) end
 local function sellsTip(tooltip) Tab:SellsTip(tooltip) end
 local function netTip(tooltip) Tab:NetTip(tooltip) end
+local function noteTip(tooltip) Tab:NoteTip(tooltip) end
+local function warningsTip(tooltip) Tab:WarningsTip(tooltip) end
 
 local CARRIED_TIP = function(tooltip)
     tooltip:SetText("Only what I have", 1, 1, 1)
@@ -234,7 +244,18 @@ function Tab:BuildSummary(page)
     self.size = top:Input{ width = 44, numeric = true, onChange = sizeCommitted, valign = "center" }
     self.make = top:Button{ "Make", tone = "accent", width = 140, onClick = makeClicked }
 
-
+    -- Row two, shown only with something to say (RenderNote): "About 10g 20s
+    -- to 151; 151-160 costs another 319g 50s, 35g 48s a point. [Stop at 151]
+    -- and 2 more". The words take the mouse for their tooltip, so the box is
+    -- marked as a changed frame, as a figure's is.
+    local note = page:Row{ gap = 8, height = 24, hidden = true }
+    self.note = note
+    local lead = note:Row{ gap = 0, grow = true, tooltip = noteTip }
+    lead:Customize(self.panel:UI().Custom.frame):EnableMouse(true)
+    self.noteText = lead:Text{ "", color = "warning", grow = true }
+    self.stopAt = note:Button{ "Stop at", tone = "warning", style = "soft", height = 20, onClick = stopClicked,
+        tooltip = "Set the target here and plan again. The full route stays a click away: Undo on the strip below." }
+    self.moreWarnings = note:Link{ "", color = "warning", tooltip = warningsTip }
 end
 
 -- The table's head: the skill axis over the bars, and the column heads.
@@ -716,8 +737,9 @@ function Tab:DifficultyColor(spell, skill, noGrey)
 end
 
 -- The row's wash and rail: an open step or its choices in the accent, a
--- heading in a light grey, the gap note in the warning colour, a recipe
--- needing a pattern the character lacks in the pattern colour. The kit's
+-- heading in a light grey, the gap note and the dear end's steps in the
+-- warning colour, a recipe needing a pattern the character lacks in the
+-- pattern colour. The kit's
 -- own wash under it shows hover and the selection (the step Make acts on).
 function Tab:PaintRow(row, model)
     local t = self.panel:UI().tokens
@@ -730,6 +752,9 @@ function Tab:PaintRow(row, model)
     elseif open then
         fill(row.wash, t.accent, 0.07)
         rail = t.accent
+    elseif self:InTail(model) then
+        fill(row.wash, t.warning, 0.07)
+        rail = t.warning
     elseif kind == "way" or kind == "wayhead" or kind == "more" then
         fill(row.wash, t.accent, 0.04)
         rail = ns.Kit.UI.Faded(t, t.accent, 0.35)
@@ -791,6 +816,8 @@ function Tab:DrawRow(row, model, at)
         end
         row.crafts:SetText(crafts)
         local text, color = figure(panel, model.net, model.estimated)
+        -- A step of the dear end: its net in the warning colour.
+        if color == "text" and self:InTail(model) then color = "warning" end
         row.net:SetText(text); row.net:SetColor(color)
         if model.mayHaveWays then
             local open = self:OpenKey(model.a, model.b) and true or false
@@ -1223,7 +1250,137 @@ function Tab:NetTip(tooltip)
         tooltip:AddLine("Selling it all to a vendor instead: " .. netWords(panel, summary.vendorNet) .. ".",
             0.8, 0.8, 0.8, true)
     end
+    local tail = route.tail
+    if tail then
+        panel:TipLine(tooltip, "Of it, " .. tail.fromSkill .. "-" .. tail.toSkill .. " alone is " .. netWords(panel, tail.net)
+            .. "; to " .. tail.fromSkill .. ", " .. netWords(panel, (summary.net or 0) - tail.net) .. ".", "warning")
+    end
     if (summary.estimated or 0) > 0 then panel:TipLine(tooltip, ESTIMATE_TIP, "estimate") end
+end
+
+-- The note ----------------------------------------------------------------------------
+
+-- The dear end the note says apart, when the route has one past its start
+-- (Planner:Plan's route.tail; the "expensive" warning says why).
+local function tailOf(route)
+    local tail = route and route.tail
+    if tail and tail.fromSkill > (route.startSkill or 0) and tail.toSkill > tail.fromSkill then return tail end
+    return nil
+end
+
+-- The route's warnings the note does not say, one line each, as OpenRoad's
+-- verdict listed them: a recipe named, the unknown learning fees as one
+-- line, nothing Check prices already stands for (while it shows, the
+-- Materials tab's banners say what has no source), and every material with
+-- no source otherwise. Each is { code, text }.
+function Tab:Warnings(panel, route)
+    local list = {}
+    if not route then return list end
+    local status = route.status or {}
+    local pricesButton = status.kind == "blocked" or status.kind == "estimated"
+    local unknown = 0
+    for _, warning in ipairs(route.warnings or {}) do
+        local text = warning.text or ""
+        if warning.code == "costUnknown" and warning.spell then unknown = unknown + 1; text = nil end
+        if text and warning.spell then
+            text = text:gsub("[Rr]ecipe " .. warning.spell, (panel:RecipeName(warning.spell):gsub("%%", "%%%%")))
+        end
+        local repeated = not text
+            or (pricesButton and (warning.code == "unobtainable" or warning.code == "noRoute"))
+            or (status.code and warning.code == status.code)
+            -- The note's own words, when it says the dear end.
+            or (warning.code == "expensive" and tailOf(route) ~= nil)
+        if not repeated then table.insert(list, { code = warning.code, text = text }) end
+    end
+    if unknown > 0 then
+        table.insert(list, 1, { code = "costUnknown", text = "What " .. unknown .. " recipe(s) cost to learn is not"
+            .. " known yet and is counted as 0: open the trainer's window once to record it." })
+    end
+    if not pricesButton then
+        for _, missing in ipairs(route.unobtainable or {}) do
+            table.insert(list, { code = "unobtainable", text = "No source for " .. panel:ItemName(missing.itemID)
+                .. " (" .. #(missing.spells or {}) .. " recipe(s) skipped): give it a price on the Materials tab,"
+                .. " or gather it yourself." })
+        end
+    end
+    return list
+end
+
+-- What the note says: the dear end, else the first warning worth a line
+-- (the unverified trainer tiers, on every route, are never one alone), and
+-- the rest behind "and N more".
+function Tab:RenderNote(panel)
+    local route = panel.route
+    local tail = tailOf(route)
+    local rest = self:Warnings(panel, route)
+    local lead
+    if tail then
+        local before = (route.summary and route.summary.net or 0) - tail.net
+        lead = (before < 0 and ("A profit of about " .. panel:Money(-before)) or ("About " .. panel:Money(before)))
+            .. " to " .. tail.fromSkill .. "; " .. tail.fromSkill .. "-" .. tail.toSkill .. " costs another "
+            .. panel:Money(tail.net) .. ", " .. panel:Money(tail.perPoint) .. " a point."
+    else
+        for index, warning in ipairs(rest) do
+            if warning.code ~= "tiersUnverified" then
+                lead = warning.text
+                table.remove(rest, index)
+                break
+            end
+        end
+    end
+    self.noteLead, self.noteRest, self.noteTail = lead, rest, tail
+    self.note:SetShown(lead ~= nil)
+    if not lead then return end
+    self.noteText:SetText(lead)
+    self.stopAt:SetShown(tail ~= nil)
+    if tail then self.stopAt:SetText("Stop at " .. tail.fromSkill) end
+    self.moreWarnings:SetShown(#rest > 0)
+    if #rest > 0 then self.moreWarnings:SetText("and " .. #rest .. " more") end
+end
+
+function Tab:NoteTip(tooltip)
+    local panel = self.panel
+    local tail = self.noteTail
+    if not tail then
+        tooltip:SetText("Warning", 1, 1, 1)
+        panel:TipLine(tooltip, tostring(self.noteLead or ""), "warning")
+        return
+    end
+    local route = panel.route
+    tooltip:SetText("A dear end: " .. tail.fromSkill .. "-" .. tail.toSkill, 1, 1, 1)
+    tooltip:AddLine(tostring(self.noteLead or ""), 1, 1, 1, true)
+    for _, warning in ipairs(route and route.warnings or {}) do
+        if warning.code == "expensive" then panel:TipLine(tooltip, warning.text, "warning") end
+    end
+    tooltip:AddLine("Its last skill levels are the dear ones: the chance of a point falls with every one. Its steps are"
+        .. " marked in the table.", 0.8, 0.8, 0.8, true)
+    tooltip:AddLine("The plan still goes to " .. tail.toSkill .. ". Stop at " .. tail.fromSkill .. " sets the target there;"
+        .. " Undo takes it back.", 0.6, 0.6, 0.6, true)
+end
+
+function Tab:WarningsTip(tooltip)
+    tooltip:SetText("Also", 1, 1, 1)
+    for _, warning in ipairs(self.noteRest or {}) do self.panel:TipLine(tooltip, warning.text, "warning") end
+end
+
+-- Stop at the dear end's start: the target the player types, set for them
+-- on the click, with Undo. The route is never shortened unasked.
+function Tab:StopAtTail()
+    local panel = self.panel
+    local tail = tailOf(panel.route)
+    if not panel.inputs or not tail then return end
+    local at, to = tail.fromSkill, tail.toSkill
+    panel:Trace("stop-at", { skill = at, tail = { at, to }, net = tail.net, perPoint = tail.perPoint })
+    panel:Change("target", function(changed) changed.target = at end, function(before, afterSummary)
+        return "Target set to " .. at .. ", short of the dear " .. at .. "-" .. to .. "."
+            .. panel:NetChange(before, afterSummary)
+    end)
+end
+
+-- True for a run in the dear end.
+function Tab:InTail(model)
+    local tail = tailOf(self.panel.route)
+    return tail ~= nil and model.t == "run" and model.runIndex ~= nil and model.runIndex >= tail.runIndex
 end
 
 function Tab:RenderSummary(panel)
@@ -1267,6 +1424,7 @@ function Tab:RenderSummary(panel)
     -- Check prices while the route rests on guesses, and how it is cut.
     local status = route and route.status or { kind = "blocked" }
     self.check:SetShown(route ~= nil and (status.kind == "estimated" or status.kind == "blocked"))
+    self:RenderNote(panel)
 
     local split = options.sections or "trip"
     local defaults = Planner().defaultOptions or {}
@@ -1824,6 +1982,19 @@ function Tab:RunTip(model)
         elseif own then
             tooltip:AddLine("Its materials cost you nothing here.", 0.8, 0.8, 0.8, true)
         end
+        -- The odds at the step's last point, the dearest craft of it.
+        local last = model.b and model.b - 1
+        local final = recipe and last and last >= fromSkill and SkillUp():Chance(recipe.skills, last) or 0
+        local tail = self:InTail(model) and tailOf(panel.route)
+        if final > 0 and round(1 / final) >= 2 then
+            panel:TipLine(tooltip, "About 1 in " .. round(1 / final) .. " crafts gives a point at the end (skill "
+                .. last .. ").", tail and "warning" or "muted")
+        end
+        if tail then
+            panel:TipLine(tooltip, "Part of the dear end, " .. tail.fromSkill .. "-" .. tail.toSkill .. ": "
+                .. panel:Money(tail.perPoint) .. " a point, " .. tail.times .. " times the route's median. Stopping at "
+                .. tail.fromSkill .. " may be cheaper: right-click, Stop at " .. tail.fromSkill .. ".", "warning")
+        end
         if #rivals == 0 then
             tooltip:AddLine("Nothing else gives skill here.", 0.6, 0.6, 0.6, true)
         elseif priced then
@@ -1989,6 +2160,12 @@ function Tab:OpenRunMenu(model)
                         .. panel:NetChange(before, afterSummary)
                 end)
         end })
+    -- A step of the dear end: stop short of it.
+    local tail = self:InTail(model) and tailOf(panel.route)
+    if tail then
+        table.insert(list, { caption = "Stop at " .. tail.fromSkill, desc = "Set the target short of the dear "
+            .. tail.fromSkill .. "-" .. tail.toSkill, onClick = function() Tab:StopAtTail() end })
+    end
     table.insert(list, { caption = "Show in Recipes", onClick = function() panel:ShowTab("recipes", { spell = spell }) end })
     panel:UI():OpenMenu(list, { at = "cursor", onChange = function(group, value)
         if group == "plan" and value ~= plan then

@@ -2197,23 +2197,29 @@ function Planner:Plan(input)
     end
     table.sort(points)
     local median = points[math.floor((#points + 1) / 2)]
-    local tail
+    local tailAt
     for index = #runs, 1, -1 do
         local run = runs[index]
         if not (median and median > 0 and run.perPoint > self.expensiveFactor * median
             and run.perPoint >= self.expensiveMinimum) then break end
-        tail = index
+        tailAt = index
     end
-    if tail then
-        local first, last = runs[tail], runs[#runs]
+    -- The window splits the cost there (to the tail, then the tail) and
+    -- offers to stop at its start: route.tail. The tail's net is what its
+    -- crafts cost, net of their sale; training and learning stay with the rest.
+    local tail
+    if tailAt then
+        local first, last = runs[tailAt], runs[#runs]
         local net, count = 0, 0
-        for index = tail, #runs do
+        for index = tailAt, #runs do
             net = net + runs[index].perPoint * (runs[index].toSkill - runs[index].fromSkill)
             count = count + runs[index].toSkill - runs[index].fromSkill
         end
+        tail = { fromSkill = first.fromSkill, toSkill = last.toSkill, runIndex = tailAt,
+            net = math.floor(net + 0.5), perPoint = math.floor(net / count + 0.5), times = math.floor(net / count / median) }
         warn("expensive", ("Skill %d-%d costs about %s a point, %d times the median point of this route. Stopping at %d,"
             .. " or a suggested pattern, may be cheaper."):format(first.fromSkill, last.toSkill,
-            P:FormatMoney(math.floor(net / count + 0.5)), math.floor(net / count / median), first.fromSkill),
+            P:FormatMoney(tail.perPoint), tail.times, first.fromSkill),
             { skill = first.fromSkill, spell = first.spell })
     end
 
@@ -2604,6 +2610,10 @@ function Planner:Plan(input)
     --   gap          with the "recipes" ceiling: { skill, to, options }, the ways past
     --                the skill no usable recipe gives skill at (see gapAt above)
     --   warnings     { { code, text, spell?, tier? } }
+    --   tail         the dear last skill levels the "expensive" warning is about, or nil:
+    --                { fromSkill, toSkill, runIndex (its first run in runs; it runs to the
+    --                last), net (its crafts, net of their sale), perPoint, times (perPoint
+    --                over the route's median point) }
     --   unobtainable { { itemID, spells } }
     --   items        every item ID the plan touches
     --   trainings    the train events alone; value  the DP's own figure (for comparisons)
@@ -2630,7 +2640,7 @@ function Planner:Plan(input)
         shopping = shopping, made = sizedLedger.made, makes = makes, selling = selling, suggestions = suggestions, ceiling = ceiling, gap = gap,
         materials = options.materials, ranOut = ranOutList, committed = committed,
         missingWhy = carriedOnly and "carried" or (not ctx.buyAH and "vendor") or "auction",
-        warnings = warnings, unobtainable = missing, items = sortedKeys(touched),
+        warnings = warnings, tail = tail, unobtainable = missing, items = sortedKeys(touched),
         estimated = estimatedItems, trainings = trainings, value = result.value,
         -- Planner:WaysAround's solver and its cache: not for saving.
         waysAround = waysAround, ways = {},
@@ -2655,7 +2665,9 @@ end
 --              (the ways past it are route.gap, a note at the end of the table)
 --   estimated  a route whose cost rests partly on estimated prices, naming the
 --              ones that matter most
---   ready      "Leatherworking 83 to 150: about 12g 40s."
+--   ready      "Leatherworking 83 to 150: about 12g 40s."; with a dear tail
+--              (route.tail) its cost is said apart: "Tailoring 84 to 160: about
+--              10g 20s to 151, then about 319g 50s for 151-160."
 --
 -- Planning with only what is carried, a route that stops where the
 -- materials do (a material the player has none of, or the "materials"
@@ -2737,7 +2749,15 @@ function Planner:Status(route, nameOf, data)
         if copper >= 10000 then copper = math.floor(copper / 100 + 0.5) * 100 end
         return P:FormatMoney(copper)
     end
-    local cost = net < 0 and ("a profit of about " .. rough(-net)) or ("about " .. rough(net))
+    local function about(copper) return copper < 0 and ("a profit of about " .. rough(-copper)) or ("about " .. rough(copper)) end
+    local cost = about(net)
+    -- A dear tail (route.tail) is said apart, so the cost to its start shows:
+    -- "about 10g 20s to 151, then about 319g 50s for 151-160".
+    local tail = route.tail
+    if tail and tail.fromSkill > route.startSkill then
+        cost = about(net - tail.net) .. " to " .. tail.fromSkill .. ", then about " .. rough(tail.net) .. " for "
+            .. tail.fromSkill .. "-" .. tail.toSkill
+    end
     local head = profession .. " " .. route.startSkill .. " to " .. route.target .. ": " .. cost
     local estimated = route.estimated or {}
     -- With only what is carried, stopping where the materials do is the

@@ -548,7 +548,13 @@ events, and a cost summary:
 - recovered by selling;
 - **net**;
 - the range at the chosen confidence;
-- a per-skill-band breakdown, so the player can see which stretch is expensive.
+- a per-skill-band breakdown, so the player can see which stretch is expensive;
+- the **dear end** (`route.tail`, with the `expensive` warning): the last runs whose cost a point is more than
+  `expensiveFactor` (4) times the route's median point and at least `expensiveMinimum` (1g), as
+  `{ fromSkill, toSkill, runIndex, net, perPoint, times }`, or nil. The last points of a green recipe are the
+  dearest (a traced Tailoring 84-160 said about 329g 75s, about 319g of it 99 Phoenix Gloves for 151-160, the last
+  point 1 in 35), so the status sentence says it apart ("about 10g 20s to 151, then about 319g 50s for 151-160")
+  and the window offers to stop at its start. The net figure stays the whole route's.
 
 ## The plan stands in its own window
 
@@ -579,7 +585,17 @@ guide-shaped output is what the window reads: `Planner:Outline`, the table's row
   never leaves the player buying or farming for points they already have.
 - **Replanning.** The route is computed again from the live skill and live bags when the skill passes the step's
   `high`, when prices change, when a goal changes, when the bags or a profession, trainer, merchant or auction window
-  tell it something new, and before Make acts on a skill that moved. There is no Replan button.
+  tell it something new, and before Make acts on a skill that moved. There is no Replan button. One craft tells
+  the window several things a few tenths apart ("You create", the bags, the skill line, the profession window), so
+  every trigger feeds one settle timer, started again by each, and the check runs 0.5s after the last: one check
+  and at most one plan a craft, on the skill the craft left. It plans when the inputs' signature changed, the
+  skill moved from the route's, the skill passed the first step, the auction house shut (prices are outside the
+  signature), or a count carried of an item a recipe takes or makes moved (the bags are outside the signature,
+  so other loot plans nothing). While the Make button's batch runs (`Client.craftUntil`), bags alone wait for the
+  skill to move, the profession window to shut, or 6s without a trigger. A plan that shows the same route as the
+  last (signature, summary, steps, shopping, status, committed step) is not drawn again; only the Make button is
+  refreshed against the profession window. The `plan` record keeps the triggers gathered, the committed step,
+  and the first step's spell and count.
 - **Keeping it.** The planner's inputs (target, goals, options, exclusions) are saved per character
   (`NuuProfessionsCharacterDB`), so the same plan comes back next session; only what the player set is stored (no
   default option, no empty table: `Planner:SaveInputs`), and `Planner:Option` reads an option as it applies.
@@ -599,7 +615,13 @@ again at once.
 - **Plan** (`UI/PlanTab.lua`): the summary - the live skill and the target (typed, or **Automatic**), the
   **Only what I have** toggle (the `materials` option; see the price model), four
   figures (cost, sells, net, crafts); the **Sections** drop-down (one trip, tier, N recipes, every N skill levels) and, while prices
-  are guessed, **Check prices**, left of **Make**. The table lists the steps under trainer-tier headings, read off `Planner:Outline`: a bar per recipe on a skill axis that follows the scroll (the rows in view set its range, at least 30
+  are guessed, **Check prices**, left of **Make**. Under it a note, only with something to say (OpenRoad's verdict
+  line is not back; its "and N more" is): the dear end said apart, what the route costs to its start and what the
+  end costs on top, with **Stop at <skill>** (the target set there through `panel:Change`, so Undo plans the full
+  route again; the route is never shortened unasked), else the first of the route's warnings worth a line (the
+  unverified trainer tiers never stand alone); the rest behind "and N more", listed in its tooltip. The dear end's
+  steps wear the warning colour (wash, rail and net), their tooltips say so with the odds at the step's last point
+  ("About 1 in 35 crafts gives a point at the end"), and their right-click menu has Stop at too. The table lists the steps under trainer-tier headings, read off `Planner:Outline`: a bar per recipe on a skill axis that follows the scroll (the rows in view set its range, at least 30
   skill levels), the step, its crafts and net. A run's **alts** button (closed by default, counting the choices but the one in use) folds open its choices
   (`Planner:WaysAround`: the planner's pick and every other recipe, pattern or not, that gives skill over the
   whole step, one solve each when first asked, all against the step's baseline), cheapest first, five at a time
