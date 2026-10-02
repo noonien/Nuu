@@ -9,6 +9,7 @@ local suites = {
     { "load order", "Tests/LoadTests.lua" },
     { "profession client", "Tests/ProfessionClientTests.lua" },
     { "prices", "Tests/PricesTests.lua" },
+    { "disenchanting", "Tests/DisenchantTests.lua" },
     { "profession planner", "Tests/ProfessionPlannerTests.lua" },
     { "planner fixtures", "Tests/PlannerFixtureTests.lua" },
     { "planner playthroughs", "Tests/PlannerPlaythroughTests.lua" },

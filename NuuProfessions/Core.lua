@@ -26,6 +26,9 @@ ns.Kit.AddLogging(ns, {
 
 ns.recorder = ns.Kit.NewRecorder({
     db = function() return rawget(_G, "NuuProfessionsDB") end,
+    -- Bug reports, and every disenchant seen (API/Client.lua): rare rows that
+    -- correct the disenchant table whenever someone reads them.
+    lasting = { "bug", "disenchant" },
     version = ns.version,
     log = function(message) ns:Log(message) end,
     where = function()

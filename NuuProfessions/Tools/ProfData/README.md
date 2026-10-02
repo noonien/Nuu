@@ -20,6 +20,7 @@ python3 Tools/ProfData/extract.py --content-level 60 --out Data/ProfessionsFull 
                                                       # the full-scope testing set (below)
 python3 Tools/ProfData/crosscheck.py                  # every disagreement with wowforevertalents.com
 python3 Tools/ProfData/crosscheck.py --scope --quiet  # summary, shipped recipes only
+python3 Tools/ProfData/disenchant.py                  # Data/Disenchant.lua: what disenchants, into what
 ```
 
 `extract.py` caches the DB2 tables per build in `.cache/tables-<product>-<build>.pickle` (delete it after a

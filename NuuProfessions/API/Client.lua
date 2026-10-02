@@ -68,6 +68,7 @@ function Client:Initialize()
         auctionator = self:GetAuctionatorAPI() ~= nil,
     }
     self:WatchProfessionWindows()
+    self:WatchDisenchants()
     -- The price book's auction source: Auctionator's prices, asked when a
     -- plan needs them (Domain/Prices.lua stays free of client calls).
     local Prices = ns.modules.Prices
@@ -225,6 +226,212 @@ function Client:GetItemQualityColor(itemID)
     local ok, _, _, _, hex = pcall(colorOf, quality)
     if not ok or type(hex) ~= "string" or secret(hex) then return nil end
     return hex
+end
+
+-- What disenchanting needs to know of an item, from its link or ID:
+-- { itemID, classID, quality, itemLevel }, or nil until the client has the
+-- item cached (a tooltip's item always is). The class comes from
+-- GetItemInfoInstant when the full answer leaves it out.
+function Client:GetItemDisenchantInfo(item)
+    if type(item) ~= "number" and type(item) ~= "string" then return nil end
+    local items = rawget(_G, "C_Item")
+    items = type(items) == "table" and items or {}
+    local full = items.GetItemInfo or rawget(_G, "GetItemInfo")
+    if type(full) ~= "function" then return nil end
+    local ok, _, link, quality, level, _, _, _, _, _, _, _, classID = pcall(full, item)
+    quality, level, classID = plainNumber(ok and quality), plainNumber(ok and level), plainNumber(ok and classID)
+    if not quality or not level then return nil end
+    local itemID = type(item) == "number" and item or nil
+    local instant = items.GetItemInfoInstant or rawget(_G, "GetItemInfoInstant")
+    if type(instant) == "function" and (not itemID or not classID) then
+        local okInstant, id, _, _, _, _, class = pcall(instant, item)
+        if okInstant then
+            itemID = itemID or plainNumber(id)
+            classID = classID or plainNumber(class)
+        end
+    end
+    if not itemID then
+        local parsed = text(link) or (type(item) == "string" and text(item))
+        itemID = parsed and tonumber(parsed:match("item:(%d+)"))
+    end
+    return { itemID = itemID, classID = classID, quality = quality, itemLevel = level }
+end
+
+-- The tooltips an item line is added to: the game's own, never a hidden one
+-- another addon reads lines from (NuuGear's, this addon's NPC names).
+local ITEM_TOOLTIPS = { "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2" }
+
+-- The item a tooltip shows, as its link, or nil.
+local function tooltipItem(tooltip)
+    if type(tooltip) ~= "table" or type(tooltip.GetItem) ~= "function" then return nil end
+    local ok, _, link = pcall(tooltip.GetItem, tooltip)
+    return ok and text(link) or nil
+end
+
+-- Runs `callback(tooltip, link)` once each time one of the game's item
+-- tooltips shows an item: the tooltip data pipeline where the client has it
+-- (TooltipDataProcessor, Enum.TooltipDataType.Item), else each tooltip's
+-- OnTooltipSetItem script, which can fire twice for one item, so a tooltip
+-- answers once until it is cleared or hidden. Returns the names of the
+-- hooks placed.
+function Client:OnItemTooltip(callback)
+    local hooked, wanted = {}, {}
+    for _, name in ipairs(ITEM_TOOLTIPS) do
+        local tooltip = rawget(_G, name)
+        if type(tooltip) == "table" then wanted[tooltip] = name end
+    end
+    local done = setmetatable({}, { __mode = "k" })
+    local function run(tooltip)
+        if not wanted[tooltip] then return end
+        local link = tooltipItem(tooltip)
+        if not link or done[tooltip] == link then return end
+        done[tooltip] = link
+        callback(tooltip, link)
+    end
+    local processor, enum = rawget(_G, "TooltipDataProcessor"), rawget(_G, "Enum")
+    local itemType = type(enum) == "table" and type(enum.TooltipDataType) == "table" and enum.TooltipDataType.Item
+    local piped = type(processor) == "table" and type(processor.AddTooltipPostCall) == "function" and itemType
+        and pcall(processor.AddTooltipPostCall, itemType, function(tooltip) run(tooltip) end)
+    if piped then table.insert(hooked, "TooltipDataProcessor") end
+    local function forget(tooltip) done[tooltip] = nil end
+    for tooltip, name in pairs(wanted) do
+        if type(tooltip.HookScript) == "function" then
+            if not piped and pcall(tooltip.HookScript, tooltip, "OnTooltipSetItem", run) then
+                table.insert(hooked, name .. ".OnTooltipSetItem")
+            end
+            pcall(tooltip.HookScript, tooltip, "OnTooltipCleared", forget)
+            pcall(tooltip.HookScript, tooltip, "OnHide", forget)
+        end
+    end
+    self.capabilities.itemTooltips = #hooked > 0
+    return hooked
+end
+
+-- Disenchanting -------------------------------------------------------------------
+--
+-- Each disenchant the player makes, with what it gave, goes on the session
+-- log's `disenchant` channel (lasting: Core.lua), checked against the table
+-- (Disenchant:Check), so play shows where Forever differs. The item is the
+-- bag item last used (a click on it, or a macro's /use, while Disenchant
+-- waits for a target), read before it is destroyed; the cast is the player's
+-- Disenchant (UNIT_SPELLCAST_SENT, then _SUCCEEDED); what it gave is the next
+-- loot window's contents, within a few seconds.
+
+local DISENCHANT_SPELL = 13262
+-- Seconds from using an item to sending the cast, and from the cast to the loot.
+local TARGET_WINDOW, LOOT_WINDOW = 2, 5
+
+local function now()
+    local clock = rawget(_G, "GetTime")
+    return type(clock) == "function" and clock() or 0
+end
+
+-- Whether `spellID` is Disenchant: its ID, or a spell of the same name.
+function Client:IsDisenchant(spellID)
+    spellID = plainNumber(spellID)
+    if not spellID then return false end
+    if spellID == DISENCHANT_SPELL then return true end
+    local name = self:GetSpellName(DISENCHANT_SPELL)
+    return name ~= nil and self:GetSpellName(spellID) == name
+end
+
+local function containerLink(bag, slot)
+    local containers = rawget(_G, "C_Container")
+    local getter = (type(containers) == "table" and containers.GetContainerItemLink) or rawget(_G, "GetContainerItemLink")
+    if type(getter) ~= "function" then return nil end
+    local ok, link = pcall(getter, bag, slot)
+    return ok and text(link) or nil
+end
+
+-- A bag item was used: kept as the next Disenchant's likely target.
+function Client:DisenchantItemUsed(bag, slot)
+    local link = containerLink(bag, slot)
+    if not link then return end
+    self.disenchantUsed = { link = link, name = link:match("%[(.-)%]"), info = self:GetItemDisenchantInfo(link), at = now() }
+end
+
+-- The loot window's contents: { { itemID, count }, ... }.
+function Client:ReadLoot()
+    local count = self:Read(rawget(_G, "GetNumLootItems"))
+    local loot = {}
+    for slot = 1, plainNumber(count) or 0 do
+        local link = self:Read(rawget(_G, "GetLootSlotLink"), slot)
+        local id = link and tonumber(link:match("item:(%d+)"))
+        if id then
+            local info = rawget(_G, "GetLootSlotInfo")
+            local ok, _, _, quantity = pcall(info, slot)
+            table.insert(loot, { id, ok and plainNumber(quantity) or 1 })
+        end
+    end
+    return loot
+end
+
+-- Records one disenchant: the item, what it gave, and the table's surprises.
+function Client:RecordDisenchant(target, loot)
+    local Disenchant = ns.modules.Disenchant
+    if not Disenchant then return end
+    local row = Disenchant:Check(target.info or { itemID = tonumber(target.link:match("item:(%d+)")) }, loot)
+    row.event, row.link = "disenchant", target.link
+    if ns.RecordHere then ns:RecordHere("disenchant", row) end
+    self.lastDisenchant = row
+end
+
+function Client:OnDisenchantEvent(event, ...)
+    if event == "UNIT_SPELLCAST_SENT" then
+        local unit, targetName, castGUID, spellID = ...
+        if unit ~= "player" or not self:IsDisenchant(spellID) then return end
+        local used = self.disenchantUsed
+        self.disenchantUsed = nil
+        local named = text(targetName)
+        if used and (now() - used.at <= TARGET_WINDOW or (named and named == used.name)) then
+            self.disenchantCast = { target = used, guid = text(castGUID) }
+        end
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unit, castGUID, spellID = ...
+        local cast = self.disenchantCast
+        if unit ~= "player" or not cast or not self:IsDisenchant(spellID) then return end
+        if cast.guid and text(castGUID) and cast.guid ~= castGUID then return end
+        self.disenchantCast, self.disenchantLoot = nil, { target = cast.target, at = now() }
+    elseif event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED"
+        or event == "UNIT_SPELLCAST_FAILED_QUIET" then
+        local unit, castGUID = ...
+        local cast = self.disenchantCast
+        if unit == "player" and cast and (not cast.guid or cast.guid == text(castGUID)) then self.disenchantCast = nil end
+    elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
+        local pending = self.disenchantLoot
+        if not pending then return end
+        self.disenchantLoot = nil
+        if now() - pending.at > LOOT_WINDOW then return end
+        self:RecordDisenchant(pending.target, self:ReadLoot())
+    end
+end
+
+local DISENCHANT_EVENTS = { "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_SUCCEEDED", "UNIT_SPELLCAST_FAILED",
+    "UNIT_SPELLCAST_FAILED_QUIET", "UNIT_SPELLCAST_INTERRUPTED", "LOOT_READY", "LOOT_OPENED" }
+
+-- Starts watching for disenchants. Returns the names of the item-use hooks
+-- placed; none means the target cannot be known and nothing is recorded.
+function Client:WatchDisenchants()
+    local hooked = {}
+    local hook = rawget(_G, "hooksecurefunc")
+    if self.disenchantFrame or type(hook) ~= "function" then return hooked end
+    local function used(bag, slot) self:DisenchantItemUsed(bag, slot) end
+    local containers = rawget(_G, "C_Container")
+    if type(containers) == "table" and type(containers.UseContainerItem) == "function"
+        and pcall(hook, containers, "UseContainerItem", used) then
+        table.insert(hooked, "C_Container.UseContainerItem")
+    end
+    if type(rawget(_G, "UseContainerItem")) == "function" and pcall(hook, "UseContainerItem", used) then
+        table.insert(hooked, "UseContainerItem")
+    end
+    self.capabilities.disenchantLog = #hooked > 0
+    if #hooked == 0 or type(rawget(_G, "CreateFrame")) ~= "function" then return hooked end
+    local ok, frame = pcall(CreateFrame, "Frame")
+    if not ok or not frame or not frame.SetScript then return hooked end
+    for _, event in ipairs(DISENCHANT_EVENTS) do pcall(frame.RegisterEvent, frame, event) end
+    pcall(frame.SetScript, frame, "OnEvent", function(_, event, ...) self:OnDisenchantEvent(event, ...) end)
+    self.disenchantFrame = frame
+    return hooked
 end
 
 -- Spells -----------------------------------------------------------------------

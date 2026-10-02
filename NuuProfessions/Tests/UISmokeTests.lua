@@ -646,9 +646,21 @@ Options:SetOption({ kind = "toggle", option = "useBags", caption = "Use what I c
 Options:SetOption({ kind = "estimate", option = "estimateFactor" }, 2.5)
 settle()
 check(Panel.inputs.options.optimize == "profit" and Panel.inputs.options.estimateFactor == 2.5, "options kept")
+-- The tooltip switch is the account's: stored in its settings, not the plan.
+local tooltipRow
+for _, row in ipairs(Options.rows) do
+    if row.spec.option == "disenchantTooltip" then tooltipRow = row end
+end
+check(tooltipRow and tooltipRow.control:GetValue() == true, "the tooltip switch, on by default")
+tooltipRow.control:Click()
+settle()
+check(ns.db.settings.disenchantTooltip == false and Panel.inputs.options.disenchantTooltip == nil,
+    "turned off in the account's settings")
+check(tooltipRow.control:GetValue() == false and Panel.statusText:find("off", 1, true), "the row and the strip say so")
 Options:Reset(Panel, Options.rows, "all")
 settle()
 check(Panel.inputs.options.optimize == nil and Panel.inputs.options.estimateFactor == nil, "reset all forgets them")
+check(ns.db.settings.disenchantTooltip == nil and tooltipRow.control:GetValue() == true, "and the tooltip switch")
 noErrors("options tab")
 
 -- A new look draws the window again; another profession, the testing set.

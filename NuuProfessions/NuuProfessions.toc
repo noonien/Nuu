@@ -14,6 +14,7 @@ Config.lua
 API/Client.lua
 Data/ProfessionTiers.lua
 Data/ProfessionRecorded.lua
+Data/Disenchant.lua
 Data/Professions/Alchemy.lua
 Data/Professions/Blacksmithing.lua
 Data/Professions/Cooking.lua
@@ -33,6 +34,7 @@ Data/ProfessionsFull/Leatherworking.lua
 Data/ProfessionsFull/Mining.lua
 Data/ProfessionsFull/Tailoring.lua
 Domain/Prices.lua
+Domain/Disenchant.lua
 Domain/ProfessionPlanner.lua
 Domain/MerchantBuying.lua
 Domain/TrainerTraining.lua
@@ -44,6 +46,7 @@ UI/OptionsTab.lua
 UI/ShoppingList.lua
 UI/VendorStrip.lua
 UI/TrainerStrip.lua
+UI/Tooltip.lua
 #@debug@
 Dev/ColorAudit.lua
 #@end-debug@

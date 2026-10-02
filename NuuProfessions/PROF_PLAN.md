@@ -440,6 +440,43 @@ from and when:
 Deferred, with a question below: reading auction prices from the open auction house window. This would be a
 read-only search, only for the plan's items, and only when the player presses a button.
 
+### Disenchant value in item tooltips
+
+The game's item tooltips (`GameTooltip`, `ItemRefTooltip`, the comparison tooltips; never a hidden one another
+addon reads) show what a weapon or armour piece disenchants into on Forever and what that is worth, after TSM's
+disenchant value. One disenchant gives one outcome, so each line is an outcome, `75%  2-3 Strange Dust`, with what it
+is worth when it comes up (the middle of its range at its price), and the total on top, "Disenchant value
+(average)", is the average over many disenchants, each outcome weighed by its drop rate (TSM's number). The value
+is each material's expected count, its drop rate x the middle of its range (80% of 1-2 is 1.2, TSM's
+`amountOfMats`), at Auctionator's price; prices typed in the planner are not used here. The cut is not taken off. A
+material Auctionator has no price for shows `?` and the total reads `+?`; without Auctionator it reads "needs
+Auctionator". An account setting (Options, Tooltips, `disenchantTooltip`) turns
+it off.
+
+What disenchants comes from the Forever client (`Tools/ProfData/disenchant.py` -> `Data/Disenchant.lua`):
+
+- **Bands** from `ItemDisenchantLoot`: class, quality and item level. Forever's differ from Classic Era's: it
+  adds rare bands at item levels 5-15 and 16-20 (weapons and armour), and its rare 20-25 band starts at 21.
+- **Cannot be disenchanted**: `ItemSparse` Flags[0] 0x8000 on uncommon to epic weapons and armour (1650 items at
+  build 1.60.1.70170). This takes the place of TSM's hand-kept list, all six of which carry the flag.
+- **A loot table of its own**: Flags[1] 0x40000000, on the Hexed Pendant and Crude Wax Effigy (quest items whose
+  text sends them to Disenchanting) and on Forever gear such as the Spiritcaller pieces. No band applies to them.
+
+What a band yields is held by the server. The tool authors Classic's rates on Forever's bands; TSM ships the same
+rates, except 25% essence on 46-50 armour, which is 20% here so the band adds up to 100%. Forever's new rare bands,
+and every own-loot item but the Hexed Pendant (one Luminous Residue, seen in play), read "Disenchants into: not
+known yet" until a disenchant is seen and added to the tool.
+
+**Every disenchant is recorded** to find where Forever differs: one row on the session log's `disenchant` channel,
+which is lasting (never dropped by age, like `bug`). `API/Client.lua` takes the bag item last used (a click or a
+`/use` while Disenchant waits for its target, read before it is destroyed), the player's Disenchant cast (spell
+13262 or one of its name, `UNIT_SPELLCAST_SENT` then `_SUCCEEDED`; a failed or interrupted cast drops it), and the
+next loot window within 5 seconds. `Disenchant:Check` writes the row: the item (ID, link, quality, item level,
+class), its band (`"4/2/16-20"`), what the table expected (`yields`, `unknown`, `none`), the loot as
+`{ itemID, count }` pairs, and its `surprises`: a material the band does not list, a count outside the range, more
+than one material, an empty loot, or an item the table says cannot be disenchanted. Rows are read out of
+`NuuProfessionsDB.log` after a logout or reload.
+
 ## Skill-up model
 
 For a recipe with skill levels (orange O, yellow Y, green G, grey R) at skill s:
@@ -736,6 +773,8 @@ Paths are NuuProfessions' unless they say otherwise.
 | `Tools/ProfData/recorded.py` | saved variables -> `Data/ProfessionRecorded.lua`, the trainer and merchant windows seen in play |
 | `Config.lua` | `NuuProfessionsDB` (settings, the price book) and `NuuProfessionsCharacterDB` (known recipes, the planner's inputs) |
 | `Domain/Prices.lua` | the price store: facts, overrides, effective buy and sell cost, depth |
+| `Tools/ProfData/disenchant.py` | DB2 -> `Data/Disenchant.lua`: disenchant bands, the items that cannot be disenchanted, own-loot items; the yields are authored |
+| `Domain/Disenchant.lua`, `UI/Tooltip.lua` | what an item disenchants into and its auction value; the item tooltip lines |
 | `NuuKit/Core/SkillUp.lua` | chance, expected crafts, variance (`Kit.SkillUp`) |
 | `NuuKit/Core/Crafting.lua` | what a Make button asks for: crafts left to a skill or a count, and why it cannot (`Kit.Crafting`) |
 | `Domain/ProfessionPlanner.lua` | goals, DP, refinements, the route's outline and sections |

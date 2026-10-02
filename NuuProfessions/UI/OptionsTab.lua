@@ -1,8 +1,8 @@
 local _, ns = ...
 
 -- The planner's Options tab: the tuning, in three sections (the route,
--- shopping, prices), the testing switch in a fourth, and the window's look
--- at the foot. Each option is a kit Setting: what it is and what it does on
+-- shopping, prices), the testing switch in a fourth, the item tooltip switch
+-- in a fifth, and the window's look at the foot. Each option is a kit Setting: what it is and what it does on
 -- the left, its control on the right, and a reset while the player's choice
 -- is stored. Every choice goes through panel:Change, so the route is planned
 -- again at once and the status strip offers Undo. The tab scrolls when the
@@ -20,6 +20,7 @@ local SELECT_WIDTH = 260
 
 local function Planner() return ns.modules.ProfessionPlanner end
 local function Client() return ns.modules.Client end
+local function Config() return ns.modules.Config end
 
 -- Auctionator is another addon; when it is loaded, the client adapter reads
 -- the prices it scanned at the auction house (docs/api-compatibility.md).
@@ -97,12 +98,21 @@ local SECTIONS = {
             help = "Uses every recipe up to 300, Artisan training, and ignores the level trainers ask for. For"
                 .. " testing long routes: the route can need materials this beta does not have yet." },
     } },
+    -- One switch for the account, outside the planner: an account setting
+    -- (Config, `disenchantTooltip`; UI/Tooltip.lua).
+    { title = "Tooltips", rows = {
+        { kind = "toggle", option = "disenchantTooltip", account = true, label = "Disenchanting",
+            caption = "Show disenchant value in item tooltips",
+            help = "What a weapon or armour piece disenchants into, and what that fetches at the auction house,"
+                .. " at Auctionator's prices." },
+    } },
 }
 
 local AUCTIONATOR_MISSING = "Install the Auctionator addon and visit the auction house with it to use real auction"
     .. " prices here."
 local SESSION_LINE = "These settings are kept for this character, one set per profession; the testing switch is"
-    .. " one for every profession. Only what you change is kept: the rest follows the defaults."
+    .. " one for every profession, and the tooltip switch one for the account. Only what you change is kept: the"
+    .. " rest follows the defaults."
 
 -- A row's default in words, for its reset's tooltip.
 local function defaultText(spec)
@@ -110,21 +120,26 @@ local function defaultText(spec)
     if spec.kind == "select" then return captionOf(spec.option, value) end
     if spec.kind == "estimate" then return tostring(value) .. " x" end
     if spec.character then return "off" end
+    if spec.account then return Config():Default(spec.option) and "on" or "off" end
     return value and "on" or "off"
 end
 
 -- Whether the row's setting is stored: the player chose it.
 local function isStored(panel, spec)
     if spec.character then return panel:FullScope() end
+    if spec.account then return Config():IsSet(spec.option) end
     return panel.inputs ~= nil and panel.inputs.options[spec.option] ~= nil
 end
 
 -- Forgets the choices of `rows`, as one change the strip can take back. The
--- testing switch is the character's, and goes off on its own.
+-- testing switch is the character's, and goes off on its own; the tooltip
+-- switch is the account's, and goes back to its default on its own.
 function Tab:Reset(panel, rows, message)
     local options = {}
     for _, row in ipairs(rows) do
-        if row.spec.character then
+        if row.spec.account then
+            if Config():IsSet(row.spec.option) then self:SetAccount(row, nil, message) end
+        elseif row.spec.character then
             if panel:FullScope() then panel:SetFullScope(false) end
         else
             table.insert(options, row.spec.option)
@@ -156,6 +171,16 @@ function Tab:SetOption(spec, value)
     end)
 end
 
+-- An account setting: stored (nil resets it), the row painted again, and the
+-- strip told. Nothing is planned again: the planner does not read it.
+function Tab:SetAccount(row, value, message)
+    local spec = row.spec
+    if value == nil then Config():Reset(spec.option) else Config():Set(spec.option, value) end
+    self:Fill(self.panel, row)
+    local on = Config():Get(spec.option)
+    self.panel:SetStatus(message or (spec.caption .. ": " .. (on and "on" or "off") .. "."))
+end
+
 local function buildControl(self, row)
     local spec, setting = row.spec, row.setting
     if spec.kind == "select" then
@@ -163,7 +188,9 @@ local function buildControl(self, row)
             onChange = function(value) self:SetOption(spec, value) end }
     elseif spec.kind == "toggle" then
         row.control = setting:Toggle{ spec.caption, onChange = function(on)
-            if spec.character then
+            if spec.account then
+                self:SetAccount(row, on)
+            elseif spec.character then
                 self.panel:SetFullScope(on)
             else
                 self:SetOption(spec, on)
@@ -198,8 +225,8 @@ function Tab:Build(panel, page)
         end
     end
     area:Text{ SESSION_LINE, style = "label", wrap = true }
-    area:ConfirmButton{ "Reset all", tooltip = "Every option on this tab back to its default for this profession, and"
-        .. " the testing switch off. What you chose is forgotten. Click twice to confirm.",
+    area:ConfirmButton{ "Reset all", tooltip = "Every option on this tab back to its default for this profession, the"
+        .. " testing switch off, and the tooltip switch on. What you chose is forgotten. Click twice to confirm.",
         onConfirm = function() self:Reset(panel, self.rows, "Every option back to its default.") end }
 
     -- The planner's look: its own, kept in NuuProfessionsDB.look.
@@ -231,6 +258,8 @@ function Tab:Fill(panel, row)
             control:SetText(present and spec.caption or (spec.caption .. " (not installed)"))
             control:SetValue(present and options.useAuctionator ~= false)
             row.setting.help:SetText(present and spec.help or AUCTIONATOR_MISSING)
+        elseif spec.account then
+            control:SetValue(Config():Get(spec.option) ~= false)
         elseif spec.character then
             control:SetValue(panel:FullScope())
         else

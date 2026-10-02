@@ -11,6 +11,9 @@ local Config = {
     -- everyone who never chose.
     settings = {
         debug = false,
+        -- What weapons and armour disenchant into, and its auction value,
+        -- in the game's item tooltips (UI/Tooltip.lua).
+        disenchantTooltip = true,
     },
     -- The saved data's containers, made at load when missing. These hold what
     -- the player and the game made, not settings.
