@@ -278,7 +278,8 @@ do
     check(#live == 1 and #live[1].items == 1 and live[1].items[1].itemID == 2320, "what the route makes is left off")
 end
 
--- No made items, no Buy buttons; a click on the icon ticks by hand.
+-- No made items, no Buy buttons; the icon is the game's: a Shift-click
+-- hands its link to the game, as one in the bags.
 for _, line in ipairs(Shopping.rows) do
     check(line.item.source ~= "craft", "what is made on the way is not shopping")
     check(line.buy == nil and line.slot ~= nil, "a row is an icon, its words and a cost")
@@ -299,21 +300,32 @@ local function lineOf(itemID)
         if line.item.itemID == itemID then return line end
     end
 end
-local tickedID = Shopping.rows[1].item.itemID
+do
+    local handed
+    _G.GetItemInfo = function(id) return "Thing", "|cffffffff|Hitem:" .. id .. "::::::::|h[Thing]|h|r" end
+    _G.HandleModifiedItemClick = function(link) handed = link; return true end
+    Shopping.rows[1].slot:Click()
+    check(handed and handed:find("item:" .. Shopping.rows[1].item.itemID, 1, true), "a click hands the item's link to the game")
+    check(Shopping.rows[1].slot.tooltip == nil, "the icon's tooltip is the game's own")
+    _G.GetItemInfo, _G.HandleModifiedItemClick = nil, nil
+end
+-- Carried in full, an item goes to Collected, last and folded.
+local doneID = Shopping.rows[1].item.itemID
 local before = Shopping.summary
-Shopping.rows[1].slot:Click()
-check(Shopping.summary ~= before and not lineOf(tickedID), "a click on the icon ticks it: it leaves for Collected")
+_G.GetItemCount = function(id) return id == doneID and 1e9 or 0 end
+Shopping:Refresh()
+check(Shopping.summary ~= before and not lineOf(doneID), "carried in full, it leaves for Collected")
 local last = Shopping.groups[#Shopping.groups]
 check(last.key == "have", "what is collected has its own section, last, folded")
 local fold = last.fold
-check(fold and not Shopping:Record(false).haveOpen and not lineOf(tickedID), "Collected folds")
+check(fold and not Shopping:Record(false).haveOpen and not lineOf(doneID), "Collected folds")
 check(fold.kitType == "Disclosure" and not fold:IsOpen(), "a fold on a line across the list")
 fold:Activate()
-check(Shopping:Record(false).haveOpen and lineOf(tickedID) and lineOf(tickedID).item.ticked
-    and Shopping.rows[#Shopping.rows].item.itemID == tickedID, "opened, it lists what is had")
-lineOf(tickedID).slot:Click()
-check(not lineOf(tickedID).item.ticked and Shopping.summary == before, "and a second click takes the tick off")
-check(Shopping.rows[1].item.itemID == tickedID, "and it goes back to its shop")
+check(Shopping:Record(false).haveOpen and lineOf(doneID) and Shopping.rows[#Shopping.rows].item.itemID == doneID,
+    "opened, it lists what is had")
+_G.GetItemCount = nil
+Shopping:Refresh()
+check(Shopping.summary == before and Shopping.rows[1].item.itemID == doneID, "and back to its shop when it is not")
 Shopping:Record(true).haveOpen = nil
 Shopping:Refresh()
 check(Shopping.frame.statusStrip and Shopping.frame.statusStrip:IsShown(), "where the list stands is in the strip at the foot")

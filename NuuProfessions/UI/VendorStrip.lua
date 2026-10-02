@@ -27,10 +27,10 @@ end
 
 local function money(copper) return ns.Kit.FormatMoney(math.floor(copper + 0.5)) end
 
--- What the open vendor sells of the list in view, still missing and not
--- ticked by hand: { itemID, name, offer, missing, plan }, in the list's
--- order (an item in two sections of All sections counts once, both
--- needs together). Also answers the profession.
+-- What the open vendor sells of the list in view, still missing:
+-- { itemID, name, offer, missing, plan }, in the list's order (an item in two
+-- sections of All sections counts once, both needs together). Also answers
+-- the profession.
 function Strip:Wanted()
     local api = Client()
     if not (api and api.merchantOpen and List()) then return nil, {} end
@@ -42,7 +42,7 @@ function Strip:Wanted()
         for _, item in ipairs(section.items) do
             local offer = offers[item.itemID]
             local missing = math.max(0, item.count - item.have)
-            if offer and missing > 0 and not item.ticked then
+            if offer and missing > 0 then
                 local found = byItem[item.itemID]
                 if found then
                     found.missing = found.missing + missing

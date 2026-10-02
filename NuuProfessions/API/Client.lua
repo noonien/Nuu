@@ -161,6 +161,18 @@ function Client:GetItemLink(itemID)
     return link
 end
 
+-- A modified click on an item, as on one in the bags: the game's own
+-- handler (HandleModifiedItemClick) puts its link in the chat box or its
+-- name in the auction house's search with Shift, tries it on with Ctrl.
+-- Answers whether the game took the click.
+function Client:ItemClicked(itemID)
+    local link = self:GetItemLink(itemID)
+    local handle = rawget(_G, "HandleModifiedItemClick")
+    if not link or type(handle) ~= "function" then return false end
+    local ok, handled = pcall(handle, link)
+    return ok and handled and true or false
+end
+
 -- Three ways to the same texture, because no one of them is everywhere: the
 -- by-ID call is the modern one, GetItemInfoInstant answers from the client's
 -- own files without the item being cached, and the full GetItemInfo returns

@@ -652,16 +652,16 @@ sections that is the whole route, named under the title ("Tailoring: Whole route
 The rows stand under a heading per kind of shop, a band with its name in the accent colour as the planner's tier
 headings are (Buy for vendors, Auction house, then Gather and In your bags), a shop's band with what is left to
 buy there when it holds more than one item and some room before each heading but the first, and what is done
-(carried, or ticked by hand) under Collected, last: a line across the list with a fold in the done colour at its
+(carried in full) under Collected, last: a line across the list with a fold in the done colour at its
 middle ("Collected"), folded unless the player
 opens it (kept per character, `haveOpen`); an item moves there when it is done and back
 when it is not. Each row is the item's icon with how many are still to get (none once collected), its name with its price after it ("Coarse Thread | 10c" from
 a vendor, "Linen Cloth | 15c @ AH" at the auction house, `~` for a guess) and what the rest costs at the right,
-and under them a thin bar of what is carried with "15 / 21" at its end; the icon's tooltip names the vendor. The
+and under them a thin bar of what is carried with "15 / 21" at its end. The icon is the game's own: its tooltip on hover, and a Shift-click puts its link in the chat box or its
+name in the auction house's search, as an item in the bags does (`Client:ItemClicked`). The
 window's status strip says how many are still needed and what is left to buy. What the player makes on the way (a bolt of cloth) is a step, not
-shopping, and is left off. An item is done once the bags hold what it needs (a green ring, a faded icon, a full green bar);
-a click on its icon ticks it by hand (what is in the bank, or what the player will do
-without), kept until the item leaves the plan. The lists are what the planner last planned, kept per character
+shopping, and is left off. An item is done once the bags hold what it needs (a green ring, a faded icon, a full green bar).
+The lists are what the planner last planned, kept per character
 (`shoppingList` in the character's record) after every plan, so they do not move while the player shops: only
 the bags and the skill are read live. The bags go to the earliest section first, an item goes once the skill
 passes the last step that uses it, and a section with nothing left leaves the drop-down.

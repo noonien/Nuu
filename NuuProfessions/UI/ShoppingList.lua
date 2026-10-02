@@ -19,9 +19,9 @@ local _, ns = ...
 -- leaves the drop-down. What the player makes on the way (an intermediate
 -- such as a bolt of cloth) is not on the list, even the part of it already
 -- in the bags (`made`): it is a step, not shopping.
--- The player may tick an item by hand with a click on its icon (what is in
--- the bank, or what they will do without); that tick is kept until the
--- item leaves the profession's lists.
+--
+-- An item's icon is the game's own: its tooltip on hover, and a Shift-click
+-- puts its link in the chat box or its name in the auction house's search.
 --
 -- Each row is the item's icon with what is still to get, its name, where it
 -- comes from with its price and what is carried, and what the rest costs.
@@ -38,9 +38,8 @@ local GROUP_OF = { vendor = "vendor", ah = "ah", estimate = "ah", gather = "gath
 local GROUP_WORDS = { vendor = "Buy", ah = "Auction house", gather = "Gather", carried = "In your bags",
     have = "Collected" }
 
--- Done (collected): the bags hold what it needs, or the player ticked it
--- by hand.
-local function isDone(item) return item.have >= item.count or item.ticked and true or false end
+-- Done (collected): the bags hold what it needs.
+local function isDone(item) return item.have >= item.count end
 
 -- The group an item is listed under: what is done goes to Collected, at
 -- the end; the rest by where it is fetched.
@@ -62,7 +61,7 @@ local function after(seconds, callback)
 end
 
 -- This character's record: { lists = { [profession] = list }, pick, shown,
--- ticked = { [profession] = { [itemID] = true } } (the player's own ticks) }.
+-- haveOpen }.
 function List:Record(create)
     local Config = ns.modules.Config
     local store = Config and Config:CharacterStore()
@@ -104,18 +103,8 @@ function List:Keep(profession, route, sections)
     local clock = rawget(_G, "time")
     record.lists[profession] = #kept > 0 and { at = type(clock) == "function" and clock() or 0, skill = route.startSkill,
         sections = kept } or nil
-    -- A tick by hand goes with its item.
-    local ticked = record.ticked and record.ticked[profession]
-    if ticked then
-        local listed = {}
-        for _, section in ipairs(kept) do
-            for _, item in ipairs(section.items) do listed[item.itemID] = true end
-        end
-        for itemID in pairs(ticked) do
-            if not listed[itemID] then ticked[itemID] = nil end
-        end
-        if next(ticked) == nil then record.ticked[profession] = nil end
-    end
+    -- Ticks by hand are gone: what an earlier version kept goes with them.
+    record.ticked = nil
     self:Refresh()
 end
 
@@ -133,8 +122,6 @@ end
 function List:Live(profession, kept)
     local skill = skillIn(profession, kept)
     local api = Client()
-    local record = self:Record(false)
-    local ticked = record and record.ticked and record.ticked[profession] or {}
     local bags, out = {}, {}
     for index, section in ipairs(kept.sections or {}) do
         local items = {}
@@ -145,7 +132,7 @@ function List:Live(profession, kept)
                 local have = math.min(bags[id], item.count or 0)
                 bags[id] = bags[id] - have
                 local row = copyItem(item)
-                row.have, row.profession, row.ticked = have, profession, ticked[id] or nil
+                row.have, row.profession = have, profession
                 table.insert(items, row)
             end
         end
@@ -270,20 +257,10 @@ local function closed()
     if record then record.shown = nil end
 end
 
--- A click on an item's icon ticks it by hand, or takes the tick off.
-function List:ToggleTick(item)
-    local record = self:Record(true)
-    if not (item and record) then return end
-    record.ticked = record.ticked or {}
-    local ticked = record.ticked[item.profession] or {}
-    ticked[item.itemID] = (not item.ticked) or nil
-    record.ticked[item.profession] = next(ticked) and ticked or nil
-    self:Refresh()
-end
-
+-- A click on an item's icon, as on one in the bags (Client:ItemClicked).
 local function slotClicked(slot)
     local line = slot.data
-    if line then List:ToggleTick(line.item) end
+    if line and Client() then Client():ItemClicked(line.item.itemID) end
 end
 
 function List:Create()
@@ -378,8 +355,7 @@ function List:Build(blocks, options, value, label)
             current.items = current.items + 1
             local row = area:Row{ gap = 10 }
             local line = { item = item, row = row, block = index }
-            line.slot = row:Slot{ item = item.itemID, size = 34, onClick = slotClicked, data = line,
-                tooltip = function(tip) tip:SetText(line.tip or "", 1, 1, 1, 1, true) end }
+            line.slot = row:Slot{ item = item.itemID, size = 34, onClick = slotClicked, data = line }
             -- The name with its price and what the rest costs; under them
             -- a bar of what is carried, "15 / 21" at its end.
             local words = row:Column{ gap = 4, grow = true, valign = "center" }
@@ -422,23 +398,6 @@ local function nameOf(item)
     if not price then return name end
     -- "||" is the client's escape for a "|" (a lone one starts a code).
     return name .. " " .. (Planner() and Planner():Tint("|| " .. price, "muted") or ("|| " .. price))
-end
-
--- What the icon's tooltip says: where the item comes from, and the tick.
-local function tipOf(item, done)
-    local from
-    if item.source == "vendor" then
-        local vendor = item.npc and Planner() and Planner():NPCName(item.npc)
-        from = vendor and ("Sold by " .. vendor .. ".") or "Sold by a vendor."
-    elseif item.source == "ah" or item.source == "estimate" then
-        from = "Bought at the auction house."
-    elseif item.source == "carried" then
-        from = "From your bags."
-    else
-        from = "Gathered."
-    end
-    if done and item.have < item.count then from = from .. " Ticked by hand." end
-    return from .. (done and " Click to take the tick off." or " Click to tick it by hand.")
 end
 
 function List:Refresh()
@@ -494,7 +453,6 @@ function List:Refresh()
         line.slot:SetCount(not done and tostring(math.max(0, item.count - item.have)) or nil)
         line.slot:SetEdge(done and "done" or nil)
         line.slot:FadePicture(done and 0.5 or 1)
-        line.tip = tipOf(item, done)
         line.name:SetText(nameOf(item))
         line.name:SetColor(done and "muted" or "text")
         line.cost:SetText((not done and cost) and ((guess and "~" or "") .. money(cost)) or "")
@@ -541,7 +499,7 @@ end
 
 -- Events -----------------------------------------------------------------------------------
 
--- The bags and the skill change the ticks and what is left; a burst of
+-- The bags and the skill change what is collected and what is left; a burst of
 -- them repaints once.
 function List:Changed()
     if self.pending then return end
