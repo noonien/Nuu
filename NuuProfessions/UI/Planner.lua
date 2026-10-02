@@ -749,9 +749,15 @@ local function shoppingClicked()
     if list then list:Toggle() end
 end
 
+local function shoppingFollows()
+    local list = ns.modules.ShoppingList
+    if list then list:Refresh() end
+end
+
 local function windowHidden()
     Panel:Trace("close", { tab = Panel.tab })
     Panel:HideTip()
+    shoppingFollows()
 end
 
 function Panel:Build()
@@ -773,6 +779,8 @@ function Panel:Build()
         status = true, hidden = true, tabs = tabs,
     })
     win:HookScript("OnHide", windowHidden)
+    -- The shopping list warns while the planner is shut.
+    win:HookScript("OnShow", shoppingFollows)
     self.win = win
     -- At the right of the band: the profession, and where the character
     -- stands in it.
@@ -782,7 +790,10 @@ function Panel:Build()
     header:Spacer{ size = 6 }
     self.standing = header:Text{ "", style = "label" }
     header:Spacer{ size = 10 }
-    header:Button{ "Shopping list", onClick = shoppingClicked,
+    -- Active (the selected look) while the list is up.
+    local list = ns.modules.ShoppingList
+    self.shoppingButton = header:Button{ "Shopping list", onClick = shoppingClicked,
+        active = list and list:IsShown() or false,
         tooltip = "Shows what the plan buys in a small list of its own, which stays up with the planner shut" }
     header:Spacer{ size = 6 }
 
@@ -791,6 +802,11 @@ function Panel:Build()
     -- Money and tints in the tabs' text are worked out from the look when
     -- drawn, so a new look draws the window again.
     ui:OnLook(function() self:Render() end)
+end
+
+-- The shopping list shown or put away: its button follows.
+function Panel:ShoppingShown(shown)
+    if self.shoppingButton then self.shoppingButton:SetActive(shown) end
 end
 
 -- Status -------------------------------------------------------------------------------------

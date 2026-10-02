@@ -271,6 +271,10 @@ function List:Create()
         collapsible = true, close = true, onClose = closed, hidden = true,
         point = { "RIGHT", rawget(_G, "UIParent"), "RIGHT", -80, 60 } })
     -- The right padding and the scrollbar's room make the left's 12.
+    -- The planner's Shopping list button shows whether the list is up.
+    local function told() if Planner() and Planner().ShoppingShown then Planner():ShoppingShown(win:IsShown()) end end
+    win:HookScript("OnShow", told)
+    win:HookScript("OnHide", told)
     self.area = win:ScrollArea{ padding = 12, padRight = 12 - (ns.Kit.UI.SCROLLBAR or 10), gap = 6 }
     self.frame = win
     ui:OnLook(function() self.shape = nil; self:Refresh() end)
@@ -471,9 +475,23 @@ function List:Refresh()
     local words = missing == 0 and "All carried" or (missing .. " still needed")
     if spend > 0 then words = words .. ", " .. (guessed and "~" or "") .. money(spend) .. " left to buy" end
     self.summary = words
-    self.frame:Status(words)
+    -- At the strip's right, a warning while the planner is shut: only its
+    -- plans keep the list up to date.
+    local profession = entry.profession
+    local planning = Planner() and Planner():IsOpen()
+    self.stale = not planning or nil
+    self.frame:Status(words, not planning and { aside = { text = "May be out of date", tone = "warning",
+        tooltip = "The planner keeps this list up to date while its window is open. Open it (click here) to bring "
+            .. "the list up to date.",
+        onClick = function() List:OpenPlanner(profession) end } } or nil)
     self.frame:Show()
     if rebuilt then self:Fit() end
+end
+
+-- The warning's click: the planner, opened on the list's profession,
+-- plans it again.
+function List:OpenPlanner(profession)
+    if Planner() then Planner():Open(profession) end
 end
 
 -- Shown or put away, kept per character.

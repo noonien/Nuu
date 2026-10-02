@@ -228,6 +228,7 @@ check(#Shopping:Record(false).lists.Leatherworking.sections == 1, "a trip keeps 
 Shopping:Toggle()
 settle()
 check(Shopping:IsShown(), "the list shows")
+check(Panel.shoppingButton:IsActive(), "the planner's Shopping list button is active while it is up")
 check(#Shopping.rows > 0, "the list has items")
 check(not shoppingSelect(), "one list, no drop-down")
 Plan:SectionsPicked("tier")
@@ -330,6 +331,21 @@ Shopping:Record(true).haveOpen = nil
 Shopping:Refresh()
 check(Shopping.frame.statusStrip and Shopping.frame.statusStrip:IsShown(), "where the list stands is in the strip at the foot")
 
+-- Out of date: while the planner is shut a warning sits at the strip's
+-- right; a click opens the planner, and with it open the warning goes.
+do
+    local aside = Shopping.frame.statusStrip.aside
+    if not Panel:IsOpen() then Panel:Open() end
+    settle()
+    check(not aside:IsShown(), "the planner open: no warning")
+    Panel.win:Hide()
+    check(aside:IsShown() and aside:GetText() == "May be out of date" and aside.tooltip:find("planner", 1, true),
+        "the planner shut: the list may be out of date")
+    aside:Click()
+    settle()
+    check(Panel:IsOpen() and not aside:IsShown(), "a click opens the planner")
+end
+
 -- Buying: the batches and calls.
 local Buying = ns.modules.MerchantBuying
 local plan = Buying:Plan({ price = 50, count = 5, stock = 3, index = 1 }, 22)
@@ -408,6 +424,7 @@ settle()
 check(Shopping.frame.closeButton, "the kit's close mark")
 Shopping.frame.closeButton:Click()
 check(not Shopping:IsShown() and not Shopping:Record(false).shown, "the close mark puts the list away")
+check(not Panel.shoppingButton:IsActive(), "and the button is not active")
 Shopping:SetShown(true)
 Shopping:SetShown(false)
 settle()

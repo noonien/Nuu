@@ -664,7 +664,8 @@ shopping, and is left off. An item is done once the bags hold what it needs (a g
 The lists are what the planner last planned, kept per character
 (`shoppingList` in the character's record) after every plan, so they do not move while the player shops: only
 the bags and the skill are read live. The bags go to the earliest section first, an item goes once the skill
-passes the last step that uses it, and a section with nothing left leaves the drop-down.
+passes the last step that uses it, and a section with nothing left leaves the drop-down. Only the planner's plans keep it up to date, so while the planner window is shut the strip says "May be out of
+date" at its right; its tooltip says why, and a click opens the planner, which plans it again.
 
 Buying is on the vendor's own window (`UI/VendorStrip.lua`): while the open vendor sells something the list in
 view still needs, a strip of ours under its window says "From your <profession> list", with **Buy all** and what
