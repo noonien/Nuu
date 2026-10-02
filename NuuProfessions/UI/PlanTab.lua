@@ -331,7 +331,9 @@ function Tab:BuildItems(panel)
                 low = row.low, high = row.high, net = row.cost, estimated = row.estimated, learn = learn,
                 chosen = run and run.chosen or nil,
                 -- Only what I have: the crafts the bags make, where they are fewer.
-                carried = run and run.carriedCap and run.count or nil }
+                carried = run and run.carriedCap and run.count or nil,
+                -- The step made now, from the bags: as many crafts as they make.
+                committed = run and run.committed and run.count or nil }
         elseif kind == "goal" then
             local learn = learnOfSpell[row.spell]
             if learn then learnOfSpell[row.spell] = nil end
@@ -346,7 +348,8 @@ function Tab:BuildItems(panel)
             if learn then learnOfSpell[row.spell] = nil end
             item = { t = "make", spell = row.spell, item = row.item, a = row.skill, b = row.toSkill or row.skill,
                 count = row.count, crafts = row.crafts, gain = row.gain, forSpell = row.forSpell, cost = row.cost,
-                estimated = row.estimated, learn = learn, helper = row.helper }
+                estimated = row.estimated, learn = learn, helper = row.helper, wanted = row.wanted,
+                carried = row.carried, stepCrafts = row.stepCrafts, stepExpected = row.stepExpected }
         end
         if item then
             table.insert(items, item)
@@ -781,6 +784,8 @@ function Tab:DrawRow(row, model, at)
         if model.carried then
             -- What the bags make, a try at the step's last point.
             crafts = tostring(model.carried)
+        elseif model.committed then
+            crafts = model.committed .. " " .. tint("(bags)", "muted")
         elseif model.low and model.high and model.high > model.low then
             crafts = crafts .. " (" .. model.low .. "-" .. model.high .. ")"
         end
@@ -1480,6 +1485,8 @@ function Tab:MakeOrder(model)
         end
         -- Only what I have: the crafts the bags make, whatever the odds.
         if model.carried then order.count = model.carried end
+        -- Made from the bags: no more than they were planned to make.
+        if model.committed then order.count = math.min(order.count, model.committed) end
     elseif t == "make" then
         order.count = round(model.crafts)
     else
@@ -1694,6 +1701,20 @@ function Tab:RowTip(model)
             tooltip:AddLine("Made from its parts " .. what .. ": " .. round(model.crafts)
                 .. (round(model.crafts) == 1 and " craft" or " crafts") .. " at skill " .. tostring(model.a) .. ".",
                 0.8, 0.8, 0.8, true)
+            -- Why so many: what the step takes less what is carried, and a
+            -- margin the confidence adds over the expected crafts.
+            if model.wanted and (model.carried or 0) > 0 then
+                local name = panel:ItemName(model.item)
+                tooltip:AddLine("The step takes " .. model.wanted .. " " .. name .. " and you carry "
+                    .. model.carried .. ", so " .. round(model.count) .. " more are made.", 0.8, 0.8, 0.8, true)
+            end
+            local expected = model.stepExpected and round(model.stepExpected)
+            if expected and model.stepCrafts and model.stepCrafts > expected then
+                local confidence = tostring(panel.route and panel.route.confidence or "safe")
+                tooltip:AddLine("It plans " .. model.stepCrafts .. " crafts at " .. confidence .. " confidence, "
+                    .. (model.stepCrafts - expected) .. " over the " .. expected .. " expected: set Confidence in"
+                    .. " Options to change that.", 0.6, 0.6, 0.6, true)
+            end
             if model.helper then
                 tooltip:AddLine("Made with " .. model.helper .. ", which you also have: they give " .. model.helper
                     .. " skill, not " .. tostring(panel.profession) .. ".", 0.6, 0.6, 0.6, true)
@@ -1778,6 +1799,11 @@ function Tab:RunTip(model)
                 .. " all your bags make, where about " .. round(model.expected) .. " would take you to "
                 .. tostring(model.b) .. ": a chance at it, not a sure point. The plan is made again from wherever"
                 .. " they leave you.", "accent")
+        elseif model.committed then
+            panel:TipLine(tooltip, "Made from what you carry: " .. model.committed
+                .. (model.committed == 1 and " craft" or " crafts") .. ", where about " .. round(model.expected)
+                .. " should take you to " .. tostring(model.b) .. ". Nothing more is made or bought for it until"
+                .. " your bags run out; then the plan asks for the rest.", "accent")
         elseif panel.route and panel.route.materials == "carried" then
             panel:TipLine(tooltip, "About " .. round(model.expected) .. " crafts from what you carry, which should take"
                 .. " you to about " .. tostring(model.b) .. ": the skill it reaches is the guess. The plan is made again from"

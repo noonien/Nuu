@@ -83,9 +83,13 @@ function SkillUp:Span(skills, from, to)
 end
 
 -- The number of crafts to plan for: the expected count plus z standard
--- deviations, rounded up to a whole craft.
+-- deviations, rounded up to a whole craft. With no margin (z 0, typical) it
+-- is the nearest whole craft: the count of crafts is skewed, so a fraction
+-- above the expected count is more often not needed (7.39 expected crafts
+-- are enough about 61% of the time in 7).
 function SkillUp:Count(expected, variance, z)
     local count = expected + (z or 0) * math.sqrt(math.max(variance or 0, 0))
+    if (z or 0) <= 0 then return math.max(math.floor(count + 0.5), 0) end
     return math.max(math.ceil(count - 1e-9), 0)
 end
 

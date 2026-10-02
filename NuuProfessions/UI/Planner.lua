@@ -411,7 +411,7 @@ function Panel:TraceRoute(route)
     }
     for index, run in ipairs(route.runs or {}) do
         local row = pick(run, { "spell", "item", "fromSkill", "toSkill", "expected", "low", "high", "count", "perCraft",
-            "perPoint", "matCraft", "sellCraft", "color", "chosen", "others", "estimated", "carriedCap" })
+            "perPoint", "matCraft", "sellCraft", "color", "chosen", "others", "estimated", "carriedCap", "committed" })
         row.index = index
         row.name = self:RecipeName(run.spell)
         if run.learn then row.learn = pick(run.learn, { "source", "cost", "costUnknown", "item", "npc" }) end
@@ -519,6 +519,10 @@ function Panel:Replan(reason)
         return
     end
     local input = Planner():MakeInput(profession, self.data, self.inputs, live)
+    -- The step made from the bags, kept for this session (Planner:Plan's
+    -- input.committed): not saved, a /reload finds it again from the bags.
+    local committed = self.committed
+    input.committed = committed and committed.profession == profession and committed.spell or nil
     -- The status sentence names items and recipes with the window's names.
     input.nameOf = input.nameOf or nameOf
     -- The full-scope set, for the note on a route that stops short: which
@@ -540,6 +544,7 @@ function Panel:Replan(reason)
         return
     end
     self.route = route
+    self.committed = route.committed and { profession = profession, spell = route.committed } or nil
     local split, sections = pcall(Planner().Sections, Planner(), route, self:SplitInput())
     self.sections = split and sections or {}
     if not split then ns:Log("planner: sections failed: " .. tostring(sections)) end

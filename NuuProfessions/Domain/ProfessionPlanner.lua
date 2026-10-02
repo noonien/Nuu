@@ -649,6 +649,8 @@ end
 --   target      skill wanted (nil: the highest the character can train)
 --   known       { [spellID] = true }, from the trade skill window
 --   bags        function(itemID) -> count carried (the bags; not the bank)
+--   committed   the spell of the first step the bags were found to cover when
+--               it began (the route's `committed` last time), or nil
 --   goals, options, refused, pinned, accepted, avoided, preferred, chosen   see DefaultInputs
 --   book        the price book (default NuuProfessionsDB.professions)
 --   tiers       the tier table (default Data/ProfessionTiers.lua)
@@ -1052,7 +1054,8 @@ function Planner:Plan(input)
     -- otherwise expected counts. Each batch gets `intermediates` (spell ->
     -- crafts made for it) and `makeOrder`, those spells in the order they are
     -- made, the parts before what they make. Planning with only what is
-    -- carried, `wanted` holds what each batch asks of an item and `short`
+    -- carried, `wanted` holds what each batch asks of an item, `fromBags`
+    -- what of it the bags gave, and `short`
     -- what of it neither the route nor the bags had (an item a vendor sells
     -- is never short).
     local function ledger(list, sized)
@@ -1074,6 +1077,7 @@ function Planner:Plan(input)
             if carriedNow > 0 then
                 carried[item] = carried[item] - carriedNow
                 fromBags[item] = (fromBags[item] or 0) + carriedNow
+                batch.fromBags[item] = (batch.fromBags[item] or 0) + carriedNow
                 batch.buys[item] = (batch.buys[item] or 0) + carriedNow
                 quantity = quantity - carriedNow
             end
@@ -1133,7 +1137,7 @@ function Planner:Plan(input)
         -- is its section's shopping when the plan is split (Planner:Sections).
         for _, batch in ipairs(list) do
             batch.fromRoute, batch.intermediates, batch.makeOrder, batch.buys = {}, {}, {}, {}
-            batch.wanted, batch.short = {}, {}
+            batch.wanted, batch.short, batch.fromBags = {}, {}, {}
             local crafts = sized and batch.count or batch.expected
             for _, reagent in ipairs(batch.entry.recipe.reagents or {}) do
                 acquire(reagent[1], crafts * (reagent[2] or 1), batch, 0)
@@ -1162,6 +1166,26 @@ function Planner:Plan(input)
             local short = false
             for _, count in pairs(batch.short) do
                 if count > 1e-9 then short = true end
+            end
+            if short then high = middle - 1 else low = middle end
+        end
+        batch.count = keep
+        ledger(list, true)
+        return low
+    end
+    -- How many crafts of a batch in `list` the bags (and what the route made
+    -- before it) cover, with nothing bought or made for it: possibleCrafts,
+    -- where buying or making anything is a shortfall.
+    local function coveredCrafts(list, batch)
+        local keep = batch.count
+        local low, high = 0, math.floor(keep + 1e-9)
+        while low < high do
+            local middle = math.floor((low + high + 1) / 2)
+            batch.count = middle
+            ledger(list, true)
+            local short = next(batch.intermediates) ~= nil
+            for item, count in pairs(batch.buys) do
+                if count - (batch.fromBags[item] or 0) > 1e-9 then short = true end
             end
             if short then high = middle - 1 else low = middle end
         end
@@ -2053,8 +2077,9 @@ function Planner:Plan(input)
         run.low, run.high = S:Range(run.expected, run.variance, z, points)
         -- The route's spread shared out by each run's variance, so the counts
         -- add up to the expected total plus z deviations of the whole route.
+        -- The margin is in `extra`; z only says how it rounds (S:Count).
         local extra = pooled > 0 and z * run.variance / pooled or 0
-        run.count = math.max(S:Count(run.expected + extra, 0, 0), points)
+        run.count = math.max(S:Count(run.expected + extra, 0, z), points)
         -- Only what is carried, nothing is bought on a margin and the plan is
         -- made again after every craft: a step's count is what its Make
         -- button orders, the low end, so the parts made for it, the bags'
@@ -2128,6 +2153,34 @@ function Planner:Plan(input)
                             end
                         end
                     end
+                end
+            end
+        end
+    end
+
+    -- The step being made now, made from the bags. The skill-up odds have
+    -- no memory, so after a craft that gave no point the step needs as many
+    -- crafts as before, one fewer in the bags: planned again after every
+    -- craft, it would ask for more materials after each miss. So the first
+    -- step, once the bags cover its expected crafts, is committed: it makes
+    -- what the bags make, with nothing made or bought for it, until they
+    -- make no more craft (then it asks for the rest, as any step) or another
+    -- step comes first. The window keeps the spell (input.committed)
+    -- between plans. Only what is carried caps every step already.
+    local committed
+    local first = runs[1]
+    if first and not carriedOnly and options.useBags and first.fromSkill <= start then
+        local list = batchesOf(runs)
+        ledger(list, true)
+        for _, batch in ipairs(list) do
+            if batch.run == first then
+                local covered = coveredCrafts(list, batch)
+                local enough = input.committed == first.spell and 1 or math.max(S:Count(first.expected, 0, 0), 1)
+                if covered >= enough then
+                    if covered < first.count then
+                        first.count, first.low, first.high = covered, math.min(first.low, covered), math.min(first.high, covered)
+                    end
+                    first.committed, committed = true, first.spell
                 end
             end
         end
@@ -2344,6 +2397,9 @@ function Planner:Plan(input)
             local gain = batch.makeGains[spell] or 0
             local make = { kind = "make", skill = at, spell = spell, item = recipe.makes, crafts = crafts, count = count,
                 needs = list, helper = recipe.helper, gain = gain > 0 and gain or nil, forSpell = batch.entry.spell,
+                wanted = recipe.makes and math.ceil((batch.wanted[recipe.makes] or 0) - 1e-9) or nil,
+                carried = recipe.makes and math.floor((batch.fromBags[recipe.makes] or 0) + 1e-9) or nil,
+                stepCrafts = batch.count, stepExpected = batch.expected,
                 forRun = batch.run and runIndexOf[batch.run] or nil, forGoal = batch.goal and true or nil,
                 cost = parts and math.floor(crafts * parts + 0.5) or nil, estimated = estimated or nil }
             at = at + gain
@@ -2502,14 +2558,18 @@ function Planner:Plan(input)
     --                    others = how many other recipes give skill at every one of its skill levels,
     --                    needs = { { itemID, count, source } }, intermediates = { make events },
     --                    needsPattern = { bind, source, cost, npc, teach } when its recipe needs a
-    --                    pattern the character lacks (see learnInfo) } }
+    --                    pattern the character lacks (see learnInfo),
+    --                    committed = true on the first step made from the bags, its count theirs } }
+    --   committed    the committed step's spell, or nil: the window passes it back as input.committed
     --   events       { train = { skill, tier, cap, level, cost, costUnknown, npc },
     --                  learn = { skill, spell, source, cost, costUnknown, npc, item, accepted, needsPattern },
     --                  goal  = { skill, spell, count, gain, when, atEnd },
     --                  make  = { skill (where it is made), spell, item, crafts, count (items), gain (points
     --                            its crafts are expected to give, nil when none), forSpell, forRun (the
     --                            run it is made for; forGoal for a goal), cost (its parts), estimated,
-    --                            needs } } by skill, each with `kind`
+    --                            needs, wanted (how many of the item the step takes), carried (of those,
+    --                            from the bags), stepCrafts and stepExpected (the step's crafts at
+    --                            the confidence, and expected) } } by skill, each with `kind`
     --   makes        { { itemID, spell, count, crafts, cost, each, gain, estimated, firstSkill } }:
     --                every intermediate made on the way, summed by item
     --   summary      { spent, materials, training, learning, recovered, net, low, high,
@@ -2568,7 +2628,7 @@ function Planner:Plan(input)
         },
         auctionator = ctx:UsesAuctionator() or nil,
         shopping = shopping, made = sizedLedger.made, makes = makes, selling = selling, suggestions = suggestions, ceiling = ceiling, gap = gap,
-        materials = options.materials, ranOut = ranOutList,
+        materials = options.materials, ranOut = ranOutList, committed = committed,
         missingWhy = carriedOnly and "carried" or (not ctx.buyAH and "vendor") or "auction",
         warnings = warnings, unobtainable = missing, items = sortedKeys(touched),
         estimated = estimatedItems, trainings = trainings, value = result.value,

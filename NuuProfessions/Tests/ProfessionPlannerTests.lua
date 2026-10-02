@@ -307,6 +307,41 @@ assert(lucky.startSkill == 15 and lucky.runs[1].fromSkill == 15, "the new route 
 assert(lucky.shopping[1].have == 5 and lucky.shopping[1].buy == lucky.shopping[1].count - 5, "and counts the bags")
 assert(lucky.summary.spent < safe.summary.spent)
 
+-- The first step made from the bags: committed once they cover its expected
+-- crafts, then nothing is made or bought for it until they run out.
+do
+    local cloth = { recipes = {
+        [1] = recipe(1001, { 1, 1, 10, 30 }, { { 1003, 1 } }),
+        [3] = recipe(1003, { 1, 1, 2, 3 }, { { 100, 2 } }),
+    }, items = items() }
+    local function bolts(count)
+        return function(id) return id == 1003 and count or 0 end
+    end
+    local function makes(route)
+        local count = 0
+        for _, event in ipairs(route.events) do if event.kind == "make" then count = count + event.count end end
+        return count
+    end
+    local fresh = plan(cloth, { skill = 20, target = 22 })
+    local expected = SkillUp:Count(fresh.runs[1].expected, 0, 0)
+    assert(fresh.runs[1].count > expected and makes(fresh) > 0, "a safe step with no bags makes its margin")
+    local started = plan(cloth, { skill = 20, target = 22, bags = bolts(expected) })
+    assert(started.committed == 1 and started.runs[1].committed and started.runs[1].count == expected,
+        "the bags cover the expected crafts: committed, at what they make")
+    assert(makes(started) == 0 and #started.shopping == 0, "nothing made or bought")
+    local missed = plan(cloth, { skill = 20, target = 22, bags = bolts(expected - 1) })
+    assert(not missed.committed and makes(missed) > 0, "not committed, a miss would ask for more")
+    missed = plan(cloth, { skill = 20, target = 22, bags = bolts(expected - 1), committed = 1 })
+    assert(missed.committed == 1 and missed.runs[1].count == expected - 1 and makes(missed) == 0,
+        "committed, a miss asks for nothing")
+    local out = plan(cloth, { skill = 20, target = 22, bags = bolts(0), committed = 1 })
+    assert(not out.committed and makes(out) > 0, "the bags make no craft: the step asks for the rest")
+    local other = plan(cloth, { skill = 20, target = 22, bags = bolts(expected - 1), committed = 7 })
+    assert(not other.committed, "another step's commitment is not this one's")
+    local carried = plan(cloth, { skill = 20, target = 22, bags = bolts(expected), options = { materials = "carried" } })
+    assert(not carried.committed, "only what I have caps every step its own way")
+end
+
 -- Trainer tiers: training at the cap, gated by level.
 local long = { recipes = {
     [1] = recipe(1001, { 1, 240, 245, 250 }, { { 100, 1 } }),
