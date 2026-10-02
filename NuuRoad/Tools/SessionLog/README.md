@@ -121,10 +121,13 @@ if ns:Tracing() then   -- skip building a big row when nothing would keep it
 end
 ```
 
-Same channel names, same data, same guard as `ns:Record`, but kept by session
-instead of by age: each login or `/reload` opens a new trace session and only
-the last three are kept, so an accidental reload does not lose the session
-before it. A trace session carries a short identity (character, realm, level,
+Same channel names, same data, same guard as `ns:Record`, but kept by session:
+each login or `/reload` opens a new trace session and trims the older ones. A
+session that traced nothing is dropped and does not count; of the rest, every
+one begun in the last 24 hours is kept, and the last three however old, so a
+day of reloads does not lose the morning's rows. Past 10000 rows in all, the
+oldest sessions go whatever their age (never the current one), and the new
+session counts them under its `trimmed`. A trace session carries a short identity (character, realm, level,
 client and build, addon, login or reload). A channel is not capped, but one
 that runs past 5000 rows in a session drops its oldest a tenth at a time and
 counts them under the session's `dropped`.

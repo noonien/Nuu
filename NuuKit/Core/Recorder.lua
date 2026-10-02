@@ -63,12 +63,20 @@ ns.Kit = Kit
 --     ns:Trace("planner", { event = "plan", reason = "open", route = ... })
 --
 -- It takes the same channel names and the same data, through the same guard,
--- but it is kept by session rather than by age: every login or reload opens a
--- new trace session, and only the last three are kept (`traceSessions`), so a
--- reload made by accident does not lose the one before it. `<db>.trace.sessions`
--- holds them oldest first, each `{ at, identity, channels = { [channel] =
--- { {at, d}, ... } }, dropped = { [channel] = n } }`; the identity is a short
--- one, since the lasting log's `session` channel has the whole of it.
+-- but it is kept by session: every login or reload opens a new trace session,
+-- and when one opens the older ones are trimmed. A session that traced nothing
+-- goes first, since it explains nothing and should not push out one that did.
+-- Of the rest, every one begun in the last day is kept (`traceKeepHours`), so a
+-- morning of reloads does not lose the morning's rows, and the last three are
+-- kept however old (`traceSessions`), so a quiet week does not lose the last
+-- bug. Over all that is a size guard: past `traceMaxRows` rows in the kept
+-- sessions, the oldest go whatever their age, and the new session counts how
+-- many sessions and rows went under its `trimmed`. The session being written
+-- is never trimmed; whether it traced anything is judged at the next load.
+-- `<db>.trace.sessions` holds them oldest first, each `{ at, identity,
+-- channels = { [channel] = { {at, d}, ... } }, dropped = { [channel] = n },
+-- trimmed = { sessions, rows } }`; the identity is a short one, since the
+-- lasting log's `session` channel has the whole of it.
 --
 -- Which to use: Record for what should still explain something next week - a
 -- session, a bug report, what the player did, a client read being measured.
@@ -92,7 +100,11 @@ Kit.Recorder = Recorder
 Recorder.maxDepth = 6
 Recorder.defaultKeepDays = 10
 Recorder.traceSessions = 3
+Recorder.traceKeepHours = 24
 Recorder.traceRunaway = 5000
+-- Two runaway channels' worth: many times a day of ordinary debugging, and a
+-- bound on the saved file when something runs away in session after session.
+Recorder.traceMaxRows = 10000
 Recorder.lastingChannels = { "bug" }
 
 function Kit.NewRecorder(options)
@@ -233,14 +245,60 @@ function Recorder:TraceStore()
     return store
 end
 
--- Opens a trace session for this UI load and drops all but the newest
--- `traceSessions`. `identity` is what the session says about itself.
+-- How many rows a trace session holds, across its channels.
+local function traceRows(session)
+    local rows = 0
+    for _, records in pairs(type(session) == "table" and type(session.channels) == "table" and session.channels or {}) do
+        if type(records) == "table" then rows = rows + #records end
+    end
+    return rows
+end
+
+-- Trims the sessions already kept, before this load's is added: the empty
+-- ones go, then whatever is neither among the newest `traceSessions` nor
+-- begun within `traceKeepHours` of `now`. Returns what is left, oldest first.
+function Recorder:KeptTraces(sessions, now)
+    local cutoff = now and now - self.traceKeepHours * 3600
+    local kept, count = {}, 0
+    for index = #sessions, 1, -1 do
+        local session = sessions[index]
+        if traceRows(session) > 0 then
+            count = count + 1
+            local at = session.at
+            if count <= self.traceSessions or (cutoff and type(at) == "number" and at >= cutoff) then
+                table.insert(kept, 1, session)
+            end
+        end
+    end
+    return kept
+end
+
+-- Opens a trace session for this UI load and trims the older ones (see the
+-- trace, above). `identity` is what the session says about itself.
 function Recorder:BeginTrace(identity)
     local store = self:TraceStore()
     if not store then return nil end
-    local session = { at = epoch(), identity = self:Sanitize(identity or {}), channels = {}, dropped = {} }
-    table.insert(store.sessions, session)
-    while #store.sessions > self.traceSessions do table.remove(store.sessions, 1) end
+    local now = epoch()
+    local kept = self:KeptTraces(store.sessions, now)
+    -- The size guard: the oldest go first, whatever the rules above kept.
+    local rows = 0
+    for _, older in ipairs(kept) do rows = rows + traceRows(older) end
+    local trimmed, trimmedRows = 0, 0
+    while rows > self.traceMaxRows and #kept > 0 do
+        local gone = traceRows(table.remove(kept, 1))
+        rows = rows - gone
+        trimmed, trimmedRows = trimmed + 1, trimmedRows + gone
+    end
+    local session = { at = now, identity = self:Sanitize(identity or {}), channels = {}, dropped = {} }
+    if trimmed > 0 then
+        session.trimmed = { sessions = trimmed, rows = trimmedRows }
+        self:Log("trace: dropped the oldest " .. trimmed .. " sessions (" .. trimmedRows .. " rows) to keep the trace under " .. self.traceMaxRows .. " rows")
+    end
+    kept[#kept + 1] = session
+    -- In place, so a reader holding the list sees the trimmed one.
+    local sessions = store.sessions
+    for index = #sessions, 1, -1 do sessions[index] = nil end
+    for index, older in ipairs(kept) do sessions[index] = older end
     self.traceSession = session
     return session
 end
@@ -521,9 +579,14 @@ function Recorder:DiagnosticLines()
     end
     local traces = self:TraceStore()
     local keptTraces = traces and #traces.sessions or 0
-    table.insert(lines, "Trace sessions kept: " .. keptTraces .. " of " .. self.traceSessions)
+    table.insert(lines, "Trace sessions kept: " .. keptTraces .. " (the last " .. self.traceKeepHours .. " hours, at least "
+        .. self.traceSessions .. " that traced something, at most " .. self.traceMaxRows .. " rows)")
     local current = self:CurrentTrace()
     if current then
+        local trimmed = current.trimmed
+        if trimmed then
+            table.insert(lines, "  " .. tostring(trimmed.sessions) .. " oldest sessions (" .. tostring(trimmed.rows) .. " rows) dropped for size at this load")
+        end
         local traced = {}
         for channel in pairs(current.channels or {}) do table.insert(traced, channel) end
         table.sort(traced)

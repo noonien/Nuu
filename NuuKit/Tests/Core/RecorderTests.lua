@@ -286,22 +286,107 @@ traced.d.message = "said afterwards"
 assertEquals(traces[1].channels.planner[1].d.message, "said afterwards", "a field set on the returned row is kept")
 assertEquals(Recorder:Trace("../nope", {}), nil, "a bad channel name is refused as for Record")
 
--- Each load opens another; three are kept, and a fourth drops the oldest.
+-- Each load opens another, and tracing writes to the newest.
 local first = Recorder:CurrentTrace()
 _G.time = function() return 1789862401 end
 Recorder:BeginTrace({ n = 2 })
-_G.time = function() return 1789862402 end
-Recorder:BeginTrace({ n = 3 })
-assertEquals(#db.trace.sessions, 3, "three sessions are kept")
-assertEquals(db.trace.sessions[1], first, "the first still among them")
-Recorder:Trace("planner", "into the third")
-assertEquals(db.trace.sessions[3].channels.planner[1].d, "into the third", "tracing writes to the newest")
+Recorder:Trace("planner", "into the second")
+assertEquals(#db.trace.sessions, 2, "a second load keeps the first")
+assertEquals(db.trace.sessions[1], first, "oldest first")
+assertEquals(db.trace.sessions[2].channels.planner[1].d, "into the second", "tracing writes to the newest")
 assertEquals(#first.channels.planner, 1, "and leaves the older ones alone")
-_G.time = function() return 1789862403 end
-Recorder:BeginTrace({ n = 4 })
-assertEquals(#db.trace.sessions, 3, "a fourth keeps three")
-assertEquals(db.trace.sessions[1].identity.n, 2, "by dropping the oldest")
-assertEquals(db.trace.sessions[3].identity.n, 4, "the newest last")
+
+-- A session that traced nothing is dropped at the next load, and does not
+-- count toward the sessions kept, so reloads that traced nothing cannot push
+-- out one that did.
+Recorder.traceKeepHours = 0
+for n = 3, 8 do
+    _G.time = function() return 1789862400 + n end
+    Recorder:BeginTrace({ n = n })
+end
+local sessions = db.trace.sessions
+assertEquals(#sessions, 3, "empty sessions are dropped and the current is kept")
+assertEquals(sessions[1], first, "the first, which traced, survives six empty loads")
+assertEquals(sessions[2].identity.n, 2, "and so does the second")
+assertEquals(sessions[3].identity.n, 8, "beside the current, empty as it is")
+assertEquals(Recorder:CurrentTrace(), sessions[3], "which is the one written to")
+
+-- Past the day kept, the newest three that traced something are kept.
+Recorder:Trace("planner", "into the eighth")
+_G.time = function() return 1789862409 end
+Recorder:BeginTrace({ n = 9 })
+Recorder:Trace("planner", "into the ninth")
+_G.time = function() return 1789862410 end
+Recorder:BeginTrace({ n = 10 })
+sessions = db.trace.sessions
+assertEquals(#sessions, 4, "three that traced, and the current")
+assertEquals(sessions[1].identity.n, 2, "the oldest that traced goes first")
+assertEquals(sessions[3].identity.n, 9, "the newest that traced last")
+assertEquals(sessions[4].identity.n, 10, "then the current")
+Recorder.traceKeepHours = nil
+
+-- Within the day kept, every session that traced is kept, however many.
+local timeDB = {}
+local timed = Kit.NewRecorder({ db = function() return timeDB end })
+local hour = 3600
+for n = 1, 8 do
+    _G.time = function() return 1789862400 + n * hour end
+    timed:BeginTrace({ n = n })
+    timed:Trace("planner", n)
+end
+_G.time = function() return 1789862400 + 24 * hour end
+timed:BeginTrace({ n = 9 })
+assertEquals(#timeDB.trace.sessions, 9, "eight sessions in the last day are kept, with the current")
+_G.time = function() return 1789862400 + 25 * hour + 1 end
+timed:BeginTrace({ n = 10 })
+-- The tenth found the ninth empty, and the first older than a day; the next
+-- seven are within it.
+sessions = timeDB.trace.sessions
+assertEquals(#sessions, 8, "a session older than the day goes once three newer traced")
+assertEquals(sessions[1].identity.n, 2, "the oldest left is within the day")
+assertEquals(sessions[8].identity.n, 10, "and the current is last")
+
+-- Older than the day, it is trimmed to the newest three that traced.
+_G.time = function() return 1789862400 + 100 * hour end
+timed:BeginTrace({ n = 11 })
+sessions = timeDB.trace.sessions
+assertEquals(#sessions, 4, "a day later, three that traced and the current")
+assertEquals(sessions[1].identity.n, 6, "the newest three")
+assertEquals(sessions[3].identity.n, 8, "that traced")
+assertEquals(sessions[4].identity.n, 11, "and the current")
+
+-- The size guard drops the oldest sessions past the rows kept, even within
+-- the day and even below three, says so on the new session, and never drops
+-- the current.
+local sizeDB, sizeLogs = {}, {}
+local sized = Kit.NewRecorder({ db = function() return sizeDB end, log = function(message) table.insert(sizeLogs, message) end })
+sized.traceMaxRows = 10
+for n = 1, 3 do
+    _G.time = function() return 1789862400 + n end
+    sized:BeginTrace({ n = n })
+    for row = 1, 4 do sized:Trace("planner", row) end
+end
+assertEquals(#sizeDB.trace.sessions[3].channels.planner, 4, "the current session is written past the cap")
+_G.time = function() return 1789862404 end
+local fourth = sized:BeginTrace({ n = 4 })
+sessions = sizeDB.trace.sessions
+assertEquals(#sessions, 3, "twelve rows over ten drops the oldest session")
+assertEquals(sessions[1].identity.n, 2, "the oldest goes first")
+assertEquals(fourth.trimmed.sessions, 1, "the new session says how many sessions went")
+assertEquals(fourth.trimmed.rows, 4, "and how many rows")
+assert(sizeLogs[1] and sizeLogs[1]:find("dropped the oldest 1 sessions", 1, true), "and the log says so")
+for row = 1, 30 do sized:Trace("planner", row) end
+_G.time = function() return 1789862405 end
+local fifth = sized:BeginTrace({ n = 5 })
+sessions = sizeDB.trace.sessions
+assertEquals(#sessions, 1, "a session past the cap on its own drops every older one at the next load")
+assertEquals(sessions[1], fifth, "leaving only the current")
+assertEquals(fifth.trimmed.sessions, 3, "counted")
+assertEquals(fifth.trimmed.rows, 38, "with their rows")
+for row = 1, 30 do sized:Trace("planner", row) end
+assertEquals(sized:CurrentTrace(), fifth, "and the current is never dropped, however big")
+assertEquals(#fifth.channels.planner, 30, "nor cut but by the runaway mark")
+assertEquals(Kit.Recorder.traceMaxRows, 10000, "setting one recorder's cap leaves the others'")
 _G.time = function() return 1789862400 end
 
 -- A trace channel is not capped, but one that runs away drops its oldest
@@ -340,7 +425,7 @@ assertEquals(other:Tracing(), false, "and its trace is its own")
 
 -- The diagnostics name the sessions kept and this session's channels.
 local diagnostic = table.concat(Recorder:DiagnosticLines(), "\n")
-assert(diagnostic:find("Trace sessions kept: 3 of 3", 1, true), "the diagnostics count the trace sessions")
+assert(diagnostic:find("Trace sessions kept: 4 (the last 24 hours, at least 3 that traced something, at most 10000 rows)", 1, true), "the diagnostics count the trace sessions")
 assert(diagnostic:find("loop", 1, true) and diagnostic:find("oldest dropped", 1, true), "and this session's channels")
 
 CreateFrame = previousCreateFrame
