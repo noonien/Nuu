@@ -543,6 +543,12 @@ function Panel:Replan(reason)
     local split, sections = pcall(Planner().Sections, Planner(), route, self:SplitInput())
     self.sections = split and sections or {}
     if not split then ns:Log("planner: sections failed: " .. tostring(sections)) end
+    -- The shopping list keeps what this plan buys, to show with the window shut.
+    local list = ns.modules.ShoppingList
+    if list then
+        local kept, err = pcall(list.Keep, list, profession, route, self.sections)
+        if not kept then report(err) end
+    end
     if tracing then
         local traced, row = pcall(self.TraceRoute, self, route)
         if not traced then report(row) end
@@ -738,6 +744,11 @@ end
 local function professionPicked(value) Panel:SelectProfession(value) end
 local function tabPicked(key) Panel:ShowTab(key) end
 
+local function shoppingClicked()
+    local list = ns.modules.ShoppingList
+    if list then list:Toggle() end
+end
+
 local function windowHidden()
     Panel:Trace("close", { tab = Panel.tab })
     Panel:HideTip()
@@ -771,6 +782,9 @@ function Panel:Build()
     header:Spacer{ size = 6 }
     self.standing = header:Text{ "", style = "label" }
     header:Spacer{ size = 10 }
+    header:Button{ "Shopping list", onClick = shoppingClicked,
+        tooltip = "Shows what the plan buys in a small list of its own, which stays up with the planner shut" }
+    header:Spacer{ size = 6 }
 
     for _, tab in ipairs(self.tabList) do self:BuildTab(tab) end
 
@@ -1163,7 +1177,16 @@ function Panel:Initialize()
     if type(slash) == "table" then
         _G.SLASH_NUUPROFESSIONS1 = "/nuuprofessions"
         _G.SLASH_NUUPROFESSIONS2 = "/nuuprof"
-        slash.NUUPROFESSIONS = function() Panel:Toggle() end
+        -- `/nuuprof shop` shows or hides the shopping list.
+        slash.NUUPROFESSIONS = function(text)
+            local word = type(text) == "string" and text:lower():match("^%s*(%S+)") or nil
+            if word == "shop" or word == "list" then
+                local list = ns.modules.ShoppingList
+                if list then list:Toggle() end
+                return
+            end
+            Panel:Toggle()
+        end
     end
 end
 

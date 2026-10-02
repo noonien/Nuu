@@ -198,6 +198,160 @@ Plan:SectionsPicked("trip")
 settle()
 noErrors("summary")
 
+-- The shopping list: one list in a trip (no drop-down), one a section when
+-- split, All sections under headings, the bags ticking items off, and the
+-- list staying up with the planner shut.
+local Shopping = ns.modules.ShoppingList
+local function shoppingSelect()
+    for _, child in ipairs(Shopping.area.kitInner:GetChildren()) do
+        if child.kitType == "Select" then return child end
+    end
+end
+check(#Shopping:Record(false).lists.Leatherworking.sections == 1, "a trip keeps one list")
+Shopping:Toggle()
+settle()
+check(Shopping:IsShown(), "the list shows")
+check(#Shopping.rows > 0, "the list has items")
+check(not shoppingSelect(), "one list, no drop-down")
+Plan:SectionsPicked("tier")
+settle()
+local kept = Shopping:Record(false).lists.Leatherworking.sections
+check(#kept > 1, "split by tier, a list a section (" .. #kept .. ")")
+check(shoppingSelect(), "several lists, a drop-down under the title")
+for _, option in ipairs(Shopping:Options(Shopping:Professions())) do
+    check(option.separator or option.caption:find("^Leatherworking: "), "a list reads <Profession>: <section>")
+end
+local first = #Shopping.rows
+local lines = 0
+for _, section in ipairs(Shopping:Live("Leatherworking", Shopping:Record(false).lists.Leatherworking)) do
+    lines = lines + #section.items
+end
+Shopping:Record(true).pick = "Leatherworking:all"
+Shopping:Refresh()
+settle()
+check(#Shopping.rows == lines and lines > first, "all sections lists every section's items")
+local frameHeight = Shopping.frame:GetHeight()
+check(frameHeight > 0 and frameHeight <= 520, "as tall as the list, up to its cap (" .. frameHeight .. ")")
+_G.GetItemCount = function() return 1e9 end
+Shopping:Refresh()
+check(Shopping.left:GetText() == "All carried", "the bags tick everything off")
+_G.GetItemCount = nil
+Shopping:Refresh()
+
+-- No made items, no Buy buttons; a click on the icon ticks by hand.
+for _, line in ipairs(Shopping.rows) do
+    check(line.item.source ~= "craft", "what is made on the way is not shopping")
+    check(line.buy == nil and line.slot ~= nil, "a row is an icon, its words and a cost")
+end
+-- Rows under a heading per kind of shop, each heading with what is left to buy there.
+local headings = {}
+for _, group in ipairs(Shopping.groups) do headings[group.key] = group end
+check(headings.vendor or headings.ah, "the rows are grouped by where they are bought")
+for _, group in ipairs(Shopping.groups) do
+    if group.key == "vendor" or group.key == "ah" then
+        check(group.cost:GetText() ~= "", "a shop's heading says what is left to buy there")
+    end
+end
+local function lineOf(itemID)
+    for _, line in ipairs(Shopping.rows) do
+        if line.item.itemID == itemID then return line end
+    end
+end
+local tickedID = Shopping.rows[1].item.itemID
+local before = Shopping.left:GetText()
+Shopping.rows[1].slot:Click()
+check(lineOf(tickedID).item.ticked and Shopping.left:GetText() ~= before, "a click on the icon ticks it by hand")
+local last = Shopping.groups[#Shopping.groups]
+check(last.key == "have" and Shopping.rows[#Shopping.rows].item.itemID == tickedID,
+    "what is already had goes to its own section, last")
+lineOf(tickedID).slot:Click()
+check(not lineOf(tickedID).item.ticked and Shopping.left:GetText() == before, "and a second takes the tick off")
+check(Shopping.rows[1].item.itemID == tickedID, "and it goes back to its shop")
+
+-- Buying: the batches and calls.
+local Buying = ns.modules.MerchantBuying
+local plan = Buying:Plan({ price = 50, count = 5, stock = 3, index = 1 }, 22)
+check(plan.purchases == 3 and plan.items == 15 and plan.cost == 150 and #plan.calls == 3 and plan.calls[1] == false,
+    "batches of 5, held to the stock of 3, one batch a call")
+plan = Buying:Plan({ price = 10, count = 1, maxStack = 20, index = 1 }, 45)
+check(plan.cost == 450 and #plan.calls == 3 and plan.calls[1] == 20 and plan.calls[3] == 5, "one at a time, 20 a call")
+
+-- The strip under the vendor's window: a vendor selling two list items.
+local Strip = ns.modules.VendorStrip
+local wantedItems = {}
+for _, line in ipairs(Shopping.rows) do
+    if #wantedItems < 2 and line.item.count > line.item.have then table.insert(wantedItems, line.item) end
+end
+check(#wantedItems == 2, "two list items still to buy")
+local Client = ns.modules.Client
+local bought = {}
+_G.MerchantFrame = CreateFrame("Frame", "MerchantFrame", UIParent)
+MerchantFrame:SetSize(336, 444)
+MerchantFrame.page, MerchantFrame.selectedTab = 1, 1
+_G.MERCHANT_ITEMS_PER_PAGE = 10
+_G.MerchantItem1ItemButton = CreateFrame("Button", nil, MerchantFrame)
+_G.MerchantItem2ItemButton = CreateFrame("Button", nil, MerchantFrame)
+_G.GetMerchantNumItems = function() return 2 end
+_G.GetMerchantItemInfo = function() return "Thing", "icon", 10, 1, -1, true, true, false end
+_G.GetMerchantItemLink = function(index)
+    local item = wantedItems[index]
+    return item and ("|cffffffff|Hitem:" .. item.itemID .. "::::::::|h[Thing]|h|r") or nil
+end
+_G.GetMerchantItemMaxStack = function() return 20 end
+-- Money only: no currency or item costs (an earlier suite leaves its own).
+_G.GetMerchantItemCostInfo = function() return 0 end
+_G.GetMoney = function() return 1e9 end
+_G.BuyMerchantItem = function(index, quantity) table.insert(bought, { index, quantity }) end
+Strip:Refresh()
+check(not (Strip.frame and Strip.frame:IsShown()), "no vendor open, no strip")
+Client.merchantOpen = true
+Strip:Refresh()
+settle()
+check(Strip.frame:IsShown() and #Strip.rows == 2, "the strip lists what this vendor sells")
+check(Strip.buyAll:IsEnabled() and Strip.buyAll:GetText():find("Buy all", 1, true), "Buy all is on")
+check(Strip.badges[1] and Strip.badges[1]:IsShown() and Strip.badges[2]:IsShown(), "both items marked on the vendor's page")
+_G.GetMoney = function() return 0 end
+Strip:Refresh()
+check(not Strip.buyAll:IsEnabled() and not Strip.rows[1].buy:IsEnabled(), "no money, no buying")
+_G.GetMoney = function() return 1e9 end
+Strip:Refresh()
+Strip:Buy(Strip.wanted)
+local total = {}
+for _, call in ipairs(bought) do total[call[1]] = (total[call[1]] or 0) + (call[2] or 1) end
+-- With All sections, an item in several sections is bought for all of them.
+local function missingOf(itemID)
+    local sum = 0
+    for _, line in ipairs(Shopping.rows) do
+        if line.item.itemID == itemID then sum = sum + line.item.count - line.item.have end
+    end
+    return sum
+end
+check(total[1] == missingOf(wantedItems[1].itemID) and total[2] == missingOf(wantedItems[2].itemID)
+    and not Buying:Busy(), "Buy all bought what is missing of both")
+_G.GetMerchantNumItems = function() return 0 end
+Strip:Refresh()
+check(not Strip.frame:IsShown() and not Strip.badges[1]:IsShown(), "a vendor selling nothing on the list: no strip, no marks")
+Client.merchantOpen = nil
+_G.GetMerchantNumItems, _G.GetMerchantItemInfo, _G.GetMerchantItemLink = nil, nil, nil
+_G.GetMerchantItemMaxStack, _G.GetMoney, _G.BuyMerchantItem = nil, nil, nil
+_G.GetMerchantItemCostInfo = nil
+Shopping:Refresh()
+Panel.win:Hide()
+Shopping:Refresh()
+check(Shopping:IsShown(), "the list stays up with the planner shut")
+Panel:Open()
+Shopping:Record(true).pick = nil
+Plan:SectionsPicked("trip")
+settle()
+check(Shopping.frame.closeButton, "the kit's close mark")
+Shopping.frame.closeButton:Click()
+check(not Shopping:IsShown() and not Shopping:Record(false).shown, "the close mark puts the list away")
+Shopping:SetShown(true)
+Shopping:SetShown(false)
+settle()
+check(not Shopping:IsShown(), "the list put away")
+noErrors("shopping list")
+
 -- The Recipes tab: every Show, a goal and its line.
 Panel:ShowTab("recipes")
 settle()

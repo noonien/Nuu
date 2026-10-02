@@ -572,7 +572,8 @@ guide-shaped output is what the window reads: `Planner:Outline`, the table's row
   A split section's shopping comes from what its own batches bring (the sized ledger records it per batch), and its
   last skill is the last skill in the section that needs the item. The Materials tab's "this section" view lists one
   section's shopping.
-- **The shopping list is the Materials tab.** Its counts use the chosen confidence: the sum of expected crafts plus
+- **The shopping list** is two things: the Materials tab, where what to buy is decided, and the shopping list panel
+  (see UI), what to buy, readable with the planner shut. Their counts use the chosen confidence: the sum of expected crafts plus
   z times the square root of the summed variance, with z = 0, 1.3 or 2.3. Each item's last skill means a lucky run
   never leaves the player buying or farming for points they already have.
 - **Replanning.** The route is computed again from the live skill and live bags when the skill passes the step's
@@ -640,6 +641,34 @@ again at once.
   shopping (confidence, auction house, bags) and prices (the estimate factor,
   Auctionator) - then the testing switch, Reset all, and **Appearance**: the kit's look picker for the planner
   window (`NuuProfessionsDB.look`; the kit keeps no settings).
+
+The **Shopping list** (`UI/ShoppingList.lua`) is a small kit panel of its own, shown from the **Shopping list**
+button in the planner's band (or `/nuuprof shop`), that stays up with the planner shut and closes from the kit's
+close mark. Each section of a profession's plan that buys something is one list: with the default "one trip"
+sections that is the whole route, named under the title ("Tailoring: Whole route 41-160"); with several lists
+(another split, or a second profession planned) a full-width drop-down there picks one, each named
+`<Profession>: <section>`, and **All sections** shows every list of a profession under its section's heading.
+The rows stand under a heading per kind of shop (Vendor, Auction house, then Gather and In your bags), each shop's
+heading with what is left to buy there, and what is done (carried, or ticked by hand) under Already have, last; an
+item moves there when it is done and back when it is not. Each row is the item's icon with the count needed, its name, a second line saying where it comes from with its
+price and what is carried ("Abigail Shiel, 10c each, you have 0"), and what the rest costs; the foot says how
+many are still needed and what is left to buy. What the player makes on the way (a bolt of cloth) is a step, not
+shopping, and is left off. An item is done once the bags hold what it needs (a green ring, a faded icon,
+"Carried, 52 of 52"); a click on its icon ticks it by hand (what is in the bank, or what the player will do
+without), kept until the item leaves the plan. The lists are what the planner last planned, kept per character
+(`shoppingList` in the character's record) after every plan, so they do not move while the player shops: only
+the bags and the skill are read live. The bags go to the earliest section first, an item goes once the skill
+passes the last step that uses it, and a section with nothing left leaves the drop-down.
+
+Buying is on the vendor's own window (`UI/VendorStrip.lua`): while the open vendor sells something the list in
+view still needs, a strip of ours under its window says "From your <profession> list", with **Buy all** and what
+everything costs there, and a row per item with its count, cost and **Buy**; those items also wear a mark on the
+vendor's page (an accent edge and the count needed, painted after the game draws a page). Pressed, Buy buys what
+is missing (`Domain/MerchantBuying.lua`), rounded up to the vendor's batches and held to its stock and the
+player's money, one call every fifth of a second, checking the vendor's slot still holds the item, stopping when
+the vendor closes, and saying in chat what it bought. Only money is spent: an item costing a currency or other
+items is left to the player. The strip and marks are our frames on the vendor window; nothing of the game's is
+changed. Nothing is searched or posted at the auction house.
 
 The shared widgets are NuuKit's (`NuuKit/UI/`, see its `README.md` and `status.md`): `Select` (a drop-down),
 `UI:OpenMenu` (the one choice menu, under a control or at the cursor, with a check on the current choice, a second

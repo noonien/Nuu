@@ -36,7 +36,9 @@ local Config = {
     -- everything in it: `knownRecipes[profession][spellID] = true` from the
     -- trade skill window (API/Client.lua), and the planner's inputs per
     -- profession, `professionPlanner` (Domain/ProfessionPlanner.lua,
-    -- Planner:CharacterRecord).
+    -- Planner:CharacterRecord), and `shoppingList` (UI/ShoppingList.lua):
+    -- each profession's last plan's lists, the one picked, and whether the
+    -- panel is shown.
 }
 
 local function copyDefaults(target, defaults)

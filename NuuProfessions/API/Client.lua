@@ -1298,6 +1298,45 @@ function Client:ReadMerchantItems()
     return items
 end
 
+-- What the open merchant sells for money alone, by item: each
+-- ReadMerchantItems entry with `maxStack`, the most one purchase call may
+-- take. Empty with no merchant open.
+function Client:MerchantOffers()
+    local offers = {}
+    if not self.merchantOpen then return offers end
+    for _, entry in ipairs(self:ReadMerchantItems()) do
+        if entry.itemID and entry.price and not entry.currency and not entry.items and not offers[entry.itemID] then
+            entry.maxStack = plainNumber(readAll(global("GetMerchantItemMaxStack"), entry.index))
+            offers[entry.itemID] = entry
+        end
+    end
+    return offers
+end
+
+-- The item in the open merchant's slot `index`, or nil.
+function Client:MerchantItemID(index)
+    local kind, id = parseLink(readAll(global("GetMerchantItemLink"), index))
+    return kind == "item" and id or nil
+end
+
+-- Buys from the open merchant's slot `index`, only while it still holds
+-- `itemID`: `quantity` items in one call, or one purchase (the merchant's
+-- own batch) with no quantity. Answers whether the call was made.
+function Client:BuyMerchantItem(index, itemID, quantity)
+    if not self.merchantOpen then return false end
+    local kind, id = parseLink(readAll(global("GetMerchantItemLink"), index))
+    if kind ~= "item" or id ~= itemID then return false end
+    local buy = global("BuyMerchantItem")
+    if type(buy) ~= "function" then return false end
+    if quantity then return (pcall(buy, index, quantity)) end
+    return (pcall(buy, index))
+end
+
+-- The character's money, in copper.
+function Client:GetMoney()
+    return plainNumber(readAll(global("GetMoney"))) or 0
+end
+
 local function sameCosts(a, b)
     if a == nil or b == nil then return a == b end
     for key, value in pairs(a) do if b[key] ~= value then return false end end
