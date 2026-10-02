@@ -632,7 +632,8 @@ again at once.
   material the route buys, in views (this route, the section holding the skill, guessed or missing, cheaper to buy, every material
   in range, not used), grouped by what each material is (can be made, sold by a vendor, auction house or
   gathered), so a Get it choice never moves a row. Each row has what is carried of what is needed, the price
-  used and its source, the player's AH buy and AH sell fields, **Get it** (make it, buy, gather valued, gather free), what
+  used and its source, the player's AH buy and AH sell fields, **Get it** (make or buy, the default for an item a usable recipe makes: whichever costs less per item, its
+parts against its own price; make it; buy; gather valued; gather free), what
   the rest costs, and **Plan with it** (planner decides, prefer it, never use it). A banner counts the guessed and
   missing prices, and a second what is made at a loss. Under the materials, **What you make**, each output with its sale price, AH sell field and
   **Sale** choice; a foot with what is left to buy, the route's materials and what its output sells for. Not used
@@ -648,12 +649,13 @@ close mark. Each section of a profession's plan that buys something is one list:
 sections that is the whole route, named under the title ("Tailoring: Whole route 41-160"); with several lists
 (another split, or a second profession planned) a full-width drop-down there picks one, each named
 `<Profession>: <section>`, and **All sections** shows every list of a profession under its section's heading.
-The rows stand under a heading per kind of shop (Vendor, Auction house, then Gather and In your bags), each shop's
-heading with what is left to buy there and some room before each heading but the first, and what is done
+The rows stand under a heading per kind of shop, a band with its name in the accent colour as the planner's tier
+headings are (Buy for vendors, Auction house, then Gather and In your bags), a shop's band with what is left to
+buy there when it holds more than one item and some room before each heading but the first, and what is done
 (carried, or ticked by hand) under Collected, last: a line across the list with a fold in the done colour at its
 middle ("Collected"), folded unless the player
 opens it (kept per character, `haveOpen`); an item moves there when it is done and back
-when it is not. Each row is the item's icon with the count needed, its name with its price after it ("Coarse Thread | 10c" from
+when it is not. Each row is the item's icon with how many are still to get (none once collected), its name with its price after it ("Coarse Thread | 10c" from
 a vendor, "Linen Cloth | 15c @ AH" at the auction house, `~` for a guess) and what the rest costs at the right,
 and under them a thin bar of what is carried with "15 / 21" at its end; the icon's tooltip names the vendor. The
 window's status strip says how many are still needed and what is left to buy. What the player makes on the way (a bolt of cloth) is a step, not

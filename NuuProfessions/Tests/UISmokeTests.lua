@@ -268,6 +268,16 @@ for _, line in ipairs(Shopping.rows) do
         "the bar and its count")
 end
 
+-- What the route also makes (a bolt of cloth, the carried part used first)
+-- is a step, not shopping.
+do
+    local live = Shopping:Live("Test", { sections = { { title = "T", items = {
+        { itemID = 2996, count = 15, source = "gather", made = true },
+        { itemID = 2320, count = 21, source = "vendor", each = 10 },
+    } } } })
+    check(#live == 1 and #live[1].items == 1 and live[1].items[1].itemID == 2320, "what the route makes is left off")
+end
+
 -- No made items, no Buy buttons; a click on the icon ticks by hand.
 for _, line in ipairs(Shopping.rows) do
     check(line.item.source ~= "craft", "what is made on the way is not shopping")
@@ -278,8 +288,10 @@ local headings = {}
 for _, group in ipairs(Shopping.groups) do headings[group.key] = group end
 check(headings.vendor or headings.ah, "the rows are grouped by where they are bought")
 for _, group in ipairs(Shopping.groups) do
-    if group.key == "vendor" or group.key == "ah" then
+    if (group.key == "vendor" or group.key == "ah") and group.items > 1 then
         check(group.cost:GetText() ~= "", "a shop's heading says what is left to buy there")
+    elseif group.cost and group.items == 1 then
+        check(group.cost:GetText() == "", "but not for one item, whose row says it")
     end
 end
 local function lineOf(itemID)

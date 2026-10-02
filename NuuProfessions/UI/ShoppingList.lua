@@ -17,12 +17,13 @@ local _, ns = ...
 -- section first, so two sections never count the same stack), and goes once
 -- the skill passes the last step that uses it; a section with nothing left
 -- leaves the drop-down. What the player makes on the way (an intermediate
--- such as a bolt of cloth) is not on the list: it is a step, not shopping.
+-- such as a bolt of cloth) is not on the list, even the part of it already
+-- in the bags (`made`): it is a step, not shopping.
 -- The player may tick an item by hand with a click on its icon (what is in
 -- the bank, or what they will do without); that tick is kept until the
 -- item leaves the profession's lists.
 --
--- Each row is the item's icon with the count needed, its name, where it
+-- Each row is the item's icon with what is still to get, its name, where it
 -- comes from with its price and what is carried, and what the rest costs.
 -- Buying is on the vendor's own window (UI/VendorStrip.lua), not here. No
 -- auction is searched or posted.
@@ -34,7 +35,7 @@ local WIDTH, MAX_HEIGHT = 340, 520
 -- group each is listed under.
 local SOURCE_ORDER = { vendor = 1, ah = 2, estimate = 2, gather = 3, carried = 4 }
 local GROUP_OF = { vendor = "vendor", ah = "ah", estimate = "ah", gather = "gather", carried = "carried" }
-local GROUP_WORDS = { vendor = "Vendor", ah = "Auction house", gather = "Gather", carried = "In your bags",
+local GROUP_WORDS = { vendor = "Buy", ah = "Auction house", gather = "Gather", carried = "In your bags",
     have = "Collected" }
 
 -- Done (collected): the bags hold what it needs, or the player ticked it
@@ -50,7 +51,7 @@ end
 -- The price of these is spent at a shop; the rest is not money out.
 local BOUGHT = { vendor = true, ah = true, estimate = true }
 
-local ITEM_FIELDS = { "itemID", "count", "source", "each", "npc", "estimated", "lastSkill" }
+local ITEM_FIELDS = { "itemID", "count", "source", "each", "npc", "estimated", "lastSkill", "made" }
 
 local function Client() return ns.modules.Client end
 local function Planner() return ns.modules.PlannerPanel end
@@ -138,7 +139,7 @@ function List:Live(profession, kept)
     for index, section in ipairs(kept.sections or {}) do
         local items = {}
         for _, item in ipairs(section.items or {}) do
-            if item.source ~= "craft" and not (item.lastSkill and skill >= item.lastSkill) then
+            if item.source ~= "craft" and not item.made and not (item.lastSkill and skill >= item.lastSkill) then
                 local id = item.itemID
                 if bags[id] == nil then bags[id] = api and api:GetItemCount(id, true) or 0 end
                 local have = math.min(bags[id], item.count or 0)
@@ -348,23 +349,33 @@ function List:Build(blocks, options, value, label)
                 -- Room between one section and the next.
                 if group then area:Spacer{ size = 8 } end
                 group = key
-                local heading = area:Row{ gap = 8 }
                 local entry = { key = key, block = index }
                 if key == "have" then
                     -- Collected: a line across the list with a fold in the
                     -- done colour at its middle.
+                    local heading = area:Row{ gap = 8 }
                     heading:Rule{ color = "border" }
                     entry.fold = heading:Disclosure{ GROUP_WORDS.have, open = haveOpen(), onToggle = haveToggled,
                         tone = "success", style = "outline", height = 22,
                         tooltip = haveOpen() and "Hide what you have collected" or "Show what you have collected" }
                     heading:Rule{ color = "border" }
                 else
-                    heading:Text{ GROUP_WORDS[key], style = "fine", grow = true, valign = "center" }
-                    entry.cost = heading:Text{ "", style = "fine", valign = "center" }
+                    -- A band, as the planner's tier headings: the shop in
+                    -- the accent colour, and what is left to buy there
+                    -- when the group holds more than one item.
+                    local heading = area:Row{ gap = 8, padLeft = 8, padRight = 8, height = 24 }
+                    local band = heading:AddTexture("BACKGROUND")
+                    band:SetAllPoints(heading)
+                    ns.Kit.UI.TexColor(band, ns:GetUI().tokens.raisedBg)
+                    heading:Text{ GROUP_WORDS[key], color = "accent", grow = true, valign = "center" }
+                    entry.cost = heading:Text{ "", valign = "center" }
                 end
+                entry.items = 0
                 table.insert(self.groups, entry)
             end
             if not listed(item) then break end
+            local current = self.groups[#self.groups]
+            current.items = current.items + 1
             local row = area:Row{ gap = 10 }
             local line = { item = item, row = row, block = index }
             line.slot = row:Slot{ item = item.itemID, size = 34, onClick = slotClicked, data = line,
@@ -479,7 +490,8 @@ function List:Refresh()
                 groupCost[key] = sum
             end
         end
-        line.slot:SetCount(tostring(item.count))
+        -- The icon says what is still to get; collected, its green ring says so.
+        line.slot:SetCount(not done and tostring(math.max(0, item.count - item.have)) or nil)
         line.slot:SetEdge(done and "done" or nil)
         line.slot:FadePicture(done and 0.5 or 1)
         line.tip = tipOf(item, done)
@@ -493,7 +505,9 @@ function List:Refresh()
     end
     for _, group in ipairs(self.groups) do
         local sum = groupCost[group.block .. ":" .. group.key]
-        if group.cost then group.cost:SetText(sum and ((sum.guess and "~" or "") .. money(sum.copper)) or "") end
+        -- One item's cost is on its own row already.
+        local shown = sum and group.items > 1
+        if group.cost then group.cost:SetText(shown and ((sum.guess and "~" or "") .. money(sum.copper)) or "") end
     end
     -- The window's own strip at the foot says where the list stands.
     local words = missing == 0 and "All carried" or (missing .. " still needed")
