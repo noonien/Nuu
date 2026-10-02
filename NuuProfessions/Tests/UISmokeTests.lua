@@ -130,6 +130,23 @@ local Plan = ns.modules.PlannerTabPlan
 check(#Plan.list:GetView() > 0, "the route table has rows")
 check(Plan.list:GetSelected() == Plan.makeTarget and Plan.makeTarget ~= nil, "the step Make acts on is selected")
 check(Plan.figures.crafts:GetText() ~= "-", "the figures are set")
+-- The skill past the first step, drawn without planning again: Make moves to
+-- the next step, and the button is drawn for it, not for the step passed.
+do
+    local first = Plan.makeTarget
+    local saved = Panel.live
+    Panel.live = setmetatable({ skill = first.b }, { __index = saved })
+    Panel:Render()
+    local next = Plan.makeTarget
+    check(next and next ~= first and Plan:MakeOrder(next), "Make moves past the step the skill passed")
+    local text, enabled, reason = Plan.make:GetText(), Plan.make:IsEnabled(), Plan.make.kitReason
+    Plan:RenderMake(Panel)
+    check(Plan.make:GetText() == text and Plan.make:IsEnabled() == enabled and Plan.make.kitReason == reason,
+        "the Make button is drawn for the step Make acts on: " .. tostring(reason))
+    Panel.live = saved
+    Panel:Render()
+    settle()
+end
 local firstRow = Plan.list.rows[1]
 local barred = 0
 for _, row in ipairs(Plan.list.rows) do

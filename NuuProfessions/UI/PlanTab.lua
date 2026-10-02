@@ -1005,7 +1005,10 @@ function Tab:Layout()
     local route = self.panel.route
     local list, anyOpen = self:Flatten(route)
     self.rows = list
+    -- The Make button after its step is picked: drawn before, it showed the
+    -- step of the last draw, greyed once the skill had passed it.
     self.makeTarget = self:MakeTarget()
+    self:RenderMake(self.panel)
     self.collapse:SetShown(anyOpen)
     self.list:SetItems(list, true)
     self.list:Select(self.makeTarget)
@@ -1255,8 +1258,6 @@ function Tab:RenderSummary(panel)
     else
         for _, key in ipairs({ "cost", "sells", "net", "crafts" }) do set(key, "-", "muted") end
     end
-
-    self:RenderMake(panel)
 
     -- Check prices while the route rests on guesses, and how it is cut.
     local status = route and route.status or { kind = "blocked" }
