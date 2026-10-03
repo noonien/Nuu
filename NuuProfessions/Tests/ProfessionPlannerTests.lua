@@ -1609,4 +1609,30 @@ do
     assert(Planner:GoalMade(inputs, data, 999, 1) == nil, "no goal makes it")
 end
 
+-- Of two recipes at the same price, the one whose output can be disenchanted
+-- wins (an uncommon armour piece over a common shirt), whichever comes first;
+-- a cheaper one still beats it.
+do
+    Load(ns, "Domain/Disenchant.lua")
+    local Disenchant = ns.modules.Disenchant
+    Disenchant:SetData({ bands = { { 4, 2, 5, 15, yields = { { 10940, 1, 1, 2 } } } } })
+    local function tied(shirtCost)
+        local data = { recipes = {
+            [1] = recipe(1001, { 1, 30, 40, 50 }, { { shirtCost, 1 } }),
+            [2] = recipe(1002, { 1, 30, 40, 50 }, { { 101, 1 } }),
+        }, items = items() }
+        data.items[1001] = { ilvl = 10, quality = 1, class = 4 }
+        data.items[1002] = { ilvl = 10, quality = 2, class = 4 }
+        return data
+    end
+    route = plan(tied(101), { target = 10 })
+    assert(spells(route) == "2:1-10", spells(route))
+    route = plan(tied(100), { target = 10 })
+    assert(spells(route) == "1:1-10", "a cheaper recipe still wins: " .. spells(route))
+    Disenchant:SetData({ bands = {} })
+    route = plan(tied(101), { target = 10 })
+    assert(spells(route) == "1:1-10", "nothing disenchants: the first wins, as before")
+    Disenchant:SetData(nil)
+end
+
 return true

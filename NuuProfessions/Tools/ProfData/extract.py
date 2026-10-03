@@ -24,8 +24,9 @@ beta's level cap (`contentLevel`):
                       checked against Classic Era's BasePoints + DieSides)
   ItemEffect,         which recipe item teaches which spell (the effect whose
   ItemXItemEffect     TriggerType is 6, "on learn")
-  ItemSparse          prices, item level, required level, binding, and the
-                      recipe item's RequiredSkillRank (the learn skill)
+  ItemSparse          prices, item level, quality, required level, binding,
+                      and the recipe item's RequiredSkillRank (the learn skill)
+  Item                the item class (weapon, armour: what disenchants)
 
 The Classic Era client in the same store gives the `forever` mark: a recipe
 spell Classic Era lacks is "new"; one whose bands, reagents or product differ
@@ -204,7 +205,7 @@ class Client:
     """One client's recipe facts, by spell."""
 
     def __init__(self, product, full):
-        names = ["SkillLineAbility", "SpellReagents", "SpellEffect", "ItemSparse"]
+        names = ["SkillLineAbility", "SpellReagents", "SpellEffect", "ItemSparse", "Item"]
         if full:
             names += ["ItemEffect", "ItemXItemEffect", "TradeSkillCategory", "SpellName", "SkillLine"]
         self.build, t = tables(product, names)
@@ -223,6 +224,7 @@ class Client:
                 if known is None or row["EffectIndex"] < known[0]:
                     self.creates[row["SpellID"]] = (row["EffectIndex"], row["EffectItemType"], made_range(row))
         self.items = {row["ID"]: row for row in t["ItemSparse"]}
+        self.classes = {row["ID"]: row["ClassID"] for row in t["Item"]}
         self.teachers = {}
         if full:
             effects = {row["ID"]: row for row in t["ItemEffect"]}
@@ -482,7 +484,12 @@ def write_lua(name, line, recipes, beta, era, build, args, today):
             continue
         fields = ["sell = %d" % row.get("SellPrice", 0), "buy = %d" % row.get("BuyPrice", 0),
                   "buyCount = %d" % max(1, row.get("VendorStackCount", 1)),
-                  "ilvl = %d" % row.get("ItemLevel", 0), "reqLevel = %d" % row.get("RequiredLevel", 0)]
+                  "ilvl = %d" % row.get("ItemLevel", 0), "reqLevel = %d" % row.get("RequiredLevel", 0),
+                  "quality = %d" % row.get("OverallQualityID", 0)]
+        # The item class (Item.ClassID), for what disenchants: 2 weapon, 4 armour.
+        item_class = (beta.classes.get(item) if source == "client" else era.classes.get(item))
+        if item_class is not None:
+            fields.append("class = %d" % item_class)
         bind = bind_of(row.get("Bonding", 0))
         if bind:
             fields.append('bind = "%s"' % bind)

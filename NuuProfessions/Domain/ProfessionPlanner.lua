@@ -9,7 +9,8 @@ local _, ns = ...
 --     (material cost of r - sell value of r's output) / chance(r, s)
 --
 -- and switching onto a recipe the first time adds what it costs to learn. A
--- dynamic programme over (skill, current recipe) finds the cheapest sum.
+-- dynamic programme over (skill, current recipe) finds the cheapest sum; of
+-- recipes that cost the same, one whose output can be disenchanted wins.
 -- Goals (things the player wants made anyway) are placed first and give free
 -- progress; trainer tiers are forced steps at their caps.
 --
@@ -630,6 +631,14 @@ local function carve(list, from, to)
     return kept, touched
 end
 
+-- Whether the item `itemID` (a row of `data.items`) can be disenchanted:
+-- a tie-breaker, so it says yes to a band whose yields are not known yet.
+local function disenchants(data, itemID)
+    local Disenchant, item = ns.modules.Disenchant, itemID and data.items and data.items[itemID]
+    if not Disenchant or type(item) ~= "table" then return false end
+    return Disenchant:Of({ itemID = itemID, classID = item.class, quality = item.quality, itemLevel = item.ilvl }) ~= nil
+end
+
 local function sameRuns(a, b)
     if #a ~= #b then return false end
     for index, run in ipairs(a) do
@@ -778,6 +787,7 @@ function Planner:Plan(input)
             entry.off = entry.refused or entry.avoids ~= nil
             entry.usable = info ~= nil and not entry.off
             entry.learnGold = info and info.gold or 0
+            entry.disenchants = disenchants(data, recipe.makes)
             bySpell[spell] = entry
             table.insert(entries, entry)
             if not entry.off and input.preferred then
@@ -1360,7 +1370,10 @@ function Planner:Plan(input)
                         local stay = costOf[entry] / chance + valueOf(s + 1, entry.spell)
                         row.stay[entry.spell], row.per[entry.spell] = stay, netOf[entry] / chance
                         local switch = stay + learn(entry)
-                        if switch < row.best - EPS then row.best, row.bestEntry = switch, entry end
+                        -- A tie goes to an output that can be disenchanted.
+                        local tie = row.bestEntry and entry.disenchants and not row.bestEntry.disenchants
+                            and switch <= row.best + EPS
+                        if switch < row.best - EPS or tie then row.best, row.bestEntry = math.min(switch, row.best), entry end
                     end
                     row.list = list
                     V[s] = row

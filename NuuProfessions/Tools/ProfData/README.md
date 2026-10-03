@@ -57,7 +57,8 @@ Engineering 30/53/300, Cooking 300/300/300, First Aid 30/45/300.
 | `SpellReagents` | reagents and counts |
 | `SpellEffect` | `CREATE_ITEM` (24): product; `EffectBasePointsF` is the middle of the number made and `Variance` its spread, min = base * (1 - v/2), max = base * (1 + v/2) (checked against Classic Era's `BasePoints + DieSides` on every multi-made recipe) |
 | `ItemEffect` + `ItemXItemEffect` | the item whose `TriggerType` 6 ("on learn") effect is the recipe spell teaches it |
-| `ItemSparse` | `SellPrice`, `BuyPrice`, `VendorStackCount`, `ItemLevel`, `RequiredLevel`, `Bonding`; on the recipe item, `RequiredSkillRank` (its learn skill) |
+| `Item` | `ClassID` (weapon, armour: for the planner's disenchant tie-break) |
+| `ItemSparse` | `SellPrice`, `BuyPrice`, `VendorStackCount`, `ItemLevel`, `OverallQualityID`, `RequiredLevel`, `Bonding`; on the recipe item, `RequiredSkillRank` (its learn skill) |
 | `SpellName`, `SkillLine` | names, for the reports only (names are never shipped) |
 
 The Classic Era client (`wow_classic_era`, same CASC store) is read for three things only:
@@ -104,7 +105,7 @@ ns.professionData.Leatherworking = {
 | `teach` | the recipe item, when `learn = "item"`; with several, one with an `ItemSparse` row first, then a tradeable one, then the lowest ID |
 | `bind` | the recipe item's binding: `bop` (on pickup, quest) or `boe` (on equip, on use, or none); absent when the item's row is unknown |
 | `forever` | against Classic Era's same profession: `new` (not there), `changed` (bands, reagents, product or number made differ), `unchanged` |
-| `items[id]` | `sell`, `buy` (copper), `buyCount`, `ilvl`, `reqLevel`, `bind` (`bop` / `boe` as above, absent when unbound), `vendor = true` for the authored list; `{ unknown = true }` when neither client has the item's row |
+| `items[id]` | `sell`, `buy` (copper), `buyCount`, `ilvl`, `reqLevel`, `quality`, `class` (`Item.ClassID`: 2 weapon, 4 armour; with `quality` and `ilvl`, what disenchants), `bind` (`bop` / `boe` as above, absent when unbound), `vendor = true` for the authored list; `{ unknown = true }` when neither client has the item's row |
 
 Two things the planner has to allow for:
 
