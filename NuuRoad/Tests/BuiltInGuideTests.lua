@@ -194,6 +194,121 @@ do
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
+-- The ported RestedXP Hillsbrad Foothills guide, from the Orgrimmar zeppelin to the Hillsbrad farms.
+do
+    local id = "nuuroad:leveling:horde-hillsbrad-22-24"
+    local source = ns.builtInGuides[id]
+    assert(source, id .. " must register")
+    assert(source.only == "Horde" and source.map == 1424, id .. " is a Horde guide on the Hillsbrad map")
+    local ported = ns.modules.Steps:Expand(source)
+    local valid, problems = ns.modules.Schema:Validate(ported)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
+    local maps = { [1424] = true, [1421] = true, [1420] = true, [1411] = true }
+    for _, node in ipairs(ported.nodes) do
+        if node.location then
+            assert(node.location.x <= 1 and node.location.y <= 1, id .. ": percent coordinates normalize at " .. node.index)
+            assert(maps[node.location.mapID], id .. ": known map at " .. node.index)
+        end
+        local title = ns.modules.Steps:Title(node)
+        assert(#title > 0, id .. ": every step renders a title at " .. node.index)
+        assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d") and not title:find("spell %d"),
+            id .. ": every referenced quest, NPC, item, and spell is named -> " .. title)
+        assert(not title:find(", objective %d+$"),
+            id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
+        if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
+    end
+    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
+    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
+    assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
+end
+
+-- The ported RestedXP southern Barrens guide, from Thunder Bluff through Bael Modan to the Crossroads.
+do
+    local id = "nuuroad:leveling:horde-southern-barrens-24-25"
+    local source = ns.builtInGuides[id]
+    assert(source, id .. " must register")
+    assert(source.only == "Horde" and source.map == 1413, id .. " is a Horde guide on the Barrens map")
+    local ported = ns.modules.Steps:Expand(source)
+    local valid, problems = ns.modules.Schema:Validate(ported)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
+    local maps = { [1413] = true, [1456] = true }
+    for _, node in ipairs(ported.nodes) do
+        if node.location then
+            assert(node.location.x <= 1 and node.location.y <= 1, id .. ": percent coordinates normalize at " .. node.index)
+            assert(maps[node.location.mapID], id .. ": known map at " .. node.index)
+        end
+        local title = ns.modules.Steps:Title(node)
+        assert(#title > 0, id .. ": every step renders a title at " .. node.index)
+        assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d") and not title:find("spell %d"),
+            id .. ": every referenced quest, NPC, item, and spell is named -> " .. title)
+        assert(not title:find(", objective %d+$"),
+            id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
+        if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
+    end
+    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
+    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
+    assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
+end
+
+-- The ported RestedXP Stonetalon Mountains guide, from the Crossroads to Sun Rock Retreat.
+do
+    local id = "nuuroad:leveling:horde-stonetalon-25-26"
+    local source = ns.builtInGuides[id]
+    assert(source, id .. " must register")
+    assert(source.only == "Horde" and source.map == 1442, id .. " is a Horde guide on the Stonetalon map")
+    local ported = ns.modules.Steps:Expand(source)
+    local valid, problems = ns.modules.Schema:Validate(ported)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
+    for _, node in ipairs(ported.nodes) do
+        if node.location then
+            assert(node.location.x <= 1 and node.location.y <= 1, id .. ": percent coordinates normalize at " .. node.index)
+            assert(node.location.mapID == 1442, id .. ": known map at " .. node.index)
+        end
+        local title = ns.modules.Steps:Title(node)
+        assert(#title > 0, id .. ": every step renders a title at " .. node.index)
+        assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d") and not title:find("spell %d"),
+            id .. ": every referenced quest, NPC, item, and spell is named -> " .. title)
+        assert(not title:find(", objective %d+$"),
+            id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
+        if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
+    end
+    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
+    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
+    assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
+end
+
+-- The ported RestedXP Thousand Needles route, from Thunder Bluff to the level 30 cap.
+do
+    local id = "nuuroad:leveling:horde-thousand-needles-28-30"
+    local source = ns.builtInGuides[id]
+    assert(source, id .. " must register")
+    assert(source.only == "Horde" and source.map == 1441, id .. " is a Horde guide on the Thousand Needles map")
+    local ported = ns.modules.Steps:Expand(source)
+    local valid, problems = ns.modules.Schema:Validate(ported)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
+    local maps = { [1441] = true, [1456] = true, [1413] = true, [1444] = true, [1446] = true, [1434] = true, [1454] = true }
+    for _, node in ipairs(ported.nodes) do
+        if node.location then
+            assert(node.location.x <= 1 and node.location.y <= 1, id .. ": percent coordinates normalize at " .. node.index)
+            assert(maps[node.location.mapID], id .. ": known map at " .. node.index)
+        end
+        local title = ns.modules.Steps:Title(node)
+        assert(#title > 0, id .. ": every step renders a title at " .. node.index)
+        assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d") and not title:find("spell %d"),
+            id .. ": every referenced quest, NPC, item, and spell is named -> " .. title)
+        assert(not title:find(", objective %d+$"),
+            id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
+        if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
+    end
+    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
+    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
+    assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
+end
+
 -- The ported RestedXP Skyborne start: one guide for a race that picks either faction.
 local skyborneID = "nuuroad:leveling:skyborne-zephras-isle"
 local skyborneSource = ns.builtInGuides[skyborneID]
@@ -341,6 +456,91 @@ for _, id in ipairs({ 1013, 1014, 1098, 1740 }) do
     assert(sfkTurnins[id], "the Shadowfang Keep guide turns in quest " .. id)
 end
 
+-- Blackfathom Deeps (HordeBlackfathomDeeps.lua).
+local bfd = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:dungeon:horde-blackfathom-deeps-quests"])
+assert(bfd.only == "Horde", "the Blackfathom Deeps guide is Horde-only")
+local bfdMaps = { [1413] = true, [1440] = true, [1442] = true, [1456] = true }
+local bfdTurnins, bfdSticky = {}, 0
+for _, node in ipairs(bfd.nodes) do
+    local title = ns.modules.Steps:Title(node)
+    assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d"), "Blackfathom Deeps names everything: " .. title)
+    if node.sticky then bfdSticky = bfdSticky + 1 end
+    if node.kind == "turnInQuest" or node.kind == "talk" then
+        for _, goal in ipairs(node.completion.observed.children or { node.completion.observed }) do
+            if goal.state == "finished" then for _, id in ipairs(goal.ids) do bfdTurnins[id] = true end end
+        end
+    end
+    if node.location then
+        assert(bfdMaps[node.location.mapID], "Blackfathom Deeps stays in Ashenvale, Stonetalon, Thunder Bluff and the Barrens: " .. node.index)
+    end
+end
+assert(bfdSticky == 1, "the Soran'ruk Fragments ride along inside, got " .. bfdSticky)
+for _, id in ipairs({ 1740, 6561, 6562, 6563, 6564, 6565, 6921, 6922 }) do
+    assert(bfdTurnins[id], "the Blackfathom Deeps guide turns in quest " .. id)
+end
+
+local rfk = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:dungeon:horde-razorfen-kraul-quests"])
+assert(rfk.only == "Horde", "the Razorfen Kraul guide is Horde-only")
+local rfkMaps = { [1413] = true, [1456] = true, [1458] = true }
+local rfkTurnins, rfkSticky = {}, 0
+for _, node in ipairs(rfk.nodes) do
+    local title = ns.modules.Steps:Title(node)
+    assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d"), "Razorfen Kraul names everything: " .. title)
+    if node.sticky then rfkSticky = rfkSticky + 1 end
+    if node.kind == "turnInQuest" or node.kind == "talk" then
+        for _, goal in ipairs(node.completion.observed.children or { node.completion.observed }) do
+            if goal.state == "finished" then for _, id in ipairs(goal.ids) do rfkTurnins[id] = true end end
+        end
+    end
+    if node.location then
+        assert(rfkMaps[node.location.mapID], "Razorfen Kraul stays in the Barrens, Thunder Bluff and the Undercity: " .. node.index)
+    end
+end
+assert(rfkSticky == 2, "the guano and the tubers ride along inside, got " .. rfkSticky)
+for _, id in ipairs({ 1102, 1109, 1144, 1221, 6522 }) do
+    assert(rfkTurnins[id], "the Razorfen Kraul guide turns in quest " .. id)
+end
+
+local gnomer = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:dungeon:horde-gnomeregan-quests"])
+assert(gnomer.only == "Horde", "the Gnomeregan guide is Horde-only")
+local gnomerMaps = { [1426] = true, [1434] = true, [1454] = true }
+local gnomerTurnins = {}
+for _, node in ipairs(gnomer.nodes) do
+    local title = ns.modules.Steps:Title(node)
+    assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d"), "Gnomeregan names everything: " .. title)
+    if node.kind == "turnInQuest" or node.kind == "talk" then
+        for _, goal in ipairs(node.completion.observed.children or { node.completion.observed }) do
+            if goal.state == "finished" then for _, id in ipairs(goal.ids) do gnomerTurnins[id] = true end end
+        end
+    end
+    if node.location then
+        assert(gnomerMaps[node.location.mapID], "Gnomeregan stays in Orgrimmar, Stranglethorn and Dun Morogh: " .. node.index)
+    end
+end
+for _, id in ipairs({ 2841, 2842, 2843, 2904, 2945, 2949, 2950, 2951 }) do
+    assert(gnomerTurnins[id], "the Gnomeregan guide turns in quest " .. id)
+end
+
+local dalaran = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:dungeon:horde-city-of-dalaran-quests"])
+assert(dalaran.only == "Horde", "the City of Dalaran guide is Horde-only")
+local dalaranMaps = { [1416] = true, [1424] = true, [1458] = true }
+local dalaranTurnins = {}
+for _, node in ipairs(dalaran.nodes) do
+    local title = ns.modules.Steps:Title(node)
+    assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d"), "City of Dalaran names everything: " .. title)
+    if node.kind == "turnInQuest" or node.kind == "talk" then
+        for _, goal in ipairs(node.completion.observed.children or { node.completion.observed }) do
+            if goal.state == "finished" then for _, id in ipairs(goal.ids) do dalaranTurnins[id] = true end end
+        end
+    end
+    if node.location then
+        assert(dalaranMaps[node.location.mapID], "City of Dalaran stays in Alterac, Hillsbrad and the Undercity: " .. node.index)
+    end
+end
+for _, id in ipairs({ 96986, 96987, 96988 }) do
+    assert(dalaranTurnins[id], "the City of Dalaran guide turns in quest " .. id)
+end
+
 -- Horde Druid Cat Form: Forever-only, recorded in play; Druid and not Alliance.
 local cat = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:class:horde-druid-cat-form"])
 assert(cat.condition.type == "all", "the Cat Form guide needs both the class and the faction")
@@ -350,6 +550,58 @@ for _, node in ipairs(cat.nodes) do
     if node.location then
         assert(node.location.mapID == 1456 or node.location.mapID == 1450, "Cat Form stays in Thunder Bluff and Moonglade: " .. node.index)
     end
+end
+
+-- The ported RestedXP Ashenvale guide, from Orgrimmar's trainers to the Zoram'gar turn-ins.
+do
+    local id = "nuuroad:leveling:horde-ashenvale-26-30"
+    local source = ns.builtInGuides[id]
+    assert(source, id .. " must register")
+    assert(source.only == "Horde" and source.map == 1440, id .. " is a Horde guide on the Ashenvale map")
+    local ported = ns.modules.Steps:Expand(source)
+    local valid, problems = ns.modules.Schema:Validate(ported)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
+    local maps = { [1440] = true, [1454] = true, [1450] = true }
+    for _, node in ipairs(ported.nodes) do
+        if node.location then
+            assert(node.location.x <= 1 and node.location.y <= 1, id .. ": percent coordinates normalize at " .. node.index)
+            assert(maps[node.location.mapID], id .. ": known map at " .. node.index)
+        end
+        local title = ns.modules.Steps:Title(node)
+        assert(#title > 0, id .. ": every step renders a title at " .. node.index)
+        assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d") and not title:find("spell %d"),
+            id .. ": every referenced quest, NPC, item, and spell is named -> " .. title)
+        assert(not title:find(", objective %d+$"),
+            id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
+        if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
+    end
+    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
+    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
+    assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
+end
+
+-- Excavation Site: Wetlands (HordeExcavationSite.lua): built from data, no recorded run.
+local exc = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:dungeon:horde-excavation-site-quests"])
+assert(exc.only == "Horde", "the Excavation Site guide is Horde-only")
+local excMaps = { [1437] = true, [1454] = true, [1417] = true, [1456] = true, [1412] = true }
+local excTurnins, excSticky = {}, 0
+for _, node in ipairs(exc.nodes) do
+    local title = ns.modules.Steps:Title(node)
+    assert(not title:find("quest %d") and not title:find("NPC %d") and not title:find("item %d"), "Excavation Site names everything: " .. title)
+    if node.sticky then excSticky = excSticky + 1 end
+    if node.kind == "turnInQuest" or node.kind == "talk" then
+        for _, goal in ipairs(node.completion.observed.children or { node.completion.observed }) do
+            if goal.state == "finished" then for _, id in ipairs(goal.ids) do excTurnins[id] = true end end
+        end
+    end
+    if node.location then
+        assert(excMaps[node.location.mapID], "Excavation Site stays in the Wetlands, Orgrimmar, Hammerfall, Thunder Bluff and Mulgore: " .. node.index)
+    end
+end
+assert(excSticky == 4, "the four dungeon objective lines ride along inside, got " .. excSticky)
+for _, id in ipairs({ 95663, 95664, 95682, 95697, 98823 }) do
+    assert(excTurnins[id], "the Excavation Site guide turns in quest " .. id)
 end
 
 return true

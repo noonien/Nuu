@@ -1003,7 +1003,7 @@ ns.builtInGuides["nuuroad:leveling:skyborne-zephras-isle"] = {
 
         { section = "To Stormwind", steps = {
             { travel = "the Dalaran zeppelin", only = "Alliance", at = { 65.81, 83.44 },
-                note = "Wait at the dock, down by 66.09, 80.96 and 65.10, 81.52, and ride the zeppelin to Dalaran." },
+                note = "Wait at the dock, down by 66.09, 80.96 and 65.10, 81.52, and ride the zeppelin to Dalaran. It comes round every six minutes, so cook or sort your bags while you wait. Stay on board until it docks: jumping off early can leave you pushed off the platform." },
             { turnin = 94946, accept = 94947, npc = 259084, only = "Alliance", at = { 12.30, 56.31, map = 1416 },
                 note = "Denaaris Stargale meets the zeppelin." },
             { objective = 94947, part = 1, object = "Portal", only = "Alliance", at = { 12.05, 56.25, map = 1416 },

@@ -85,6 +85,8 @@ Mapping.commands = {
     macro = entry("excluded", "nothing",
         "a macro the source builds for the player; guides carry no macros (CLAUDE.md), the step's note says what to do"),
     disablecheckbox = entry("ignored", "nothing", "a source UI setting on its step's checkbox"),
+    addquestitem = entry("ignored", "nothing",
+        "tells the source's item button which quest an item belongs to; a step names its own item"),
 }
 
 Mapping.directives = {

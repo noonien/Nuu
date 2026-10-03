@@ -275,6 +275,9 @@ local Names = {
         [251001] = "Deathguard Kristof",
         [250686] = "Tabitha Heartweaver",
         [266484] = "Morbin Lightbane",
+        -- City of Dalaran: a quest giver and the boss a quest counts.
+        [2278] = "Melisara",
+        [247126] = "Atrexis the Grave Knight",
         -- Ragefire Chasm: quest givers, bosses, and the mobs the quests count.
         [2425] = "Varimathras",
         [3197] = "Burning Blade Fanatic",
@@ -299,6 +302,13 @@ local Names = {
         [4275] = "Archmage Arugal",
         [4444] = "Deathstalker Vincent",
         [6247] = "Doan Karhan",
+        -- Razorfen Kraul: quest givers, Willix, the last boss, and the bats that carry the guano.
+        [4421] = "Charlga Razorflank",
+        [4425] = "Blind Hunter",
+        [4451] = "Auld Stonespire",
+        [4508] = "Willix the Importer",
+        [4538] = "Kraul Bat",
+        [4539] = "Greater Kraul Bat",
         -- Zephras Isle, the Skyborne start (SkyborneZephrasIsle.lua); IDs from Wowhead Forever.
         [1748] = "Highlord Bolvar Fordragon",
         [249363] = "Yala Windwatcher",
@@ -578,6 +588,57 @@ local Names = {
         [272526] = "Glix Xizzix",
         [275437] = "Dark Enforcer",
         [275954] = "Bareth Dawnstone",
+        -- Southern Barrens (HordeSouthernBarrens2425.lua).
+        [3030] = "Siln Skychaser",
+        [3036] = "Kym Wildmane",
+        [3040] = "Urek Thunderhorn",
+        [3043] = "Ker Ragetotem",
+        [3045] = "Malakai Cross",
+        [3049] = "Thurston Xane",
+        [3250] = "Silithid Creeper",
+        [3251] = "Silithid Grub",
+        [3252] = "Silithid Swarmer",
+        [3341] = "Gann Stonespire",
+        [3374] = "Bael'dun Excavator",
+        [3375] = "Bael'dun Foreman",
+        [3376] = "Bael'dun Soldier",
+        [3377] = "Bael'dun Rifleman",
+        [3378] = "Bael'dun Officer",
+        [3392] = "Prospector Khazgorm",
+        [3433] = "Tatternack Steelforge",
+        [3434] = "Nak",
+        [3435] = "Lok Orcbane",
+        [3436] = "Kuz",
+        [3456] = "Razormane Pathfinder",
+        [3457] = "Razormane Stalker",
+        [3458] = "Razormane Seer",
+        [3459] = "Razormane Warfrenzy",
+        [3472] = "Washte Pawne",
+        [3473] = "Owatanka",
+        [5899] = "Brine",
+        [6394] = "Ruga Ragetotem",
+        -- Blackfathom Deeps (HordeBlackfathomDeeps.lua): quest givers, the flight master at
+        -- Zoram'gar, bosses, and the mobs the quests loot. Tsunaman, Tal and Doan Karhan are above.
+        [4787] = "Argent Guard Thaelrid",
+        [4802] = "Blackfathom Tide Priestess",
+        [4809] = "Twilight Acolyte",
+        [4832] = "Twilight Lord Kelris",
+        [9087] = "Bashana Runetotem",
+        [11901] = "Andruk",
+        [12736] = "Je'neu Sancrea",
+        [12876] = "Baron Aquanis",
+        [12902] = "Lorgus Jett",
+        -- Excavation Site: Wetlands (HordeExcavationSite.lua).
+        [2787] = "Zaruk",
+        [3368] = "Borstan",
+        [9087] = "Bashana Runetotem",
+        [13155] = "Deathstalker Agent",
+        [259118] = "Muln Earthfury",
+        [260322] = "Saltspine",
+        [260325] = "Shadetooth",
+        [260326] = "Relic Guardian",
+        [275044] = "Dragonmaw Warder",
+        [275045] = "Dragonmaw Saboteur",
     },
     quests = {
         [264] = "Until Death Do Us Part",
@@ -800,11 +861,21 @@ local Names = {
         [92422] = "The Wrath of Rath'mael",
         [95216] = "The New Plague",
         [97289] = "Unending Torment",
+        -- City of Dalaran.
+        [96986] = "The Grave Knight",
+        [96987] = "Opportunistic Education",
+        [96988] = "Source of Power",
         -- Shadowfang Keep.
         [1013] = "The Book of Ur",
         [1014] = "Arugal Must Die",
         [1098] = "Deathstalkers in Shadowfang",
         [1740] = "The Orb of Soran'ruk",
+        -- Razorfen Kraul.
+        [1102] = "A Vengeful Fate",
+        [1109] = "Going, Going, Guano!",
+        [1144] = "Willix the Importer",
+        [1221] = "Blueleaf Tubers",
+        [6522] = "An Unholy Alliance",
         -- Zephras Isle, the Skyborne start (SkyborneZephrasIsle.lua).
         [92460] = "Coming of Age",
         [92461] = "Harmony in Balance",
@@ -1037,10 +1108,44 @@ local Names = {
         [99144] = "Seeking Refuge",
         [99152] = "As Above, So Below",
         [99153] = "The One That Got Away",
+        -- Southern Barrens (HordeSouthernBarrens2425.lua).
+        [843] = "Gann's Reclamation",
+        [846] = "Revenge of Gann",
+        [849] = "Revenge of Gann",
+        [879] = "Betrayal from Within",
+        [884] = "Owatanka",
+        [885] = "Washte Pawne",
+        [893] = "Weapons of Choice",
+        [906] = "Betrayal from Within",
+        [1067] = "Return to Thunder Bluff",
+        [1086] = "The Flying Machine Airport",
+        [1153] = "A New Ore Sample",
+        [1534] = "Call of Water",
+        [1536] = "Call of Water",
+        [1823] = "Speak with Ruga",
+        [1824] = "Trial at the Field of Giants",
+        [1825] = "Speak with Thun'grim",
+        -- Blackfathom Deeps (HordeBlackfathomDeeps.lua). Trouble in the Deeps and The Orb of
+        -- Soran'ruk are above.
+        [6561] = "Blackfathom Villainy",
+        [6563] = "The Essence of Aku'Mai",
+        [6564] = "Allegiance to the Old Gods",
+        [6565] = "Allegiance to the Old Gods",
+        [6921] = "Amongst the Ruins",
+        [6922] = "Baron Aquanis",
+        -- Excavation Site: Wetlands (HordeExcavationSite.lua).
+        [95663] = "Dragonmaw Rumors",
+        [95664] = "Elder Knowledge",
+        [95682] = "Open the Maw",
+        [95697] = "Changing Tastes",
+        [98823] = "Earthen Echo",
     },
 }
 
 Names.items = {
+        -- City of Dalaran quest items.
+        [275996] = "The Founding of Dalaran",
+        [275997] = "Cracked Sentry Core",
         -- Trade goods, for the profession guides and their materials lists.
         [2320] = "Coarse Thread",
         [2589] = "Linen Cloth",
@@ -1164,6 +1269,13 @@ Names.items = {
         [5442] = "Head of Arugal",
         [6283] = "The Book of Ur",
         [6915] = "Large Soran'ruk Fragment",
+        -- Razorfen Kraul quest items.
+        [5793] = "Razorflank's Heart",
+        [5801] = "Kraul Guano",
+        [5876] = "Blueleaf Tuber",
+        [5880] = "Crate With Holes",
+        [6684] = "Snufflenose Command Stick",
+        [17008] = "Small Scroll",
         -- Zephras Isle, the Skyborne start (SkyborneZephrasIsle.lua); names from Wowhead Forever.
         [159] = "Refreshing Spring Water",
         [2488] = "Gladius",
@@ -1291,6 +1403,32 @@ Names.items = {
         [4786] = "Wise Man's Belt",
         [4788] = "Agile Boots",
         [5208] = "Smoldering Wand",
+        -- Southern Barrens quest items (HordeSouthernBarrens2425.lua).
+        [5006] = "Khazgorm's Journal",
+        [5017] = "Nitroglycerin",
+        [5018] = "Wood Pulp",
+        [5019] = "Sodium Nitrate",
+        [5021] = "Explosive Stick of Gann",
+        [5072] = "Lok's Skull",
+        [5073] = "Nak's Skull",
+        [5074] = "Kuz's Skull",
+        [5092] = "Charred Razormane Wand",
+        [5093] = "Razormane Backstabber",
+        [5094] = "Razormane War Shield",
+        [5102] = "Owatanka's Tailspike",
+        [5103] = "Washte Pawne's Feather",
+        [7119] = "Twitching Antenna",
+        -- Blackfathom Deeps quest items (HordeBlackfathomDeeps.lua).
+        [5881] = "Head of Kelris",
+        [6914] = "Soran'ruk Fragment",
+        [16762] = "Fathom Core",
+        [16782] = "Strange Water Globe",
+        [16784] = "Sapphire of Aku'Mai",
+        [16790] = "Damp Note",
+        -- Excavation Site: Wetlands (HordeExcavationSite.lua).
+        [270866] = "Titan Relic",
+        [271100] = "Thicket Raptor Meat",
+        [284844] = "Dragonmaw Dispatch",
 }
 
 Names.factions = {
@@ -1383,9 +1521,356 @@ Names.spells = {
     [20271] = "Judgement",
 }
 
+-- Hillsbrad Foothills (HordeHillsbrad2224.lua); names from Questie's Forever database.
+for kind, entries in pairs({
+    npcs = {
+        [232] = "Farmer Ray",
+        [2214] = "Deathstalker Lesh",
+        [2215] = "High Executor Darthalia",
+        [2216] = "Apothecary Lydon",
+        [2229] = "Krusk",
+        [2230] = "Umpi",
+        [2244] = "Syndicate Shadow Mage",
+        [2260] = "Syndicate Rogue",
+        [2261] = "Syndicate Watchman",
+        [2265] = "Hillsbrad Apprentice Blacksmith",
+        [2266] = "Hillsbrad Farmer",
+        [2267] = "Hillsbrad Peasant",
+        [2268] = "Hillsbrad Footman",
+        [2274] = "Stanley",
+        [2275] = "Enraged Stanley",
+        [2349] = "Giant Moss Creeper",
+        [2350] = "Forest Moss Creeper",
+        [2351] = "Gray Bear",
+        [2354] = "Vicious Gray Bear",
+        [2360] = "Hillsbrad Farmhand",
+        [2384] = "Starving Mountain Lion",
+        [2387] = "Hillsbrad Councilman",
+        [2388] = "Innkeeper Shay",
+        [2389] = "Zarise",
+        [2401] = "Kayren Soothallow",
+        [2403] = "Farmer Getz",
+        [2404] = "Blacksmith Verringtan",
+        [2418] = "Deathguard Samsa",
+        [2427] = "Jailor Eston",
+        [2428] = "Jailor Marlgen",
+        [2449] = "Citizen Wilkes",
+        [2451] = "Farmer Kalaba",
+        [3536] = "Kris Legace",
+        [3539] = "Ott",
+        [8385] = "Mura Runetotem",
+    },
+    quests = {
+        [493] = "Journey to Hillsbrad Foothills",
+        [494] = "Time To Strike",
+        [496] = "Elixir of Suffering",
+        [498] = "The Rescue",
+        [499] = "Elixir of Suffering",
+        [501] = "Elixir of Pain",
+        [502] = "Elixir of Pain",
+        [527] = "Battle of Hillsbrad",
+        [528] = "Battle of Hillsbrad",
+        [529] = "Battle of Hillsbrad",
+        [546] = "Souvenirs of Death",
+        [549] = "WANTED: Syndicate Personnel",
+        [567] = "Dangerous!",
+        [1065] = "Journey to Tarren Mill",
+        [1066] = "Blood of Innocents",
+        [1067] = "Return to Thunder Bluff",
+        [1536] = "Call of Water",
+    },
+    items = {
+        [923] = "Longsword",
+        [1205] = "Melon Juice",
+        [3030] = "Razor Arrow",
+        [3467] = "Dull Iron Key",
+        [3476] = "Gray Bear Tongue",
+        [3477] = "Creeper Ichor",
+        [3496] = "Mountain Lion Blood",
+        [3499] = "Burnished Gold Key",
+        [3564] = "Shipment of Iron",
+        [3692] = "Hillsbrad Human Skull",
+        [3770] = "Mutton Chop",
+        [4794] = "Wolf Bracers",
+        [4831] = "Stalking Pants",
+        [5620] = "Vial of Innocent Blood",
+        [7768] = "Empty Red Waterskin",
+        [7771] = "Filled Red Waterskin",
+        [12247] = "Broad Bladed Knife",
+        [12249] = "Merciless Axe",
+    },
+}) do
+    for id, name in pairs(entries) do Names[kind][id] = name end
+end
+
+-- Stonetalon Mountains 25-26 (Data/BuiltIn/HordeStonetalon2526.lua).
+for id, name in pairs({
+    [4022] = "Bloodfury Harpy", [4023] = "Bloodfury Roguefeather", [4024] = "Bloodfury Slayer",
+    [4025] = "Bloodfury Ambusher", [4036] = "Rogue Flame Spirit", [4037] = "Burning Ravager",
+    [4038] = "Burning Destroyer", [4051] = "Cenarion Botanist", [4053] = "Daughter of Cenarius",
+    [4057] = "Son of Cenarius", [4085] = "Nizzik", [4198] = "Braelyn Firehand",
+    [4202] = "Gerenzo Wrenchwhistle", [11861] = "Mor'rogal", [12579] = "Bloodfury Ripper",
+}) do Names.npcs[id] = name end
+for id, name in pairs({
+    [1086] = "The Flying Machine Airport", [1087] = "Cenarius' Legacy", [1088] = "Ordanus",
+    [1096] = "Gerenzo Wrenchwhistle", [5881] = "Calling in the Reserves", [6282] = "Harpies Threaten",
+    [6283] = "Bloodfury Bloodline", [6301] = "Cycle of Rebirth", [6381] = "New Life",
+    [6393] = "Elemental War", [86576] = "Bloodfury Trinkets", [97538] = "Pigments for Paints",
+}) do Names.quests[id] = name end
+for id, name in pairs({
+    [5638] = "Toxic Fogger", [5736] = "Gerenzo's Mechanical Arm", [16190] = "Bloodfury Ripper's Remains",
+    [16205] = "Gaea Seed", [16208] = "Enchanted Gaea Seeds", [16312] = "Incendrites",
+    [277936] = "Glittering Sunstone", [278201] = "Mirkweed Pods",
+}) do Names.items[id] = name end
+
+-- Ashenvale, Splintertree and Zoram'gar (HordeAshenvale2630.lua).
+Names.npcs[3324] = "Grol'dar"
+Names.npcs[3328] = "Ormok"
+Names.npcs[3352] = "Ormak Grimshot"
+Names.npcs[3758] = "Felmusk Satyr"
+Names.npcs[3759] = "Felmusk Rogue"
+Names.npcs[3762] = "Felmusk Felsworn"
+Names.npcs[3763] = "Felmusk Shadowstalker"
+Names.npcs[3917] = "Befouled Water Elemental"
+Names.npcs[3924] = "Thistlefur Shaman"
+Names.npcs[3925] = "Thistlefur Avenger"
+Names.npcs[4054] = "Laughing Sister"
+Names.npcs[4273] = "Keeper Ordanus"
+Names.npcs[4802] = "Blackfathom Tide Priestess"
+Names.npcs[5883] = "Enyo"
+Names.npcs[6018] = "Ur'kyo"
+Names.npcs[10088] = "Xao'tsu"
+Names.npcs[11901] = "Andruk"
+Names.npcs[12042] = "Loganaar"
+Names.npcs[12196] = "Innkeeper Kaylisk"
+Names.npcs[12616] = "Vhulgra"
+Names.npcs[12676] = "Sharptalon"
+Names.npcs[12677] = "Shadumbra"
+Names.npcs[12678] = "Ursangous"
+Names.npcs[12696] = "Senani Thunderheart"
+Names.npcs[12717] = "Muglash"
+Names.npcs[12721] = "Mitsuwa"
+Names.npcs[12724] = "Pixel"
+Names.npcs[12736] = "Je'neu Sancrea"
+Names.npcs[12737] = "Mastok Wrilehiss"
+Names.npcs[12757] = "Karang Amakkar"
+Names.npcs[12759] = "Tideress"
+Names.npcs[12818] = "Ruul Snowhoof"
+Names.npcs[12837] = "Yama Snowhoof"
+Names.npcs[12856] = "Ashenvale Outrunner"
+Names.npcs[12858] = "Torek"
+Names.npcs[12860] = "Duriel Moonfire"
+Names.npcs[12863] = "Warsong Runner"
+Names.npcs[12867] = "Kuray'bin"
+Names.npcs[12877] = "Ertog Ragetusk"
+Names.npcs[12940] = "Vorsha the Lasher"
+Names.quests[2] = "Sharptalon's Claw"
+Names.quests[23] = "Ursangous's Paw"
+Names.quests[24] = "Shadumbra's Head"
+Names.quests[25] = "Stonetalon Standstill"
+Names.quests[216] = "Between a Rock and a Thistlefur"
+Names.quests[235] = "The Ashenvale Hunt"
+Names.quests[247] = "The Hunt Completed"
+Names.quests[742] = "The Ashenvale Hunt"
+Names.quests[824] = "Je'neu of the Earthen Ring"
+Names.quests[1088] = "Ordanus"
+Names.quests[1195] = "The Sacred Flame"
+Names.quests[1534] = "Call of Water"
+Names.quests[1918] = "The Befouled Element"
+Names.quests[6383] = "The Ashenvale Hunt"
+Names.quests[6441] = "Satyr Horns"
+Names.quests[6462] = "Troll Charm"
+Names.quests[6482] = "Freedom to Ruul"
+Names.quests[6503] = "Ashenvale Outrunners"
+Names.quests[6544] = "Torek's Assault"
+Names.quests[6563] = "The Essence of Aku'Mai"
+Names.quests[6564] = "Allegiance to the Old Gods"
+Names.quests[6641] = "Vorsha the Lasher"
+Names.quests[6921] = "Amongst the Ruins"
+Names.items[5481] = "Satyr Horns"
+Names.items[5686] = "Ordanus' Head"
+Names.items[5867] = "Etched Phial"
+Names.items[5868] = "Filled Etched Phial"
+Names.items[7767] = "Empty Blue Waterskin"
+Names.items[7770] = "Filled Blue Waterskin"
+Names.items[16303] = "Ursangous's Paw"
+Names.items[16304] = "Shadumbra's Head"
+Names.items[16305] = "Sharptalon's Claw"
+Names.items[16408] = "Befouled Water Globe"
+Names.items[16602] = "Troll Charm"
+Names.items[16784] = "Sapphire of Aku'Mai"
+Names.items[16790] = "Damp Note"
+
+-- Thousand Needles names (HordeThousandNeedles2830.lua), from Questie's Forever database.
+for kind, entries in pairs({
+    npcs = {
+        [1411] = "Ian Strom",
+        [2496] = "Baron Revilgaz",
+        [2858] = "Gringer",
+        [2986] = "Dorn Plainstalker",
+        [3030] = "Siln Skychaser",
+        [3040] = "Urek Thunderhorn",
+        [3041] = "Torm Ragetotem",
+        [3043] = "Ker Ragetotem",
+        [3045] = "Malakai Cross",
+        [3049] = "Thurston Xane",
+        [3352] = "Ormak Grimshot",
+        [3388] = "Mahren Skyseer",
+        [3428] = "Korran",
+        [3433] = "Tatternack Steelforge",
+        [3476] = "Isha Awak",
+        [4046] = "Magatha Grimtotem",
+        [4093] = "Galak Wrangler",
+        [4094] = "Galak Scout",
+        [4096] = "Galak Windchaser",
+        [4113] = "Gravelsnout Digger",
+        [4116] = "Gravelsnout Surveyor",
+        [4139] = "Scorpid Terror",
+        [4140] = "Scorpid Reaver",
+        [4142] = "Sparkleshell Tortoise",
+        [4143] = "Sparkleshell Snapper",
+        [4144] = "Sparkleshell Borer",
+        [4147] = "Saltstone Basilisk",
+        [4150] = "Saltstone Gazer",
+        [4151] = "Saltstone Crystalhide",
+        [4154] = "Salt Flats Scavenger",
+        [4158] = "Salt Flats Vulture",
+        [4317] = "Nyse",
+        [4452] = "Kravel Koalbeard",
+        [4453] = "Wizzle Brassbolts",
+        [4454] = "Fizzle Brassbolts",
+        [4485] = "Belgrom Rockmaul",
+        [4490] = "Grenka Bloodscreech",
+        [4499] = "Rok'Alim the Pounder",
+        [4548] = "Steelsnap",
+        [4629] = "Trackmaster Zherin",
+        [4630] = "Pozzik",
+        [4631] = "Wharfmaster Lozgil",
+        [4721] = "Zangen Stonehoof",
+        [4722] = "Rau Cliffrunner",
+        [5639] = "Craven Drok",
+        [5640] = "Keldran",
+        [5875] = "Gan'rul Bloodeye",
+        [5883] = "Enyo",
+        [5892] = "Searn Firewarder",
+        [5899] = "Brine",
+        [5901] = "Islen Waterseer",
+        [6018] = "Ur'kyo",
+        [6236] = "Klannoc Macleod",
+        [6238] = "Big Will",
+        [6251] = "Strahad Farsan",
+        [7824] = "Bulkrek Ragefist",
+        [8020] = "Shyn",
+        [10079] = "Brave Moonhorn",
+        [10088] = "Xao'tsu",
+        [10377] = "Elu",
+        [10427] = "Pao'ka Swiftmountain",
+        [10428] = "Motega Firemane",
+        [10537] = "Cliffwatcher Longhorn",
+        [10539] = "Hagar Lightninghoof",
+        [10617] = "Galak Messenger",
+        [10638] = "Kanati Greycloud",
+        [10645] = "Thalia Amberhide",
+        [10646] = "Lakota Windsong",
+        [10720] = "Galak Assassin",
+        [10882] = "Arikara",
+        [10896] = "Arnak Grimtotem",
+        [10941] = "Wizlo Bearingshiner",
+        [10992] = "Enraged Panther",
+        [11116] = "Innkeeper Abeqwa",
+        [12576] = "Grish Longrunner",
+        [14427] = "Gibblesnik",
+    },
+    quests = {
+        [63] = "Call of Water",
+        [220] = "Call of Water",
+        [873] = "Isha Awak",
+        [1086] = "The Flying Machine Airport",
+        [1104] = "Salt Flat Venom",
+        [1105] = "Hardened Shells",
+        [1110] = "Rocket Car Parts",
+        [1111] = "Wharfmaster Dizzywig",
+        [1112] = "Parts for Kravel",
+        [1131] = "Steelsnap",
+        [1145] = "The Swarm Grows",
+        [1146] = "The Swarm Grows",
+        [1149] = "Test of Faith",
+        [1150] = "Test of Endurance",
+        [1151] = "Test of Strength",
+        [1153] = "A New Ore Sample",
+        [1175] = "A Bump in the Road",
+        [1176] = "Load Lightening",
+        [1178] = "Goblin Sponsorship",
+        [1180] = "Goblin Sponsorship",
+        [1181] = "Goblin Sponsorship",
+        [1195] = "The Sacred Flame",
+        [1196] = "The Sacred Flame",
+        [1197] = "The Sacred Flame",
+        [1431] = "Alliance Relations",
+        [1432] = "Alliance Relations",
+        [1531] = "Call of Air",
+        [1534] = "Call of Water",
+        [1718] = "The Islander",
+        [1719] = "The Affray",
+        [1801] = "Tome of the Cabal",
+        [2996] = "Seeking Strahad",
+        [4542] = "Message to Freewind Post",
+        [4767] = "Wind Rider",
+        [4770] = "Homeward Bound",
+        [4821] = "Alien Egg",
+        [4841] = "Pacify the Centaur",
+        [4865] = "Serpent Wild",
+        [4881] = "Assassination Plot",
+        [4904] = "Free at Last",
+        [4966] = "Protect Kanati Greycloud",
+        [5062] = "Sacred Fire",
+        [5064] = "Grimtotem Spying",
+        [5088] = "Arikara",
+        [5147] = "Wanted - Arnak Grimtotem",
+        [5151] = "Hypercapacitor Gizmo",
+        [5762] = "Hemet Nesingwary",
+        [5881] = "Calling in the Reserves",
+    },
+    items = {
+        [5104] = "Heart of Isha Awak",
+        [5794] = "Salty Scorpid Venom",
+        [5795] = "Hardened Tortoise Shell",
+        [5798] = "Rocket Car Parts",
+        [5837] = "Steelsnap's Rib",
+        [5842] = "Unrefined Ore Sample",
+        [5843] = "Grenka's Claw",
+        [5844] = "Fragments of Rok'Alim",
+        [5848] = "Hollow Vulture Bone",
+        [5869] = "Cloven Hoof",
+        [12356] = "Highperch Wyvern Egg",
+        [12467] = "Alien Egg",
+        [12564] = "Assassination Note",
+        [12732] = "Incendia Agave",
+        [12765] = "Secret Note #1",
+        [12766] = "Secret Note #2",
+        [12768] = "Secret Note #3",
+        [12884] = "Arnak's Hoof",
+        [12925] = "Arikara Serpent Skin",
+        [12946] = "Hypercapacitor Gizmo",
+    },
+}) do
+    for id, name in pairs(entries) do Names[kind][id] = name end
+end
+
 -- Standing 1 to 8, as the reputation pane names them. Fixed by the client,
 -- not authored, so guides say "Honored" and store the number.
 Names.standings = { "Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted" }
+
+-- Gnomeregan (HordeGnomeregan.lua): quest givers, Kernobee, the last boss, the ring's
+-- dropper, the quests and their items. IDs and names from Questie's Forever database.
+for id, name in pairs({ [3412] = "Nogg", [3413] = "Sovik", [6212] = "Dark Iron Agent",
+    [7800] = "Mekgineer Thermaplugg", [7850] = "Kernobee", [7853] = "Scooty" }) do Names.npcs[id] = name end
+for id, name in pairs({ [2841] = "Rig Wars", [2842] = "Chief Engineer Scooty", [2843] = "Gnomer-gooooone!",
+    [2904] = "A Fine Mess", [2945] = "Grime-Encrusted Ring", [2949] = "Return of the Ring",
+    [2950] = "Nogg's Ring Redo", [2951] = "The Sparklematic 5200!" }) do Names.quests[id] = name end
+for id, name in pairs({ [9153] = "Rig Blueprints", [9173] = "Goblin Transponder",
+    [9299] = "Thermaplugg's Safe Combination", [9308] = "Grime-Encrusted Object",
+    [9326] = "Grime-Encrusted Ring" }) do Names.items[id] = name end
 
 -- The authored names, kept apart from the live corrections above so GuideAudit can
 -- still say what the guide expected once the client has overwritten an entry.
