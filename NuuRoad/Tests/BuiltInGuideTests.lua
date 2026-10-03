@@ -17,6 +17,77 @@ for _, source in pairs(ns.builtInGuides) do
     assert(valid, source.id .. ": " .. table.concat(problems, "; "))
 end
 
+-- Each guide names every ID it shows, on its own: loaded alone, no step,
+-- goal line or reference falls back to "NPC 1234".
+local unnamed = {}
+for id, source in pairs(ns.builtInGuides) do
+    local alone = { modules = {}, Kit = ns.Kit }
+    function alone:RegisterModule(name, module) self.modules[name] = module end
+    Load(alone, "Data/Schema.lua")
+    Load(alone, "Data/Names.lua")
+    Load(alone, "Data/Steps.lua")
+    local Steps, Names = alone.modules.Steps, alone.modules.Names
+    local function check(text)
+        local raw = type(text) == "string" and (text:match("NPC %d+") or text:match("quest %d+") or text:match("item %d+")
+            or text:match("spell %d+") or text:match("faction %d+"))
+        if raw then table.insert(unnamed, id .. ": " .. raw) end
+    end
+    for _, node in ipairs(Steps:Expand(source).nodes) do
+        check(Steps:Title(node))
+        for _, goal in ipairs(Steps:Goals(node) or {}) do
+            for _, part in ipairs(goal.parts or {}) do check(part.text) end
+        end
+        local refs = node.refs or {}
+        for _, npc in ipairs(refs.npcs or {}) do check(Names:DescribeNPC(npc)) end
+        for _, quest in ipairs(refs.quests or {}) do check(Names:DescribeQuest(quest)) end
+        for _, item in ipairs(refs.items or {}) do check(Names:DescribeItem(item)) end
+    end
+end
+table.sort(unnamed)
+assert(#unnamed == 0, "every ID a guide shows is in its names: " .. table.concat(unnamed, "; "))
+
+-- Names are shared once the guides load, so two guides that name one ID
+-- must agree.
+local named, disagree = {}, {}
+for id, source in pairs(ns.builtInGuides) do
+    for kind, entries in pairs(source.names or {}) do
+        named[kind] = named[kind] or {}
+        for key, name in pairs(entries) do
+            if type(name) == "table" then name = name[1] end
+            local other = named[kind][key]
+            if other and other.name ~= name then
+                table.insert(disagree, string.format("%s %d: '%s' (%s) and '%s' (%s)", kind, key, name, id, other.name, other.guide))
+            end
+            named[kind][key] = other or { name = name, guide = id }
+        end
+    end
+end
+assert(#disagree == 0, "guides agree on names: " .. table.concat(disagree, "; "))
+
+-- A visit goes where its NPC stands (names.npcs), so a step repeats that
+-- point only when the NPC really is elsewhere for it.
+local repeated = {}
+for id, source in pairs(ns.builtInGuides) do
+    local npcs = source.names and source.names.npcs or {}
+    local function walk(steps, map)
+        for _, step in ipairs(steps) do
+            if step.section then walk(step.steps, step.map or map)
+            elseif step.group then walk(step.group, map)
+            else
+                local entry = type(step.npc) == "number" and npcs[step.npc]
+                local at = type(entry) == "table" and entry.at
+                if at and type(step.at) == "table" and type(step.at[1]) == "number"
+                    and (step.at.map or map) == (at.map or source.map)
+                    and math.abs(step.at[1] - at[1]) <= 0.25 and math.abs(step.at[2] - at[2]) <= 0.25 then
+                    table.insert(repeated, id .. ": npc " .. step.npc)
+                end
+            end
+        end
+    end
+    walk(source.steps, source.map)
+end
+assert(#repeated == 0, "steps that repeat their NPC's point: " .. table.concat(repeated, "; "))
+
 -- A quest objective step whose note says to loot the kills, or what they
 -- drop, is a collect step: without `collect = <item>` it reads "Kill
 -- Highlands Bandit" and the tracker cannot tell the loot from the kills

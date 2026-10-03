@@ -70,17 +70,17 @@ ns.builtInGuides["nuuroad:dungeon:horde-blackfathom-deeps-quests"] = {
     steps = {
         { section = "The far pickups", steps = {
             { note = "Doan Karhan in the Barrens and Tsunaman in Stonetalon give two of the quests, far from Ashenvale. Press > to pass over a pickup you will not travel for." },
-            { accept = 1740, npc = 6247, only = "Warlock", at = { 49.31, 57.21, map = 1413 },
+            { accept = 1740, npc = 6247, only = "Warlock",
                 note = "Warlocks only. Its three small fragments drop in Blackfathom Deeps; the large one is in Shadowfang Keep." },
-            { accept = 6562, npc = 11862, only = "not quest 6563", at = { 47.36, 64.25, map = 1442 },
+            { accept = 6562, npc = 11862, only = "not quest 6563",
                 note = "On a ledge above Sun Rock Retreat; take the path that climbs the mountainside from the village." },
         } },
 
         { section = "Zoram'gar Outpost", steps = {
             { group = {
-                { turnin = 6562, npc = 12736, only = "now quest 6562", at = { 11.56, 34.29 },
+                { turnin = 6562, npc = 12736, only = "now quest 6562",
                     note = "Zoram'gar Outpost is on the shore in the far west of Ashenvale. Andruk, its flight master, stands at 12.24, 33.80; learn the flight path while you are here." },
-                { accept = { 6563, 6921 }, npc = 12736, at = { 11.56, 34.29 } },
+                { accept = { 6563, 6921 }, npc = 12736 },
             } },
         } },
 
@@ -99,8 +99,8 @@ ns.builtInGuides["nuuroad:dungeon:horde-blackfathom-deeps-quests"] = {
         { section = "Back to Je'neu", steps = {
             { note = "Handing the Damp Note in before the run unlocks Lorgus Jett's quest for it. If your group is waiting, press > and leave it for another run." },
             { group = {
-                { turnin = 6564, accept = 6565, npc = 12736, only = "now quest 6564", at = { 11.56, 34.29 } },
-                { turnin = 6563, npc = 12736, only = "now quest 6563 readyToTurnIn", at = { 11.56, 34.29 } },
+                { turnin = 6564, accept = 6565, npc = 12736, only = "now quest 6564" },
+                { turnin = 6563, npc = 12736, only = "now quest 6563 readyToTurnIn" },
             } },
             { travel = "Blackfathom Deeps", zone = "Blackfathom Deeps", at = { 16.50, 11.00 },
                 note = "Back into the ruins and down through the caves. The portal is at the far end of the flooded tunnels; step in with your group." },
@@ -126,19 +126,51 @@ ns.builtInGuides["nuuroad:dungeon:horde-blackfathom-deeps-quests"] = {
 
         { section = "Turning in", steps = {
             { group = {
-                { turnin = 6563, npc = 12736, only = "quest 6563 readyToTurnIn", at = { 11.56, 34.29 },
+                { turnin = 6563, npc = 12736, only = "quest 6563 readyToTurnIn",
                     note = "South along the shore to Zoram'gar Outpost." },
-                { turnin = 6564, npc = 12736, only = "quest 6564", at = { 11.56, 34.29 },
+                { turnin = 6564, npc = 12736, only = "quest 6564",
                     note = "Je'neu then offers Lorgus Jett's quest for another run." },
-                { turnin = 6565, npc = 12736, only = "quest 6565 readyToTurnIn", at = { 11.56, 34.29 } },
-                { turnin = 6921, npc = 12736, only = "quest 6921 readyToTurnIn", at = { 11.56, 34.29 } },
-                { turnin = 6922, npc = 12736, only = "quest 6922", at = { 11.56, 34.29 } },
+                { turnin = 6565, npc = 12736, only = "quest 6565 readyToTurnIn" },
+                { turnin = 6921, npc = 12736, only = "quest 6921 readyToTurnIn" },
+                { turnin = 6922, npc = 12736, only = "quest 6922" },
             } },
-            { turnin = 6561, npc = 9087, only = "quest 6561 readyToTurnIn", at = { 70.80, 33.40, map = 1456 },
+            { turnin = 6561, npc = 9087, only = "quest 6561 readyToTurnIn",
                 note = "Fly to Thunder Bluff from Andruk (12.24, 33.80). Bashana Runetotem is on the Elder Rise." },
-            { turnin = 1740, npc = 6247, only = "Warlock | quest 1740 readyToTurnIn", at = { 49.31, 57.21, map = 1413 },
+            { turnin = 1740, npc = 6247, only = "Warlock | quest 1740 readyToTurnIn",
                 note = "Once you also have the Large Soran'ruk Fragment from Shadowfang Keep." },
             { finish = "Every Horde quest of Blackfathom Deeps is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [4787] = "Argent Guard Thaelrid",
+            [4802] = "Blackfathom Tide Priestess",
+            [4809] = "Twilight Acolyte",
+            [4832] = "Twilight Lord Kelris",
+            [6247] = { "Doan Karhan", at = { 49.31, 57.21, map = 1413 } },
+            [9087] = { "Bashana Runetotem", at = { 70.80, 33.40, map = 1456 } },
+            [11862] = { "Tsunaman", at = { 47.36, 64.25, map = 1442 } },
+            [12736] = { "Je'neu Sancrea", at = { 11.56, 34.29 } },
+            [12876] = "Baron Aquanis",
+            [12902] = "Lorgus Jett",
+        },
+        quests = {
+            [1740] = "The Orb of Soran'ruk",
+            [6561] = "Blackfathom Villainy",
+            [6562] = "Trouble in the Deeps",
+            [6563] = "The Essence of Aku'Mai",
+            [6564] = "Allegiance to the Old Gods",
+            [6565] = "Allegiance to the Old Gods",
+            [6921] = "Amongst the Ruins",
+            [6922] = "Baron Aquanis",
+        },
+        items = {
+            [5881] = "Head of Kelris",
+            [6914] = "Soran'ruk Fragment",
+            [16762] = "Fathom Core",
+            [16782] = "Strange Water Globe",
+            [16784] = "Sapphire of Aku'Mai",
+            [16790] = "Damp Note",
+        },
     },
 }

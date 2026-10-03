@@ -49,8 +49,9 @@
 --
 -- Coordinates are map percentages, read against the guide `map`. A section
 -- overrides it for its whole span; a single `at` overrides it for one point.
--- A step itself has no `map`. IDs only; display names come from
--- Data/Names.lua. `object` is the
+-- A step itself has no `map`. IDs only; display names come from the guide's
+-- own `names` table, `names = { npcs = { [3448] = "Tonga Runetotem" },
+-- quests = { [870] = "The Forgotten Pools" } }` (left out here). `object` is the
 -- one deliberate exception: world objects are named, not numbered. ASCII only.
 
 return {

@@ -68,12 +68,11 @@ ns.builtInGuides["nuuroad:dungeon:horde-city-of-dalaran-quests"] = {
     steps = {
         { section = "The Undercity", map = 1458, steps = {
             { note = "City of Dalaran is new in WoW: Forever and no run of it is recorded yet: the way in for the Horde, where the quest items are, and the spots outside the Undercity come from quest data, not from play. Its quests are level 33, above the level cap of 30." },
-            { accept = 96988, npc = 11044, at = { 46.61, 74.09 },
-                note = "Doctor Martin Felben in the Apothecarium." },
+            { accept = 96988, npc = 11044 },
         } },
 
         { section = "Tarren Mill", map = 1424, steps = {
-            { accept = 96986, npc = 2278, at = { 62.60, 20.60 },
+            { accept = 96986, npc = 2278,
                 note = "Melisara in Tarren Mill. Fly there from the Undercity if you know the flight path. Her spot is not recorded yet." },
         } },
 
@@ -100,11 +99,27 @@ ns.builtInGuides["nuuroad:dungeon:horde-city-of-dalaran-quests"] = {
         { section = "Turning in", steps = {
             { turnin = 96987, only = "quest 96987 readyToTurnIn", at = { 15.00, 66.00 },
                 note = "Rexxie Copperclutch, by the sewer entrance." },
-            { turnin = 96986, npc = 2278, only = "quest 96986 readyToTurnIn", at = { 62.60, 20.60, map = 1424 },
+            { turnin = 96986, npc = 2278, only = "quest 96986 readyToTurnIn",
                 note = "Melisara in Tarren Mill." },
-            { turnin = 96988, npc = 11044, only = "quest 96988 readyToTurnIn", at = { 46.61, 74.09, map = 1458 },
-                note = "Doctor Martin Felben in the Apothecarium." },
+            { turnin = 96988, npc = 11044, only = "quest 96988 readyToTurnIn" },
             { finish = "Every Horde quest of the City of Dalaran is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [2278] = { "Melisara", at = { 62.60, 20.60, map = 1424 } },
+            [11044] = { "Doctor Martin Felben", at = { 46.61, 74.09, map = 1458 },
+                note = "Doctor Martin Felben in the Apothecarium." },
+            [247126] = "Atrexis the Grave Knight",
+        },
+        quests = {
+            [96986] = "The Grave Knight",
+            [96987] = "Opportunistic Education",
+            [96988] = "Source of Power",
+        },
+        items = {
+            [275996] = "The Founding of Dalaran",
+            [275997] = "Cracked Sentry Core",
+        },
     },
 }

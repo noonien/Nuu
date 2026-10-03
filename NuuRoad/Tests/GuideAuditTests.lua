@@ -8,6 +8,7 @@ ns.Kit = ns.Kit or LoadKit()
 Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
 Load(ns, "Data/Names.lua")
+AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/GuideAudit.lua")
 local Client, Names, Steps, GuideAudit = ns.modules.Client, ns.modules.Names, ns.modules.Steps, ns.modules.GuideAudit
@@ -36,7 +37,7 @@ assert(not GuideAudit:NoticeLive("npcs", 42, "Nobody the guide knows", "your tar
 assert(GuideAudit:NoticeLive("npcs", 3448, "Sergra Darkthorn", "your target"), "a known ID with another guide name is a mismatch")
 assert(last():find("NPC 3448 is 'Sergra Darkthorn' on this client, but the guide expects 'Tonga Runetotem' (the guide uses 'Sergra Darkthorn' for NPC 3338)", 1, true), last())
 
--- Names.lua feeds live lookups into the audit before overwriting its table.
+-- Names feeds live lookups into the audit before overwriting its table.
 C_QuestLog = { GetTitleForQuestID = function(id) return id == 845 and "Plainstrider Menace" or nil end }
 assert(Names:Quest(845) == "Plainstrider Menace")
 assert(last():find("quest 845 is 'Plainstrider Menace' on this client, but the guide expects 'The Zhevra' (the guide uses 'Plainstrider Menace' for quest 844)", 1, true), last())

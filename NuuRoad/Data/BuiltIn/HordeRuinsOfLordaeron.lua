@@ -67,19 +67,19 @@ ns.builtInGuides["nuuroad:dungeon:horde-ruins-of-lordaeron-quests"] = {
     steps = {
         { section = "Brill", map = 1420, steps = {
             { note = "Ruins of Lordaeron is new in WoW: Forever and this guide is still thin: the way into the dungeon and where its fights are is not recorded yet." },
-            { accept = 92422, npc = 251001, at = { 65.20, 60.10 }, note = "Deathguard Kristof in Brill." },
+            { accept = 92422, npc = 251001 },
         } },
 
         { section = "The Sepulcher", map = 1421, steps = {
-            { accept = 92401, npc = 250686, at = { 44.50, 43.00 },
+            { accept = 92401, npc = 250686,
                 note = "Tabitha Heartweaver in the Sepulcher asks after her husband Edward." },
         } },
 
         { section = "The Undercity", steps = {
             { group = {
-                { accept = 92421, npc = 266484, at = { 58.00, 89.80 },
+                { accept = 92421, npc = 266484,
                     note = "Morbin Lightbane in the Royal Quarter. The quest log files it under the Undercity, but the limbs are collected in the ruins." },
-                { accept = 95216, npc = 11835, at = { 46.50, 71.90 }, note = "Theodore Griffs in the Apothecarium." },
+                { accept = 95216, npc = 11835, note = "Theodore Griffs in the Apothecarium." },
             } },
         } },
 
@@ -96,18 +96,33 @@ ns.builtInGuides["nuuroad:dungeon:horde-ruins-of-lordaeron-quests"] = {
 
         { section = "Turning in", steps = {
             { group = {
-                { turnin = 95216, npc = 11835, only = "quest 95216 readyToTurnIn", at = { 46.50, 71.90 },
+                { turnin = 95216, npc = 11835, only = "quest 95216 readyToTurnIn",
                     note = "Back down in the Apothecarium, to Theodore Griffs." },
-                { turnin = 92421, npc = 266484, only = "quest 92421 readyToTurnIn", at = { 58.00, 89.80 },
+                { turnin = 92421, npc = 266484, only = "quest 92421 readyToTurnIn",
                     note = "Morbin Lightbane in the Royal Quarter." },
                 { turnin = 97289, object = "the body of Othmar", only = "quest 97289", at = { 45.9, 61.7 },
                     note = "Set the Head of the Baron beside the body. Where the client marks the turn-in." },
             } },
-            { turnin = 92422, npc = 251001, only = "quest 92422 readyToTurnIn", at = { 65.20, 60.10, map = 1420 },
-                note = "Deathguard Kristof in Brill." },
-            { turnin = 92401, npc = 250686, only = "quest 92401 readyToTurnIn", at = { 44.50, 43.00, map = 1421 },
+            { turnin = 92422, npc = 251001, only = "quest 92422 readyToTurnIn" },
+            { turnin = 92401, npc = 250686, only = "quest 92401 readyToTurnIn",
                 note = "Tabitha Heartweaver in the Sepulcher, with news of her husband." },
             { finish = "Every Horde quest of Ruins of Lordaeron is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [11835] = { "Theodore Griffs", at = { 46.50, 71.90 } },
+            [250686] = { "Tabitha Heartweaver", at = { 44.50, 43.00, map = 1421 } },
+            [251001] = { "Deathguard Kristof", at = { 65.20, 60.10, map = 1420 },
+                note = "Deathguard Kristof in Brill." },
+            [266484] = { "Morbin Lightbane", at = { 58.00, 89.80 } },
+        },
+        quests = {
+            [92401] = "A Frightened Request",
+            [92421] = "Light's Justice",
+            [92422] = "The Wrath of Rath'mael",
+            [95216] = "The New Plague",
+            [97289] = "Unending Torment",
+        },
     },
 }

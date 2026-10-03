@@ -85,8 +85,13 @@ local _, ns = ...
 -- step is passed over if it does not hold (item count, money, xp and
 -- cooldown gates). A guide carries `only` the same way.
 --
--- IDs only; display names come from Data/Names.lua. `object` is the one
--- exception: world objects are named, not numbered. ASCII only.
+-- IDs only; the guide's `names` table names them, by kind:
+--   names = { npcs = { [2980] = "Grull Hawkwind" }, quests = { [747] = "The Hunt Begins" } }
+-- (npcs, quests, items, factions, spells). An NPC the guide visits also says
+-- where it stands, and may carry a note shown on every visit:
+--   [3448] = { "Tonga Runetotem", at = { 52.26, 31.93 }, note = "..." }
+-- so `{ accept = 870, npc = 3448 }` needs no `at`; a step's own `at` wins. `object` is the one exception:
+-- world objects are named, not numbered. ASCII only.
 local Steps = {}
 
 
@@ -869,6 +874,16 @@ end
 -- The guide's places while Expand runs, so a step's `at = "cave.chamber"`
 -- can be looked up.
 local expandingPlaces
+-- The guide's NPCs (`names.npcs`) and its map while Expand runs, so a visit
+-- with no `at` of its own goes where the NPC stands.
+local expandingNPCs, expandingMap
+
+-- `{ "Tonga Runetotem", at = { 52.26, 31.93 }, note = "..." }` for an NPC the
+-- guide visits; a monster is its name alone.
+local function npcEntry(id)
+    local entry = expandingNPCs and expandingNPCs[id]
+    return type(entry) == "table" and entry or nil
+end
 
 -- "cave.chamber" (or "cave.3") -> the place and its point, or nil.
 function Steps.FindPlacePoint(places, reference)
@@ -1453,8 +1468,20 @@ local function build(step, verb, defaultMap)
     -- A step that stays on screen alongside the ones after it until it is done.
     if step.sticky then node.sticky = true end
     node.location = location(step, verb, defaultMap)
+    -- A visit with no point of its own goes where the guide says the NPC
+    -- stands, on the guide's map unless the point names another, and carries
+    -- what the guide says about the NPC above the step's own note.
+    local visited = type(step.npc) == "table" and step.npc[1] or step.npc
+    local stands = npcEntry(visited)
+    if stands and stands.at ~= nil and step.at == nil then
+        node.location = location({ at = stands.at, radius = step.radius, near = step.near }, verb, expandingMap)
+        if node.location then node.location.npc = visited end
+    end
     node.condition = conditionOf(step)
     if verb ~= "note" and verb ~= "finish" and type(step.note) == "string" then node.body = step.note end
+    if stands and type(stands.note) == "string" and verb ~= "note" and verb ~= "finish" then
+        node.body = node.body and (stands.note .. "\n" .. node.body) or stands.note
+    end
     if node.auto then node.title = Steps:Title(node, true) end
     return node, quests
 end
@@ -1478,6 +1505,11 @@ function Steps:Expand(guide)
     if type(guide) ~= "table" then return guide end
     if type(guide.steps) ~= "table" then return ns.modules.Schema:IndexNodes(guide) end
     if guide.schema ~= 2 then error("NuuRoad: a guide must declare schema = 2") end
+    if guide.names ~= nil then
+        if type(guide.names) ~= "table" then error("NuuRoad: names must be a table of names by kind") end
+        -- Before any title is written, since titles carry the names.
+        ns.modules.Names:Add(guide.names)
+    end
     local expanded = {}
     for key, value in pairs(guide) do
         if key ~= "steps" and key ~= "map" then expanded[key] = value end
@@ -1499,6 +1531,7 @@ function Steps:Expand(guide)
         end
     end
     expandingPlaces = expanded.places
+    expandingNPCs, expandingMap = type(guide.names) == "table" and guide.names.npcs or nil, guide.map
 
     -- label -> the step it stands in front of, and the choice options waiting
     -- for it. Both are resolved once every step has a position.
@@ -1589,7 +1622,7 @@ function Steps:Expand(guide)
         claim(wrapper.label, first)
     end
 
-    expandingPlaces = nil
+    expandingPlaces, expandingNPCs, expandingMap = nil, nil, nil
     for _, choice in ipairs(pending) do
         local target = labels[choice["next"]]
         if not target then error("NuuRoad: no step is labelled '" .. tostring(choice["next"]) .. "'") end

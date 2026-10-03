@@ -19,9 +19,9 @@ ns.builtInGuides["nuuroad:fixture:professions"] = {
     steps = {
         { section = "Training", map = 1454, steps = {
             { travel = "Orgrimmar", at = { 49.5, 68.5 }, note = "The mining trainer is in the Valley of Honor. The rest of the fixture is in the Barrens." },
-            { train = "Mining", npc = 3357, at = { 73.12, 26.08 }, note = "Turns green as soon as the client reports any rank in Mining." },
-            { train = "Mining", rank = 75, npc = 3357, at = { 73.12, 26.08 }, note = "The same trainer for Journeyman; this one waits for rank 75." },
-            { buy = 2901, count = 1, npc = 3357, at = { 73.12, 26.08 }, note = "The NPC names the vendor, so the step reads 'from Makaru' and his row appears in the step NPC panel." },
+            { train = "Mining", npc = 3357, note = "Turns green as soon as the client reports any rank in Mining." },
+            { train = "Mining", rank = 75, npc = 3357, note = "The same trainer for Journeyman; this one waits for rank 75." },
+            { buy = 2901, count = 1, npc = 3357, note = "The NPC names the vendor, so the step reads 'from Makaru' and his row appears in the step NPC panel." },
             { cast = 2580, note = "A cast step: cast Find Minerals, now that Mining is trained. It counts casts made while the guide is on the step, so one cast before reaching it does not." },
             { learn = { 6673 }, npc = 3353, only = "Warrior",
                 note = "Class spells from a trainer, by spell ID: goes green once the client knows Battle Shout, trained from level 1; already green for a Warrior who has it. Grezz Ragefist trains Warriors in the Valley of Honor." },
@@ -57,5 +57,27 @@ ns.builtInGuides["nuuroad:fixture:professions"] = {
             } },
             { finish = "Profession fixture complete.", label = "finish" },
         } },
+    },
+    names = {
+        npcs = {
+            [3353] = "Grezz Ragefist",
+            [3357] = { "Makaru", at = { 73.12, 26.08, map = 1454 } },
+        },
+        items = {
+            [2320] = "Coarse Thread",
+            [2589] = "Linen Cloth",
+            [2770] = "Copper Ore",
+            [2835] = "Rough Stone",
+            [2862] = "Rough Sharpening Stone",
+            [2901] = "Mining Pick",
+        },
+        factions = {
+            [76] = "Orgrimmar",
+            [470] = "Ratchet",
+        },
+        spells = {
+            [2580] = "Find Minerals",
+            [6673] = "Battle Shout",
+        },
     },
 }

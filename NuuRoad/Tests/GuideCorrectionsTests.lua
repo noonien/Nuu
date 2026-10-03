@@ -152,6 +152,14 @@ local report = table.concat(Corrections:ReportLines(), "\n")
 assert(report:find("APPLIED for this session") and report:find("at = { 50.0, 50.0 }"))
 assert(report:find("Applying corrections is ON"))
 
+-- A step that takes its point from the NPC is corrected in the guide's names.npcs.
+Corrections:Clear()
+nodes[3].location.x, nodes[3].location.y, nodes[3].location.npc = 0.30, 0.30, 3464
+Corrections:ConsiderQuest(900)
+report = table.concat(Corrections:ReportLines(), "\n")
+assert(report:find("authored form: names.npcs[3464] at = { 50.0, 50.0 }", 1, true), report)
+nodes[3].location.npc = nil
+
 -- The pin stands in when the game has not confirmed a turn-in, but only while
 -- the quest is ready to hand in.
 Corrections:Clear()

@@ -42,14 +42,14 @@ ns.builtInGuides["nuuroad:class:horde-druid-cat-form"] = {
     },
     steps = {
         { section = "Thunder Bluff", map = 1456, steps = {
-            { accept = 98340, npc = 3033, at = { 76.59, 27.46 },
+            { accept = 98340, npc = 3033,
                 note = "Turak Runetotem offers it at level 20. He is on the Elder Rise." },
         } },
 
         { section = "Moonglade", steps = {
             { travel = "Moonglade", zone = "Moonglade", at = { 56.22, 30.51 },
                 note = "Cast Teleport: Moonglade." },
-            { turnin = 98340, accept = 98405, npc = 11802, at = { 56.22, 30.51 },
+            { turnin = 98340, accept = 98405, npc = 11802,
                 note = "Dendrite Starblaze stands by the road in Nighthaven." },
             { turnin = 98405, accept = 98342, npc = 11957, at = { { 58.60, 73.50 }, { 54.50, 75.00 } },
                 note = "The Great Cat Spirit is on the hill over the bridge in southern Moonglade." },
@@ -60,12 +60,31 @@ ns.builtInGuides["nuuroad:class:horde-druid-cat-form"] = {
                     note = "All three relics are in the Stormrage Barrow Dens, just east of the Great Cat Spirit." },
             } },
             { turnin = 98342, accept = 98739, npc = 11957, at = { { 58.60, 73.50 }, { 54.50, 75.00 } } },
-            { turnin = 98739, accept = 98362, npc = 11802, at = { 56.22, 30.51 } },
+            { turnin = 98739, accept = 98362, npc = 11802 },
             { travel = "Thunder Bluff", zone = "Thunder Bluff", at = { 44.29, 45.87 },
                 note = "Hearth if it is up, otherwise take Bunthen Plainswind's flight from Nighthaven." },
-            { turnin = 98362, npc = 3033, at = { 76.59, 27.46, map = 1456 },
+            { turnin = 98362, npc = 3033,
                 note = "Turak Runetotem is on the Elder Rise. The quest teaches Cat Form." },
             { finish = "You have Cat Form." },
         } },
+    },
+    names = {
+        npcs = {
+            [3033] = { "Turak Runetotem", at = { 76.59, 27.46, map = 1456 } },
+            [11802] = { "Dendrite Starblaze", at = { 56.22, 30.51 } },
+            [11957] = "Great Cat Spirit",
+        },
+        quests = {
+            [98340] = "The Great Cat Spirit",
+            [98342] = "The Great Cat Spirit",
+            [98362] = "To Thunder Bluff",
+            [98405] = "The Great Cat Spirit",
+            [98739] = "Blessings of the Great Cat Spirit",
+        },
+        items = {
+            [280502] = "Relic of the Fang",
+            [280679] = "Relic of the Claw",
+            [280680] = "Relic of the Silent Shadow",
+        },
     },
 }

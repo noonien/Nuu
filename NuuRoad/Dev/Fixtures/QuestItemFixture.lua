@@ -30,4 +30,21 @@ ns.builtInGuides["nuuroad:fixture:quest-items"] = {
             { finish = "Quest item fixture complete." },
         } },
     },
+    names = {
+        npcs = {
+            [2989] = "Bael'dun Digger",
+            [2990] = "Bael'dun Appraiser",
+        },
+        quests = {
+            [746] = "Dwarven Digging",
+            [819] = "Chen's Empty Keg",
+            [924] = "The Demon Seed",
+        },
+        items = {
+            [4702] = "Prospector's Pick",
+            [4703] = "Broken Tools",
+            [4926] = "Chen's Empty Keg",
+            [4986] = "Flawed Power Stone",
+        },
+    },
 }

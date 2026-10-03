@@ -64,17 +64,17 @@ ns.builtInGuides["nuuroad:dungeon:horde-gnomeregan-quests"] = {
         { section = "Orgrimmar", steps = {
             { note = "Gnomeregan is above the level 30 cap: its bosses are level 32 to 34. Go with a full group of level 30s." },
             { group = {
-                { accept = 2841, npc = 3412, at = { 75.99, 25.41 },
+                { accept = 2841, npc = 3412,
                     note = "In the Valley of Honor. Take Rig Wars first: Sovik's quest, and the transponder after it, open only while it is in your log." },
-                { accept = 2842, npc = 3413, at = { 75.49, 25.36 },
+                { accept = 2842, npc = 3413,
                     note = "Next to Nogg. Talk him through his dialogue to get the quest." },
             } },
         } },
 
         { section = "Booty Bay", map = 1434, steps = {
-            { turnin = 2842, accept = 2843, npc = 7853, at = { 27.60, 77.48 },
+            { turnin = 2842, accept = 2843, npc = 7853,
                 note = "Take the zeppelin to Grom'gol from the tower outside Orgrimmar and follow the road south, or the boat from Ratchet." },
-            { turnin = 2843, npc = 7853, at = { 27.60, 77.48 },
+            { turnin = 2843, npc = 7853,
                 note = "Wait a few seconds while he calibrates the transponder, then hand the quest in." },
             { travel = "Gnomeregan", zone = "Gnomeregan", at = { 24.30, 39.30, map = 1426 },
                 note = "With the Goblin Transponder in your bags, step onto the transporter pad beside Scooty. It puts you down in the tunnels outside the dungeon; keep left to the portal and go in with your group. Without the transponder the only other way is a long walk through Alliance land past Ironforge." },
@@ -104,16 +104,41 @@ ns.builtInGuides["nuuroad:dungeon:horde-gnomeregan-quests"] = {
         } },
 
         { section = "Turning in", steps = {
-            { turnin = 2904, npc = 7853, only = "quest 2904 readyToTurnIn", at = { 27.60, 77.48, map = 1434 },
+            { turnin = 2904, npc = 7853, only = "quest 2904 readyToTurnIn",
                 note = "Scooty, in Booty Bay." },
             { group = {
-                { turnin = 2841, npc = 3412, only = "quest 2841 readyToTurnIn", at = { 75.99, 25.41 },
+                { turnin = 2841, npc = 3412, only = "quest 2841 readyToTurnIn",
                     note = "Back to Orgrimmar by the zeppelin from Grom'gol, or by your hearthstone if it is set there." },
-                { turnin = 2949, accept = 2950, npc = 3412, only = "now quest 2949", at = { 75.99, 25.41 },
+                { turnin = 2949, accept = 2950, npc = 3412, only = "now quest 2949",
                     note = "Nogg's Ring Redo asks for a Silver Bar, a Moss Agate and 30 silver. Take it only if you mean to bring them." },
             } },
-            { turnin = 2950, npc = 3412, only = "now quest 2950 readyToTurnIn", at = { 75.99, 25.41 } },
+            { turnin = 2950, npc = 3412, only = "now quest 2950 readyToTurnIn" },
             { finish = "Every Horde quest of Gnomeregan is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [3412] = { "Nogg", at = { 75.99, 25.41 } },
+            [3413] = { "Sovik", at = { 75.49, 25.36 } },
+            [7800] = "Mekgineer Thermaplugg",
+            [7850] = "Kernobee",
+            [7853] = { "Scooty", at = { 27.60, 77.48, map = 1434 } },
+        },
+        quests = {
+            [2841] = "Rig Wars",
+            [2842] = "Chief Engineer Scooty",
+            [2843] = "Gnomer-gooooone!",
+            [2904] = "A Fine Mess",
+            [2945] = "Grime-Encrusted Ring",
+            [2949] = "Return of the Ring",
+            [2950] = "Nogg's Ring Redo",
+            [2951] = "The Sparklematic 5200!",
+        },
+        items = {
+            [9153] = "Rig Blueprints",
+            [9299] = "Thermaplugg's Safe Combination",
+            [9308] = "Grime-Encrusted Object",
+            [9326] = "Grime-Encrusted Ring",
+        },
     },
 }

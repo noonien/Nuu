@@ -61,4 +61,12 @@ ns.builtInGuides["nuuroad:fixture:conditions"] = {
             { finish = "Condition fixture complete." },
         } },
     },
+    names = {
+        quests = {
+            [819] = "Chen's Empty Keg",
+        },
+        items = {
+            [2495] = "Walking Stick",
+        },
+    },
 }

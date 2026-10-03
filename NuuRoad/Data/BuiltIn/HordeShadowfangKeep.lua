@@ -48,14 +48,14 @@ ns.builtInGuides["nuuroad:dungeon:horde-shadowfang-keep-quests"] = {
     },
     steps = {
         { section = "The pickups", steps = {
-            { accept = 1740, npc = 6247, only = "Warlock", at = { 49.31, 57.21, map = 1413 },
+            { accept = 1740, npc = 6247, only = "Warlock",
                 note = "Warlocks only, and far from Silverpine: press > to pass it over. Its three small fragments drop from Twilight Acolytes in Blackfathom Deeps; only the large one is in Shadowfang Keep." },
-            { accept = 1013, npc = 2934, at = { 53.72, 54.45, map = 1458 },
+            { accept = 1013, npc = 2934,
                 note = "In the Apothecarium. The zeppelin from Orgrimmar lands in Tirisfal, a short walk from the Undercity." },
             { group = {
-                { accept = 1014, npc = 1938, at = { 44.20, 39.79 },
+                { accept = 1014, npc = 1938,
                     note = "At the Sepulcher. Fly from Michael Garrett (Undercity 63.25, 48.56) if you know the flight path; otherwise leave the Undercity and walk south into Silverpine." },
-                { accept = 1098, npc = 1952, at = { 43.42, 40.87 },
+                { accept = 1098, npc = 1952,
                     note = "Down in the crypt. The way in is at 43.09, 41.38." },
             } },
         } },
@@ -83,13 +83,36 @@ ns.builtInGuides["nuuroad:dungeon:horde-shadowfang-keep-quests"] = {
         } },
 
         { section = "Turning in", steps = {
-            { turnin = 1014, npc = 1938, only = "quest 1014 readyToTurnIn", at = { 44.20, 39.79 },
+            { turnin = 1014, npc = 1938, only = "quest 1014 readyToTurnIn",
                 note = "North to the Sepulcher." },
-            { turnin = 1013, npc = 2934, only = "quest 1013 readyToTurnIn", at = { 53.72, 54.45, map = 1458 },
+            { turnin = 1013, npc = 2934, only = "quest 1013 readyToTurnIn",
                 note = "Fly to the Undercity from Karos Razok (45.62, 42.58) and go down to the Apothecarium." },
-            { turnin = 1740, npc = 6247, only = "quest 1740 readyToTurnIn", at = { 49.31, 57.21, map = 1413 },
+            { turnin = 1740, npc = 6247, only = "quest 1740 readyToTurnIn",
                 note = "Once you also have the three fragments from Blackfathom Deeps." },
             { finish = "Every Horde quest of Shadowfang Keep is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [1938] = { "Dalar Dawnweaver", at = { 44.20, 39.79 } },
+            [1952] = { "High Executor Hadrec", at = { 43.42, 40.87 } },
+            [2934] = { "Keeper Bel'dugur", at = { 53.72, 54.45, map = 1458 } },
+            [3855] = "Shadowfang Darksoul",
+            [3914] = "Rethilgore",
+            [4275] = "Archmage Arugal",
+            [4444] = "Deathstalker Vincent",
+            [6247] = { "Doan Karhan", at = { 49.31, 57.21, map = 1413 } },
+        },
+        quests = {
+            [1013] = "The Book of Ur",
+            [1014] = "Arugal Must Die",
+            [1098] = "Deathstalkers in Shadowfang",
+            [1740] = "The Orb of Soran'ruk",
+        },
+        items = {
+            [5442] = "Head of Arugal",
+            [6283] = "The Book of Ur",
+            [6915] = "Large Soran'ruk Fragment",
+        },
     },
 }

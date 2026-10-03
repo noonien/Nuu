@@ -30,9 +30,9 @@ ns.builtInGuides["nuuroad:fixture:port-constructs"] = {
         } },
 
         { section = "Arrival, vendors and waits", steps = {
-            { vendor = "sell", npc = 3072, at = { 45.30, 76.52 } },
-            { vendor = "repair", npc = 3080, at = { 45.90, 58.73 } },
-            { turnin = 757, npc = 2981, label = "turnin", wait = 8, at = { 44.18, 76.07 },
+            { vendor = "sell", npc = 3072 },
+            { vendor = "repair", npc = 3080 },
+            { turnin = 757, npc = 2981, label = "turnin", wait = 8,
                 note = "The wait is shown, never enforced: Chief Hawkwind plays out a scene first." },
             { travel = "Bloodhoof Village", subzone = "Bloodhoof Village", at = { 47.35, 60.70 },
                 note = "Done when the client names the subzone, not when a coordinate is reached." },
@@ -47,5 +47,19 @@ ns.builtInGuides["nuuroad:fixture:port-constructs"] = {
             { note = "Shown once you say you are playing self found.", only = "selffound" },
             { finish = "Ported construct fixture complete." },
         } },
+    },
+    names = {
+        npcs = {
+            [2981] = { "Chief Hawkwind", at = { 44.18, 76.07 } },
+            [3056] = "Ghost Howl",
+            [3072] = { "Kawnie Softbreeze", at = { 45.30, 76.52 } },
+            [3080] = { "Harant Ironbrace", at = { 45.90, 58.73 } },
+        },
+        quests = {
+            [757] = "Rite of Strength",
+        },
+        items = {
+            [4770] = "Bristleback Belt",
+        },
     },
 }

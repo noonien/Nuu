@@ -15,7 +15,7 @@ comment and first few sections before you start a new guide.
 1. Pick the route and its source (your own play, a session recording, or an authorized RestedXP/Zygor guide).
 2. Create the file, register it in `NuuRoad.toc`, and fill in the header comment as you go.
 3. Write the steps section by section, checking every ID against the database as you write it.
-4. Add every name the guide uses to `Data/Names.lua`.
+4. Add every name the guide uses to its own `names` table.
 5. Run the tests, `Tools/CheckGroups.lua`, and `Tools/CompareGuideOrder.lua` for a RestedXP port.
 6. Play it in the client with **Debug log** on, run `/nuuroad audit`, and fix what it reports.
 7. Play it again on a character that is part way through, so you exercise the resume scan.
@@ -74,15 +74,22 @@ own. Most porting bugs are wrong IDs.
 - **Never guess an ID from a name.** When no ID is known, say so: write one step that names the creatures in its
   `note` rather than inventing one step per kill line (the Tirisfal guide does this for the Cult of the Damned).
 - **Do not take data straight from cMaNGOS, VMaNGOS or TrinityCore.** Questie's database is fine.
-- **Add every name to `Data/Names.lua`**, in the right table: `npcs`, `quests`, `items`, `factions` or `spells`.
-  The client only answers name lookups for creatures it has seen this session, so without the table a fresh login
-  shows `quest 870` or `NPC 3448`. The tests fail on any title that still reads like that.
+- **Add every name to the guide's `names` table**, under the right kind: `npcs`, `quests`, `items`, `factions` or
+  `spells` (`names = { npcs = { [2980] = "Grull Hawkwind" }, quests = { [747] = "The Hunt Begins" } }`, after
+  `steps`). Each guide names its own IDs, even ones another guide names too, and two guides naming one ID must
+  agree. The client only answers name lookups for creatures it has seen this session, so without the table a fresh
+  login shows `quest 870` or `NPC 3448`. The tests fail on any title that still reads like that.
+- **Say once where each NPC you visit stands**, in that NPC's entry: `[1496] = { "Deathguard Dillinger", at = { 58.20,
+  51.45 } }` (add `map = ...` inside `at` when it is not the guide's map). Steps that visit the NPC then leave `at`
+  out. Give a step its own `at` only when the NPC really is somewhere else for it (an escort's end, an NPC that
+  walks); the tests fail on a step that repeats its NPC's point. Something true of every visit ("Upstairs in the
+  inn.") goes in the entry's `note`, shown above the step's own note.
 
 ## Writing steps
 
 ### Let the verb do the talking
 
-One verb per step, and let the title generate itself. `{ accept = 404, npc = 1496, at = { 58.20, 51.45 } }` already
+One verb per step, and let the title generate itself. `{ accept = 404, npc = 1496 }` already
 reads "Accept A Putrid Task from Deathguard Dillinger". Use `note` only for what the line cannot say: where exactly
 someone stands, which floor of the inn, what to do if something went wrong.
 
@@ -97,7 +104,7 @@ Good notes are short, concrete and plain ASCII:
 - **Always put `npc` on accepts and turn-ins.** It gives the card its "Talk to" line, lets the target strip mark the
   NPC, and lets the audit catch a quest handed in somewhere else.
 - **Combine a hand-in and the next pickup at one NPC** into one visit:
-  `{ turnin = 383, accept = { 427, 99141 }, npc = 1515, at = { ... } }`.
+  `{ turnin = 383, accept = { 427, 99141 }, npc = 1515 }`.
 - **Wrap a hub in a `group`** so the player sees one card and can talk to the givers in any order. Groups stay
   within a section and cannot branch.
 
@@ -212,7 +219,7 @@ the right `only` and `map`, every step has a title with no raw IDs, every `track
 ## Checking your work in the client
 
 - **Turn on Menu -> Options -> Debug log.** Every auto-advance then reports the quest IDs the next step expects, and
-  the `[audit]` checks report any quest, NPC or item whose live name differs from `Data/Names.lua`. Anything you
+  the `[audit]` checks report any quest, NPC or item whose live name differs from the guide's `names`. Anything you
   target, mouse over, talk to or loot that carries a guide name under a different ID is reported with the right ID.
 - **Run `/nuuroad audit`** on a new guide. It checks every quest, item, NPC and objective at once, asks the server
   for anything it does not know yet, and reports IDs that do not exist on this client.
@@ -228,7 +235,7 @@ the right `only` and `map`, every step has a title with no raw IDs, every `track
 
 | Symptom | Likely cause |
 | --- | --- |
-| Title reads `quest 1234` or `NPC 5678` | Name missing from `Data/Names.lua`, or in the wrong table. |
+| Title reads `quest 1234` or `NPC 5678` | Name missing from the guide's `names`, or under the wrong kind. |
 | Title reads "<quest>, objective 1" | Objective step with no `collect`, `kill`, `npc` or `use`. |
 | "Kill Rotting Dead" for a loot objective | Used `kill` where the step should `collect` the item. |
 | Arrow points somewhere in the wrong zone | Missing `map` on the section or point. |

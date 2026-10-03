@@ -59,3 +59,14 @@ function LoadBuiltIns(ns)
         if file then Load(ns, file) end
     end
 end
+
+-- The names the packaged guides carry, added the way the client has them
+-- once every guide has loaded. For suites whose own guides use the packaged
+-- guides' IDs; ns.builtInGuides is left as it was.
+function AddBuiltInNames(ns)
+    local guides = ns.builtInGuides
+    ns.builtInGuides = {}
+    LoadBuiltIns(ns)
+    for _, guide in pairs(ns.builtInGuides) do ns.modules.Names:Add(guide.names) end
+    ns.builtInGuides = guides
+end

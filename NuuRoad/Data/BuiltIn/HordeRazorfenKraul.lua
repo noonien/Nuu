@@ -68,13 +68,13 @@ ns.builtInGuides["nuuroad:dungeon:horde-razorfen-kraul-quests"] = {
     steps = {
         { section = "The far pickup", steps = {
             { note = "Razorfen Kraul is the top of the level 30 cap: its bosses run to level 33, and three of its quests need level 28 to 30. A quest you are too low for is passed over." },
-            { accept = 1109, npc = 2055, only = "now level 30", at = { 48.84, 69.25, map = 1458 },
+            { accept = 1109, npc = 2055, only = "now level 30",
                 note = "In the Apothecarium in the Undercity, far from the Barrens: press > to pass it over. A group member who has it can share it inside. The zeppelin to Tirisfal leaves from the tower outside Orgrimmar." },
         } },
 
         { section = "Thunder Bluff and Ratchet", steps = {
-            { accept = 1102, npc = 4451, only = "now level 29", at = { 36.40, 59.60, map = 1456 } },
-            { accept = 1221, npc = 3446, at = { 62.37, 37.62 },
+            { accept = 1102, npc = 4451, only = "now level 29" },
+            { accept = 1221, npc = 3446,
                 note = "He hands you a crate, a command stick and a manual. Keep the crate and the stick: he wants them back with the tubers." },
         } },
 
@@ -105,16 +105,44 @@ ns.builtInGuides["nuuroad:dungeon:horde-razorfen-kraul-quests"] = {
         } },
 
         { section = "Turning in", steps = {
-            { turnin = 1221, npc = 3446, only = "quest 1221 readyToTurnIn", at = { 62.37, 37.62 },
+            { turnin = 1221, npc = 3446, only = "quest 1221 readyToTurnIn",
                 note = "Fly to Ratchet from Camp Taurajo. Bring the crate and the command stick along with the tubers." },
-            { turnin = 1102, npc = 4451, only = "quest 1102 readyToTurnIn", at = { 36.40, 59.60, map = 1456 } },
+            { turnin = 1102, npc = 4451, only = "quest 1102 readyToTurnIn" },
             { group = {
-                { turnin = 1109, npc = 2055, only = "quest 1109 readyToTurnIn", at = { 48.84, 69.25, map = 1458 },
+                { turnin = 1109, npc = 2055, only = "quest 1109 readyToTurnIn",
                     note = "Fly to Orgrimmar and take the zeppelin to Tirisfal. Faranell is in the Apothecarium." },
-                { turnin = 6522, npc = 2425, only = "quest 6522", at = { 56.26, 92.19, map = 1458 },
+                { turnin = 6522, npc = 2425, only = "quest 6522",
                     note = "In the Royal Quarter. The tunnel down starts at 51.93, 64.78. He offers a follow-up for Razorfen Downs, which is beyond the level cap." },
             } },
             { finish = "Every Horde quest of Razorfen Kraul is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [2055] = { "Master Apothecary Faranell", at = { 48.84, 69.25, map = 1458 } },
+            [2425] = { "Varimathras", at = { 56.26, 92.19, map = 1458 } },
+            [3446] = { "Mebok Mizzyrix", at = { 62.37, 37.62 } },
+            [4421] = "Charlga Razorflank",
+            [4425] = "Blind Hunter",
+            [4451] = { "Auld Stonespire", at = { 36.40, 59.60, map = 1456 } },
+            [4508] = "Willix the Importer",
+            [4538] = "Kraul Bat",
+            [4539] = "Greater Kraul Bat",
+        },
+        quests = {
+            [1102] = "A Vengeful Fate",
+            [1109] = "Going, Going, Guano!",
+            [1144] = "Willix the Importer",
+            [1221] = "Blueleaf Tubers",
+            [6522] = "An Unholy Alliance",
+        },
+        items = {
+            [5793] = "Razorflank's Heart",
+            [5801] = "Kraul Guano",
+            [5876] = "Blueleaf Tuber",
+            [5880] = "Crate With Holes",
+            [6684] = "Snufflenose Command Stick",
+            [17008] = "Small Scroll",
+        },
     },
 }

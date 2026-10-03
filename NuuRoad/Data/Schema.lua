@@ -371,8 +371,10 @@ function Schema:Validate(guide)
     end
     self:ValidateGroups(guide, errors)
     self:ValidatePlaces(guide, errors)
+    self:ValidateNames(guide, errors)
     return #errors == 0, errors
 end
+
 
 -- Guide places (caves, tunnels, one-door buildings): see docs/guide-schema.md.
 -- Points and connections are plain lists, so a connection names a point by its
@@ -428,6 +430,51 @@ function Schema:PlaceConnections(place)
         end
     end
     return list, problems, duplicates
+end
+
+-- An NPC the guide visits: { "Name", at = { x, y } or { x, y, map = id }, note = "..." }.
+local function validateNPCEntry(entry, path, errors)
+    if not isNonEmptyString(entry[1]) or not isASCII(entry[1]) then addError(errors, path, "must start with a non-empty ASCII name") end
+    for key in pairs(entry) do
+        if key ~= 1 and key ~= "at" and key ~= "note" then addError(errors, path .. "." .. tostring(key), "is not at or note") end
+    end
+    local at = entry.at
+    if at ~= nil and (type(at) ~= "table" or type(at[1]) ~= "number" or type(at[2]) ~= "number"
+        or (at.map ~= nil and type(at.map) ~= "number")) then
+        addError(errors, path .. ".at", "must be one point { x, y }, with map when it is not the guide's")
+    end
+    if entry.note ~= nil and (not isNonEmptyString(entry.note) or not isASCII(entry.note)) then
+        addError(errors, path .. ".note", "must be non-empty ASCII text")
+    end
+end
+
+-- The guide's names for its IDs: { npcs = { [id] = "Name" }, ... }.
+local nameKinds = { npcs = true, quests = true, items = true, factions = true, spells = true }
+function Schema:ValidateNames(guide, errors)
+    local names = guide.names
+    if names == nil then return end
+    if type(names) ~= "table" then
+        addError(errors, "guide.names", "must be a table of names by kind")
+        return
+    end
+    for kind, entries in pairs(names) do
+        local path = "guide.names." .. tostring(kind)
+        if not nameKinds[kind] then
+            addError(errors, path, "is not npcs, quests, items, factions or spells")
+        elseif type(entries) ~= "table" then
+            addError(errors, path, "must map IDs to names")
+        else
+            for id, name in pairs(entries) do
+                if type(id) ~= "number" or id < 1 or id % 1 ~= 0 then
+                    addError(errors, path, "has a key that is not an ID: " .. tostring(id))
+                elseif kind == "npcs" and type(name) == "table" then
+                    validateNPCEntry(name, path .. "[" .. id .. "]", errors)
+                elseif not isNonEmptyString(name) or not isASCII(name) then
+                    addError(errors, path .. "[" .. id .. "]", "must be a non-empty ASCII name")
+                end
+            end
+        end
+    end
 end
 
 function Schema:ValidatePlaces(guide, errors)

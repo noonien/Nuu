@@ -5,6 +5,7 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
+AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
 local Steps, Schema, Names = ns.modules.Steps, ns.modules.Schema, ns.modules.Names
 
@@ -760,5 +761,62 @@ assert(onlyCarried.completion.observed.type == "step")
 onlyCarried.companionOf = nil
 Steps:ApplyCarried(onlyCarried)
 assert(onlyCarried.completion.type == "manual", "nothing of its own: manual")
+
+-- A guide names its own IDs, before any of its titles is written.
+local named = Steps:Expand({
+    schema = 2, id = "test:names", updated = 1789862400, map = 1413, meta = { title = "Names", category = "test" },
+    names = { npcs = { [990001] = "Test Giver" }, quests = { [990002] = "A Test Quest" } },
+    steps = { { section = "Only", steps = { { accept = 990002, npc = 990001, at = { 0.5, 0.5 } } } } },
+})
+assert(Steps:Title(named.nodes[1]) == "Accept A Test Quest", Steps:Title(named.nodes[1]))
+assert(Names:DescribeNPC(990001) == "Test Giver" and Names.authored.npcs[990001] == "Test Giver")
+assert(Schema:Validate(named), "a names table is valid")
+-- A name the client has corrected stays corrected; the authored one is kept for the audit.
+Names.npcs[990001] = "Corrected Giver"
+Names:Add({ npcs = { [990001] = "Test Giver" } })
+assert(Names.npcs[990001] == "Corrected Giver" and Names.authored.npcs[990001] == "Test Giver")
+named.names = { npcs = { [990001] = "" }, mobs = {}, quests = { first = "A Test Quest" } }
+local namesOK, nameProblems = Schema:Validate(named)
+assert(not namesOK and #nameProblems == 3, table.concat(nameProblems or {}, "; "))
+-- An NPC the guide visits says where it stands: a visit with no `at` goes
+-- there, on the guide's map unless the point names another, even inside a
+-- section on another map. A step's own `at` wins. The NPC's note shows above
+-- the step's own on every visit.
+local stands = Steps:Expand({
+    schema = 2, id = "test:stands", updated = 1789862400, map = 1413, meta = { title = "Stands", category = "test" },
+    names = { npcs = {
+        [990001] = { "Test Giver", at = { 52.26, 31.93 }, note = "Upstairs in the inn." },
+        [990003] = { "Elsewhere", at = { 40, 60, map = 1456 } },
+        [990004] = "A Monster",
+    } },
+    steps = {
+        { section = "Here", steps = {
+            { accept = 990002, npc = 990001 },
+            { turnin = 990002, npc = 990001, note = "Hand it in." },
+            { accept = 990005, npc = 990001, at = { 10, 10 }, radius = 0.05 },
+            { kill = 990004, at = { 70, 70 } },
+        } },
+        { section = "There", map = 1414, steps = {
+            { turnin = 990005, npc = 990001 },
+            { accept = 990006, npc = 990003 },
+        } },
+    },
+})
+local sn = stands.nodes
+assert(sn[1].location.mapID == 1413 and math.abs(sn[1].location.x - 0.5226) < 1e-9 and sn[1].location.npc == 990001)
+assert(sn[1].location.arrivalRadiusNormalized == 0.02, "the verb's radius still applies")
+assert(sn[1].body == "Upstairs in the inn.", tostring(sn[1].body))
+assert(sn[2].body == "Upstairs in the inn.\nHand it in.", tostring(sn[2].body))
+assert(sn[3].location.x == 0.10 and sn[3].location.arrivalRadiusNormalized == 0.05 and sn[3].location.npc == nil, "a step's own at wins")
+assert(sn[4].location.x == 0.70 and sn[4].body == nil)
+assert(sn[5].location.mapID == 1413, "the NPC stands on the guide's map, not the section's")
+assert(sn[6].location.mapID == 1456 and sn[6].location.x == 0.40)
+assert(Names:DescribeNPC(990003) == "Elsewhere" and Names:DescribeNPC(990004) == "A Monster")
+assert(Schema:Validate(stands))
+stands.names = { npcs = { [990001] = { at = { 1, 2 } }, [990003] = { "Elsewhere", at = { 40 }, note = "", near = "x" } } }
+local standsOK, standsProblems = Schema:Validate(stands)
+assert(not standsOK and #standsProblems == 4, table.concat(standsProblems or {}, "; "))
+assert(not pcall(Steps.Expand, Steps, { schema = 2, id = "test:bad-names", updated = 1789862400,
+    meta = { title = "Bad", category = "test" }, names = "Test Giver", steps = { { note = "x" } } }), "names must be a table")
 
 return true

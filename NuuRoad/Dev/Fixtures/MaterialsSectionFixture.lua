@@ -29,4 +29,12 @@ ns.builtInGuides["nuuroad:fixture:materials-by-section"] = {
             { finish = "Materials-by-section fixture complete." },
         } },
     },
+    names = {
+        items = {
+            [2589] = "Linen Cloth",
+            [2835] = "Rough Stone",
+            [2862] = "Rough Sharpening Stone",
+            [2996] = "Bolt of Linen Cloth",
+        },
+    },
 }

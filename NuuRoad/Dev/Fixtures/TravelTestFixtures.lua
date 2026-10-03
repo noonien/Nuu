@@ -8,11 +8,12 @@ local _, ns = ...
 -- guides already use; see Data/Travel.lua.
 ns.builtInGuides = ns.builtInGuides or {}
 
-local function fixture(id, title, map, sections)
+local function fixture(id, title, map, sections, names)
     ns.builtInGuides[id] = {
         schema = 2, id = id, updated = 1790208000, map = map,
         meta = { title = title, author = "NuuRoad", category = "Fixtures/Travel tests", tags = { "fixture", "travel" } },
         steps = sections,
+        names = names,
     }
 end
 
@@ -36,7 +37,7 @@ fixture("nuuroad:fixture:travel-zeppelin", "Fixture: Travel test, zeppelin", 141
 
 fixture("nuuroad:fixture:travel-hearth", "Fixture: Travel test, hearthstone", 1413, {
     { section = "Hearth", steps = {
-        { hearth = "The Crossroads", label = "bind", npc = 3934, at = { 51.99, 29.90 } },
+        { hearth = "The Crossroads", label = "bind", npc = 3934 },
         { travel = "Orgrimmar", label = "away", at = { 45.1, 63.9, map = 1454 }, radius = 0.01,
             note = "Fly to Orgrimmar from the Crossroads flight master." },
         { travel = "the Crossroads", label = "home", at = { 52, 31 }, radius = 0.01,
@@ -45,7 +46,7 @@ fixture("nuuroad:fixture:travel-hearth", "Fixture: Travel test, hearthstone", 14
             note = "With the hearth on cooldown, nothing should offer it." },
         { finish = "Hearthstone test complete." },
     } },
-})
+}, { npcs = { [3934] = { "Innkeeper Boorand Plainswind", at = { 51.99, 29.90 } } } })
 
 fixture("nuuroad:fixture:travel-other-flight", "Fixture: Travel test, another flight", 1413, {
     { section = "Fly somewhere else", steps = {

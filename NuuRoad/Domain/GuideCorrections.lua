@@ -116,6 +116,9 @@ function Corrections:Consider(guide, node, questID, role)
     finding.source = evidence.source
     finding.roams, finding.sightings = evidence.roams, evidence.sightings
     finding.npc, finding.npcName = evidence.npc, evidence.npcName
+    -- The step goes where the guide's `names.npcs` says this NPC stands, so
+    -- that entry is the one to correct.
+    finding.stands = location.npc
     finding.seen = (finding.seen or 0) + 1
     -- A step pointed at a creature that walks cannot be a point the player is
     -- expected to land on; the radius has to hold the route.
@@ -246,9 +249,18 @@ function Corrections:ReportLines()
             finding.wrongMap and "" or "", finding.seen or 1,
             finding.applied and "APPLIED for this session" or (finding.skipped or "not applied")))
         -- The authored form, ready to paste: coordinates are map percentages.
-        table.insert(lines, string.format("  authored form: at = { %.1f, %.1f }%s%s", finding.to.x * 100, finding.to.y * 100,
-            finding.wrongMap and string.format(", map = %s", tostring(finding.to.mapID)) or "",
-            finding.suggestedRadius and string.format(", radius = %d", finding.suggestedRadius) or ""))
+        -- A step that takes its point from the NPC is corrected in names.npcs;
+        -- a radius still belongs on the step.
+        if finding.stands then
+            table.insert(lines, string.format("  authored form: names.npcs[%d] at = { %.1f, %.1f%s }%s", finding.stands,
+                finding.to.x * 100, finding.to.y * 100,
+                finding.wrongMap and string.format(", map = %s", tostring(finding.to.mapID)) or "",
+                finding.suggestedRadius and string.format("; on the step, radius = %d", finding.suggestedRadius) or ""))
+        else
+            table.insert(lines, string.format("  authored form: at = { %.1f, %.1f }%s%s", finding.to.x * 100, finding.to.y * 100,
+                finding.wrongMap and string.format(", map = %s", tostring(finding.to.mapID)) or "",
+                finding.suggestedRadius and string.format(", radius = %d", finding.suggestedRadius) or ""))
+        end
     end
     return lines
 end

@@ -79,20 +79,20 @@ ns.builtInGuides["nuuroad:dungeon:horde-excavation-site-quests"] = {
     steps = {
         { section = "Orgrimmar", map = 1454, steps = {
             { note = "Excavation Site: Wetlands is new in WoW: Forever and no run of it is recorded yet: the inside of the dungeon, where its fights are, and the boss order are not in this guide." },
-            { accept = 95697, npc = 3368, at = { 57.40, 53.40 }, note = "Borstan, the meat vendor in the Drag." },
+            { accept = 95697, npc = 3368, note = "Borstan, the meat vendor in the Drag." },
         } },
 
         { section = "Hammerfall", map = 1417, steps = {
-            { accept = 95663, npc = 2787, at = { 74.40, 35.40 },
+            { accept = 95663, npc = 2787,
                 note = "Zaruk in Hammerfall. Dragonmaw Rumors sends you to the Deathstalker Agent in the Wetlands, who gives Open the Maw. Whether he offers it without this quest is not recorded; press > to pass it over if you are not coming this way." },
         } },
 
         { section = "The Wetlands", steps = {
             { travel = "the hills above the Dragonmaw camp", at = { 51.40, 59.20 },
                 note = "From Hammerfall, ride south over the Thandol Span into the Wetlands." },
-            { turnin = 95663, npc = 13155, only = "quest 95663 readyToTurnIn", at = { 51.40, 59.20 },
+            { turnin = 95663, npc = 13155, only = "quest 95663 readyToTurnIn",
                 note = "The Deathstalker Agent, in the hills above the Dragonmaw camp." },
-            { accept = 95682, npc = 13155, at = { 51.40, 59.20 } },
+            { accept = 95682, npc = 13155 },
             { travel = "Excavation Site: Wetlands", zone = "Excavation Site: Wetlands", at = { 47.80, 56.30 },
                 note = "A blue mist portal under a large tree, in the hills southeast of Whelgar's Excavation, reached from Thelgen Rock. Step through with your group." },
         } },
@@ -115,15 +115,39 @@ ns.builtInGuides["nuuroad:dungeon:horde-excavation-site-quests"] = {
         } },
 
         { section = "Turning in", steps = {
-            { turnin = 95682, npc = 13155, only = "quest 95682 readyToTurnIn", at = { 51.40, 59.20 },
+            { turnin = 95682, npc = 13155, only = "quest 95682 readyToTurnIn",
                 note = "Back to the Deathstalker Agent with the Dispatch." },
-            { turnin = 95697, npc = 3368, only = "quest 95697 readyToTurnIn", at = { 57.40, 53.40, map = 1454 },
+            { turnin = 95697, npc = 3368, only = "quest 95697 readyToTurnIn",
                 note = "Borstan in the Drag, Orgrimmar." },
-            { turnin = 95664, accept = 98823, npc = 9087, only = "quest 95664 readyToTurnIn", at = { 70.80, 33.40, map = 1456 },
+            { turnin = 95664, accept = 98823, npc = 9087, only = "quest 95664 readyToTurnIn",
                 note = "Bashana Runetotem on the Elder Rise, Thunder Bluff." },
-            { turnin = 98823, npc = 259118, only = "quest 98823 readyToTurnIn", at = { 33.40, 22.40, map = 1412 },
+            { turnin = 98823, npc = 259118, only = "quest 98823 readyToTurnIn",
                 note = "Muln Earthfury on Skywatcher Plateau, northwest Mulgore." },
             { finish = "Every Horde quest of Excavation Site: Wetlands is done or left for another run." },
         } },
+    },
+    names = {
+        npcs = {
+            [2787] = { "Zaruk", at = { 74.40, 35.40, map = 1417 } },
+            [3368] = { "Borstan", at = { 57.40, 53.40, map = 1454 } },
+            [9087] = { "Bashana Runetotem", at = { 70.80, 33.40, map = 1456 } },
+            [13155] = { "Deathstalker Agent", at = { 51.40, 59.20 } },
+            [259118] = { "Muln Earthfury", at = { 33.40, 22.40, map = 1412 } },
+            [260326] = "Relic Guardian",
+            [275044] = "Dragonmaw Warder",
+            [275045] = "Dragonmaw Saboteur",
+        },
+        quests = {
+            [95663] = "Dragonmaw Rumors",
+            [95664] = "Elder Knowledge",
+            [95682] = "Open the Maw",
+            [95697] = "Changing Tastes",
+            [98823] = "Earthen Echo",
+        },
+        items = {
+            [270866] = "Titan Relic",
+            [271100] = "Thicket Raptor Meat",
+            [284844] = "Dragonmaw Dispatch",
+        },
     },
 }
