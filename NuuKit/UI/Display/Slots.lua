@@ -6,7 +6,7 @@ Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 local Proto, Makers = UI.Proto, UI.Makers
 
--- Strips of icon slots, ported from OpenRoad's StripPanel and SlotChrome:
+-- Strips of icon slots:
 -- a header plate
 -- the player drags, and a body with no plate at all, so only the slots
 -- themselves sit on the world.

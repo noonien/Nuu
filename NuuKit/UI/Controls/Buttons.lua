@@ -6,8 +6,7 @@ Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 local types = UI.types
 
--- Buttons, with tones and styles, the theme's art plates, and repainting,
--- ported from OpenRoad's Theme:Button and its relatives.
+-- Buttons, with tones and styles, the theme's art plates, and repainting.
 
 local BUTTON_HEIGHT, ART_CORNER = 24, 5
 local WHITE = { 1, 1, 1, 1 }

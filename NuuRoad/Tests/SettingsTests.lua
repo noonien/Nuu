@@ -80,8 +80,7 @@ Config:SetRealmSetting("auctionHouse", nil)
 assert(ns.db.settings.realm == nil, "nil takes it back")
 
 -- Saved data from an earlier session: the player's choices are kept as they
--- were, and the data containers are made. NuuRoad starts from its own saved
--- variables, so there is no migration from OpenRoad's to run.
+-- were, and the data containers are made.
 _G.NuuRoadDB = {
     sessionCount = 4,
     settings = { tracker = { scale = 1.2 }, automation = { acceptQuests = false }, realm = { selfFound = true },

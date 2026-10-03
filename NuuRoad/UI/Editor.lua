@@ -7,10 +7,10 @@ local _, ns = ...
 -- the way guides and most coordinate sources print them, and stored
 -- normalized.
 --
--- Built from NuuKit's widgets (ported from OpenRoad's UI/Editor.lua). The
+-- Built from NuuKit's widgets. The
 -- form is read back into the step all at once (ApplyFields) before anything
 -- changes the guide or another step is shown, and drawn from the step all
--- at once (Render), as OpenRoad did; the widgets stay put, only their text
+-- at once (Render); the widgets stay put, only their text
 -- and what is shown change. The window is made the first time it opens.
 --
 -- ApplyNPCs and ApplyGoal touch no frame: Tests/GuideEditingTests.lua runs

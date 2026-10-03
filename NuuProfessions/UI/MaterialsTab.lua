@@ -26,8 +26,8 @@ local _, ns = ...
 -- other. Nothing here buys or sells: the prices typed are facts in the price
 -- book, the rest are planner inputs, and every change plans again.
 --
--- Ported from OpenRoad's UI/PlannerMaterials.lua onto a kit Table. The
--- tracker's section is gone with the guide export, so This section is the
+-- Built on a kit Table. There is no tracker section (the route is not
+-- exported to a guide), so This section is the
 -- one holding your skill, and the list opens on the whole route.
 local Tab = { key = "materials", caption = "Materials", filter = "route", groups = {},
     -- What the status strip says while nothing else is to be said.

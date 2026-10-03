@@ -11,8 +11,7 @@ local _, ns = ...
 -- place is drawn on the world map while the tab is open, so a bad point shows.
 --
 -- The edits themselves are Domain/PlaceEditing.lua; this file is the controls,
--- built from NuuKit's widgets into the editor's Places page (ported from
--- OpenRoad's UI/PlacesPanel.lua). The world map drawing is plain frames on the
+-- built from NuuKit's widgets into the editor's Places page. The world map drawing is plain frames on the
 -- map's canvas, which no kit widget covers.
 local PlacesPanel = { pins = {}, lines = {} }
 

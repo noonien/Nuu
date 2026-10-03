@@ -18,9 +18,8 @@ local _, ns = ...
 -- through panel:Change, so every choice here can be undone from the status
 -- strip.
 --
--- Ported from OpenRoad's UI/PlannerRecipes.lua. The table is a kit List,
--- which draws only the rows in view, so the fifty-a-page pager is gone; the
--- colour bands are scaled to the rows in view, as the pages were to theirs.
+-- The table is a kit List, which draws only the rows in view; the colour
+-- bands are scaled to the rows in view.
 -- A goal's line is a row of its own under its recipe.
 local Tab = { key = "recipes", caption = "Recipes",
     filter = "range", source = "any", stocked = false,

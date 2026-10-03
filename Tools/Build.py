@@ -3,7 +3,7 @@
 
     python3 Tools/Build.py [--out dist] [--version X] [--no-zip] [--no-lua] [--tag] [Addon ...]
 
-Ported from OpenRoad's Tools/Export.py. With no addon named, builds every folder beside this one that has a TOC
+With no addon named, builds every folder beside this one that has a TOC
 named after it, except NuuKit. For each addon it writes <out>/<Addon>/, <out>/<Addon>-<version>.zip and
 <out>/<Addon>-<version>-changelog.md. What goes in:
 

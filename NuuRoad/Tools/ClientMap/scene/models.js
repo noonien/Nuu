@@ -17,7 +17,7 @@ const HERE = __dirname;
 const CACHE = path.resolve(HERE, '..', '.cache');
 const WOWEXPORT = path.join(CACHE, 'wow.export', 'src', 'js');
 const OUT = path.join(CACHE, 'scene', 'models');
-const SERVER = process.env.OPENROAD_SERVER || 'http://127.0.0.1:8765';
+const SERVER = process.env.NUUROAD_SERVER || 'http://127.0.0.1:8765';
 
 // --- Stand-ins for the desktop app ----------------------------------------------------
 
@@ -57,7 +57,7 @@ const core = {
 	setToast() {}, hideToast() {},
 };
 
-const log = { write: (...args) => { if (process.env.OPENROAD_VERBOSE) console.log(require('util').format(...args)); }, timeLog() {}, timeEnd() {} };
+const log = { write: (...args) => { if (process.env.NUUROAD_VERBOSE) console.log(require('util').format(...args)); }, timeLog() {}, timeEnd() {} };
 
 const constants = {
 	VERSION: 'nuuroad', SHADER_PATH: '', DATA_PATH: CACHE,

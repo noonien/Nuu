@@ -2,9 +2,7 @@ local _, ns = ...
 
 -- The options window, and the diagnostics window beside it.
 --
--- Ported from OpenRoad's UI/MainWindow.lua (CreateOptions, ResetOptions,
--- RefreshOptionLabels, SyncOptions, PlaceWindows, CreateDiagnostics,
--- ShowDiagnostics), rebuilt on NuuKit: each option is a kit Setting row,
+-- Built on NuuKit: each option is a kit Setting row,
 -- what it is and what it does on the left, its control on the right, and a
 -- reset beside it while the player's choice is stored.
 --
@@ -18,12 +16,10 @@ local _, ns = ...
 -- (OnSettingChanged). This window listens the same way, so a setting
 -- changed elsewhere (the tracker's menu) shows here too.
 --
--- What changed from OpenRoad: the panel opacity slider is gone (the look's
--- opacity in Appearance replaces it); window places are the kit's
--- (NuuRoadDB.windows), so "Reset window positions" forgets them rather than
--- resetting point and offset settings; Appearance (the kit's LookPicker) is
--- new. tracker.shown and tracker.collapsed are the tracker's own state, not
--- options, and stay off this page as they were in OpenRoad.
+-- The look's opacity in Appearance (the kit's LookPicker) sets the panels'
+-- opacity; window places are the kit's (NuuRoadDB.windows), so "Reset window
+-- positions" forgets them. tracker.shown and tracker.collapsed are the
+-- tracker's own state, not options, and stay off this page.
 local Options = {}
 
 local LABEL_WIDTH = 250
@@ -114,7 +110,7 @@ end
 -- The page ---------------------------------------------------------------------------------
 
 -- Section by section. `kind` is the control; `label` names the row, `caption`
--- is a toggle's own words, `help` says what it does (OpenRoad's tooltip).
+-- is a toggle's own words, `help` says what it does (its tooltip).
 local SECTIONS = {
     { title = "Tracker", rows = {
         { path = "tracker.scale", kind = "slider", label = "Tracker size", min = 80, max = 140, step = 5, format = "%d%%",
@@ -370,11 +366,6 @@ end
 function Options:IsShown()
     return self.win ~= nil and self.win:IsShown()
 end
-
--- OpenRoad's names for the same, kept for callers ported from there.
-Options.ToggleOptions = Options.Toggle
-Options.SyncOptions = Options.Sync
-Options.RefreshOptionLabels = Options.Sync
 
 -- Diagnostics ------------------------------------------------------------------------------
 

@@ -402,8 +402,7 @@ assert(ns.db.professions.revision == revision + 1, "closing the auction house ma
 assert(#heard == heardBefore + 1 and heard[#heard].kind == "auction" and heard[#heard].subject == "closed")
 assert(profRows("auction")[1].window == "closed")
 
--- What the loot line says was made (OpenRoad heard it from its guide
--- progress; here the client reads it).
+-- What the loot line says was made.
 LOOT_ITEM_CREATED_SELF = "You create: %s."
 heardBefore = #heard
 Client:OnProfessionEvent("CHAT_MSG_LOOT", "You create: " .. itemLink(2304, "Light Armor Kit") .. "x5.")

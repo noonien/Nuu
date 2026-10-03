@@ -2,9 +2,8 @@ local _, ns = ...
 
 -- The guide's client adapter: every game call NuuRoad makes goes through
 -- here, feature-detected and guarded, so a client that lacks a call or
--- changes it degrades to "not known" rather than an error. Taken from
--- OpenRoad's API/Client.lua, less the profession planner's reads (they are
--- NuuProfessions'). The profession-window reads the Make button of a craft
+-- changes it degrades to "not known" rather than an error. The profession
+-- planner's reads are NuuProfessions'. The profession-window reads the Make button of a craft
 -- step needs (the Professions section at the end) are duplicated with
 -- NuuProfessions' API/Client.lua until they move to the kit.
 local Client = { capabilities = {} }
@@ -121,8 +120,7 @@ function Client:GetPlayerMapPosition(mapID)
 end
 
 -- The map the player is on and where on it (0 to 1), for the session log
--- (Core.lua's recorder): map, x, y, or nil. OpenRoad's recorder read the two
--- calls above itself; here they are one call, as in NuuProfessions' Client.
+-- (Core.lua's recorder): map, x, y, or nil, as in NuuProfessions' Client.
 function Client:GetPlayerPosition()
     local mapID = self:GetCurrentMapID()
     if not mapID then return nil end
@@ -3461,8 +3459,8 @@ function Client:Craft(professionName, spellID, itemID, count, untilSkill, carrie
 end
 
 -- Each profession's skill line, which C_TradeSkillUI.OpenTradeSkill takes.
--- OpenRoad read these from its recipe data, which is NuuProfessions' now;
--- they are the client's fixed skill line IDs.
+-- They are the client's fixed skill line IDs (the recipe data is
+-- NuuProfessions').
 Client.professionSkillLines = {
     ["alchemy"] = 171, ["blacksmithing"] = 164, ["enchanting"] = 333, ["engineering"] = 202,
     ["herbalism"] = 182, ["leatherworking"] = 165, ["mining"] = 186, ["skinning"] = 393,

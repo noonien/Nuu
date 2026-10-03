@@ -22,7 +22,7 @@ play.
     python3 Tools/ProfData/disenchant.py            write Data/Disenchant.lua
     python3 Tools/ProfData/disenchant.py --dry-run  report only
 
-Uses extract.py's table cache and OpenRoad's CASC and DB2 readers (see
+Uses extract.py's table cache and NuuRoad's CASC and DB2 readers (see
 README.md).
 """
 
@@ -104,7 +104,7 @@ for low, rows in (
 # Items with a loot table of their own (ItemSparse Flags[1] 0x40000000: the
 # Hexed Pendant and Crude Wax Effigy, whose text sends them to Disenchanting,
 # and gear such as the Spiritcaller pieces), as seen in play: the Hexed Pendant
-# (a Durotar quest's) gives one Luminous Residue (OpenRoad's session log,
+# (a Durotar quest's) gives one Luminous Residue (the session log,
 # 2026-09-28; RestedXP's Forever guide says the same).
 SPECIAL = {
     275724: [(LUMINOUS_RESIDUE, 1, 1, 1)],

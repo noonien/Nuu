@@ -70,7 +70,7 @@ made with `UI.NewFrame`, which marks them, so neither the `parts` reset nor the 
 | `Display/Feedback.lua`, `Slots.lua` | `ProgressBar`, `SegmentBar`; `UI:StripPanel`, `Slot` (secure slots never pooled) |
 | `Theme/LookPicker.lua` | the Appearance section |
 | `Screens/Diagnostics.lua`, `SessionLog.lua`, `BugReportForm.lua` | `ui:DiagnosticsWindow` (report lines from the addon), `ui:SessionLogWindow` (a recorder's channel, the addon's row descriptions and marks, its recording switch and days bound to its own settings), `ui:BugReportWindow` (a `Kit.NewBugReports` object, with the addon's own fields, check and request); each returns a controller (`Show`, `Hide`, `Toggle`, `Refresh`, `.win`) |
-| `../Core/SkillUp.lua`, `../Core/Crafting.lua` | not UI: the skill-up model and what a Make button asks for, pure Lua, moved from OpenRoad for both addons |
+| `../Core/SkillUp.lua`, `../Core/Crafting.lua` | not UI: the skill-up model and what a Make button asks for, pure Lua, for both addons |
 | `../Dev/Gallery.lua`, `../Dev/Report.lua` | development only: `/nuukit ui` (every widget, and a Pooling tab), `/nuukit report` |
 
 **Tests.** `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"` from `NuuKit/` runs six suites: the core, the
@@ -83,7 +83,7 @@ sets no font and lays nothing out, a text change lays out only its row). `lua Te
 them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench screen) and `Tests/Bench/Gallery.lua`
 (the whole gallery) count client calls, to compare before and after a change.
 
-**Added for NuuRoad** (2026-09-29, while porting OpenRoad's guide screens):
+**Added for NuuRoad** (2026-09-29, while porting the guide screens):
 
 - A type defined after stacks were made (`UI.Define` late, by either addon on the shared development kit) gets its
   maker on the stack classes made before it. Frames with copied methods (`UI.sharedMethods` false) do not.
@@ -114,7 +114,7 @@ them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench scr
   `slot:FadePicture(alpha)` fades only the icon and that model.
 - `slot:SetCount(text, tone)` writes a short note in a tone, with no shaded strip.
 
-**Added for the planner** (2026-09-29, while porting OpenRoad's planner to NuuProfessions on the kit):
+**Added for the planner** (2026-09-29, while moving the planner to NuuProfessions on the kit):
 
 - `List` and `Table` take `tooltip(item, row)`: a row's tooltip, answered with a filler and `{ links, anchor }`.
 - `list:SetItems(items, keep)` and `table:SetItems(items, keep)` / `table:Refresh(keep)` hold the scroll place;
@@ -209,7 +209,7 @@ client features the kit uses are all there; see [docs/api-compatibility.md](../.
 
 1. **Adopt it in the addons.** Both do: NuuProfessions (below) and NuuRoad (2026-09-29, `ns:GetUI()`,
    `NuuRoadDB.look` and `.windows`, a `LookPicker` in `UI/Options.lua`).
-2. **Port the screens** from OpenRoad into the addons, built from kit parts. NuuRoad's are ported (2026-09-29, not
+2. **Port the screens** into the addons, built from kit parts. NuuRoad's are ported (2026-09-29, not
    yet run in the client): the tracker (`UI/MainWindow.lua`: an in-play Panel, a SegmentBar for progress, cards,
    a List of steps, the menu), the guide browser (SplitPanes with a Tree, a List and details), the editor (tabs in
    the band, a Pager for choices and places), the NPC and item strips (StripPanel with named secure Slots), the
@@ -219,10 +219,9 @@ client features the kit uses are all there; see [docs/api-compatibility.md](../.
    its band, Tabs, the route on a List whose rows draw their skill axis with `SegmentBar`s, Recipes on a List,
    Materials on a Table with money fields in its cells, Options as Settings with a LookPicker. Its smoke test
    (`NuuProfessions/Tests/UISmokeTests.lua`) builds it on the stand-in with the audit on; not yet run in the
-   client. Follow AGENTS.md: take OpenRoad's behaviour, and write sentence-case
-   captions. Most of OpenRoad's refreshes change screens in place (`SetText`, `SetValue`, `list:SetItems`); a
-   screen that changes shape clears and builds again. Long content goes in a `List`. Not worth porting from
-   OpenRoad: tracker refreshes that skip its throttle (kills, step advances), the guide browser re-filtering on
+   client. Write sentence-case captions. Most refreshes change screens in place (`SetText`, `SetValue`, `list:SetItems`); a
+   screen that changes shape clears and builds again. Long content goes in a `List`. Not worth having:
+   tracker refreshes that skip its throttle (kills, step advances), the guide browser re-filtering on
    every tracker refresh while open, and search boxes without a debounce.
 3. **Keep the tests green, and the costs.** After a change, run the suites and compare the two benches' client
    calls; in the client, `/nuukit report`.

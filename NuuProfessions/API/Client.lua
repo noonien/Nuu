@@ -2,9 +2,8 @@ local _, ns = ...
 
 -- The planner's client adapter: every game call NuuProfessions makes goes
 -- through here, feature-detected and guarded, so a client that lacks a call
--- or changes it degrades to "not known" rather than an error. Taken from
--- OpenRoad's API/Client.lua: its detection core, the stateless reads the
--- planner uses, and its whole Professions section.
+-- or changes it degrades to "not known" rather than an error: the detection
+-- core, the stateless reads the planner uses, and the Professions section.
 local Client = { capabilities = {} }
 
 local function exists(name)
@@ -95,8 +94,7 @@ function Client:GetPlayerMapPosition(mapID)
 end
 
 -- The map the player is on and where on it (0 to 1), for the session log
--- (Core.lua's recorder): map, x, y, or nil. OpenRoad's recorder read the two
--- calls above itself; here they are one call.
+-- (Core.lua's recorder): map, x, y, or nil.
 function Client:GetPlayerPosition()
     local mapID = self:GetCurrentMapID()
     if not mapID then return nil end
@@ -120,8 +118,7 @@ end
 
 -- The client's name for an item, or nil until it is in the client's cache
 -- (RequestItemData asks for it; GET_ITEM_INFO_RECEIVED says it came). The
--- planner names items from here alone: OpenRoad's Data/Names.lua, which
--- remembered names across sessions, stays with the guides.
+-- planner names items from here alone.
 function Client:GetItemName(itemID)
     if type(itemID) ~= "number" then return nil end
     local items = rawget(_G, "C_Item")
@@ -1460,9 +1457,7 @@ end
 local TRAINER_FIELDS = { "name", "tier", "cost", "profession", "skill", "level", "spellID", "itemID" }
 
 -- The name the game gives the NPC whose window is open, kept account-wide as
--- `professions.names[npcID]` for Client:GetNPCName. New in NuuProfessions:
--- OpenRoad named NPCs from its guide data (Data/Names.lua), which stays with
--- the guides.
+-- `professions.names[npcID]` for Client:GetNPCName.
 local function recordName(self, store, npc)
     local name = self:GetUnitName("npc")
     if not name or not npc then return end
@@ -1723,8 +1718,6 @@ end
 -- that a craft happened: the item made and how many, or nil. The client's
 -- own wording up to the item link decides (LOOT_ITEM_CREATED_SELF), so the
 -- locale does and a "You receive loot:" line is never taken for a craft.
--- OpenRoad read this line in its guide progress (Domain/ObservedProgress.lua)
--- and passed it on as "crafted"; here the client reads it itself.
 function Client.MatchCraftMessage(format, message)
     message = plainString(message)
     if not message then return nil end

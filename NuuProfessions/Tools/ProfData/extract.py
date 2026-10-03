@@ -6,7 +6,7 @@
                                       [--out Data/Professions] [--table professionData]
 
 Reads the beta client's DB2 tables offline (Tools/ClientMap/casc.py and
-db2.py, product wow_classic_beta; ClientMap stays in OpenRoad's folder, see
+db2.py, product wow_classic_beta; ClientMap is NuuRoad's, see
 README.md) and writes Data/Professions/<Name>.lua, one
 file per crafting profession, holding only what a character can use by the
 beta's level cap (`contentLevel`):
@@ -61,10 +61,10 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADDON = os.path.abspath(os.path.join(HERE, "..", ".."))
-# The CASC and DB2 readers are OpenRoad's (Interface/AddOns/OpenRoad/Tools/ClientMap);
+# The CASC and DB2 readers are NuuRoad's (NuuRoad/Tools/ClientMap);
 # CLIENTMAP names another copy.
 CLIENTMAP = os.environ.get("CLIENTMAP") or os.path.normpath(
-    os.path.join(ADDON, "..", "..", "AddOns", "OpenRoad", "Tools", "ClientMap"))
+    os.path.join(ADDON, "..", "NuuRoad", "Tools", "ClientMap"))
 sys.path.insert(0, CLIENTMAP)
 import casc  # noqa: E402
 import db2  # noqa: E402

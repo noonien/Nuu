@@ -35,12 +35,10 @@ local _, ns = ...
 -- panel:Change. The table is a kit List: a screenful of rows drawn again as
 -- it scrolls, so scrolling costs the rows in view and nothing more.
 --
--- Ported from OpenRoad's UI/PlannerPlan.lua. Gone with the guide export:
--- Start in tracker, Stop, Save as guide and Edit saved (docs/planner-split.md);
--- Make is how the plan is worked through now. Every row is one height, as a
--- kit List's are. OpenRoad's verdict line is not back (the figures say the
--- cost); its "and N more" is, on the note, which shows only when it has
--- something to say.
+-- Make is how the plan is worked through; the route is not exported to a
+-- guide. Every row is one height, as a kit List's are. There is no verdict
+-- line (the figures say the cost); "and N more" is on the note, which shows
+-- only when it has something to say.
 local Tab = { key = "plan", caption = "Plan", open = {}, all = {} }
 
 local function Planner() return ns.modules.ProfessionPlanner end
@@ -1268,8 +1266,7 @@ local function tailOf(route)
     return nil
 end
 
--- The route's warnings the note does not say, one line each, as OpenRoad's
--- verdict listed them: a recipe named, the unknown learning fees as one
+-- The route's warnings the note does not say, one line each: a recipe named, the unknown learning fees as one
 -- line, nothing Check prices already stands for (while it shows, the
 -- Materials tab's banners say what has no source), and every material with
 -- no source otherwise. Each is { code, text }.

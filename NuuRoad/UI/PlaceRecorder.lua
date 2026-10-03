@@ -23,7 +23,7 @@ local _, ns = ...
 -- a drop is one way from its fall. Mark names the spot you stand on ("the
 -- bank"), which a step can then stand on; it is optional.
 --
--- Built from NuuKit's widgets (ported from OpenRoad's UI/PlaceRecorder.lua).
+-- Built from NuuKit's widgets.
 -- The window's place is the kit's (NuuRoadDB.windows.placeRecorder); the
 -- indoors switch is the `placeRecorder.outdoors` setting.
 local PlaceRecorder = { interval = 0.2, minYards = 3 }

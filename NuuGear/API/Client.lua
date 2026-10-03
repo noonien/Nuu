@@ -3,7 +3,7 @@ local _, ns = ...
 -- NuuGear's client adapter: every game call it makes goes through here,
 -- feature-detected and guarded, so a client that lacks a call or changes it
 -- degrades to "not known" rather than an error. The detection core is
--- NuuProfessions' (from OpenRoad's API/Client.lua); the item reads follow
+-- NuuProfessions'; the item reads follow
 -- what ForeverGear found works on the Forever client (C_Item stats filled
 -- out from the item's tooltip, C_PlayerInfo.CanUseItem for what the
 -- character may wear).

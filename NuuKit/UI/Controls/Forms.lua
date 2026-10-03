@@ -5,9 +5,9 @@ ns.Kit = Kit
 Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 
--- Settings rows and choice grids. The options screens and the guide editor
--- built these by hand in OpenRoad (PlannerOptions, the tracker's options,
--- the editor's step kinds).
+-- Settings rows and choice grids, for the options screens and the guide
+-- editor (the planner's options, the tracker's options, the editor's step
+-- kinds).
 
 -- Settings -------------------------------------------------------------------------------
 

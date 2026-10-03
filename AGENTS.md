@@ -11,25 +11,10 @@ This repository holds the Nuu addons for WoW: Forever (the `_classic_beta_` clie
 
 `link-addons.bat` junctions each addon folder into `../AddOns` so the client loads them from here.
 
-## Ongoing work: splitting OpenRoad
+## Constraints
 
-We are splitting the monolithic OpenRoad addon (`../AddOns/OpenRoad`) into the Nuu addons above: guide reading,
-authoring, and travel go to `NuuRoad`, the profession planner and crafting pieces go to `NuuProfessions`, and code
-both need goes to `NuuKit`.
-
-Until the split is complete, **always take inspiration from OpenRoad** before writing anything here:
-
-- Before implementing a feature, module, or UI panel, find its counterpart in OpenRoad (`Domain/`, `UI/`, `API/`,
-  `Data/`) and port or adapt it rather than designing it from scratch. Keep its behavior unless there is a reason to
-  change it, and say why when you do.
-- Read OpenRoad's `CLAUDE.md`, `PLAN.md`, `PROF_PLAN.md`, `GUIDE_PORTING_PLAN.md`, `TRAVEL.md`, and `docs/` for
-  intent, hard constraints (player-directed, offline first, GUI-only, declarative guide data, ASCII only,
-  beta-resilient APIs), and recorded API compatibility results. Those constraints apply to the Nuu addons too.
-- Treat OpenRoad as read-only reference. Do not edit it as part of the split, and do not make the Nuu addons load,
-  depend on, or read from it at runtime.
-- Ignore `../AddOns/OpenRoad - Copy` and `OpenRoad.zip`; `../AddOns/OpenRoad` is the source of truth.
-
-Once everything has moved over and OpenRoad is retired, remove this section.
+Every Nuu addon is player-directed, offline first and GUI-only, keeps guide data declarative, is ASCII only, and
+uses beta-resilient APIs (feature-detected and guarded; results in `docs/api-compatibility.md`).
 
 ## Conventions
 

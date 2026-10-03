@@ -6,8 +6,7 @@ local _, ns = ...
 -- opens the guide browser searched for that quest. The same lines are
 -- appended to every quest tooltip the client shows (quest links, quest log
 -- rows), so the answer is there without opening anything. It never changes
--- progress or the active guide. Ported from OpenRoad's UI/QuestFinder.lua;
--- the button is a kit Button.
+-- progress or the active guide. The button is a kit Button.
 local QuestFinder = {}
 
 local WIDTH, HEIGHT = 96, 20

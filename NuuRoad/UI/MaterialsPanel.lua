@@ -132,8 +132,7 @@ function MaterialsPanel:HideAll()
     if self.frame then self.frame:Hide() end
 end
 
--- What OpenRoad's Config:Changed refreshed for these settings, and the
--- tracker's own: the list follows the tracker's visibility and scale.
+-- What these settings refresh, and the tracker's own: the list follows the tracker's visibility and scale.
 function MaterialsPanel:OnSettingChanged(path)
     if path == "tracker.upward" then self:Anchor() end
     if path:sub(1, 10) == "materials." or path == "tracker.shown" or path == "tracker.scale" then

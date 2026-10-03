@@ -195,8 +195,7 @@ function ItemPanel:OnCombatEnded()
     if self.pending then self:Refresh() end
 end
 
--- What OpenRoad's Config:Changed refreshed for these settings, and the
--- tracker's own: the strip follows the tracker's visibility and scale.
+-- What these settings refresh, and the tracker's own: the strip follows the tracker's visibility and scale.
 function ItemPanel:OnSettingChanged(path)
     if path:sub(1, 10) == "itemPanel." or path == "tracker.shown" or path == "tracker.scale" then
         self:Refresh()

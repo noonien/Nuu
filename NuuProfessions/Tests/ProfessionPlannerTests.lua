@@ -530,8 +530,7 @@ book.merchants[3000] = { [100] = { price = 10, count = 1 } }
 Prices:SetFact(book, 1003, "auctionSell", 20)
 route = plan(full, { skill = 0, target = 100, level = 20, book = book, accepted = { [3] = true },
     goals = { { spell = 7, count = 3 }, { spell = 8, count = 1, when = "end" } } })
--- Its sections and rows (OpenRoad checked the same through the guide it
--- built from them).
+-- Its sections and rows.
 local sections = Planner:Sections(route, { profession = "Leatherworking" })
 assert(sections[1].kind == "shopping" and sections[1].title == "Shopping", "the shopping comes first")
 assert(sections[2].title == "Apprentice 1-75" and sections[3].title == "Journeyman 75-100", sections[2].title)

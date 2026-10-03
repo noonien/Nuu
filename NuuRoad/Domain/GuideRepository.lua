@@ -2,9 +2,7 @@ local _, ns = ...
 
 -- `version` moves whenever the set of guides changes, so indexes built over
 -- the guides (QuestIndex) know when to rebuild.
--- `session` holds guides built while playing (OpenRoad's profession planner
--- made its routes this way; the planner is NuuProfessions now and builds no
--- guides here): they run like any other guide but are never saved.
+-- `session` holds guides built while playing: they run like any other guide but are never saved.
 local Repository = { builtIns = {}, session = {}, pendingID = "user:pending", version = 0 }
 
 local function copy(value, seen)

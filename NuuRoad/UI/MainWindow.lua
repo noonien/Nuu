@@ -1,7 +1,6 @@
 local _, ns = ...
 
--- The tracker, ported from OpenRoad's UI/MainWindow.lua onto NuuKit, and
--- stacked the way an established guide addon stacks it: carried work on
+-- The tracker, built on NuuKit and stacked the way an established guide addon stacks it: carried work on
 -- top, then the current step as a card -- one line per goal, each with an
 -- icon for its kind, a status wash behind the icon (amber in progress,
 -- green done, red a goal the player has no quest for), names coloured by
@@ -31,7 +30,7 @@ local PAD, GAP = 10, 6
 local CARD_PAD, RAIL = 5, 3
 -- A goal line: the icon, the room between the line's parts, the smallest
 -- height, the gap between two lines, the indent of a detail line.
--- OpenRoad's measure: a 12 icon, text at 10 (the "fine" size, in the text
+-- A 12 icon, text at 10 (the "fine" size, in the text
 -- colour), 15 the shortest line.
 local ICON, SPACING, LINE, LINE_GAP = 12, 6, 15, 1
 local LINE_STYLE = "fine"
@@ -369,14 +368,14 @@ function MainWindow:AddLine(text, opts)
         row:Text{ opts.count, style = LINE_STYLE, valign = "top", width = countWidth, color = opts.countColor or "text" }
     end
     -- How far the step's place is, in the accent, where the eye already goes
-    -- to compare one line against another (OpenRoad's).
+    -- to compare one line against another.
     local away
     if opts.away then
         away = row:Text{ "", valign = "top", width = AWAY_WIDTH, justify = "RIGHT", style = "key", color = "accent" }
     end
 
     -- The icon, its glyph when the art is missing, and the status wash
-    -- across the whole line, as OpenRoad drew it: amber under way, green
+    -- across the whole line: amber under way, green
     -- done, red not yours. Decorations the kit keeps with the row.
     local tint = opts.status and statusTints[opts.status]
     if tint then

@@ -5,8 +5,7 @@ ns.Kit = Kit
 Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 
--- The slim scroll bar and the scroll frame it serves, ported from OpenRoad's
--- Theme:ScrollFrame: the bar sits inside its owner's right edge and hides when the content
+-- The slim scroll bar and the scroll frame it serves: the bar sits inside its owner's right edge and hides when the content
 -- fits. Callers keep UI.SCROLLBAR clear at the right of their content.
 UI.SCROLLBAR = 10
 UI.SCROLL_STEP = 40

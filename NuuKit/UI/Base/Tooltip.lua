@@ -7,7 +7,7 @@ local UI = Kit.UI
 local Proto = UI.Proto
 
 -- Tooltips are Blizzard's GameTooltip, with the game's own item or recipe
--- tooltip chained under it, as OpenRoad's Theme:Tooltip did.
+-- tooltip chained under it.
 
 local linkTips = {}
 

@@ -1,8 +1,7 @@
 # API compatibility
 
 What the Nuu addons ask of the WoW: Forever client (`_classic_beta_`, `## Interface: 16001`), and what was seen when
-it was tried. Record every result with the build and the date; never guess a client version. OpenRoad keeps its own
-record (`../AddOns/OpenRoad/docs/api-compatibility.md`); rows there are evidence, not results for Nuu.
+it was tried. Record every result with the build and the date; never guess a client version.
 
 First results: build 1.60.1 (70009), 2026-09-28, from `/nuukit report` (which checks what can be measured: the APIs
 are there, textures load, edges sit on whole pixels) and a look over the gallery (`/nuukit ui`), which looked right.

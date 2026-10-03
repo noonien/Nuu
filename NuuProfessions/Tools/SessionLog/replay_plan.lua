@@ -1,9 +1,8 @@
 -- Tools/SessionLog/replay_plan.lua
 -- Plans a traced Profession Planner plan again outside the game, from the
 -- saved variables: the plan row's inputs and live reads, its `replay` block
--- (known recipes, the other professions' recipes, bag counts, as OpenRoad's
--- UI/ProfessionPlanner.lua replayTrace wrote them; the planner window traces
--- the same rows on its `planner` channel) and the price book. Prints the route
+-- (known recipes, the other professions' recipes, bag counts, as the planner
+-- window traces them on its `planner` channel) and the price book. Prints the route
 -- the game planned beside the one planned here, and exits 1 when they
 -- differ: a difference means the trace is missing something the plan read,
 -- or the planner changed since.

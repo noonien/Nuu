@@ -1,7 +1,7 @@
 local _, ns = ...
 
 -- The guide browser: three panes, built to need less digging than a folder
--- menu usually does. Ported from OpenRoad's UI/GuideBrowser.lua onto NuuKit.
+-- menu usually does. Built on NuuKit.
 --
 -- Left, the places to look: quick views that answer the usual question
 -- without knowing where a guide is filed (right for my level, where I stand,

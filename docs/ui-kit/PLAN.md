@@ -1,7 +1,7 @@
 # NuuKit UI kit: implementation plan
 
 The UI kit is the part of NuuKit that draws things: widgets, themes, window chrome, and the states between them. It
-is ported from OpenRoad's `UI/Theme.lua`, reshaped so the look can change while windows are open and so an addon
+is built so the look can change while windows are open and so an addon
 can build a window in a few lines. Mockups: see [README.md](README.md).
 
 ## Scope
@@ -39,7 +39,6 @@ kit reads and writes only what it is handed.
    with a value, `onPick(item)` for lists and menus; they are for the player's changes, never called when code sets
    a value. `bind = { table, key }` ties a value to the addon's own table, with `default`, `Reset()`, `IsStored()`.
 7. **Fail soft.** A missing texture or client API gives the flat look or a plain fallback, never an error.
-8. **OpenRoad names where they exist**, so ports from OpenRoad are mostly mechanical.
 9. **Clearing deletes.** `container:Clear()`, `Remove(w)` and `w:Release()` take widgets away for good; the kit
    reuses their frames for the next widgets made (WoW never frees a frame), so a screen rebuilt again and again
    costs no more memory. An addon that changes a widget with the plain API marks it with what it changed
@@ -58,7 +57,7 @@ kit reads and writes only what it is handed.
   a hint string) keeps the strip always, so its body never resizes when a message comes or goes; the client redraws
   what scrolls in a resized body, and its edges can come out a pixel different.
 - `tone` takes a colour as well as a name; `hold = seconds` makes a button hold-to-confirm.
-- `Kit.FormatMoney(copper)` and `Kit.ParseMoney(text)`, ported from OpenRoad's `Prices`.
+- `Kit.FormatMoney(copper)` and `Kit.ParseMoney(text)`.
 
 ## What using it looks like
 
@@ -105,7 +104,7 @@ which passes itself as the parent and stacks the result.
 - A **look** is the addon's choice: `{ theme = "midnight", accent = nil, opacity = 1, textSize = "normal",
   reduceMotion = false }`. A missing field takes the default. `accent = nil` means the theme's own accent.
 - A **theme** is data in `UI/Theme/Themes.lua`: the planes (window, band, hairline, surface, raised, border), text and
-  muted colours, the default accent, and for an art theme its textures. Built in: Midnight (OpenRoad's look),
+  muted colours, the default accent, and for an art theme its textures. Built in: Midnight,
   Slate, Obsidian, Horde, Alliance. `Kit.UI.AddTheme(key, def)` adds more. Every theme is dark: pale text with a
   hard shadow on dark planes. Light themes were dropped with Parchment, since the colour choices do not hold on a
   light window; supporting one again means a second set of status, coin and accent colours.
@@ -121,20 +120,19 @@ Each widget has a `Paint(t)` that sets its fonts, art and colours from the token
 sets only the colours its state changes (hover, pressed, active, disabled), from colours cached per look, so a
 hover allocates nothing and sets no font. Creating a widget paints it once; a state change calls `PaintState`.
 `UI:SetLook(look)` recomputes the tokens and repaints every widget. Widgets never keep a colour from
-creation, which is why OpenRoad cannot switch themes live (its surfaces, glows and a hardcoded hover blue are set
-once).
+creation, so themes switch live.
 
 ### Windows and chrome
 
 `UI:Window(opts)` makes a movable, clamped window with a title band, a close button (a bright X in an outlined
 square, the textured plate on hover), optional resize grip and collapse, and Escape to close (`UISpecialFrames`,
-as OpenRoad's `CloseOnEscape`). With `place` and `key` its position and size go into `place[key]`.
+`CloseOnEscape`). With `place` and `key` its position and size go into `place[key]`.
 
 - **Flat chrome:** a backdrop in the theme's colours.
 - **Art chrome:** the theme's textures, each optional: a tiled background (`SetTexture(file, "REPEAT", "REPEAT")`
   with `SetHorizTile` / `SetVertTile`), a 9-slice frame drawn by the kit's own `NineSlice` (8 textures plus a
   centre, cut with `SetTexCoord`, so corners keep their size and edges stretch), a header band, and button plates.
-  Any texture that does not load falls back to the flat piece, checked the way OpenRoad's `loadTexture` does.
+  Any texture that does not load falls back to the flat piece.
 - **In-play frames** (`UI:Panel({ inPlay = true })`, used for the tracker and the target strip) are always flat and
   translucent, with the text shadow, and follow the look's opacity.
 
@@ -163,14 +161,14 @@ still. Without animation groups a widget shows a still highlight instead.
 
 ### Keyboard focus
 
-By default focus follows text fields: Tab and Shift-Tab (OpenRoad's `TabChain`), Enter commits, Escape gives the
+By default focus follows text fields: Tab and Shift-Tab (`TabChain`), Enter commits, Escape gives the
 keys back to the game, and arrow keys move through a list while its search field has focus. A window can opt in to
 full keyboard control (`win:TakeKeyboard(true)`); that window holds the keyboard, so the game's keybinds stop while
 it is open. The focus ring is the kit's: a gap, then an accent line.
 
 ### Tooltips
 
-`UI:Tooltip(owner, filler, opts)` keeps OpenRoad's behaviour: Blizzard's `GameTooltip`, with the game's item or
+`UI:Tooltip(owner, filler, opts)` is Blizzard's `GameTooltip`, with the game's item or
 recipe tooltip chained under it. A themed tooltip is an open question (below); the call stays the same whichever way
 it goes.
 
@@ -228,26 +226,9 @@ client results go into the API compatibility record.
 6. **Art themes.** `Tools/Textures.py` writes TGA into `Media/`, then `NineSlice`, tiled backgrounds, bands, plates,
    the Horde and Alliance themes, and the flat fallback for every piece.
 
-## From OpenRoad's `UI/Theme.lua`
+## Captions
 
-| OpenRoad | Kit | Change |
-| --- | --- | --- |
-| `Theme.colors`, `fontSizes` | `Themes.lua`, `Look.lua`, text styles | per-look tokens; art themes |
-| `Surface`, `Text` | `Panel`, `UI:Text` | repaints; named text styles |
-| `Button(parent, caption, width, primary, tooltip)` | `Button{ caption, ... }` | tones x styles; `primary` becomes `tone = "accent"` |
-| `GlyphButton`, `ResetButton`, `ConfirmButton` | same names | glow built from tokens, not captured at creation |
-| `Toggle`, `DropButton`, `Select` | same names | `onChange(value, widget)`, `bind` |
-| `Input`, `TabChain`, `ClearFocusOnClick` | `Input`, `TabChain`, built into `Window` | commit behaviour kept |
-| `ScrollFrame` | `ScrollArea` | same slim bar |
-| `Slider` | `Slider` | |
-| `Menu`, `OpenMenu`, `CloseMenu` | `Menus.lua` | adds submenus, search, multi-select, headers; one frame per UI |
-| `Disclosure` | `Disclosure`, `Section` | `Section` is the folding header with a rule |
-| `StripPanel(key, rail)` | `StripPanel(spec)` | placement from `place`, not `ns.modules.Config` |
-| `SlotChrome`, `ShortKey` | `Slot`, text style `key` | |
-| `Tooltip`, `HideTooltip`, `CloseOnEscape` | same, `CloseOnEscape` built into `Window` | |
-
-Captions follow the kit's rule: sentence case, never all capitals (OpenRoad's START and SAVE are not ported as
-written).
+Captions follow the kit's rule: sentence case, never all capitals.
 
 ## Testing
 
@@ -258,7 +239,7 @@ written).
   pooling, and the costs that matter; benches (`Tests/Bench/`) count client calls to compare before and after.
 - **In game:** the gallery, and `/nuukit report` for what can be measured. Each client API the kit relies on (tiled textures, `SetTexCoord`
   9-slices, animation groups, `EnableKeyboard` with `SetPropagateKeyboardInput`, cooldown frames, TGA loading)
-  gets a row in a Nuu `docs/api-compatibility.md` with build, date and fallback, the way OpenRoad keeps its own.
+  gets a row in a Nuu `docs/api-compatibility.md` with build, date and fallback.
 
 ## Open questions
 

@@ -730,7 +730,7 @@ assert(Steps:GoalStatus(castGoal, castThrice) == "done")
 
 -- ApplyCarried: the carried half of a completion follows companionOf, and the
 -- step's own completion survives whole. An `any` of the step's own (an item
--- or a rank, from `upto`) keeps both children; OpenRoad kept only the last.
+-- or a rank, from `upto`) keeps both children.
 local item = { type = "item", itemID = 2318, count = 10 }
 local rank = { type = "skill", name = "Leatherworking", atLeast = 50 }
 local node = { index = 4, completion = { type = "observed", observed = { type = "any", children = { item, rank } } } }

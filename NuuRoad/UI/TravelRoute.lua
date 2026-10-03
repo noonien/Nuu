@@ -1024,8 +1024,7 @@ end
 -- Settings, and routes asked for from outside
 
 -- Config:Changed tells every module; a travel switch (navigation.travel.*,
--- or the whole group, or every setting at once) plans again, as OpenRoad's
--- Config:Changed did. The highlight switch is read by the taxi map's glow,
+-- or the whole group, or every setting at once) plans again. The highlight switch is read by the taxi map's glow,
 -- which is painted again at once while the map is open.
 function TravelRoute:OnSettingChanged(path)
     if path ~= nil and path ~= "navigation" and path:sub(1, 17) ~= "navigation.travel" then return end

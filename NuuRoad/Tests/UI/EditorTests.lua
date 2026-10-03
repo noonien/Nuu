@@ -118,8 +118,7 @@ node = Editor.working.nodes[2]
 check(node.auto.verb == "gather" and node.auto.item == 2770 and node.auto.count == 20, "the gather rule")
 check(node.auto.upto and node.auto.upto.skill == "Mining" and node.auto.upto.rank == 50, "the rank escape")
 check(node.completion.type == "observed", "the step completes on its own")
--- Both halves of the escape survive the write-back (OpenRoad kept only the
--- skill; Steps:ApplyCarried).
+-- Both halves of the escape survive the write-back (Steps:ApplyCarried).
 local either = node.completion.observed
 check(either and either.type == "any" and #either.children == 2 and either.children[1].type == "item"
     and either.children[2].type == "skill", "the gather completes on the items or the skill")

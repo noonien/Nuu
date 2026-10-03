@@ -1,8 +1,7 @@
 local _, ns = ...
 
 -- The saved variables: NuuProfessionsDB (account-wide) and
--- NuuProfessionsCharacterDB (one record per character). Nothing is carried
--- over from OpenRoad's saved variables: the planner may not read them.
+-- NuuProfessionsCharacterDB (one record per character).
 local Config = {
     schemaVersion = 1,
     -- Every setting's default. A setting is saved only once the player

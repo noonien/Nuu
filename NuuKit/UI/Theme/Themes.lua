@@ -61,7 +61,7 @@ function UI.AddTheme(key, def)
 end
 
 UI.AddTheme("midnight", {
-    name = "Midnight", desc = "Cool near-black glass. OpenRoad's look.",
+    name = "Midnight", desc = "Cool near-black glass.",
     window = "#090b0e", band = "#0e1116", hairline = "#1c222b",
     surface = "#0b0e12", surfaceA = 0.72, raised = "#13171d", raisedA = 0.78,
     border = "#2e3847", text = "#ebf0f7", muted = "#8f9eb3", accent = "#4dc9f0",

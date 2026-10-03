@@ -33,9 +33,8 @@ local _, ns = ...
 -- inputs before and after, and the window's own actions. The plan row is built once a replan, and only while the
 -- trace is kept.
 --
--- Unlike OpenRoad's planner, the route is not exported to a guide tracker:
--- it stands in this window, and the Plan tab's Make button works through it
--- a step at a time (docs/planner-split.md). The planner recommends; nothing
+-- The route is not exported to a guide tracker: it stands in this window,
+-- and the Plan tab's Make button works through it a step at a time. The planner recommends; nothing
 -- here buys, posts or trains, and it crafts only when the player presses
 -- Make, from the profession window the player opened.
 local Panel = { tab = "plan" }
@@ -1427,7 +1426,7 @@ function Panel:Initialize()
     self:AttachWindowButtons()
     Client():OnProfessionChange(function(kind, subject, data) self:ProfessionChanged(kind, subject, data) end)
 
-    -- Developer convenience, as OpenRoad's /openroad: opens the window. The
+    -- Developer convenience: opens the window. The
     -- player's way in is the Planner button on the profession window (and
     -- NuuRoad's menu, through the API below).
     local slash = rawget(_G, "SlashCmdList")

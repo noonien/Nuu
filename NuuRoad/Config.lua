@@ -95,7 +95,6 @@ local Config = {
     -- (see Config:CharacterStore) and is made when first needed, and so is
     -- everything in it: the guides open in tabs and the one shown, their
     -- saved resume steps and the flight paths learned (Domain/Progress.lua).
-    -- Nothing is carried over from OpenRoad's saved variables.
 }
 
 local function copyDefaults(target, defaults)

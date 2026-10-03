@@ -1155,8 +1155,8 @@ function Steps:ApplyCarried(node)
     local own = observed
     -- The step's own completion, with the carried half (a `step` child that
     -- ApplyCarried put there) taken off. An `any` with no such child is the
-    -- step's own (an item or a rank, from `upto`) and is kept whole: OpenRoad
-    -- kept only its last child here, so saving such a step dropped the item.
+    -- step's own (an item or a rank, from `upto`) and is kept whole, so
+    -- saving such a step keeps the item.
     if observed and observed.type == "any" and observed.children then
         local rest, carried = {}, false
         for _, child in ipairs(observed.children) do

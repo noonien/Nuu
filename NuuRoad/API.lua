@@ -1,7 +1,6 @@
 local _, ns = ...
 
--- NuuRoad's optional API for other addons (docs: OpenRoad's
--- docs/planner-split.md, "The optional APIs"). The profession planner
+-- NuuRoad's optional API for other addons. The profession planner
 -- (NuuProfessions) calls it for "take me there" on a trainer or vendor row,
 -- and anyone may: it is `_G.NuuRoad.API`, looked up when a feature is used,
 -- never at load, and skipped when missing or when `apiVersion` differs.

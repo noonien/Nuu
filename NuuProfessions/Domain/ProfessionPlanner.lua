@@ -2900,8 +2900,7 @@ end
 -- The route in order -------------------------------------------------------
 
 -- Names for section titles: the window's (`input.nameOf`), then a bare ID.
--- ASCII only. OpenRoad fell back on its guide names (Data/Names.lua) between
--- the two; that table stays with the guides.
+-- ASCII only.
 local function namer(input)
     local function itemName(id)
         local name = input.nameOf and input.nameOf("item", id)

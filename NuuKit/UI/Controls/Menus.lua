@@ -6,8 +6,7 @@ Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 local Proto = UI.Proto
 
--- Menus (ported from OpenRoad's one choice
--- menu): built here rather than from Blizzard's UIDropDownMenu, which
+-- Menus: built here rather than from Blizzard's UIDropDownMenu, which
 -- differs between clients and taints what touches it. There is one menu
 -- (and one submenu) per UI, made on first use; its rows are made once and
 -- kept, so a menu opened again makes no new frames, only more rows when it

@@ -64,9 +64,6 @@ function RecordingPanel:Build()
     return self.log
 end
 
--- Kept for OpenRoad's callers: the window is built on first use.
-function RecordingPanel:Initialize() end
-
 function RecordingPanel:Entries()
     return self:Build():Entries()
 end

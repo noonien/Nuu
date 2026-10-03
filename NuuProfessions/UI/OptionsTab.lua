@@ -11,8 +11,8 @@ local _, ns = ...
 -- An option is stored only once the player chooses it (Planner:Option).
 -- Reset all at the foot forgets every choice on the tab.
 --
--- Ported from OpenRoad's UI/PlannerOptions.lua; the Appearance section is
--- new, since the planner wears its own look (the kit keeps none).
+-- The Appearance section is there because the planner wears its own look
+-- (the kit keeps none).
 local Tab = { key = "options", caption = "Options", hint = "Every change plans the route again at once." }
 
 local LABEL_WIDTH = 420

@@ -6,8 +6,8 @@ Kit.UI = Kit.UI or {}
 local UI = Kit.UI
 local L = UI.ListParts
 
--- Tables, pagers and stat figures: the planner's Plan, Recipes and Materials tabs each
--- built these by hand in OpenRoad.
+-- Tables, pagers and stat figures, for the planner's Plan, Recipes and Materials tabs and
+-- the like.
 
 -- Tables ---------------------------------------------------------------------------------
 

@@ -28,7 +28,7 @@ local NPCPanel = { slots = {}, rows = {}, pending = false,
     -- slot, no longer sends it back to the placeholder until it is seen again.
     heads = {} }
 
--- OpenRoad's 32: five fit under the minimap.
+-- 32: five fit under the minimap.
 local COLUMNS, BOUND_SLOTS, SIZE = 5, 10, 32
 local placeholders = {
     kill = "Interface/TargetingFrame/UI-RaidTargetingIcon_8",
@@ -167,7 +167,7 @@ local function restoreHead(slot, id)
     return true
 end
 
--- The placeholder is greyed, as OpenRoad drew it, so it reads as a stand-in
+-- The placeholder is greyed, so it reads as a stand-in
 -- beside a creature's own head.
 local function setPlaceholder(slot, kind)
     slot:SetIcon(placeholders[kind])
@@ -460,8 +460,7 @@ function NPCPanel:OnCombatEnded()
     if self.pending then self:Refresh() end
 end
 
--- What OpenRoad's Config:Changed refreshed for these settings, and the
--- tracker's own: the strip follows the tracker's visibility and scale.
+-- What these settings refresh, and the tracker's own: the strip follows the tracker's visibility and scale.
 function NPCPanel:OnSettingChanged(path)
     if path:sub(1, 9) == "npcPanel." or path == "tracker.shown" or path == "tracker.scale"
         or path == "automation.markTargets" then

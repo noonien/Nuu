@@ -1,8 +1,6 @@
 # NuuProfessions - profession planner plan
 
-Moved from OpenRoad's `PROF_PLAN.md` when the planner became its own addon (2026-09-29, OpenRoad's
-`docs/planner-split.md`). The history below is kept; where it names OpenRoad, it means the addon the planner was
-part of then.
+The planner became its own addon on 2026-09-29. The history below is kept.
 
 ## Intent
 
@@ -95,8 +93,7 @@ Neither addon plans anything.
   green x3). It does not look ahead to later skill levels, and it has no chance formula.
 - **Zygor's Gold/Crafting module** is the only computed part. It finds profit as sell price minus reagent cost,
   using its own auction house scans, and it **generates guide text at runtime** (buy, create sub-reagents, create
-  the product) and feeds that text to its own parser. OpenRoad borrowed that pattern, generating a v2 guide table
-  instead of text; NuuProfessions keeps the route in its own window instead (see "The plan stands in its own
+  the product) and feeds that text to its own parser. NuuProfessions keeps the route in its own window instead (see "The plan stands in its own
   window").
 - **Zygor's recipe table** (`Data-TBC/Tradeskill_Recipes.lua`) holds the spell, product, number made, reagents and
   the orange skill only. There are no yellow, green or grey skill levels, and the source is "undefined" for most recipes.
@@ -265,7 +262,7 @@ recipes = {
 
 Names are **not** shipped. There are thousands of items, and the client's `GetItemInfo` / `GetSpellInfo` names and
 links are the display path (`Client:GetItemName`, `Client:GetSpellName`); a name the client has not cached yet shows
-as its ID until it arrives. OpenRoad's `Data/Names.lua` stays with the guides. If the tables prove heavy, they move
+as its ID until it arrives. If the tables prove heavy, they move
 to a load-on-demand companion addon loaded when the planner opens. That decision waits for a size measurement.
 
 ### Cross-check: wowforevertalents.com/professions
@@ -301,7 +298,7 @@ The site is used in two ways, both **at build time only**. The addon never goes 
 2. **Facts the client does not hold.** The site takes these from its own beta logging (the "WFT Beta Log" addon,
    merchant windows seen 20 September 2026): the Season of Discovery grouping and which recipes turn up where.
 
-   The site states no licence. Following the borrowing rule in OpenRoad's `CLAUDE.md`, the build uses these facts only to
+   The site states no licence. The build uses these facts only to
    **check** our own data until the author gives permission. Shipped rows carry provenance (`src = "client"`,
    `"recorded"` or `"wft"`). Anything that would ship as `wft` is either confirmed by our own in-client recording
    first (the merchant and trainer recording below) or waits for that permission.
@@ -342,7 +339,7 @@ this to:
 
 - mark recipes as known, so they need no training cost or opt-in;
 - check the table's colour against the live one at the current skill. A disagreement is logged (a `prof` log
-  channel) and the live colour wins for the session, like OpenRoad's `GuideCorrections`. The log is then how the shipped table
+  channel) and the live colour wins for the session, like NuuRoad's `GuideCorrections`. The log is then how the shipped table
   gets fixed.
 
 ## Price model
@@ -425,8 +422,8 @@ from and when:
   then. Last, each step's crafts are capped at what the bags make (`run.carriedCap`; its low and high with it), in
   order, so the step where the last materials try for a point asks only for those; the table shows those crafts.
   Where the materials end the route (ceiling `materials`), the last step on each material makes all the bags make of
-  it, not the crafts the odds say its skill levels need; the Make button orders that count (OpenRoad's tracker asked the
-  planner through `Panel:CarriedCrafts`; NuuRoad is to ask through `NuuProfessions.API`, planned).
+  it, not the crafts the odds say its skill levels need; the Make button orders that count (NuuRoad is to ask
+  through `NuuProfessions.API`, planned).
   When materials end the route, every craft of the last steps is made whatever their order, so the last few (up to
   four, running on from one another, each leaving the bags without another craft) are walked in every order, craft
   by craft on the odds of each skill (summing chances at a rounded skill ties orders that are not equal), and the order
@@ -542,8 +539,7 @@ These are second-pass refinements:
   `Planner:BuyingSaves` replans with one bought to say what that saves over the route (negative when the skill of
   making it pays). The window works this out once per route (`Panel:MakeLosses`, traced as `losses`), warns on the
   Materials tab (banner with Buy it instead / Value <part>, the Cheaper to buy view, the row and its tooltip) and the
-  Plan tab (hints, the make row). (OpenRoad also passed the list to `BuildGuide`, whose craft step added a
-  "Careful: ..." note; that went with the guide export.) `Gather, valued` costs a part at its market value (`Context:MarketValue`), not by Count as sold.
+  Plan tab (hints, the make row). `Gather, valued` costs a part at its market value (`Context:MarketValue`), not by Count as sold.
 - **Market depth.** A "sell up to N" cap breaks the per-point independence. The planner solves once without caps,
   lowers the value of the copies beyond each cap, and solves again until the route stops changing (two or three
   passes).
@@ -595,11 +591,9 @@ events, and a cost summary:
 
 ## The plan stands in its own window
 
-OpenRoad turned the route into an ordinary **v2 guide table**, built in memory the way Zygor's Gold module builds
-guide text, validated it by its `Data/Schema.lua` and ran it in its tracker (**Start in tracker**, **Save as
-guide**). That export is gone: the planner is its own addon, and the plan stands in its own window, where the Plan
+The route is not exported as a guide: the planner is its own addon, and the plan stands in its own window, where the Plan
 tab's **Make** button carries it out a step at a time. `BuildGuide`, `GuideID`, `ProfessionOfGuide`,
-`SectionOfGuide` and the step verbs went with it (OpenRoad's `docs/planner-split.md`). What is left of the
+`SectionOfGuide` and the step verbs went with it. What is left of the
 guide-shaped output is what the window reads: `Planner:Outline`, the table's rows in the order they are done, and
 `Planner:Sections`, where its headings fall and what each section buys.
 
@@ -656,14 +650,14 @@ title, where the character stands (trained cap, level) beside it, the tab strip 
 every tab, saying what the last change did, with **Undo** (every input change copies the inputs first, so Undo puts
 the whole copy back; a typed price puts its old fact back), and the open tab's hint while there is nothing else to
 say. The window moves and resizes both ways; its place and size are kept account-wide in
-`NuuProfessionsDB.windows` (OpenRoad kept a height per character). Each tab is its own file. Every change plans
+`NuuProfessionsDB.windows`. Each tab is its own file. Every change plans
 again at once.
 
 - **Plan** (`UI/PlanTab.lua`): the summary - the live skill and the target (typed, or **Automatic**), the
   **Only what I have** toggle (the `materials` option; see the price model), four
   figures (cost, sells, net, crafts); the **Sections** drop-down (one trip, tier, N recipes, every N skill levels) and, while prices
-  are guessed, **Check prices**, left of **Make**. Under it a note, only with something to say (OpenRoad's verdict
-  line is not back; its "and N more" is): the dear end said apart, what the route costs to its start and what the
+  are guessed, **Check prices**, left of **Make**. Under it a note, only with something to say (no verdict
+  line; "and N more" is there): the dear end said apart, what the route costs to its start and what the
   end costs on top, with **Stop at <skill>** (the target set there through `panel:Change`, so Undo plans the full
   route again; the route is never shortened unasked), else the first of the route's warnings worth a line (the
   unverified trainer tiers never stand alone); the rest behind "and N more", listed in its tooltip. The dear end's
@@ -690,10 +684,9 @@ again at once.
   Zygor does); a left-click on a row does the same, and every order selects its recipe (`Client:FocusRecipe`).
   `Crafting:Button` picks between them. (Casting the recipe with `/cast` from a secure button, no window, was tried
   first and did not craft on Forever, 2026-09-26.) There is no "make the whole plan" button: the client takes one
-  recipe per order, and buying, training and learning between steps need their own windows. OpenRoad's tracker
-  craft steps carried the same button; NuuRoad keeps them.
-- **Recipes** (`UI/RecipesTab.lua`): every recipe, in a list that draws only the rows in view (OpenRoad's pages
-  of 50 are gone), with its colour bands drawn against the live skill and the target on a scale the rows in view
+  recipe per order, and buying, training and learning between steps need their own windows. NuuRoad's tracker
+  craft steps carry the same button.
+- **Recipes** (`UI/RecipesTab.lua`): every recipe, in a list that draws only the rows in view, with its colour bands drawn against the live skill and the target on a scale the rows in view
   set, where it is learned, what the route does with it, a **Goal** checkbox (a goal gets a row of its own under
   its recipe with its count, when, and what the route made of it) and the **Plan with it** drop-down (also on a
   right-click). Show filters (in range, in route, goals, prefer, never use, patterns I have, all) with counts, a
@@ -776,7 +769,7 @@ Paths are NuuProfessions' unless they say otherwise.
 
 | File | Role |
 | --- | --- |
-| `Tools/ProfData/extract.py` | DB2 -> `Data/Professions/*.lua` (reuses OpenRoad's `Tools/ClientMap/casc.py`, `db2.py`) |
+| `Tools/ProfData/extract.py` | DB2 -> `Data/Professions/*.lua` (reuses NuuRoad's `Tools/ClientMap/casc.py`, `db2.py`) |
 | `Tools/ProfData/crosscheck.py` | compares the extraction with wowforevertalents.com, lists every difference |
 | `Data/Professions/*.lua` | generated recipe tables, one per profession (`Data/ProfessionsFull/` the testing set) |
 | `Data/ProfessionTiers.lua` | authored skill caps, level gates, trainer costs known so far |

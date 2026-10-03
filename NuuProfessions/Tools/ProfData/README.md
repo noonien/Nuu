@@ -7,9 +7,9 @@ from the `NuuProfessions` folder.
 
 ## Running
 
-Python 3 is enough. The CASC and DB2 readers are OpenRoad's and were not copied: `extract.py` imports them from
-`Interface/AddOns/OpenRoad/Tools/ClientMap` (set `CLIENTMAP` to use another copy). CascLib must be built there first
-(`Tools/ClientMap/setup.sh`, see `Tools/ClientMap/README.md` in OpenRoad). `crosscheck.py` and `recorded.py` need
+Python 3 is enough. The CASC and DB2 readers are NuuRoad's: `extract.py` imports them from
+`NuuRoad/Tools/ClientMap` (set `CLIENTMAP` to use another copy). CascLib must be built there first
+(`Tools/ClientMap/setup.sh`, see `Tools/ClientMap/README.md` in NuuRoad). `crosscheck.py` and `recorded.py` need
 neither.
 
 ```
@@ -206,7 +206,7 @@ too, and each has a client `BuyPrice`. Imbued Vial is used by no recipe at this 
 Engineering parts (EZ-Thro Fireproof Fuse, No Slip SAF-T Padding, SAF-T Casing, SAF-T Bell) and Thick Logs look like
 vendor goods but are not listed; they matter only above the current scope. Confirm them from a merchant window.
 
-## Changes to Tools/ClientMap/db2.py (OpenRoad's)
+## Changes to Tools/ClientMap/db2.py (NuuRoad's)
 
 Needed for these tables, checked not to change what the map tools read (`UiMap*` tables row for row, except
 `UiMapAssignment.OrderIndex`, which was wrong before and is not used):
@@ -219,7 +219,7 @@ Needed for these tables, checked not to change what the map tools read (`UiMap*`
 ## Recorded trainers and merchants (`recorded.py`)
 
 What trainer and merchant windows showed (`NuuProfessionsDB.professions.trainers` and `.merchants`, written by
-`API/Client.lua`; OpenRoad kept the same rows in `OpenRoadDB.professions`) lives in one player's saved variables.
+`API/Client.lua`) lives in one player's saved variables.
 `recorded.py` turns it into shipped data:
 
 ```
@@ -227,8 +227,7 @@ python3 Tools/ProfData/recorded.py            # writes Data/ProfessionRecorded.l
 python3 Tools/ProfData/recorded.py --dry-run  # lists the trainers and merchants found, writes nothing
 ```
 
-It reads the live `WTF/Account/*/SavedVariables/NuuProfessions.lua` (and `OpenRoad.lua`, while OpenRoad is still
-played), parsed with `Tools/SessionLog/lua_table.py` (never run), and merges its rows over what
+It reads the live `WTF/Account/*/SavedVariables/NuuProfessions.lua`, parsed with `Tools/SessionLog/lua_table.py` (never run), and merges its rows over what
 `Data/ProfessionRecorded.lua` already ships, so a run never loses a shipped row: the latest `seen` wins per NPC and
 key. A file that will not parse is skipped with a message. The output:
 
