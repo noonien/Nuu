@@ -193,6 +193,28 @@ Panel:ProfessionChanged("window", "closed")
 advance(1)
 check(#plans == 1, "the window shut, the bags are planned")
 
+-- The change history (Domain/PlanChanges.lua): the player's change is an
+-- entry in the strip's words; a plan that changes nothing is none; the
+-- panel lists them.
+local Changes = ns.modules.PlanChanges
+local View = ns.modules.PlanChangesView
+local function entries() return Changes:Entries(Panel:Store(), PROFESSION) end
+local before = entries()[1]
+Panel:Change("target", function(changed) changed.target = skill + 20 end, "Target set to " .. (skill + 20) .. ".")
+local entry = entries()[1]
+check(entry ~= before and #entries() <= Changes.limit, "the player's change is an entry, the history kept to its limit")
+check(entry.own == "target" and entry.text == "Target set to " .. (skill + 20) .. ".", "in the strip's words")
+check(Panel.statusUndo ~= nil, "the strip keeps its Undo")
+Panel:ProfessionChanged("auction")
+advance(1)
+check(entries()[1] == entry, "an auction house visit that changes nothing is no entry")
+check(Panel.changesButton, "the Changes button")
+View:SetShown(true)
+check(View:IsShown(), "the panel is up")
+View:Refresh()
+View:SetShown(false)
+check(not View:IsShown(), "and put away")
+
 advance(10)
 check(#errors == 0, "no errors: " .. table.concat(errors, "\n"))
 

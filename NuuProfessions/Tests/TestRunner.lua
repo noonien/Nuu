@@ -15,6 +15,7 @@ local suites = {
     { "planner playthroughs", "Tests/PlannerPlaythroughTests.lua" },
     { "planner fuzz", "Tests/PlannerFuzzTests.lua" },
     { "colour audit", "Tests/ColorAuditTests.lua" },
+    { "plan changes", "Tests/PlanChangesTests.lua" },
     -- Last: they stand in for the client's frame API in _G.
     { "planner window", "Tests/UISmokeTests.lua" },
     { "replanning", "Tests/ReplanTests.lua" },

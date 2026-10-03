@@ -38,12 +38,14 @@ Domain/Disenchant.lua
 Domain/ProfessionPlanner.lua
 Domain/MerchantBuying.lua
 Domain/TrainerTraining.lua
+Domain/PlanChanges.lua
 UI/Planner.lua
 UI/PlanTab.lua
 UI/RecipesTab.lua
 UI/MaterialsTab.lua
 UI/OptionsTab.lua
 UI/ShoppingList.lua
+UI/PlanChanges.lua
 UI/VendorStrip.lua
 UI/TrainerStrip.lua
 UI/Tooltip.lua

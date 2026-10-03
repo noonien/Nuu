@@ -633,6 +633,16 @@ guide-shaped output is what the window reads: `Planner:Outline`, the table's row
   last (signature, summary, steps, shopping, status, committed step) is not drawn again; only the Make button is
   refreshed against the profession window. The `plan` record keeps the triggers gathered, the committed step,
   and the first step's spell and count.
+- **Change history.** A plan that moves under the player (a price at the auction house, a recipe learned) is easy
+  to miss, so every plan is compared with the last one of its profession (`Domain/PlanChanges.lua`, a small snapshot
+  kept per character in `planChanges`, so the comparison survives a /reload). An entry says why (the player's own
+  change, in the strip's words; prices of what the route buys; the skill; recipes learned; the bags) and what (the
+  current section's step and what it buys first, then the steps after it, the target, the route's cost). The
+  player's own change is always an entry. Any other is one when the steps ahead, the target or the current
+  section's items changed, or when prices alone moved the route's cost by 1% or more; a craft giving its point,
+  with materials leaving the bags, is progress, not a change. Twenty entries per profession, newest first; the
+  planner's **Changes** button shows them in a panel of their own (`UI/PlanChanges.lua`), and the strip says what
+  an automatic change did. The history only tells: nothing in it takes a change back.
 - **Keeping it.** The planner's inputs (target, goals, options, exclusions) are saved per character
   (`NuuProfessionsCharacterDB`), so the same plan comes back next session; only what the player set is stored (no
   default option, no empty table: `Planner:SaveInputs`), and `Planner:Option` reads an option as it applies.

@@ -9,7 +9,10 @@ local _, ns = ...
 -- route current, and owns what every tab has in common: the window (a kit
 -- Window, with the profession drop-down in its band and where the character
 -- stands beside it), the tabs, and the status strip at the foot (what
--- a change just did, with Undo where it can be undone). The tabs draw
+-- a change just did, with Undo where it can be undone, or what changed the
+-- plan on its own). Every plan goes to the change history
+-- (Domain/PlanChanges.lua), which the Changes button shows in a panel of
+-- its own (UI/PlanChanges.lua). The tabs draw
 -- themselves, one file each, from NuuKit's widgets:
 --
 --   Plan       UI/PlanTab.lua       the route, its ways around, the Make button
@@ -541,6 +544,9 @@ end
 -- what the check that asked gathered ("crafted,bags,skill"), for the log.
 function Panel:Replan(reason, triggers)
     local profession = self.profession
+    -- A plan the player asked for (Changed) goes in the history as theirs.
+    local own = self.ownReason
+    self.ownReason, self.ownEntry = nil, nil
     if not profession then return end
     self.data = self:Data(profession)
     self.problem = nil
@@ -605,6 +611,8 @@ function Panel:Replan(reason, triggers)
         local kept, err = pcall(training.Keep, training, profession, route, self.data)
         if not kept then report(err) end
     end
+    local noted, err = pcall(self.NoteChange, self, reason, route, input, own)
+    if not noted then report(err) end
     if tracing then
         local traced, row = pcall(self.TraceRoute, self, route)
         if not traced then report(row) end
@@ -646,6 +654,7 @@ end
 function Panel:Changed(reason)
     self.statusText, self.statusError, self.statusUndo = nil, nil, nil
     self:SaveInputs()
+    self.ownReason = reason or "inputs"
     self:Replan(reason or "inputs")
     self:Render()
 end
@@ -681,6 +690,60 @@ function Panel:Change(reason, fn, message)
         self:Trace("undo", { reason = reason, inputs = snapshot })
         self:Changed("undo")
     end)
+end
+
+-- The change history ------------------------------------------------------------------
+
+local function now()
+    local clock = rawget(_G, "time")
+    return type(clock) == "function" and clock() or 0
+end
+
+-- The names and money an entry's words are made with (PlanChanges:Words).
+function Panel:ChangeNames()
+    local names = self.changeNames
+    if not names then
+        names = {
+            item = function(id) return self:ItemName(id) end,
+            recipe = function(spell) return self:RecipeName(spell) end,
+            money = function(copper) return self:Money(copper) end,
+        }
+        self.changeNames = names
+    end
+    return names
+end
+
+-- A plan was made: the history compares it with the last one and keeps an
+-- entry when it changed something the player would see. One the player
+-- asked for (`own`) takes the strip's words when they come (SetStatus);
+-- one the addon made on its own says what changed in the strip.
+function Panel:NoteChange(reason, route, input, own)
+    local changes = ns.modules.PlanChanges
+    local store = self:Store()
+    if not changes or not store then return end
+    local snapshot = changes:Snapshot(route, self.sections, input.known)
+    local entry = changes:Note(store, self.profession, snapshot, reason, own, now())
+    if entry then
+        self:Trace("history", { reason = reason, own = own, causes = entry.causes, effects = entry.effects })
+        if own then
+            self.ownEntry = entry
+        else
+            self:SetStatus(changes:Summary(entry, self:ChangeNames()))
+        end
+    end
+    local view = ns.modules.PlanChangesView
+    if view then view:Refresh() end
+end
+
+-- The Changes button: the history's panel shown or put away.
+local function changesClicked()
+    local view = ns.modules.PlanChangesView
+    if view then view:Toggle() end
+end
+
+-- The history's panel shown or put away: its button follows.
+function Panel:ChangesShown(shown)
+    if self.changesButton then self.changesButton:SetActive(shown) end
 end
 
 -- Making at a loss --------------------------------------------------------------------
@@ -855,6 +918,11 @@ function Panel:Build()
         active = list and list:IsShown() or false,
         tooltip = "Shows what the plan buys in a small list of its own, which stays up with the planner shut" }
     header:Spacer{ size = 6 }
+    local view = ns.modules.PlanChangesView
+    self.changesButton = header:Button{ "Changes", onClick = changesClicked,
+        active = view and view:IsShown() or false,
+        tooltip = "What changed in this plan and why, newest first" }
+    header:Spacer{ size = 6 }
 
     for _, tab in ipairs(self.tabList) do self:BuildTab(tab) end
 
@@ -871,9 +939,17 @@ end
 -- Status -------------------------------------------------------------------------------------
 
 -- What a change just did, or why it could not. `undo`, a function, puts an
--- Undo beside it. The next change clears it (Changed).
+-- Undo beside it. The next change clears it (Changed). What the player's
+-- own change did is also the words of its entry in the history.
 function Panel:SetStatus(text, isError, undo)
     self.statusText, self.statusError, self.statusUndo = text, isError, undo
+    local entry = self.ownEntry
+    self.ownEntry = nil
+    if entry and text and not isError then
+        entry.text = text
+        local view = ns.modules.PlanChangesView
+        if view then view:Refresh() end
+    end
     self:PaintStatus()
 end
 
