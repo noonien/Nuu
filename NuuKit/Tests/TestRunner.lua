@@ -24,6 +24,9 @@ local suites = {
     { "errors", "Tests/Core/ErrorsTests.lua" },
     { "skill-up model", "Tests/Core/SkillUpTests.lua" },
     { "crafting", "Tests/Core/CraftingTests.lua" },
+    { "comms codec", "Tests/Core/CommsCodecTests.lua" },
+    { "comms", "Tests/Core/CommsTests.lua" },
+    { "comms transport", "Tests/Core/CommsTransportTests.lua" },
     { "ui theme", "Tests/UI/ThemeTests.lua" },
     { "ui display", "Tests/UI/DisplayTests.lua" },
     -- Last: it stands in for the client's frame API in _G.
