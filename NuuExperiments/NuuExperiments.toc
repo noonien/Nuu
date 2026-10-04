@@ -8,6 +8,7 @@
 
 Core.lua
 Show.lua
+Window.lua
 Commands.lua
 
 # Active experiments, one file each. Once an experiment has its results (and

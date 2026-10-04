@@ -1,11 +1,14 @@
 # NuuExperiments
 
 Development only, never built or shipped. It tries client APIs (and anything else addon work needs to see in the
-real client) and keeps what it saw in `NuuExperimentsDB`. The experiments do not use NuuKit, so they see the client as it is; only the results window is the kit's (its
-copy window, from the development kit).
+real client) and keeps what it saw in `NuuExperimentsDB`. The experiments do not use NuuKit, so they see the client as it is; only the windows are the kit's (the experiments
+window and the copy window, from the development kit).
 
 ## Running
 
+- `/nuux` opens the experiments window: each loaded experiment with how it last went (then the results of retired
+  ones), and the chosen one's results, with Run, Copy (the copy window) and Clear; Run all and Prune in the title
+  band. It follows runs as they start and end. Without NuuKit loaded, `/nuux` lists them in chat instead.
 - New experiments run on their own a couple of seconds after login, once per client build (`auto = "build"`), out of
   combat. `/nuux run <id>` (or `all`) runs one now, and when it is done shows its results in a window, selected,
   to copy with Ctrl-C and paste; `/nuux show <id|all>` shows the last results again. Without NuuKit loaded, chat
@@ -13,7 +16,7 @@ copy window, from the development kit).
 - The game writes the results on `/reload` or logout, to
   `WTF/Account/<account>/SavedVariables/NuuExperiments.lua`. Read them with
   `python3 NuuExperiments/Tools/Results.py [id ...]`.
-- `/nuux` lists the loaded experiments and how each last went;
+- `/nuux list` lists the loaded experiments and how each last went, in chat;
   `/nuux clear <id|all>` and `/nuux prune` (results of experiments no longer loaded) forget them.
 
 Each result: `status` (`ok`, `error`, `timeout`, `running` if the client reloaded first), `build`, `interface`,

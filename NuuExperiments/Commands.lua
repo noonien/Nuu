@@ -1,7 +1,8 @@
 local _, ns = ...
 
 -- /nuux (/nuuexp):
---   /nuux              the loaded experiments and how each last went
+--   /nuux              the experiments window (Window.lua); without the kit, the list
+--   /nuux list         the loaded experiments and how each last went, in chat
 --   /nuux run <id|all> run now (results replace the last ones), then show them
 --   /nuux show <id|all> the last results in a window, to copy
 --   /nuux clear <id|all> forget results
@@ -44,17 +45,24 @@ local function clear(id)
         results[id] = nil
     end
     ns:Print("cleared " .. id)
+    ns:Changed()
 end
 
-local function prune()
-    local results, count = ns:DB().results, 0
+-- Forgets the results of experiments no longer loaded; answers how many.
+function ns:Prune()
+    local results, count = self:DB().results, 0
     for id in pairs(results) do
-        if not ns.experiments[id] then
+        if not self.experiments[id] then
             results[id] = nil
             count = count + 1
         end
     end
-    ns:Print("forgot " .. count .. " retired result(s)")
+    self:Changed()
+    return count
+end
+
+local function prune()
+    ns:Print("forgot " .. ns:Prune() .. " retired result(s)")
 end
 
 local function run(id)
@@ -76,7 +84,9 @@ SLASH_NUUEXPERIMENTS2 = "/nuuexp"
 SlashCmdList.NUUEXPERIMENTS = function(message)
     local command, rest = string.match(message or "", "^%s*(%S*)%s*(.-)%s*$")
     command = string.lower(command or "")
-    if command == "" or command == "list" then
+    if command == "" then
+        if not ns:OpenWindow() then list() end
+    elseif command == "list" then
         list()
     elseif command == "run" and rest ~= "" then
         run(rest)

@@ -2,7 +2,8 @@ local _, ns = ...
 
 -- Results as text to copy out of the game, in the kit's copy window. The
 -- experiments themselves never touch the kit, so they still see the client as
--- it is; only this window is the kit's (the development copy, _G.NuuKit).
+-- it is; only the windows are the kit's (the development copy, _G.NuuKit):
+-- this one and the experiments window (Window.lua).
 -- Without it, chat says where the results are instead.
 
 -- "|" too: the window would draw a colour code instead of showing it.
@@ -68,25 +69,38 @@ function ns:ResultText(ids)
             lines[#lines + 1] = string.format("build %s, interface %s, %s, %s, %sms%s", tostring(result.build),
                 tostring(result.interface), tostring(result.date), tostring(result.character), tostring(result.ms),
                 result.inCombat and ", in combat" or "")
-            write(lines, result.values or {}, "", "values = ")
-            if result.log then write(lines, result.log, "", "log = ") end
-            if result.errors then write(lines, result.errors, "", "errors = ") end
+            ns.WriteResult(lines, result)
         end
     end
     return table.concat(lines, "\n")
 end
 
+-- What a run saw, as lines added to `lines`: its values, log and errors.
+function ns.WriteResult(lines, result)
+    write(lines, result.values or {}, "", "values = ")
+    if result.log then write(lines, result.log, "", "log = ") end
+    if result.errors then write(lines, result.errors, "", "errors = ") end
+    return lines
+end
+
+-- The kit's UI, made once; nil when the development kit is not loaded.
+function ns:UI()
+    if self.ui then return self.ui end
+    local Kit = rawget(_G, "NuuKit")
+    if type(Kit) ~= "table" or type(Kit.NewUI) ~= "function" then return nil end
+    self.ui = Kit.NewUI(self)
+    return self.ui
+end
+
 -- Opens the copy window on the results of `ids` (a list); false when the
 -- kit is not loaded.
 function ns:ShowResults(ids)
-    local Kit = rawget(_G, "NuuKit")
-    if type(Kit) ~= "table" or type(Kit.NewUI) ~= "function" then
+    if not self:UI() then
         self:Print("NuuKit is not loaded, so there is no window: /reload, then "
             .. "python3 NuuExperiments/Tools/Results.py " .. table.concat(ids, " "))
         return false
     end
     if not self.copyWindow then
-        self.ui = self.ui or Kit.NewUI(self)
         self.copyWindow = self.ui:CopyWindow{ title = "Experiment results", width = 640, height = 520 }
     end
     self.copyWindow:Show(self:ResultText(ids), #ids == 1 and ("Experiment: " .. ids[1]) or "Experiment results")

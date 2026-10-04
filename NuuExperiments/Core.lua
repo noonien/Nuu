@@ -272,6 +272,7 @@ function Context:Finish(status)
     ns:Print(string.format("%s: %s, %d value%s%s", self.experiment.id, result.status, count, count == 1 and "" or "s",
         result.errors and (", " .. #result.errors .. " error" .. (#result.errors == 1 and "" or "s")) or ""))
     if ns.Finished then ns:Finished(self.experiment.id) end
+    if ns.Changed then ns:Changed() end
 end
 
 ---------------------------------------------------------------------------
@@ -319,6 +320,7 @@ function ns:Run(id)
     self:DB().results[id] = result
     local t = setmetatable({ experiment = experiment, result = result, started = now() }, Context)
     self.running[id] = t
+    if self.Changed then self:Changed() end
     t:Call(experiment.run, t)
     if not t.waiting then t:Finish() end
     return t

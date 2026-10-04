@@ -37,6 +37,7 @@ local ns = {}
 local function load(path) assert(loadfile(path))("NuuExperiments", ns) end
 load("Core.lua")
 load("Show.lua")
+load("Window.lua")
 load("Commands.lua")
 load("Experiments/Client.lua")
 
@@ -144,7 +145,7 @@ check(results.client ~= clientDate and results.client.build == "1.60.2 (70100)",
 SlashCmdList.NUUEXPERIMENTS("prune")
 check(results.retired == nil and results.client ~= nil, "prune drops only retired results")
 
-SlashCmdList.NUUEXPERIMENTS("")
+SlashCmdList.NUUEXPERIMENTS("list")
 SlashCmdList.NUUEXPERIMENTS("show sync")
 local text = shown[#shown].text
 check(text:find("sync: error", 1, true) and text:find("errors = {", 1, true), "show opens the last results, errors too")
@@ -156,6 +157,59 @@ local before = #shown
 SlashCmdList.NUUEXPERIMENTS("show nothing")
 check(#shown == before, "no results, no window")
 NuuKit = nil
+ns.ui, ns.copyWindow = nil, nil
 SlashCmdList.NUUEXPERIMENTS("show sync")
 check(printed[#printed]:find("Results.py", 1, true), "without the kit chat says where the results are")
+local listed = #printed
+SlashCmdList.NUUEXPERIMENTS("")
+check(#printed > listed and printed[listed + 1]:find("client (build)", 1, true), "without the kit /nuux lists in chat")
+
+-- The experiments window, on the kit's stand-in for the client (last: it
+-- installs the stand-in in _G).
+local slash = SlashCmdList.NUUEXPERIMENTS
+local stand = dofile("../NuuKit/Tests/Support/Frames.lua")
+SlashCmdList.NUUEXPERIMENTS = slash
+local kit = {}
+for line in io.lines("../NuuKit/NuuKit.toc") do
+    local file = line:match("^%s*([^#%s][^%s]*%.lua)%s*$")
+    if file and file ~= "NuuKit.lua" and not file:match("^Dev/") then
+        assert(loadfile("../NuuKit/" .. file))("NuuKit", kit)
+    end
+end
+NuuKit = kit.Kit
+local Window = ns.Window
+
+SlashCmdList.NUUEXPERIMENTS("")
+check(Window.win:IsShown(), "/nuux opens the window")
+local ids = {}
+for _, item in ipairs(Window.list:GetItems()) do ids[#ids + 1] = item.id .. (item.retired and "*" or "") end
+check(table.concat(ids, " ") == "client quest-data sync async slow bytes*", "loaded, then retired: " .. table.concat(ids, " "))
+check(Window.list:GetSelected().id == "client", "the first is chosen")
+
+ns:OpenWindow("sync")
+check(Window.list:GetSelected().id == "sync", "opened on sync")
+check(Window.title:GetText() == "sync" and Window.meta:GetText():find("error: build 1.60.2 (70100)", 1, true),
+    "the meta line: " .. Window.meta:GetText())
+check(Window.body:GetText():find("errors = {", 1, true) and Window.body:GetText():find("b = 1", 1, true), "the results")
+Window.copy:Click()
+check(ns.copyWindow:IsShown() and ns.copyWindow:GetText():find("sync: error", 1, true), "Copy opens the copy window")
+
+-- Run from the window: the tag follows the run, and the window updates when it ends.
+ns:OpenWindow("async")
+Window.run:Click()
+check(results.async.status == "running" and not Window.run:IsEnabled(), "running: Run waits")
+check(Window.body:GetText():find("values = {}", 1, true), "nothing yet")
+fire("ITEM_READY", 7)
+check(results.async.status == "ok" and Window.body:GetText():find("id = 7", 1, true), "the window shows the end")
+check(Window.run:IsEnabled(), "Run again")
+
+-- Clear asks twice; Prune forgets the retired one.
+Window.clear:Click()
+check(results.async ~= nil, "Clear asks first")
+Window.clear:Click()
+check(results.async == nil and Window.body:GetText() == "Not run yet.", "cleared")
+ns:OpenWindow("bytes")
+check(not Window.run:IsEnabled(), "a retired experiment cannot run")
+check(ns:Prune() == 1 and #Window.list:GetItems() == 5, "pruned from the window too")
+check(Window.list:GetSelected().id == "client", "the choice moves on when its result goes")
 print("NuuExperiments tests passed")
