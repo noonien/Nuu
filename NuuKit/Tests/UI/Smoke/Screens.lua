@@ -110,3 +110,14 @@ form:Show()
 assertTrue(not form.reportSection:IsShown() and form.category == "other", "opening again starts afresh")
 form:Toggle()
 assertTrue(not form:IsShown(), "the form toggles away")
+
+-- The copy window: the text, its title, and the text selected on opening.
+local copy = ui:CopyWindow{ title = "Results" }
+copy:Show("line one\nline two", "addon-comms")
+layout()
+assertTrue(copy:IsShown() and copy:GetText() == "line one\nline two", "the copy window shows the text")
+assertTrue(copy.area.box:HasFocus(), "and opens in the text, so Ctrl-C copies it")
+copy:Show("again")
+assertTrue(copy:GetText() == "again", "showing again replaces the text")
+copy:Hide()
+assertTrue(not copy:IsShown() and not copy.area.box:HasFocus(), "the copy window hides and lets go of the keyboard")

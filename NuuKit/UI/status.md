@@ -11,7 +11,7 @@ with a source copy in `docs/ui-kit/mockups/`. Decisions made along the way:
 
 - The kit ships reusable parts. The tracker, guide browser, planner and options windows are the addons' own,
   built from kit parts. The exception (2026-09-29): the diagnostics, session log and bug report windows are
-  shared (`Screens/`), with what only an addon knows passed in through their specs.
+  shared (`Screens/`), and (2026-10-05) the copy window, text selected for the player to copy out, with what only an addon knows passed in through their specs.
 - The kit holds no settings. Addons pass in their own look table, window-placement table, and (`bind`) the
   tables their settings live in.
 - Captions and labels are sentence case, never all capitals.

@@ -107,7 +107,7 @@ end
 local function focusGained(box)
     local w = box.kitOwner
     box.kitBaseline = box:GetText() or ""
-    if not box.kitMulti then box:HighlightText() end
+    if not box.kitMulti or box.kitSelectAll then box:HighlightText() end
     refreshPlaceholder(box)
     if w.kitFieldFocus then w:kitFieldFocus(true) end
     w:PaintState(w.ui.tokens)
@@ -465,8 +465,9 @@ UI.Define("Search", {
 -- A field of several lines that scrolls, with the slim bar. Spec: label,
 -- boxHeight (of the box, 90), value, bind, default, placeholder, help,
 -- maxLetters (shows the count), onType(text), onChange(text) when it loses
--- focus changed, validate. Enter makes a new line; Tab and a click
--- elsewhere commit.
+-- focus changed, validate, selectAll (focus selects all of it, as a
+-- one-line field does: for text to copy). Enter makes a new line; Tab and a
+-- click elsewhere commit.
 local function areaFit(w)
     local scroll, box = w.scroll, w.box
     local width = (scroll:GetWidth() or 0) - UI.SCROLLBAR
@@ -532,6 +533,7 @@ UI.Define("TextArea", {
         w.kitMaxLetters = spec.maxLetters
         w.counter:SetShown(spec.maxLetters ~= nil)
         initField(w, spec, spec.boxHeight or 90, spec.maxLetters ~= nil)
+        w.box.kitSelectAll = spec.selectAll or nil
         -- Inside a page that scrolls, the wheel is the text's only while the
         -- player is typing in it; until then it scrolls the page, so the page
         -- does not stop when the field passes under the pointer.

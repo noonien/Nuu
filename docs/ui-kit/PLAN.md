@@ -19,7 +19,7 @@ build their other screens from the parts.
 | lists, tree, split panes, scroll areas, slots | anything that knows about guides, quests or recipes |
 | tooltips, progress bars, notices, empty / loading / error states | |
 | the look picker (theme, accent, chrome), the focus ring | |
-| the diagnostics, session log and bug report windows | |
+| the diagnostics, session log, bug report and copy windows | |
 
 The kit holds no settings. An addon passes in its own tables and callbacks (the look, window positions), and the
 kit reads and writes only what it is handed.
