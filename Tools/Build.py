@@ -38,6 +38,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 KIT = "NuuKit"
+DEV_ADDONS = ("NuuExperiments",)  # development only, never built
 KIT_DIR = "Libs/NuuKit/"
 EMBED = KIT_DIR + "Embed.lua"
 ALWAYS = ["Bindings.xml"]
@@ -305,9 +306,9 @@ def main():
     args = parser.parse_args()
 
     addons = args.addons or sorted(p.name for p in ROOT.iterdir()
-                                   if p.is_dir() and p.name != KIT and (p / (p.name + ".toc")).is_file())
+                                   if p.is_dir() and p.name != KIT and p.name not in DEV_ADDONS and (p / (p.name + ".toc")).is_file())
     for addon in addons:
-        if addon == KIT or not (ROOT / addon / (addon + ".toc")).is_file():
+        if addon == KIT or addon in DEV_ADDONS or not (ROOT / addon / (addon + ".toc")).is_file():
             fail("%s is not an addon to build" % addon)
     dirty = git("status", "--porcelain")
     if args.tag and dirty:

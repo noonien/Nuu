@@ -1,0 +1,17 @@
+## Interface: 16001
+## Title: NuuExperiments
+## Notes: Development only: tries client APIs and keeps what it saw in NuuExperimentsDB
+## Author: noonien
+## Version: 0.1.0-dev
+## SavedVariables: NuuExperimentsDB
+## OptionalDeps: NuuKit
+
+Core.lua
+Show.lua
+Commands.lua
+
+# Active experiments, one file each. Once an experiment has its results (and
+# they are written up in docs/api-compatibility.md), take its line out of here
+# and move the file to Experiments/Retired/. See README.md.
+Experiments/Client.lua
+Experiments/QuestData.lua

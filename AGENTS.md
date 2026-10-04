@@ -8,6 +8,7 @@ This repository holds the Nuu addons for WoW: Forever (the `_classic_beta_` clie
 | `NuuRoad` | Offline, player-directed guides. |
 | `NuuProfessions` | Profession levelling planner. |
 | `NuuGear` | Gear upgrades scored against stat weights for the character's spec (`NuuGear/status.md`). |
+| `NuuExperiments` | Development only, never built: tries client APIs in game and keeps the results in its saved variables (`NuuExperiments/README.md`). |
 
 `link-addons.bat` junctions each addon folder into `../AddOns` so the client loads them from here.
 
@@ -33,11 +34,22 @@ or non-ASCII file or a dev file in the output, then loads the built addons on th
 alone and together (`Tools/BuildTests.lua`; Lua from PATH or nix-shell). `--tag` tags `<Addon>-v<version>`.
 - `NuuRoad` and `NuuProfessions` are optional dependencies of each other; neither may require the other to load.
 
+## Experiments
+
+To learn how the client behaves, write an experiment instead of guessing: one file in `NuuExperiments/Experiments/`
+that calls `ns:Experiment({ id, title, run = function(t) ... end })` and is listed in the TOC (template and the `t`
+helpers in `NuuExperiments/README.md`). It runs at login once per client build, or with `/nuux run <id>`, and keeps
+its results in `NuuExperimentsDB.results[id]`. `/nuux run <id>` and `/nuux show <id>` show them in the kit's copy
+window, for the player to paste; after a `/reload`, `python3 NuuExperiments/Tools/Results.py [id]` prints them. Once
+the results are written up in `docs/api-compatibility.md`, retire the experiment: take its line out of the TOC and
+move the file to `Experiments/Retired/`. Experiments do not use NuuKit (only that window does) and NuuExperiments is
+never built.
+
 ## UI kit
 
 - The kit's UI (widgets, themes, window chrome) follows `docs/ui-kit/PLAN.md`; the mockups are linked from
   `docs/ui-kit/README.md`. The kit ships reusable parts; each addon builds its own windows from them, except the diagnostics,
-  session log and bug report windows, which are the kit's (`NuuKit/UI/Screens/`) and take the addon's parts in
+  session log, bug report and copy windows, which are the kit's (`NuuKit/UI/Screens/`) and take the addon's parts in
   their specs.
 - Captions and labels are sentence case, never all capitals.
 - Where the kit stands and what to do next: `NuuKit/UI/status.md`. How widgets are written (and the costs a change
