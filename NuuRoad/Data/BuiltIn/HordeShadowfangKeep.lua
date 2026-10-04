@@ -68,7 +68,7 @@ ns.builtInGuides["nuuroad:dungeon:horde-shadowfang-keep-quests"] = {
         } },
 
         { section = "Inside Shadowfang Keep", steps = {
-            { objective = 1740, part = 2, collect = 6915, kill = 3855, sticky = true, only = "quest 1740",
+            { objective = 1740, part = 2, collect = 6915, kill = 3855, sticky = true, only = "Warlock | quest 1740",
                 note = "Only the Shadowfang Darksouls drop it." },
             { kill = 3914,
                 note = "The first boss. Then pull the lever to open the cells, ask Deathstalker Adamant to unlock the courtyard door, and follow him." },
@@ -87,7 +87,7 @@ ns.builtInGuides["nuuroad:dungeon:horde-shadowfang-keep-quests"] = {
                 note = "North to the Sepulcher." },
             { turnin = 1013, npc = 2934, only = "quest 1013 readyToTurnIn",
                 note = "Fly to the Undercity from Karos Razok (45.62, 42.58) and go down to the Apothecarium." },
-            { turnin = 1740, npc = 6247, only = "quest 1740 readyToTurnIn",
+            { turnin = 1740, npc = 6247, only = "Warlock | quest 1740 readyToTurnIn",
                 note = "Once you also have the three fragments from Blackfathom Deeps." },
             { finish = "Every Horde quest of Shadowfang Keep is done or left for another run." },
         } },
