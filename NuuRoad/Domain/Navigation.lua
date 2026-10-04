@@ -536,16 +536,35 @@ local function arrowMoved(frame)
     if Route then Route:SyncTeleportButton() end
 end
 
+-- Only a shift-held left button moves the arrow.
+local function shiftHeld() return type(IsShiftKeyDown) == "function" and IsShiftKeyDown() and true or false end
+local dragOpts = { can = shiftHeld, onStop = arrowMoved }
+
+-- The window takes the mouse only while shift is down, so a click on it
+-- otherwise lands in the world underneath; with shift the whole window is the
+-- drag handle. Watched each frame while it shows, since a modifier event may
+-- not reach an addon on the beta client.
+local function watchShift(watcher)
+    local held = shiftHeld()
+    if held == watcher.held then return end
+    watcher.held = held
+    watcher:GetParent():EnableMouse(held)
+end
+
 -- The arrow window is the kit's in-play panel (UI:Panel) with no plate or
--- border, so the arrow and its texts float over the world, and no band, so
--- the whole window is the drag handle as it always was. The arrow art and its
--- fixed geometry (250 wide, the arrow's centre at 32, 32) are drawn on the
--- panel itself, not in its body.
+-- border, so the arrow and its texts float over the world, and no band. The
+-- arrow art and its fixed geometry (250 wide, the arrow's centre at 32, 32)
+-- are drawn on the panel itself, not in its body.
 function Navigation:CreateFrame()
     local ui = ns:GetUI()
     local frame = ui:Panel({ key = "arrow", place = ns.db and ns.db.windows, width = 250, height = 64,
         plate = false, point = { "CENTER", UIParent, "CENTER", 0, 95 } })
-    ns.Kit.UI.DragFrame(frame, frame, "move", { onStop = arrowMoved })
+    frame:EnableMouse(false)
+    ns.Kit.UI.DragFrame(frame, frame, "move", dragOpts)
+    local watcher = CreateFrame("Frame", nil, frame)
+    watcher.held = false
+    watcher:SetScript("OnUpdate", watchShift)
+    frame.shiftWatcher = watcher
     frame.arrowGraphic = frame:CreateTexture(nil, "ARTWORK")
     frame.arrowGraphic:SetSize(arrowWidth, arrowHeight)
     frame.arrowGraphic:SetPoint("TOPLEFT", arrowCentreX - arrowWidth / 2, -(arrowCentreY - arrowHeight / 2))
@@ -601,10 +620,20 @@ function Navigation:CreateFrame()
     frame.status:SetWordWrap(true)
     frame.status:SetMaxLines(3)
     frame.status:SetJustifyH("CENTER")
-    -- A right-click anywhere on the window opens its menu: the routes on
-    -- offer, and a typed-in waypoint to put away. The route itself is not
-    -- written out; the arrow shows it one leg at a time.
-    ns.Kit.UI.OnRightClick(frame, function() self:OpenMenu() end)
+    -- A right-click on the arrow opens its menu: the routes on offer, and a
+    -- typed-in waypoint to put away. The route itself is not written out;
+    -- the arrow shows it one leg at a time. The arrow's patch lets the left
+    -- button through (to the world, or with shift to the window under it);
+    -- where the client cannot, it takes the shift drag itself.
+    local hit = CreateFrame("Frame", nil, frame)
+    hit:SetSize(arrowWidth, arrowHeight)
+    hit:SetPoint("CENTER", frame, "TOPLEFT", arrowCentreX, -arrowCentreY)
+    hit:EnableMouse(true)
+    if not (hit.SetPassThroughButtons and pcall(hit.SetPassThroughButtons, hit, "LeftButton")) then
+        ns.Kit.UI.DragFrame(hit, frame, "move", dragOpts)
+    end
+    ns.Kit.UI.OnRightClick(hit, function() self:OpenMenu() end)
+    frame.menuHit = hit
     frame:Hide()
     self.frame = frame
     -- The texts and the special icon follow the look. Keyed on a text, not

@@ -213,10 +213,38 @@ check(arrow:IsShown(), "a waypoint shows the arrow window")
 check((arrow.destination:GetText() or "") ~= "", "the window says where it points: " .. tostring(arrow.destination:GetText()))
 check((arrow.status:GetText() or "") ~= "", "and how far, or why it cannot say")
 check(arrow:GetWidth() == 250, "the window keeps its fixed width")
--- Dragged: the place is kept where the kit keeps windows'.
+-- A plain left click is not the window's: it neither takes the mouse nor moves.
+local mouse
+arrow.EnableMouse = function(_, on) mouse = on end
+arrow.shiftWatcher:Fire("OnUpdate", 0)
+check(not mouse, "without shift the window lets clicks through")
+local savedPlace = ns.db.windows.arrow
+ns.db.windows.arrow = nil
+arrow:Fire("OnMouseDown", "LeftButton")
+arrow:Fire("OnMouseUp", "LeftButton")
+check(not ns.db.windows.arrow, "a plain left click does not move the arrow")
+-- Shift-dragged: the place is kept where the kit keeps windows'.
+local savedShift = _G.IsShiftKeyDown
+_G.IsShiftKeyDown = function() return true end
+arrow.shiftWatcher:Fire("OnUpdate", 0)
+check(mouse == true, "with shift down the window takes the mouse")
 arrow:Fire("OnMouseDown", "LeftButton")
 arrow:Fire("OnMouseUp", "LeftButton")
 check(ns.db.windows.arrow and ns.db.windows.arrow.x, "the arrow's place is saved in NuuRoadDB.windows")
+_G.IsShiftKeyDown = savedShift
+arrow.shiftWatcher:Fire("OnUpdate", 0)
+check(mouse == false, "and lets it go with shift")
+arrow.EnableMouse = nil
+if not ns.db.windows.arrow then ns.db.windows.arrow = savedPlace end
+-- The menu answers a right click on the arrow, not on the text.
+local opened = 0
+local savedOpen = Navigation.OpenMenu
+Navigation.OpenMenu = function() opened = opened + 1 end
+arrow:Fire("OnMouseUp", "RightButton")
+check(opened == 0, "a right click on the text opens no menu")
+arrow.menuHit:Fire("OnMouseUp", "RightButton")
+check(opened == 1, "a right click on the arrow opens its menu")
+Navigation.OpenMenu = savedOpen
 Navigation:ClearWaypoint()
 settle()
 

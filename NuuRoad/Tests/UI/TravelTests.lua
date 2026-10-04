@@ -102,7 +102,7 @@ local function menuRow(menu, match)
 end
 local function openArrowMenu()
     ctx.UI:CloseMenu()
-    Navigation.frame:Fire("OnMouseUp", "RightButton")
+    Navigation.frame.menuHit:Fire("OnMouseUp", "RightButton")
     settle()
     return ctx.UI.kitMenu
 end
