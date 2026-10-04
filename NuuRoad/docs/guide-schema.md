@@ -149,23 +149,21 @@ Titles are rendered at display time from the verb and the names in the guide's `
 
 ## Carried steps
 
-Not every instruction deserves a stop. "Travel through the cave" belongs with the step it prepares for, and "keep an eye out for Ghost Howl" belongs with all of them. Two fields say so, and neither is ever the current step: the flow walks past them and the tracker draws them on the card under whatever step is current.
+Not every instruction deserves a stop. "Travel through the cave" belongs with the step it prepares for, and "kill Owatanka if he turns up" belongs with all of them. Two fields say so, and neither is ever the current step: the flow walks past them and the tracker draws them on the card under whatever step is current.
 
 ```lua
 { travel = "Through the cave", with = "next", at = { 59.67, 83.33 } },
 { objective = 757, part = 1, collect = 4770, count = 12, at = { 63.93, 78.34 } },
-{ note = "Keep an eye out for Ghost Howl.", sticky = true, watch = 3056 },
+{ collect = 5102, starts = 884, kill = 3473, sticky = true, note = "If you see Owatanka, kill him: his tailspike starts a quest." },
 ```
 
 `with` names the step this one rides along with: `"next"` for the following step, or any `label` further on. Naming an earlier step, or one that does not exist, is an error at load. The carried step is done when the step that carries it is - skipped when it is skipped - and its own rule still counts, so whichever lands first finishes it.
 
 `sticky = true` carries a step alongside every step after it until it is done, rather than tying it to one.
 
-## Circuits, waits, and rares
+## Circuits and waits
 
 When a step's `at` is a list, every point is an equal target and the arrow takes whichever is nearest, so a player who is already beside a later point is not sent back to the first. Every point gets a map pin carrying the step's number. `loop = true` marks the list as a circuit (RestedXP's #loop); it is kept for ported guides and changes nothing, since every list behaves that way.
-
-`watch = 3056` (or a list) names a rare worth stopping for while the step runs. It gates nothing: the tracker and the target strip name it, and the step is done either way.
 
 `wait = 8` says the step keeps the player waiting about that many seconds - a scene playing out, a timed quest starting. It is shown, never enforced.
 

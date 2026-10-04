@@ -363,7 +363,6 @@ function Editor:BuildStepTab(page)
     -- after it. Both keep the guide from stopping on the step itself.
     local carried = area:Row{ gap = 8 }
     self.carriedWith = carried:Input{ label = "Carried alongside (step label, or 'next')", width = 240, placeholder = "next" }
-    self.watchIDs = carried:Input{ label = "Watch for (NPC ID)", width = 140, placeholder = "3056" }
     self.waitSeconds = carried:Input{ label = "Wait (seconds)", width = 110, placeholder = "8" }
     -- The item the player presses on this step, which is not always the item
     -- the step counts.
@@ -661,16 +660,6 @@ function Editor:ApplyFields()
     else
         node.location = nil
     end
-    node.watch = nil
-    local watched = parseIDs(self.watchIDs:GetText())
-    if #watched > 0 then
-        node.watch = watched
-        node.refs = node.refs or {}
-        local npcs, seen = node.refs.npcs or {}, {}
-        for _, id in ipairs(npcs) do seen[id] = true end
-        for _, id in ipairs(watched) do if not seen[id] then table.insert(npcs, id) end end
-        node.refs.npcs = npcs
-    end
     node.use = nil
     local used = parseIDs(self.useItems:GetText())
     if #used > 0 then
@@ -826,7 +815,6 @@ function Editor:Render()
         or (needCount .. (needCount == 1 and " material" or " materials") .. " on this step, added to the list beside the tracker."))
     local carriedTarget = node.companionOf and self.working.nodes[node.companionOf]
     self.carriedWith:SetText(carriedTarget and (carriedTarget.label or tostring(node.companionOf)) or "")
-    self.watchIDs:SetText(joinIDs(node.watch))
     self.useItems:SetText(joinIDs(node.use))
     self.waitSeconds:SetText(node.wait and tostring(node.wait) or "")
     self.sticky:SetValue(node.sticky and true or false)

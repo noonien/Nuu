@@ -646,9 +646,6 @@ function MainWindow:StepTooltip(node, hint, noteShown)
         end
         addLocationLine(tip, node)
         if node.wait then tip:AddLine("Takes about " .. tostring(node.wait) .. " seconds", 0.7, 0.7, 0.7) end
-        for _, id in ipairs(node.watch or {}) do
-            tip:AddLine("Watch for " .. Names:DescribeNPC(id), 0.7, 0.7, 0.7)
-        end
         local condition = node.condition and Steps:DescribeCondition(node.condition)
         if condition and condition ~= "" then tip:AddLine("Only " .. condition, 0.7, 0.8, 0.95, true) end
         if not noteShown and node.body and node.body ~= "" and node.body ~= title then
@@ -1847,9 +1844,6 @@ function MainWindow:DrawGoals(guide, node, group)
     end
     if node.wait then
         self:AddLine("Takes about " .. tostring(node.wait) .. " seconds", { color = "muted" })
-    end
-    for _, id in ipairs(node.watch or {}) do
-        self:AddLine("Watch for " .. Names:DescribeNPC(id), { color = "muted" })
     end
     if node.body and node.body ~= "" then self:AddLine(node.body) end
 end

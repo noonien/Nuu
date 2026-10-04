@@ -15,7 +15,7 @@
 -- The coverage gate in Tests/GuidePortTests.lua fails on any construct found
 -- in the approved sources that has no entry here. A port is complete for a
 -- source when nothing it uses is still `todo`.
-local Mapping = { version = 3 }
+local Mapping = { version = 4 }
 
 local function entry(status, becomes, note)
     return { status = status, becomes = becomes, note = note }
@@ -60,7 +60,6 @@ Mapping.commands = {
     subzone = entry("mapped", '{ travel = "...", subzone = "Bloodhoof Village" }'),
     line = entry("todo", "a drawn route on the world map",
         "its points already carry as map pins; the polyline between them needs a map canvas overlay, and it is decoration on 7 steps"),
-    unitscan = entry("mapped", "watch = N", nil),
     timer = entry("mapped", "wait = N seconds"),
 
     -- Ported as instructions: the source acts for the player, NuuRoad tells
@@ -84,6 +83,8 @@ Mapping.commands = {
         "an external URL; NuuRoad is offline first and points at no web service"),
     macro = entry("excluded", "nothing",
         "a macro the source builds for the player; guides carry no macros (CLAUDE.md), the step's note says what to do"),
+    unitscan = entry("excluded", "nothing",
+        "a rare to look out for; a rare whose drop starts a quest is a collect step with kill and starts, and a dangerous one goes in the note"),
     disablecheckbox = entry("ignored", "nothing", "a source UI setting on its step's checkbox"),
     addquestitem = entry("ignored", "nothing",
         "tells the source's item button which quest an item belongs to; a step names its own item"),

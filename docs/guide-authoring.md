@@ -128,7 +128,8 @@ Good notes are short, concrete and plain ASCII:
 - **Something to do whenever the chance comes** ("use the Motivator on any Deathguard") is `sticky = true`.
 - **Quest work spread over several sections** is a `track` / `untrack` pair. Every `track` must be closed by the end
   of the guide; the tests check it.
-- **A rare worth stopping for** is `watch = <npc>`. It gates nothing.
+- **A rare whose drop starts a quest** is a sticky `collect` with `kill` and `starts`: it stays on the card until
+  the item is looted or the quest taken. A creature to avoid goes in the step's note.
 
 ### Places and points
 

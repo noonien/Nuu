@@ -1450,15 +1450,6 @@ local function build(step, verb, defaultMap)
         end
         node.refs.items = items
     end
-    -- A rare worth stopping for while the step runs. It gates nothing: the
-    -- tracker and the NPC panel name it, and the step is done either way.
-    if step.watch ~= nil then
-        node.watch = list(step.watch)
-        node.refs = node.refs or {}
-        local npcs = node.refs.npcs or {}
-        for _, id in ipairs(node.watch) do table.insert(npcs, id) end
-        node.refs.npcs = npcs
-    end
     -- How long the step keeps the player waiting: a scene playing out, or a
     -- timed quest starting. Shown, never enforced.
     if step.wait ~= nil then

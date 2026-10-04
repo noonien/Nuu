@@ -111,7 +111,7 @@ ns.builtInGuides["nuuroad:leveling:horde-southern-barrens-24-25"] = {
                 { accept = 893, npc = 3433,
                     note = "Tatternack Steelforge, by the forge. Skip this if you already have Weapons of Choice." },
             } },
-            { collect = 5102, starts = 884, kill = 3473, watch = 3473, with = "gann", radius = 0.06,
+            { collect = 5102, starts = 884, kill = 3473, with = "gann", radius = 0.06,
                 at = { { 44.20, 62.00 }, { 45.40, 62.80 }, { 49.20, 61.60 }, { 49.40, 59.20 } },
                 note = "Owatanka, a blue thunder lizard, wanders south of the camp. If you meet him, kill him and take his Tailspike; if not, let him go." },
             { objective = 1824, part = 1, collect = 7119, count = 5, kill = { 3250, 3251, 3252 }, only = "Warrior", radius = 0.06,
@@ -122,7 +122,7 @@ ns.builtInGuides["nuuroad:leveling:horde-southern-barrens-24-25"] = {
         } },
 
         { section = "Blackthorn Ridge", steps = {
-            { collect = 5103, starts = 885, kill = 3472, watch = 3472, with = "gann-done", radius = 0.06,
+            { collect = 5103, starts = 885, kill = 3472, with = "gann-done", radius = 0.06,
                 at = { { 44.81, 74.93 }, { 44.81, 78.88 }, { 47.44, 79.87 }, { 43.15, 80.85 } },
                 note = "Washte Pawne, a red wind serpent, flies over the ridge and the road. If you meet him, kill him and take his feather; if not, let him go." },
             { turnin = 1536, accept = 1534, npc = 5899, only = "Shaman | now quest 1536",

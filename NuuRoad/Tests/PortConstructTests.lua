@@ -133,20 +133,17 @@ local plain = expand({ { travel = "A", at = { { 53.50, 73.00 }, { 48.30, 72.00 }
 x = Navigation.NearestPoint(plain.nodes[1].location, 0.49, 0.72)
 assert(math.abs(x - 0.483) < 0.001, "without loop the nearest point wins too")
 
--- .vendor, .unitscan, .timer -------------------------------------------------
+-- .vendor, .timer ------------------------------------------------------------
 local misc = expand({
     { vendor = "sell", npc = 3072, at = { 45.30, 76.52 } },
     { vendor = "repair", npc = 3080, at = { 45.90, 58.73 } },
-    { note = "Grind here.", watch = 3056, at = { 52.00, 45.00 } },
     { turnin = 748, npc = 2948, wait = 8, at = { 48.53, 60.40 } },
     { finish = "Done." },
 })
 assert(misc.nodes[1].kind == "vendor")
 assert(Steps:Title(misc.nodes[1]):find("Sell your junk"), Steps:Title(misc.nodes[1]))
 assert(Steps:Title(misc.nodes[2]):find("^Repair at "), Steps:Title(misc.nodes[2]))
-assert(misc.nodes[3].watch[1] == 3056, "a watched rare is recorded")
-assert(misc.nodes[3].refs.npcs[1] == 3056, "and referenced, so the NPC panel lists it")
-assert(misc.nodes[4].wait == 8)
+assert(misc.nodes[3].wait == 8)
 
 -- .zone / .subzone: arrival by name -----------------------------------------
 local byName = expand({

@@ -2,7 +2,7 @@ local _, ns = ...
 
 -- Fixture for guide constructs shared with other addon guide formats: a step
 -- carried alongside a later one, a sticky step, a circuit the arrow cycles, a
--- vendor stop, a rare to watch for, a wait, and arrival judged by zone name
+-- vendor stop, a wait, and arrival judged by zone name
 -- rather than by coordinate. The realm answers in Options gate the last three
 -- steps; leave them unanswered and all three stay visible, which is what
 -- unknown is meant to do.
@@ -22,7 +22,7 @@ ns.builtInGuides["nuuroad:fixture:port-constructs"] = {
             { objective = 757, part = 1, collect = 4770, count = 12, loop = true, radius = 0.06,
                 at = { { 63.93, 78.34 }, { 63.81, 76.65 }, { 62.92, 76.91 }, { 61.31, 77.22 } },
                 note = "Several points: the arrow takes whichever is nearest, not the first." },
-            { note = "Keep an eye out for Ghost Howl.", sticky = true, watch = 3056,
+            { note = "Keep an eye out for Ghost Howl.", sticky = true,
                 at = { 52.00, 45.00 },
                 note = "Sticky: stays on the card under every step from here until you mark it done." },
             { travel = "Camp Narache", with = "turnin", at = { 46.00, 78.00 },
@@ -51,7 +51,6 @@ ns.builtInGuides["nuuroad:fixture:port-constructs"] = {
     names = {
         npcs = {
             [2981] = { "Chief Hawkwind", at = { 44.18, 76.07 } },
-            [3056] = "Ghost Howl",
             [3072] = { "Kawnie Softbreeze", at = { 45.30, 76.52 } },
             [3080] = { "Harant Ironbrace", at = { 45.90, 58.73 } },
         },
