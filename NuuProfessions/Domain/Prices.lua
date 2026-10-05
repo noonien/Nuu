@@ -82,8 +82,9 @@ end
 
 -- The auction source --------------------------------------------------------
 
--- `fn(itemID) -> copper, ageDays` answers an item's auction price (per item)
--- and how many days ago it was seen, or nil. `available()`, when given, says
+-- `fn(itemID) -> copper, ageDays, scannedAt` answers an item's auction price
+-- (per item), how many days ago it was seen, and when it was scanned
+-- (time()) if known, or nil. `available()`, when given, says
 -- whether the source is there at all (Auctionator installed with its API),
 -- which the planner uses to suggest visiting the auction house. nil removes
 -- the source.
@@ -99,14 +100,15 @@ function Prices:AuctionSourceAvailable()
     return ok and present == true
 end
 
--- The source's price for one item and its age in days, or nil. A failing or
--- odd answer is no answer.
+-- The source's price for one item, its age in days, and when it was scanned
+-- (time()) when the source knows; nil for no price. A failing or odd answer
+-- is no answer.
 function Prices:AuctionPrice(itemID)
     local source = self.auctionSource
     if not source then return nil end
-    local ok, price, age = pcall(source, itemID)
+    local ok, price, age, at = pcall(source, itemID)
     if not ok or type(price) ~= "number" or price <= 0 then return nil end
-    return price, type(age) == "number" and age or nil
+    return price, type(age) == "number" and age or nil, type(at) == "number" and at or nil
 end
 
 -- The book ------------------------------------------------------------------
@@ -278,8 +280,8 @@ function Prices:Fact(book, data, itemID, fact, noAuctionator)
         if gold then return gold, "merchant", seen, npc end
     end
     if (fact == "auctionBuy" or fact == "auctionSell") and not noAuctionator then
-        local price, age = self:AuctionPrice(itemID)
-        if price then return price, "auctionator", nil, nil, age end
+        local price, age, at = self:AuctionPrice(itemID)
+        if price then return price, "auctionator", at, nil, age end
     end
     if stored then return stored.value, stored.source, stored.seen end
     local item = data and data.items and data.items[itemID]

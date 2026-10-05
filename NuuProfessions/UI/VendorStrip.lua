@@ -18,7 +18,6 @@ local BUY_WIDTH = 44
 local function Client() return ns.modules.Client end
 local function List() return ns.modules.ShoppingList end
 local function Buying() return ns.modules.MerchantBuying end
-local function Planner() return ns.modules.PlannerPanel end
 
 local function after(seconds, callback)
     local timer = rawget(_G, "C_Timer")
@@ -48,7 +47,7 @@ function Strip:Wanted()
                     found.missing = found.missing + missing
                 else
                     found = { itemID = item.itemID, offer = offer, missing = missing,
-                        name = Planner() and Planner():ItemName(item.itemID) or ("item " .. item.itemID) }
+                        name = ns.Kit.Items:Name(item.itemID) }
                     byItem[item.itemID] = found
                     table.insert(wanted, found)
                 end
@@ -118,7 +117,15 @@ function Strip:Fit()
     win:SetHeight(math.ceil(height))
 end
 
+-- Drawn under the kit's Track: a name the client did not have yet shows as
+-- "Item <id>", and the strip draws again once the names are in.
+local function draw() Strip:Draw() end
+
 function Strip:Refresh()
+    ns.Kit.Items:Track(draw)
+end
+
+function Strip:Draw()
     local merchant = rawget(_G, "MerchantFrame")
     local profession, wanted = self:Wanted()
     self.wanted = wanted

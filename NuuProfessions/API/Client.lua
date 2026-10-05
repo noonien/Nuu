@@ -75,6 +75,7 @@ function Client:Initialize()
         Prices:SetAuctionSource(function(itemID) return self:GetAuctionatorPrice(itemID) end,
             function() return self:GetAuctionatorAPI() ~= nil end)
     end
+    self:WatchAuctionatorScans()
 end
 
 -- Where the player is --------------------------------------------------------
@@ -1636,11 +1637,11 @@ end
 -- Auctionator ---------------------------------------------------------------------
 --
 -- Auction prices come from Auctionator when it is installed, through its
--- public API only (`Auctionator.API.v1`), never its internals or saved data.
--- Its price database is not restored on this beta either, so it answers only
--- for what the player saw at the auction house with it this session. It has
--- no callback for new prices; an auction house visit bumps the book's
--- revision instead (the events below), so the planner replans after one.
+-- public API (`Auctionator.API.v1`), never its saved data. The one exception
+-- is a hook on its database's SetPrice, for the time of each scan, which its
+-- API does not give (WatchAuctionatorScans). It has no callback for new
+-- prices; an auction house visit bumps the book's revision instead (the
+-- events below), so the planner replans after one.
 
 local AUCTIONATOR_CALLER = "NuuProfessions"
 
@@ -1652,9 +1653,87 @@ function Client:GetAuctionatorAPI()
     return api
 end
 
+-- When Auctionator last scanned each item, to the second, for the planner's
+-- "Auction scan 1h ago"; its database keeps only the day. Kept in the price
+-- book per realm, as Auctionator's prices are (`book.auctionScans[realm][itemID]
+-- = time()`), and forgotten after SCAN_DAYS. Every price it writes, from a
+-- full scan or a search, goes through its database's SetPrice(dbKey, ...),
+-- dbKey the item ID as a string for most items. That is Auctionator's inside,
+-- not its API, so it is looked for: without it, only the days. The mixin is
+-- hooked for a database made later (Auctionator makes it at PLAYER_LOGIN,
+-- and again on some slash commands), and the one there now, when it does not
+-- already have the hooked method.
+local SCAN_DAYS = 30
+
+function Client:AuctionScans()
+    local book = ns.db and ns.db.professions
+    if type(book) ~= "table" then return nil end
+    local realm = self:Read(global("GetRealmName")) or "?"
+    book.auctionScans = book.auctionScans or {}
+    book.auctionScans[realm] = book.auctionScans[realm] or {}
+    return book.auctionScans[realm]
+end
+
+function Client:WatchAuctionatorScans()
+    local auctionator = global("Auctionator")
+    local hook = global("hooksecurefunc")
+    local mixin = type(auctionator) == "table" and auctionator.DatabaseMixin
+    if self.auctionScansWatched or type(hook) ~= "function" or type(mixin) ~= "table"
+        or type(mixin.SetPrice) ~= "function" then return false end
+    local clock = global("time")
+    local scans = self:AuctionScans()
+    if scans and type(clock) == "function" then
+        local cutoff = clock() - SCAN_DAYS * 86400
+        for itemID, at in pairs(scans) do
+            if type(at) ~= "number" or at < cutoff then scans[itemID] = nil end
+        end
+    end
+    local function scanned(_, dbKey)
+        local itemID, now, store = tonumber(dbKey), global("time"), self:AuctionScans()
+        if itemID and store and type(now) == "function" then store[itemID] = now() end
+    end
+    if not pcall(hook, mixin, "SetPrice", scanned) then return false end
+    local database = auctionator.Database
+    if type(database) == "table" and type(database.SetPrice) == "function" and database.SetPrice ~= mixin.SetPrice then
+        pcall(hook, database, "SetPrice", scanned)
+    end
+    self.auctionScansWatched = true
+    return true
+end
+
+-- Auctionator's scan day for a time: whole days since its day zero, local
+-- midnight on 2020-01-01 (Auctionator.Constants.SCAN_DAY_0).
+local function scanDay(at)
+    local auctionator = global("Auctionator")
+    local constants = type(auctionator) == "table" and auctionator.Constants
+    local zero = type(constants) == "table" and tonumber(constants.SCAN_DAY_0)
+    local clock = global("time")
+    if not zero and type(clock) == "function" then
+        local ok, value = pcall(clock, { year = 2020, month = 1, day = 1, hour = 0 })
+        zero = ok and value or nil
+    end
+    return zero and math.floor((at - zero) / 86400) or nil
+end
+
+-- When the item's price was scanned (time()), from WatchAuctionatorScans,
+-- while that agrees with Auctionator's age in days: a scan this addon did
+-- not see (it was off) leaves a time older than the price, which is dropped.
+function Client:AuctionScannedAt(itemID, age)
+    local scans = self:AuctionScans()
+    local at = scans and scans[itemID]
+    local clock = global("time")
+    if type(at) ~= "number" or type(clock) ~= "function" then return nil end
+    if age ~= nil then
+        local now, then_ = scanDay(clock()), scanDay(at)
+        if not now or not then_ or now - then_ ~= age then return nil end
+    end
+    return at
+end
+
 -- Auctionator's price for one item (copper, the lowest buyout per item it
--- saw) and its age in days (nil past 21 days or when it will not say). nil
--- when Auctionator or its API is missing, or it has no price.
+-- saw), its age in days (nil past 21 days or when it will not say), and
+-- when it was scanned (time(), AuctionScannedAt) when known. nil when
+-- Auctionator or its API is missing, or it has no price.
 function Client:GetAuctionatorPrice(itemID)
     itemID = tonumber(itemID)
     local api = itemID and self:GetAuctionatorAPI()
@@ -1667,7 +1746,7 @@ function Client:GetAuctionatorPrice(itemID)
         local okAge, days = pcall(api.GetAuctionAgeByItemID, AUCTIONATOR_CALLER, itemID)
         age = okAge and plainNumber(days) or nil
     end
-    return price, age
+    return price, age, self:AuctionScannedAt(itemID, age)
 end
 
 -- Events --------------------------------------------------------------------------

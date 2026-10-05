@@ -679,6 +679,73 @@ Panel:SelectProfession("Leatherworking")
 settle()
 noErrors("look and professions")
 
+-- Auction prices three days old hold the route: no steps, no figures, the
+-- shopping list put away, and Plan anyway under the reason. Planned anyway,
+-- the steps are back; fresh prices forget the choice.
+do
+    local Prices = ns.modules.Prices
+    local source, available = Prices.auctionSource, Prices.auctionAvailable
+    Prices:SetAuctionSource(function() return 25, 3 end, function() return true end)
+    Panel:ShowTab("plan")
+    Panel:Replan("auction")
+    Panel:Render()
+    settle()
+    check(Panel.route.status.kind == "stale", "old prices hold the route: " .. tostring(Panel.route.status.kind))
+    check(#Plan.list:GetView() == 0 and Plan.list:GetState() == "empty", "no steps while held")
+    local overlay = (Plan.list.kitInner or Plan.list).kitStateFrame
+    check(overlay and overlay.message:GetText():find("days old", 1, true) and overlay.action and overlay.action:IsShown(),
+        "the reason, with Plan anyway under it")
+    check(Plan.figures.net:GetText() == "-" and not Plan.note:IsShown(), "no figures, no note")
+    check(Shopping:Record(false).lists.Leatherworking == nil, "nothing to buy while held")
+    overlay.action:Click()
+    settle()
+    check(Panel.route.status.kind ~= "stale" and Panel.route.staleAuction.accepted, "planned anyway")
+    check(#Plan.list:GetView() > 0 and Shopping:Record(false).lists.Leatherworking ~= nil, "the steps and the list are back")
+    Prices:SetAuctionSource(function() return 25, 0 end, function() return true end)
+    Panel:Replan("auction")
+    settle()
+    check(not Panel.route.staleAuction and Panel.staleAccepted == nil, "fresh prices forget plan anyway")
+    Prices:SetAuctionSource(source, available)
+    Panel:Replan("auction")
+    Panel:Render()
+    settle()
+    noErrors("old auction prices")
+end
+
+-- How long ago: the largest unit and the one under it, never a zero.
+local Ago = Panel.Ago
+check(Ago(30) == "just now" and Ago(60) == "1m ago" and Ago(3600) == "1h ago" and Ago(3660) == "1h 1m ago",
+    "minutes and hours, no zero")
+check(Ago(3600 + 59) == "1h ago" and Ago(86400 * 2 + 3600 * 3 + 120) == "2d 3h ago" and Ago(86400) == "1d ago",
+    "two units at most")
+
+-- The strip's right: how long ago the newest auction price of the plan was
+-- scanned, to the minute this session, else to the day; none without one.
+do
+    local Prices = ns.modules.Prices
+    local source, available = Prices.auctionSource, Prices.auctionAvailable
+    local aside = function() local strip = Panel.win.statusStrip; return strip.aside:IsShown() and strip.aside:GetText() end
+    Panel:ShowTab("plan")
+    Panel:Replan("auction")
+    Panel:Render()
+    check(not aside(), "no auction prices: nothing at the right")
+    Prices:SetAuctionSource(function() return 25, 0 end, function() return true end)
+    Panel:Replan("auction")
+    Panel:Render()
+    check(aside() == "Auction scan <1d ago", "scanned today, before this session: " .. tostring(aside()))
+    _G.time = function() return 10000 end
+    Prices:SetAuctionSource(function() return 25, 0, 10000 - 3700 end, function() return true end)
+    Panel:Replan("auction")
+    Panel:Render()
+    check(aside() == "Auction scan 1h 1m ago", "its scan time known: " .. tostring(aside()))
+    Prices:SetAuctionSource(source, available)
+    _G.time = nil
+    Panel:Replan("auction")
+    Panel:Render()
+    settle()
+    noErrors("auction scan age")
+end
+
 -- Closing and opening again builds nothing twice.
 Panel.win:Hide()
 local objects = #frames.objects

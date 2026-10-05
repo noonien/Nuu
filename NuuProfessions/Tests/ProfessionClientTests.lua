@@ -395,6 +395,50 @@ assert(price == 45 and age == nil, "no age call: a price without an age")
 Auctionator = { API = {} }
 assert(Client:GetAuctionatorAPI() == nil, "an Auctionator without the v1 price call is not used")
 Auctionator = nil
+
+-- Scan times: every price Auctionator writes goes through its database's
+-- SetPrice, hooked on its mixin (for a database made later) and on the one
+-- there now; each item's time is kept in the price book, per realm, and
+-- handed out with its price while Auctionator's day count agrees.
+assert(Client:WatchAuctionatorScans() == false, "no Auctionator: nothing hooked")
+local written = {}
+local function setPrice(self, dbKey, price) written[#written + 1] = dbKey .. "=" .. price end
+hooksecurefunc = function(target, name, fn)
+    local original = target[name]
+    target[name] = function(...)
+        original(...)
+        fn(...)
+    end
+end
+GetRealmName = function() return "Classic Beta PvP" end
+local DAY = 86400
+local now = 100 * DAY + 3600
+time = function() return now end
+local ages = {}
+Auctionator = { DatabaseMixin = { SetPrice = setPrice }, Constants = { SCAN_DAY_0 = 0 }, API = { v1 = {
+    GetAuctionPriceByItemID = function() return 45 end,
+    GetAuctionAgeByItemID = function(_, itemID) return ages[itemID] end,
+} } }
+Auctionator.Database = { SetPrice = setPrice }
+ns.db.professions.auctionScans = { ["Classic Beta PvP"] = { [9] = now - 40 * DAY, [8] = now - DAY } }
+assert(Client:WatchAuctionatorScans() == true and Client:WatchAuctionatorScans() == false, "hooked once")
+local scans = ns.db.professions.auctionScans["Classic Beta PvP"]
+assert(scans[9] == nil and scans[8] == now - DAY, "times older than a month forgotten at login")
+Auctionator.Database:SetPrice("2318", 45)
+assert(written[1] == "2318=45" and scans[2318] == now, "the database there now: its price kept, its time noted")
+now = now + 60
+local later = {}
+for key, value in pairs(Auctionator.DatabaseMixin) do later[key] = value end
+later:SetPrice("2319", 30)
+later:SetPrice("g:2320:0", 30)
+assert(scans[2319] == now and #written == 3, "a database made later from the mixin too")
+ages[2318], ages[2319], ages[8] = 0, 0, 0
+assert(select(3, Client:GetAuctionatorPrice(2318)) == now - 60, "handed out with the price")
+assert(select(3, Client:GetAuctionatorPrice(8)) == nil, "a day older than Auctionator's own: a scan it did not see")
+ages[8] = 1
+assert(select(3, Client:GetAuctionatorPrice(8)) == now - 60 - DAY, "the same day as Auctionator's: kept")
+Auctionator, hooksecurefunc, time, GetRealmName = nil, nil, nil, nil
+ns.db.professions.auctionScans = nil
 local revision = ns.db.professions.revision or 0
 heardBefore = #heard
 Client:OnProfessionEvent("AUCTION_HOUSE_CLOSED")

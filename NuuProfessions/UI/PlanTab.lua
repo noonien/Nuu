@@ -290,10 +290,19 @@ end
 -- section headings, the recipes (with Learn when the recipe must be learned
 -- first), training, goals, and Make before the step an intermediate is made
 -- for. Read off Planner:Outline, so the order is the planner's own.
+-- A route on old auction prices (Planner:Status "stale") is held back: no
+-- steps and no figures until the auction house is scanned, or the player
+-- plans anyway.
+local function held(route)
+    return route ~= nil and route.status ~= nil and route.status.kind == "stale"
+end
+
+local function planAnywayClicked() Tab.panel:PlanAnyway() end
+
 function Tab:BuildItems(panel)
     local route = panel.route
     local items = {}
-    if not route then return items end
+    if not route or held(route) then return items end
     local input = panel.input or { profession = panel.profession, nameOf = panel.live and panel.live.nameOf }
     local outline = Planner():Outline(route, input)
     local learnOfRun, learnOfSpell = {}, {}
@@ -1308,6 +1317,11 @@ end
 -- the rest behind "and N more".
 function Tab:RenderNote(panel)
     local route = panel.route
+    if held(route) then
+        self.noteLead, self.noteRest, self.noteTail = nil, nil, nil
+        self.note:SetShown(false)
+        return
+    end
     local tail = tailOf(route)
     local rest = self:Warnings(panel, route)
     local lead
@@ -1402,7 +1416,7 @@ function Tab:RenderSummary(panel)
         figures[key]:SetText(text)
         figures[key]:SetColor(color ~= "text" and color or nil)
     end
-    if route and route.summary then
+    if route and route.summary and not held(route) then
         local summary = route.summary
         local estimated = (summary.estimated or 0) > 0
         local text, color = figure(panel, summary.spent, estimated)
@@ -1449,16 +1463,18 @@ function Tab:Render(panel)
     self:RenderSummary(panel)
 
     -- What the table says with no steps: why, in the planner's words.
-    local empty
+    local empty, action
     if not route then
         empty = panel.problem or "Nothing planned yet."
+    elseif held(route) then
+        empty, action = route.status.text, { caption = "Plan anyway", onClick = planAnywayClicked }
     elseif #(route.runs or {}) == 0 and not route.gap then
         local status = route.status or {}
         empty = status.kind == "done" and "Nothing to do: you are at the target."
             or (status.text ~= "" and status.text) or "No steps."
     end
     if empty and #items == 0 then
-        self.list:SetState("empty", empty)
+        self.list:SetState("empty", empty, action and { action = action } or nil)
     else
         self.list:SetState(nil)
     end

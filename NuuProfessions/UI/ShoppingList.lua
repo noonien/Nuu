@@ -390,7 +390,7 @@ end
 -- An item's name, and its price after it: "Coarse Thread | 10c" from a
 -- vendor, "Linen Cloth | 15c @ AH" at the auction house.
 local function nameOf(item)
-    local name = Planner() and Planner():ItemName(item.itemID) or ("item " .. item.itemID)
+    local name = ns.Kit.Items:Name(item.itemID)
     if not item.each then return name end
     local guess = (item.estimated or item.source == "estimate") and "~" or ""
     local price
@@ -404,7 +404,15 @@ local function nameOf(item)
     return name .. " " .. (Planner() and Planner():Tint("|| " .. price, "muted") or ("|| " .. price))
 end
 
+-- Drawn under the kit's Track: a name the client did not have yet shows as
+-- "Item <id>", and the list draws again once the names are in.
+local function draw() List:Draw() end
+
 function List:Refresh()
+    ns.Kit.Items:Track(draw)
+end
+
+function List:Draw()
     if self.onRefresh then pcall(self.onRefresh) end
     if not self.frame then return end
     local record = self:Record(false)
@@ -530,15 +538,22 @@ end
 
 function List:Initialize()
     local record = self:Record(false)
+    -- The kept lists' items, asked for before the list is first drawn: it can
+    -- be up at login, before the planner has planned anything.
+    local ids = {}
+    for _, list in pairs(record and record.lists or {}) do
+        for _, section in ipairs(list.sections or {}) do
+            for _, item in ipairs(section.items or {}) do ids[#ids + 1] = item.itemID end
+        end
+    end
+    ns.Kit.Items:Preload(ids)
     if record and record.shown then
         self:Create()
         self:Refresh()
     end
     if type(CreateFrame) ~= "function" then return end
     local frame = CreateFrame("Frame")
-    for _, event in ipairs({ "SKILL_LINES_CHANGED", "GET_ITEM_INFO_RECEIVED" }) do
-        pcall(frame.RegisterEvent, frame, event)
-    end
+    pcall(frame.RegisterEvent, frame, "SKILL_LINES_CHANGED")
     local delayed = pcall(frame.RegisterEvent, frame, "BAG_UPDATE_DELAYED")
     if not delayed then pcall(frame.RegisterEvent, frame, "BAG_UPDATE") end
     frame:SetScript("OnEvent", function() self:Changed() end)

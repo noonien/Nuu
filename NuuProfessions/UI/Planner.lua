@@ -190,21 +190,16 @@ end
 
 -- Names ------------------------------------------------------------------------
 
--- Item names come from the client's cache; one that is not there yet is asked
--- for, and the window draws again when GET_ITEM_INFO_RECEIVED says it came.
+-- Item names are the kit's (Kit.Items:Name): "Item 2318" until the client has
+-- the name, and the window, drawn under Kit.Items:Track (Panel:Render), draws
+-- again once it came.
 local function itemName(id)
     if not id then return nil end
-    local api = Client()
-    local name = api and api:GetItemName(id)
-    if not name then
-        if api then api:RequestItemData(id) end
-        Panel.waitingForItems = true
-    end
-    return name
+    return ns.Kit.Items:Name(id)
 end
 
--- The planner's own lookup: nil while a name is unknown, so the Domain can
--- say something else.
+-- The planner's own lookup, for the Domain: a spell's name or nil, an item's
+-- name or its stand-in.
 local function nameOf(kind, id)
     if kind == "spell" then return Client():GetSpellName(id) end
     if kind == "item" then return itemName(id) end
@@ -212,9 +207,9 @@ local function nameOf(kind, id)
 end
 Panel.NameOf = nameOf
 
--- Never nil: "item 2318" until the client knows the name.
+-- Never nil: "Item 2318" until the client knows the name.
 function Panel:ItemName(itemID)
-    return itemName(itemID) or ("item " .. tostring(itemID))
+    return ns.Kit.Items:Name(itemID)
 end
 
 function Panel:RecipeName(spell)
@@ -368,6 +363,18 @@ function Panel:TellTabs(method, except)
 end
 
 -- Planning ---------------------------------------------------------------------------
+
+-- A profession's items, asked of the server once a session if the client has
+-- not loaded them: the plan names them in sentences it makes before anything
+-- is drawn (its status, its warnings), which a redraw would not change.
+local preloaded = setmetatable({}, { __mode = "k" })
+local function preload(data)
+    if type(data) ~= "table" or preloaded[data] then return end
+    preloaded[data] = true
+    local ids = {}
+    for itemID in pairs(data.items or {}) do ids[#ids + 1] = itemID end
+    ns.Kit.Items:Preload(ids)
+end
 
 function Panel:LoadProfession(profession)
     self.profession = profession
@@ -548,6 +555,7 @@ function Panel:Replan(reason, triggers)
     self.ownReason, self.ownEntry = nil, nil
     if not profession then return end
     self.data = self:Data(profession)
+    preload(self.data)
     self.problem = nil
     local live = self:Live(profession)
     self.live = live
@@ -567,6 +575,8 @@ function Panel:Replan(reason, triggers)
     -- input.committed): not saved, a /reload finds it again from the bags.
     local committed = self.committed
     input.committed = committed and committed.profession == profession and committed.spell or nil
+    -- Planning on old auction prices, once the player said so (PlanAnyway).
+    input.acceptStale = self.staleAccepted == profession or nil
     -- The status sentence names items and recipes with the window's names.
     input.nameOf = input.nameOf or nameOf
     -- The full-scope set, for the note on a route that stops short: which
@@ -590,6 +600,11 @@ function Panel:Replan(reason, triggers)
     end
     self.route = route
     self.committed = route.committed and { profession = profession, spell = route.committed } or nil
+    -- Fresh prices again: the next old ones hold the route again.
+    if not route.staleAuction and self.staleAccepted == profession then self.staleAccepted = nil end
+    -- A route on old auction prices is held back (Planner:Status "stale"):
+    -- nothing of it reaches the shopping list or the trainer strip.
+    local held = route.status and route.status.kind == "stale"
     local split, sections = pcall(Planner().Sections, Planner(), route, self:SplitInput())
     self.sections = split and sections or {}
     if not split then ns:Log("planner: sections failed: " .. tostring(sections)) end
@@ -601,12 +616,12 @@ function Panel:Replan(reason, triggers)
     -- The shopping list keeps what this plan buys, to show with the window shut.
     local list = ns.modules.ShoppingList
     if list then
-        local kept, err = pcall(list.Keep, list, profession, route, self.sections)
+        local kept, err = pcall(list.Keep, list, profession, route, not held and self.sections or {})
         if not kept then report(err) end
     end
     -- And what it learns at a trainer, for the strip under the trainer's window.
     local training = ns.modules.TrainerTraining
-    if training then
+    if training and not held then
         local kept, err = pcall(training.Keep, training, profession, route, self.data)
         if not kept then report(err) end
     end
@@ -814,6 +829,16 @@ function Panel:ActOnLoss(loss)
     end
 end
 
+-- The held route's "Plan anyway": plans this profession on the old auction
+-- prices, until they are fresh again.
+function Panel:PlanAnyway()
+    if not self.profession then return end
+    self:Trace("plan-anyway", { days = self.route and self.route.staleAuction and self.route.staleAuction.days })
+    self.staleAccepted = self.profession
+    self:Replan("stale")
+    self:Render()
+end
+
 -- A price context with the planner's options; `everySale` values every
 -- output as sold, to say what one would fetch. It makes an item with the
 -- recipes the route may use, as the plan does.
@@ -960,16 +985,65 @@ local function undoStatus()
     Panel:PaintStatus()
 end
 
--- With nothing to say, the strip shows the open tab's hint, muted.
+-- How long ago, in the largest unit and the one under it, a zero left out:
+-- "2d 3h ago", "1h ago", "45m ago"; "just now" under a minute.
+local AGO_UNITS = { { 86400, "d" }, { 3600, "h" }, { 60, "m" } }
+local function ago(seconds)
+    for index, unit in ipairs(AGO_UNITS) do
+        if seconds >= unit[1] then
+            local text = math.floor(seconds / unit[1]) .. unit[2]
+            local below = AGO_UNITS[index + 1]
+            local rest = below and math.floor((seconds % unit[1]) / below[1]) or 0
+            if rest > 0 then text = text .. " " .. rest .. below[2] end
+            return text .. " ago"
+        end
+    end
+    return "just now"
+end
+Panel.Ago = ago
+
+-- The strip's right: how long ago the newest auction price the plan uses
+-- was scanned (Planner:Plan's route.auctionNewest), to the minute when this
+-- addon saw the scan, else to the day, which is all Auctionator keeps; in the
+-- warning colour once older than the planner holds a route for. nil when the
+-- plan uses no auction price.
+function Panel:AuctionAside()
+    local route = self.route
+    local newest = route and route.auctionNewest
+    if not newest then return nil end
+    local now = rawget(_G, "time")
+    local when
+    if newest.at and type(now) == "function" then
+        when = ago(math.max(now() - newest.at, 0))
+    elseif newest.days then
+        when = newest.days == 0 and "<1d ago" or (newest.days .. "d ago")
+    else
+        return nil
+    end
+    local count = route.summary and route.summary.auctionator or 0
+    local tooltip = self:ItemName(newest.item) .. " was scanned " .. when .. ", the newest of the " .. count
+        .. " auction price" .. (count == 1 and "" or "s") .. " this plan uses."
+    if not newest.at then
+        tooltip = tooltip .. " Auctionator keeps only the day of a scan NuuProfessions did not see."
+    end
+    tooltip = tooltip .. " Scan the auction house with Auctionator to update them."
+    local old = newest.days and newest.days > Planner().auctionMaxAge
+    return { text = "Auction scan " .. when, tone = old and "warning" or "muted", tooltip = tooltip }
+end
+
+-- With nothing to say, the strip shows the open tab's hint, muted; at its
+-- right, how old the plan's auction prices are (AuctionAside).
 function Panel:PaintStatus()
     local win = self.win
     if not win then return end
+    local aside = self:AuctionAside()
     local text = self.statusText
     if text and text ~= "" then
         local opts = self.statusOpts or {}
         self.statusOpts = opts
         opts.tone = self.statusError and "danger" or "text"
         opts.undo = self.statusUndo and undoStatus or nil
+        opts.aside = aside
         win:Status(text, opts)
         return
     end
@@ -979,7 +1053,7 @@ function Panel:PaintStatus()
         local ok, said = pcall(hint, tab.module, self)
         hint = ok and said or nil
     end
-    win:Status(type(hint) == "string" and hint ~= "" and hint or nil)
+    win:Status(type(hint) == "string" and hint ~= "" and hint or nil, aside and { aside = aside } or nil)
 end
 
 -- Opening and switching ----------------------------------------------------------------------
@@ -1073,10 +1147,17 @@ function Panel:RenderHeader()
     self.standing:SetText(table.concat(words, ", "))
 end
 
--- Draws the band, the status and the open tab.
+-- Draws the band, the status and the open tab, under the kit's Track: a name
+-- the client did not have yet shows as "Item <id>", and the window draws
+-- again once the names are in.
+local function draw() Panel:Draw() end
+
 function Panel:Render()
+    ns.Kit.Items:Track(draw)
+end
+
+function Panel:Draw()
     if not self.win or not self.win:IsShown() then return end
-    self.waitingForItems = false
     self.drawnLive = livePrint(self.live)
     self:RenderHeader()
     self:PaintStatus()
@@ -1372,11 +1453,6 @@ function Panel:OnEvent(event, ...)
         self:ScheduleCheck("skill")
     elseif event == "BAG_UPDATE_DELAYED" or event == "BAG_UPDATE" then
         self:BagsChanged()
-    elseif event == "GET_ITEM_INFO_RECEIVED" then
-        if self.waitingForItems and self:IsOpen() and not self.renderPending then
-            self.renderPending = true
-            after(0.3, function() self.renderPending = false; self:Render() end)
-        end
     elseif event == "TRADE_SKILL_SHOW" or event == "CRAFT_SHOW" then
         self:AttachWindowButtons()
         after(0.1, function() self:AttachWindowButtons() end)
@@ -1414,7 +1490,7 @@ end
 function Panel:Initialize()
     if type(CreateFrame) ~= "function" then return end
     local frame = CreateFrame("Frame")
-    for _, event in ipairs({ "SKILL_LINES_CHANGED", "GET_ITEM_INFO_RECEIVED", "TRADE_SKILL_SHOW", "CRAFT_SHOW", "ADDON_LOADED" }) do
+    for _, event in ipairs({ "SKILL_LINES_CHANGED", "TRADE_SKILL_SHOW", "CRAFT_SHOW", "ADDON_LOADED" }) do
         pcall(frame.RegisterEvent, frame, event)
     end
     -- One event after a burst of bag changes where the client has it; each

@@ -52,8 +52,16 @@ function View:Fit()
     win:SetHeight(math.ceil(math.min(MAX_HEIGHT, (tall or 0) + band + strip + 2 * inset)))
 end
 
--- Draws the history of the planner's profession again.
+-- Draws the history of the planner's profession again, under the kit's
+-- Track: a name the client did not have yet shows as "Item <id>", and the
+-- history draws again once the names are in.
+local function draw() View:Draw() end
+
 function View:Refresh()
+    ns.Kit.Items:Track(draw)
+end
+
+function View:Draw()
     if not self.frame or not self.frame:IsShown() then return end
     local panel = Planner()
     local profession = panel and panel.profession

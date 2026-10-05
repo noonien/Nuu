@@ -326,6 +326,7 @@ local REASON_WORDS = {
     auction = "after the auction house", trainer = "after a trainer", merchant = "after a vendor",
     open = "when the planner opened", profession = "when the profession was picked", skill = "after a skill-up",
     bags = "after your bags changed", crafted = "after a craft", tradeskill = "after the profession window",
+    stale = "on old auction prices, as you asked",
 }
 
 local SOURCE_WORDS = { ah = " at the auction house", vendor = " at a vendor", estimate = " (guessed)" }
