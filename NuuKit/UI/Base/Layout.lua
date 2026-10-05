@@ -416,6 +416,52 @@ Holder.Relayout = Stack.Relayout
 Holder.GetChildren = Stack.GetChildren
 Holder.Order = Stack.Order
 
+-- The least width: the narrowest a widget can be laid out with nothing in it
+-- cut or pushed past its edge, what a window's least size is made from
+-- (Chrome/Window.lua). Worked out when asked, from the natural widths the
+-- pass keeps. A row needs each fixed child at its natural width and each
+-- growing one at its minWidth (more, if it holds a stack that needs more:
+-- a growing leaf, as text, is cut short instead); a column needs what its
+-- widest child needs. A type with a need of its own answers LeastWidth.
+local function holds(w) return w.kitChildren ~= nil or (w.kitInner ~= nil and w.kitInner ~= w) end
+
+local function leastOf(child)
+    return child.kitLayout.width or (child.LeastWidth and child:LeastWidth()) or child:NaturalWidth()
+end
+
+function UI.Widget:LeastWidth()
+    local fixed = self.kitLayout.width
+    if fixed then return fixed end
+    local children, axis = self.kitChildren, self.kitAxis
+    if children and axis then
+        local p = self.kitPadding or 0
+        local need, count = (self.kitPadLeft or p) + (self.kitPadRight or p), 0
+        local widest = 0
+        for index = 1, #children do
+            local child = children[index]
+            if child:IsShown() then
+                count = count + 1
+                if axis == "column" then
+                    widest = math.max(widest, leastOf(child))
+                elseif child.kitGrow then
+                    local least = child.kitLayout.minWidth or 0
+                    if holds(child) then least = math.max(least, leastOf(child)) end
+                    need = need + least
+                else
+                    need = need + math.max(child:NaturalWidth(), leastOf(child))
+                end
+            end
+        end
+        if axis == "row" then return need + math.max(0, count - 1) * self.kitGap end
+        return need + widest
+    end
+    local inner = self.kitInner
+    if inner and inner ~= self then
+        return math.max(0, self:NaturalWidth() - inner:NaturalWidth()) + inner:LeastWidth()
+    end
+    return self:NaturalWidth()
+end
+
 -- The room a state message takes.
 local function statePad(self, height)
     if self.kitState then return math.max(height, self.kitStateHeight or 90) end

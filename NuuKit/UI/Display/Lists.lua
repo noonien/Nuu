@@ -56,6 +56,8 @@ UI.Define("ScrollArea", {
     methods = {
         -- As wide as it is given; as tall as asked, whatever it holds.
         Measure = function(self) return 0, self.kitLayout.minHeight or 100 end,
+        -- What its content needs, and the bar's room beside it.
+        LeastWidth = function(self) return self.kitInner:LeastWidth() + UI.SCROLLBAR end,
         Sized = function(self, width) fitContent(self, width) end,
         ScrollTo = function(self, y) self.scroll:ScrollTo(y) end,
         ScrollToTop = function(self) self.scroll:ScrollToTop() end,

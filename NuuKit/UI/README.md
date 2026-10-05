@@ -48,6 +48,9 @@ UI.Define("Tag", {
 - **Sizes.** `Measure(width)` answers the natural width and height (the height for `width` when the type sets
   `wraps = true`). When something may change the natural size, call `self:Changed()`, never the layout directly.
   `Sized(w, h)` is called when the layout gives the widget a new size; lay out its parts there if anchors cannot.
+  `LeastWidth()` (worked out when asked, from the natural widths) is the narrowest it fits in with nothing cut or
+  pushed out; a resizable window holds to it. A type that can take less than its natural width (wrapped text) or
+  needs more than its parts say (a scroll area's bar) answers its own.
 - **Sub-parts** a widget is built from (a section's reset link, a field's glyph button) are made with
   `UI.Make(ui, "Link", parent, spec)` in Build (or lazily in Init) and belong to the widget for good; a part placed by
   hand is sized with `UI.Fit(part)`. A widget that holds a stack for the addon's widgets sets `holds = true` and

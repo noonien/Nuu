@@ -357,6 +357,33 @@ panel.title.SetFont = nil
 local panelHeight = panel:GetHeight()
 drag(panel.grip, 300, 300, 340, 200)
 assertTrue(panel:GetWidth() == 380 and panel:GetHeight() == panelHeight, "a width grip sizes the width only")
+
+-- A window no narrower than its content: shown narrower, it widens; the grip
+-- holds to it.
+do
+    local snug = ui:Window({ key = "snug", title = "Snug", width = 300, height = 200, resizable = true,
+        minWidth = 100, hidden = true })
+    snug.header:Button{ "Changes" }
+    local page = snug:Column{ padding = 12 }
+    local bar = page:Row{ gap = 6 }
+    bar:Button{ "Open leatherworking", width = 400 }
+    bar:Text{ "a note cut short where the row ends", grow = true }
+    local least = snug:LeastWidth()
+    assertTrue(least == 400 + 6 + 2 * 12 + 2, "a row's fixed parts and the padding round them: " .. least)
+    page:Text{ "words that wrap take the width they are given, however long they run", wrap = true }
+    assertTrue(snug:LeastWidth() == least, "wrapped words need no width of their own")
+    snug:Show()
+    layout()
+    assertTrue(snug:GetWidth() == least, "shown narrower, it widens to its content: " .. snug:GetWidth())
+    drag(snug.grip, 300, 300, -5000, 5000)
+    assertTrue(snug:GetWidth() == least and snug.kitBounds.minW == least, "the grip holds to it")
+    snug.header:Button{ "Wide", width = 600 }
+    least = snug:LeastWidth()
+    assertTrue(least > 600, "the band's controls count too: " .. least)
+    drag(snug.grip, 300, 300, -5000, 5000)
+    assertTrue(snug:GetWidth() == least, "measured again as a drag starts")
+    snug:Hide()
+end
 local bare = ui:Panel({ width = 200, height = 100 })
 assertTrue(not bare.band:IsShown() and bare.body.points[1][5] == -1, "no title, no fold: no band")
 bare:Hide()

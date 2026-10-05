@@ -9,8 +9,9 @@ local UI = Kit.UI
 -- where it was when the button went down plus how far the cursor has gone
 -- since, so no motion is lost and the point grabbed stays under the cursor.
 -- `mode`: "move", "size" (the right and bottom edges) or "width". `opts`:
--- can(frame) false refuses a drag, bounds { minW, minH, maxW, maxH },
--- onStop(frame) when let go. A window that grows upward (kitUpward) is held
+-- can(frame) false refuses a drag, onStart(frame) as it starts (bounds may
+-- change there), bounds { minW, minH, maxW, maxH }, onStop(frame) when let
+-- go. A window that grows upward (kitUpward) is held
 -- by its bottom-left corner instead, and "size" moves its top edge.
 
 local function cursor(frame)
@@ -61,6 +62,7 @@ local function grab(handle, button)
     if button ~= "LeftButton" or type(GetCursorPosition) ~= "function" then return end
     local opts, frame = driver.kitOpts, driver.kitFrame
     if opts.can and not opts.can(frame) then return end
+    if opts.onStart then opts.onStart(frame) end
     local left, top, bottom = frame:GetLeft(), frame:GetTop(), frame:GetBottom()
     if not left or not top or not bottom then return end
     local x, y = cursor(frame)

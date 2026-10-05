@@ -84,6 +84,11 @@ UI.Define("Text", {
             if height <= 0 then height = (self.ui.tokens.sizes[self.kitStyle] or 11) + 2 end
             return natural, math.ceil(height)
         end,
+        -- Wrapped, it takes the width it is given.
+        LeastWidth = function(self)
+            if self.kitWrap and not self.kitLayout.width then return 0 end
+            return self:NaturalWidth()
+        end,
         Paint = function(self, t)
             UI.ApplyStyle(self, self.kitStyle, t, self.kitColor)
         end,

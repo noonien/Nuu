@@ -65,16 +65,26 @@ local function save(win)
     place[key] = entry
 end
 
+local function applyBounds(win)
+    local b = win.kitBounds
+    if win.SetResizeBounds then
+        pcall(win.SetResizeBounds, win, b.minW, b.minH, b.maxW, b.maxH)
+    else
+        if win.SetMinResize then pcall(win.SetMinResize, win, b.minW, b.minH) end
+        if win.SetMaxResize then pcall(win.SetMaxResize, win, b.maxW, b.maxH) end
+    end
+end
+
 local function setBounds(win, opts)
     local minW, minH = opts.minWidth or 200, opts.minHeight or 120
     local maxW, maxH = opts.maxWidth or 2000, opts.maxHeight or 2000
-    win.kitBounds = { minW = minW, minH = minH, maxW = maxW, maxH = maxH }
-    if win.SetResizeBounds then
-        pcall(win.SetResizeBounds, win, minW, minH, maxW, maxH)
-    else
-        if win.SetMinResize then pcall(win.SetMinResize, win, minW, minH) end
-        if win.SetMaxResize then pcall(win.SetMaxResize, win, maxW, maxH) end
-    end
+    win.kitBounds = { minW = minW, minH = minH, maxW = maxW, maxH = maxH, least = minW }
+    applyBounds(win)
+end
+
+-- The room the band's title and subtitle take before the header.
+local function bandWords(win)
+    return 12 + UI.StringWidth(win.title) + 8 + UI.StringWidth(win.subtitle) + 8
 end
 
 -- Places the band, body and status strip inside the chrome's inset.
@@ -98,8 +108,7 @@ local function placeMarks(win)
     if header and header.kitFromRight then
         local inset = UI.Snap(win, win.kitInset or 1)
         local bandWidth = (win.kitPW or win:GetWidth() or 0) - 2 * inset
-        local words = 12 + UI.StringWidth(win.title) + 8 + UI.StringWidth(win.subtitle) + 8
-        local width = math.max(1, UI.Snap(win, bandWidth + header.kitFromRight - words))
+        local width = math.max(1, UI.Snap(win, bandWidth + header.kitFromRight - bandWords(win)))
         header:ClearAllPoints()
         header:SetPoint("TOPRIGHT", band, "TOPRIGHT", UI.Snap(win, header.kitFromRight), 0)
         header:SetSize(width, UI.Snap(win, BAND))
@@ -301,10 +310,40 @@ local function undoClicked(link)
     if undo then undo() end
 end
 
+-- The least the player can size it to: the addon's minWidth, or what its
+-- content needs (Window:LeastWidth) if more, though never past its maxWidth
+-- or the screen. A window narrower than that is widened to it.
+local function fitContent(win)
+    local b = win.kitBounds
+    if not b then return end
+    local least = math.max(b.least, win:LeastWidth())
+    local screen = UIParent and UIParent:GetWidth() or 0
+    if screen > 0 then least = math.min(least, screen) end
+    least = math.min(UI.Snap(win, least), b.maxW)
+    if least ~= b.minW then
+        b.minW = least
+        applyBounds(win)
+    end
+    local expanded = win.kitCollapsed and win.kitExpandedWidth
+    if (expanded or win:GetWidth() or 0) < least then
+        if expanded then win.kitExpandedWidth = least else win:SetWidth(least) end
+        save(win)
+    end
+end
+
 local function windowShown(win)
     settle(win)
+    fitContent(win)
     -- Laid out now, so it never shows a frame late.
     UI.LayoutNow()
+    -- Again once the addon's own OnShow has filled it in.
+    if win.kitBounds and C_Timer and C_Timer.After and not win.kitFitWaiting then
+        win.kitFitWaiting = true
+        C_Timer.After(0, function()
+            win.kitFitWaiting = nil
+            if win:IsShown() then fitContent(win) end
+        end)
+    end
 end
 
 local function windowHidden(win)
@@ -481,6 +520,25 @@ end
 
 function Window:SetLocked(locked) self.kitLocked = locked and true or false end
 
+-- The narrowest it can be with nothing cut or pushed out: what its body
+-- needs (every tab's page, so the least is the same whichever is chosen)
+-- and what the band's words and header need. A resizable window holds to
+-- it (fitContent).
+function Window:LeastWidth()
+    local body = self.body
+    local least = body:LeastWidth()
+    if self.kitPages then
+        local p = body.kitPadding or 0
+        local sides = (body.kitPadLeft or p) + (body.kitPadRight or p)
+        for _, page in pairs(self.kitPages) do least = math.max(least, page:LeastWidth() + sides) end
+    end
+    local header = self.header
+    if header and header.kitFromRight then
+        least = math.max(least, bandWords(self) + header:LeastWidth() - header.kitFromRight)
+    end
+    return math.ceil(least + 2 * UI.Snap(self, self.kitInset or 1))
+end
+
 -- Tabs in the band ----------------------------------------------------------------------
 
 -- A window's tabs sit in its band after the title; their pages are columns
@@ -629,7 +687,8 @@ local function shell(ui, opts, inPlay)
         grip:SetSize(GRIP, GRIP)
         grip:SetFrameLevel(win:GetFrameLevel() + 20)
         grip.glyph = UI.NewGlyph(grip, "grip", 9, 1.3)
-        UI.DragFrame(grip, win, opts.resizable == "width" and "width" or "size", { bounds = win.kitBounds, onStop = save })
+        UI.DragFrame(grip, win, opts.resizable == "width" and "width" or "size",
+            { bounds = win.kitBounds, onStart = fitContent, onStop = save })
         UI.Hover(grip, win)
         win.grip = grip
     end
@@ -668,7 +727,8 @@ end
 -- Constructors ---------------------------------------------------------------------------
 
 -- Spec: title, subtitle, key and place (where it is kept), width, height,
--- point, parent, strata, resizable (true, or "width"), minWidth, minHeight,
+-- point, parent, strata, resizable (true, or "width"), minWidth (raised to
+-- what its content needs: Window:LeastWidth), minHeight,
 -- maxWidth, maxHeight, upward (held by its bottom left, band at the foot:
 -- see SetUpward), collapsible, onCollapse(collapsed, win) (the
 -- player's fold), close (false: no close mark; on a panel, true gives it
