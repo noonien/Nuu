@@ -1050,52 +1050,35 @@ route = plan(guessed, { target = 20, nameOf = guessName })
 assert(route.auctionator and route.summary.auctionator == 0 and route.status.kind == "estimated")
 assert(route.status.text:match("open the auction house with Auctionator to read real prices%.$"), route.status.text)
 Prices:SetAuctionSource(function(itemID) if itemID == 105 then return 25, 0 end end, function() return true end)
-route = plan(guessed, { target = 20, nameOf = guessName })
+route = plan(guessed, { target = 20, nameOf = guessName, auctionScanAge = 60 })
 assert(route.summary.auctionator == 1 and #route.estimated == 1 and route.estimated[1] == 106,
     "an item Auctionator prices is never estimated")
 assert(route.status.text:match("Check prices on the Materials tab%.$"), "Auctionator has spoken: no visit asked for")
 route = plan(guessed, { target = 20, options = { useAuctionator = false } })
 assert(not route.auctionator and route.summary.auctionator == 0 and #route.estimated == 2, "the option turns it off")
 
--- Old Auctionator prices hold the route, oldest first, until the player
--- plans anyway; yesterday's are fresh enough.
-local ages = { [105] = 2, [106] = 3 }
-Prices:SetAuctionSource(function(itemID) return 25, ages[itemID] end, function() return true end)
+-- A route on Auctionator's prices is held when the last full scan is over a
+-- day old, or there is none, until the player plans anyway.
+Prices:SetAuctionSource(function() return 25, 0 end, function() return true end)
 route = plan(guessed, { target = 20, nameOf = guessName })
-assert(route.staleAuction and route.staleAuction.days == 3 and route.staleAuction.items[1] == 106
-    and route.staleAuction.items[2] == 105 and not route.staleAuction.accepted, "both prices are old, the oldest first")
+assert(route.staleAuction and route.staleAuction.age == nil and route.status.kind == "stale" and route.status.text ==
+    "No full auction scan yet. Run a full scan with Auctionator, or plan anyway.", route.status.text)
+route = plan(guessed, { target = 20, nameOf = guessName, auctionScanAge = 2 * 86400 + 3 * 3600 })
 assert(route.status.kind == "stale" and route.status.text ==
-    "Auction prices are 3 days old (Medium Leather, Light Leather). Scan the auction house with Auctionator, or plan anyway.",
-    route.status.text)
+    "Last full auction scan 2d 3h ago. Run a full scan with Auctionator, or plan anyway.", route.status.text)
 assert(spells(route) == "1:1-20", "the route is still planned, for the window to hold: " .. spells(route))
-route = plan(guessed, { target = 20, nameOf = guessName, acceptStale = true })
+route = plan(guessed, { target = 20, nameOf = guessName, auctionScanAge = 2 * 86400, acceptStale = true })
 assert(route.staleAuction.accepted and route.status.kind == "ready", "planned anyway: " .. route.status.kind)
 local said
 for _, warning in ipairs(route.warnings) do if warning.code == "staleAuction" then said = warning.text end end
-assert(said and said:find("up to 3 days old", 1, true), "and a warning says so")
-ages = { [105] = 1, [106] = 0 }
-route = plan(guessed, { target = 20, nameOf = guessName })
-assert(not route.staleAuction and route.status.kind == "ready", "today's and yesterday's prices plan")
-ages = { [105] = 5 }
+assert(said == "Planned on a full auction scan from 2d ago: run a full scan with Auctionator for today's.", said)
+route = plan(guessed, { target = 20, nameOf = guessName, auctionScanAge = 86400 })
+assert(not route.staleAuction and route.status.kind == "ready", "a scan a day old plans")
+assert(Planner.Ago(30) == "just now" and Planner.Ago(3600) == "1h ago" and Planner.Ago(3660) == "1h 1m ago"
+    and Planner.Ago(3659) == "1h ago" and Planner.Ago(86400) == "1d ago", "how long ago, never a zero")
 route = plan(guessed, { target = 20, options = { auction = "none" } })
-assert(not route.staleAuction, "no auction house, no old auction prices")
+assert(not route.staleAuction, "no auction house: never held")
 
--- The newest auction price the route uses: the latest scan time where one
--- is known, over any day count, else the fewest days; none without Auctionator.
-local scanned = {}
-Prices:SetAuctionSource(function(itemID) return 25, ages[itemID], scanned[itemID] end, function() return true end)
-ages = { [105] = 2, [106] = 0 }
-route = plan(guessed, { target = 20 })
-assert(route.auctionNewest.item == 106 and route.auctionNewest.days == 0 and not route.auctionNewest.at,
-    "the fewest days old")
-scanned[105] = 7000
-route = plan(guessed, { target = 20 })
-assert(route.auctionNewest.item == 105 and route.auctionNewest.at == 7000 and route.auctionNewest.days == nil,
-    "a known scan time beats a day count")
-scanned[106] = 7200
-assert(plan(guessed, { target = 20 }).auctionNewest.item == 106, "the later scan")
-route = plan(guessed, { target = 20, options = { useAuctionator = false } })
-assert(route.auctionNewest == nil, "no Auctionator prices, no newest")
 Prices:SetAuctionSource(nil)
 route = plan(guessed, { target = 20 })
 assert(not route.auctionator and route.status.text:match("Check prices on the Materials tab%.$"), "no Auctionator: no mention of it")

@@ -576,6 +576,7 @@ function Panel:Replan(reason, triggers)
     local committed = self.committed
     input.committed = committed and committed.profession == profession and committed.spell or nil
     -- Planning on old auction prices, once the player said so (PlanAnyway).
+    input.auctionScanAge = self:AuctionScanAge()
     input.acceptStale = self.staleAccepted == profession or nil
     -- The status sentence names items and recipes with the window's names.
     input.nameOf = input.nameOf or nameOf
@@ -833,7 +834,7 @@ end
 -- prices, until they are fresh again.
 function Panel:PlanAnyway()
     if not self.profession then return end
-    self:Trace("plan-anyway", { days = self.route and self.route.staleAuction and self.route.staleAuction.days })
+    self:Trace("plan-anyway", { age = self.route and self.route.staleAuction and self.route.staleAuction.age })
     self.staleAccepted = self.profession
     self:Replan("stale")
     self:Render()
@@ -985,54 +986,31 @@ local function undoStatus()
     Panel:PaintStatus()
 end
 
--- How long ago, in the largest unit and the one under it, a zero left out:
--- "2d 3h ago", "1h ago", "45m ago"; "just now" under a minute.
-local AGO_UNITS = { { 86400, "d" }, { 3600, "h" }, { 60, "m" } }
-local function ago(seconds)
-    for index, unit in ipairs(AGO_UNITS) do
-        if seconds >= unit[1] then
-            local text = math.floor(seconds / unit[1]) .. unit[2]
-            local below = AGO_UNITS[index + 1]
-            local rest = below and math.floor((seconds % unit[1]) / below[1]) or 0
-            if rest > 0 then text = text .. " " .. rest .. below[2] end
-            return text .. " ago"
-        end
-    end
-    return "just now"
+-- Seconds since the last full Auctionator scan on this realm, or nil.
+function Panel:AuctionScanAge()
+    local at = Client():LastAuctionScan()
+    local now = rawget(_G, "time")
+    if not at or type(now) ~= "function" then return nil end
+    return math.max(now() - at, 0)
 end
-Panel.Ago = ago
 
--- The strip's right: how long ago the newest auction price the plan uses
--- was scanned (Planner:Plan's route.auctionNewest), to the minute when this
--- addon saw the scan, else to the day, which is all Auctionator keeps; in the
--- warning colour once older than the planner holds a route for. nil when the
--- plan uses no auction price.
+-- The strip's right, while the plan uses Auctionator's prices: how long ago
+-- the last full scan with it was, in the warning colour once the planner
+-- holds a route for it (Planner.auctionMaxAge).
 function Panel:AuctionAside()
     local route = self.route
-    local newest = route and route.auctionNewest
-    if not newest then return nil end
-    local now = rawget(_G, "time")
-    local when
-    if newest.at and type(now) == "function" then
-        when = ago(math.max(now() - newest.at, 0))
-    elseif newest.days then
-        when = newest.days == 0 and "<1d ago" or (newest.days .. "d ago")
-    else
-        return nil
-    end
-    local count = route.summary and route.summary.auctionator or 0
-    local tooltip = self:ItemName(newest.item) .. " was scanned " .. when .. ", the newest of the " .. count
-        .. " auction price" .. (count == 1 and "" or "s") .. " this plan uses."
-    if not newest.at then
-        tooltip = tooltip .. " Auctionator keeps only the day of a scan NuuProfessions did not see."
-    end
-    tooltip = tooltip .. " Scan the auction house with Auctionator to update them."
-    local old = newest.days and newest.days > Planner().auctionMaxAge
-    return { text = "Auction scan " .. when, tone = old and "warning" or "muted", tooltip = tooltip }
+    if not (route and route.summary and (route.summary.auctionator or 0) > 0) then return nil end
+    local age = self:AuctionScanAge()
+    local text = age and ("Auction scan " .. Planner().Ago(age)) or "No auction scan yet"
+    local old = age == nil or age > Planner().auctionMaxAge
+    return { text = text, tone = old and "warning" or "muted",
+        tooltip = (age and ("The last full scan with Auctionator on this realm ended " .. Planner().Ago(age) .. ".")
+            or "No full scan with Auctionator on this realm yet.")
+            .. " Run a full scan to bring the auction prices up to date." }
 end
 
 -- With nothing to say, the strip shows the open tab's hint, muted; at its
--- right, how old the plan's auction prices are (AuctionAside).
+-- right, how long ago the last full auction scan was (AuctionAside).
 function Panel:PaintStatus()
     local win = self.win
     if not win then return end
@@ -1158,6 +1136,10 @@ end
 
 function Panel:Draw()
     if not self.win or not self.win:IsShown() then return end
+    -- The status sentence names items: made again with the names there are
+    -- now, under Track, not kept from when the plan was made.
+    local route = self.route
+    if route then route.status = Planner():Status(route, nameOf, self.input and self.input.data or self.data) end
     self.drawnLive = livePrint(self.live)
     self:RenderHeader()
     self:PaintStatus()

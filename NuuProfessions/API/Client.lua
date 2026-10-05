@@ -75,7 +75,9 @@ function Client:Initialize()
         Prices:SetAuctionSource(function(itemID) return self:GetAuctionatorPrice(itemID) end,
             function() return self:GetAuctionatorAPI() ~= nil end)
     end
-    self:WatchAuctionatorScans()
+    self:WatchAuctionatorFullScans()
+    -- Per-item scan times, kept by an earlier version.
+    if ns.db and type(ns.db.professions) == "table" then ns.db.professions.auctionScans = nil end
 end
 
 -- Where the player is --------------------------------------------------------
@@ -704,7 +706,7 @@ Client.professionListeners = {}
 -- `callback(kind, subject, data)` runs whenever a read changed something:
 -- ("tradeskill", professionName, snapshot), ("trainer", npcID, services),
 -- ("merchant", npcID, items), ("learned", professionName, recipe key),
--- ("auction", "shown"|"closed"), ("window", "tradeskill"|"craft"|"closed")
+-- ("auction", "shown"|"closed"|"scanned"), ("window", "tradeskill"|"craft"|"closed")
 -- when the profession window opens or shuts (or first reads as before), or
 -- ("crafted", itemID, count) when the loot line says the player made
 -- something. Errors in a listener are swallowed.
@@ -1638,10 +1640,9 @@ end
 --
 -- Auction prices come from Auctionator when it is installed, through its
 -- public API (`Auctionator.API.v1`), never its saved data. The one exception
--- is a hook on its database's SetPrice, for the time of each scan, which its
--- API does not give (WatchAuctionatorScans). It has no callback for new
--- prices; an auction house visit bumps the book's revision instead (the
--- events below), so the planner replans after one.
+-- is its internal event bus, for when a full scan ends, which its API does
+-- not say (WatchAuctionatorFullScans). Otherwise an auction house visit bumps
+-- the book's revision (the events below), so the planner replans after one.
 
 local AUCTIONATOR_CALLER = "NuuProfessions"
 
@@ -1653,87 +1654,54 @@ function Client:GetAuctionatorAPI()
     return api
 end
 
--- When Auctionator last scanned each item, to the second, for the planner's
--- "Auction scan 1h ago"; its database keeps only the day. Kept in the price
--- book per realm, as Auctionator's prices are (`book.auctionScans[realm][itemID]
--- = time()`), and forgotten after SCAN_DAYS. Every price it writes, from a
--- full scan or a search, goes through its database's SetPrice(dbKey, ...),
--- dbKey the item ID as a string for most items. That is Auctionator's inside,
--- not its API, so it is looked for: without it, only the days. The mixin is
--- hooked for a database made later (Auctionator makes it at PLAYER_LOGIN,
--- and again on some slash commands), and the one there now, when it does not
--- already have the hooked method.
-local SCAN_DAYS = 30
+-- When the player last ran a full scan with Auctionator, per realm, as
+-- Auctionator's prices are: `book.auctionScan[realm] = time()`. Its API has
+-- no such thing; its internal event bus says when a full scan is done, after
+-- every price of it is written, and takes any listener with a ReceiveEvent
+-- method. Which scan its Full scan button runs depends on the client's
+-- auction house: on Forever, the modern one's browse scan
+-- (IncrementalScan.Events.ScanComplete, fired only for a full scan, never a
+-- search); on the old auction house, a get-all query
+-- (FullScan.Events.ScanComplete). Both are listened for, those there are. That
+-- is looked for: without either, no scan time, and an auction house visit
+-- still replans. A scan done tells the planner as an auction house visit
+-- does ("auction", "scanned").
+local SCAN_SOURCES = { "IncrementalScan", "FullScan" }
 
-function Client:AuctionScans()
-    local book = ns.db and ns.db.professions
-    if type(book) ~= "table" then return nil end
-    local realm = self:Read(global("GetRealmName")) or "?"
-    book.auctionScans = book.auctionScans or {}
-    book.auctionScans[realm] = book.auctionScans[realm] or {}
-    return book.auctionScans[realm]
-end
-
-function Client:WatchAuctionatorScans()
+function Client:WatchAuctionatorFullScans()
     local auctionator = global("Auctionator")
-    local hook = global("hooksecurefunc")
-    local mixin = type(auctionator) == "table" and auctionator.DatabaseMixin
-    if self.auctionScansWatched or type(hook) ~= "function" or type(mixin) ~= "table"
-        or type(mixin.SetPrice) ~= "function" then return false end
-    local clock = global("time")
-    local scans = self:AuctionScans()
-    if scans and type(clock) == "function" then
-        local cutoff = clock() - SCAN_DAYS * 86400
-        for itemID, at in pairs(scans) do
-            if type(at) ~= "number" or at < cutoff then scans[itemID] = nil end
+    local bus = type(auctionator) == "table" and auctionator.EventBus
+    local events = {}
+    for _, name in ipairs(SCAN_SOURCES) do
+        local source = type(auctionator) == "table" and auctionator[name]
+        local event = type(source) == "table" and type(source.Events) == "table" and source.Events.ScanComplete
+        if type(event) == "string" then events[#events + 1] = event end
+    end
+    if self.fullScansWatched or type(bus) ~= "table" or type(bus.Register) ~= "function" or #events == 0 then return false end
+    local listener = { ReceiveEvent = function()
+        local book, clock = ns.db and ns.db.professions, global("time")
+        if type(book) == "table" and type(clock) == "function" then
+            book.auctionScan = book.auctionScan or {}
+            book.auctionScan[self:Read(global("GetRealmName")) or "?"] = clock()
         end
-    end
-    local function scanned(_, dbKey)
-        local itemID, now, store = tonumber(dbKey), global("time"), self:AuctionScans()
-        if itemID and store and type(now) == "function" then store[itemID] = now() end
-    end
-    if not pcall(hook, mixin, "SetPrice", scanned) then return false end
-    local database = auctionator.Database
-    if type(database) == "table" and type(database.SetPrice) == "function" and database.SetPrice ~= mixin.SetPrice then
-        pcall(hook, database, "SetPrice", scanned)
-    end
-    self.auctionScansWatched = true
+        self:ProfessionChanged("auction", "scanned")
+    end }
+    if not pcall(bus.Register, bus, listener, events) then return false end
+    self.fullScansWatched = true
     return true
 end
 
--- Auctionator's scan day for a time: whole days since its day zero, local
--- midnight on 2020-01-01 (Auctionator.Constants.SCAN_DAY_0).
-local function scanDay(at)
-    local auctionator = global("Auctionator")
-    local constants = type(auctionator) == "table" and auctionator.Constants
-    local zero = type(constants) == "table" and tonumber(constants.SCAN_DAY_0)
-    local clock = global("time")
-    if not zero and type(clock) == "function" then
-        local ok, value = pcall(clock, { year = 2020, month = 1, day = 1, hour = 0 })
-        zero = ok and value or nil
-    end
-    return zero and math.floor((at - zero) / 86400) or nil
-end
-
--- When the item's price was scanned (time()), from WatchAuctionatorScans,
--- while that agrees with Auctionator's age in days: a scan this addon did
--- not see (it was off) leaves a time older than the price, which is dropped.
-function Client:AuctionScannedAt(itemID, age)
-    local scans = self:AuctionScans()
-    local at = scans and scans[itemID]
-    local clock = global("time")
-    if type(at) ~= "number" or type(clock) ~= "function" then return nil end
-    if age ~= nil then
-        local now, then_ = scanDay(clock()), scanDay(at)
-        if not now or not then_ or now - then_ ~= age then return nil end
-    end
-    return at
+-- When the last full Auctionator scan on this realm ended (time()), or nil.
+function Client:LastAuctionScan()
+    local book = ns.db and ns.db.professions
+    local scans = type(book) == "table" and book.auctionScan
+    local at = type(scans) == "table" and scans[self:Read(global("GetRealmName")) or "?"]
+    return type(at) == "number" and at or nil
 end
 
 -- Auctionator's price for one item (copper, the lowest buyout per item it
--- saw), its age in days (nil past 21 days or when it will not say), and
--- when it was scanned (time(), AuctionScannedAt) when known. nil when
--- Auctionator or its API is missing, or it has no price.
+-- saw) and its age in days (nil past 21 days or when it will not say). nil
+-- when Auctionator or its API is missing, or it has no price.
 function Client:GetAuctionatorPrice(itemID)
     itemID = tonumber(itemID)
     local api = itemID and self:GetAuctionatorAPI()
@@ -1746,7 +1714,7 @@ function Client:GetAuctionatorPrice(itemID)
         local okAge, days = pcall(api.GetAuctionAgeByItemID, AUCTIONATOR_CALLER, itemID)
         age = okAge and plainNumber(days) or nil
     end
-    return price, age, self:AuctionScannedAt(itemID, age)
+    return price, age
 end
 
 -- Events --------------------------------------------------------------------------

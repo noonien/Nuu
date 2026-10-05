@@ -28,11 +28,28 @@ Planner.maxPasses = 6           -- intermediates (their value and their skill) a
 Planner.carriedCraftCost = 1    -- copper: with only what is carried, what a craft costs the route besides its materials
 Planner.expensiveFactor = 4     -- a run dearer a point than this many medians is warned about
 Planner.expensiveMinimum = 10000 -- 1g a point: cheaper runs are never called expensive
--- Auctionator's prices older than this many days (it counts whole days, 0 for
--- today) hold the route: a beta realm's prices move fast, and a two-day-old
--- low for Ruined Leather Scraps once planned 17412 of them. The window asks
--- for a scan, or the player plans anyway (input.acceptStale).
-Planner.auctionMaxAge = 1
+-- A route on Auctionator's prices is held when the last full scan with it is
+-- older than this (seconds), or there is none: a beta realm's prices move
+-- fast, and a two-day-old low for Ruined Leather Scraps once planned 17412 of
+-- them. The window asks for a scan, or the player plans anyway
+-- (input.acceptStale).
+Planner.auctionMaxAge = 24 * 3600
+
+-- How long ago, in the largest unit and the one under it, a zero left out:
+-- "2d 3h ago", "1h ago", "45m ago"; "just now" under a minute.
+local AGO_UNITS = { { 86400, "d" }, { 3600, "h" }, { 60, "m" } }
+function Planner.Ago(seconds)
+    for index, unit in ipairs(AGO_UNITS) do
+        if seconds >= unit[1] then
+            local text = math.floor(seconds / unit[1]) .. unit[2]
+            local below = AGO_UNITS[index + 1]
+            local rest = below and math.floor((seconds % unit[1]) / below[1]) or 0
+            if rest > 0 then text = text .. " " .. rest .. below[2] end
+            return text .. " ago"
+        end
+    end
+    return "just now"
+end
 Planner.whens = { best = true, now = true, ["end"] = true, skill = true }
 Planner.defaultOptions = {
     confidence = "safe",   -- typical | safe | sure
@@ -665,9 +682,10 @@ end
 --   bags        function(itemID) -> count carried (the bags; not the bank)
 --   committed   the spell of the first step the bags were found to cover when
 --               it began (the route's `committed` last time), or nil
---   acceptStale true to plan on Auctionator prices older than Planner.auctionMaxAge
---               days (the player's "Plan anyway"); otherwise such a route's status
---               is "stale", for the window to hold back
+--   auctionScanAge  seconds since the last full Auctionator scan, nil with none
+--   acceptStale true to plan on Auctionator's prices with no full scan within
+--               Planner.auctionMaxAge (the player's "Plan anyway"); otherwise such
+--               a route's status is "stale", for the window to hold back
 --   goals, options, refused, pinned, accepted, avoided, preferred, chosen   see DefaultInputs
 --   book        the price book (default NuuProfessionsDB.professions)
 --   tiers       the tier table (default Data/ProfessionTiers.lua)
@@ -2533,43 +2551,25 @@ function Planner:Plan(input)
     end
 
     -- The items the route touches that Auctionator priced, for a side the
-    -- player uses the auction house for, those whose price is older than
-    -- Planner.auctionMaxAge days, and the newest: the latest scan time where
-    -- one is known, else the fewest days old. Ties go to the lowest item ID.
-    local auctionator, staleAge, staleItems = 0, {}, {}
-    local newest
+    -- player uses the auction house for.
+    local auctionator = 0
     for item in pairs(touched) do
-        local _, buySource, buySeen, _, buyAge = ctx:Fact(item, "auctionBuy")
-        local _, sellSource, sellSeen, _, sellAge = ctx:Fact(item, "auctionSell")
-        local buys = ctx.buyAH and buySource == "auctionator"
-        local sells = ctx.sellAH and sellSource == "auctionator"
-        if buys or sells then
+        local _, buySource = ctx:Fact(item, "auctionBuy")
+        local _, sellSource = ctx:Fact(item, "auctionSell")
+        if (ctx.buyAH and buySource == "auctionator") or (ctx.sellAH and sellSource == "auctionator") then
             auctionator = auctionator + 1
-            -- Newer is higher: a scan's time, when known, over any day count.
-            local at = buys and buySeen or sellSeen
-            local days = buys and buyAge or sellAge
-            local score = at or (days and -days)
-            if score and (not newest or score > newest.score or (score == newest.score and item < newest.item)) then
-                newest = { item = item, at = at, days = not at and days or nil, score = score }
-            end
-            local age = math.max(buys and buyAge or 0, sells and sellAge or 0)
-            if age > self.auctionMaxAge then
-                staleAge[item] = age
-                table.insert(staleItems, item)
-            end
         end
     end
-    if newest then newest.score = nil end
+    -- A route on Auctionator's prices with no full scan within
+    -- Planner.auctionMaxAge (input.auctionScanAge) is held, until the player
+    -- plans anyway.
     local stale
-    if #staleItems > 0 then
-        table.sort(staleItems, function(a, b)
-            if staleAge[a] ~= staleAge[b] then return staleAge[a] > staleAge[b] end
-            return a < b
-        end)
-        stale = { items = staleItems, days = staleAge[staleItems[1]], accepted = input.acceptStale and true or nil }
+    local scanAge = input.auctionScanAge
+    if auctionator > 0 and (scanAge == nil or scanAge > self.auctionMaxAge) then
+        stale = { age = scanAge, accepted = input.acceptStale and true or nil }
         if stale.accepted then
-            warn("staleAuction", "Planned on auction prices up to " .. stale.days .. " days old (" .. #staleItems
-                .. " item" .. (#staleItems == 1 and "" or "s") .. "): scan the auction house with Auctionator for today's.")
+            warn("staleAuction", "Planned on " .. (scanAge and ("a full auction scan from " .. self.Ago(scanAge))
+                or "auction prices with no full scan") .. ": run a full scan with Auctionator for today's.")
         end
     end
 
@@ -2637,13 +2637,11 @@ function Planner:Plan(input)
     --                  patterns = n patterns the character lacks that the route learns,
     --                  patternsUnknown = how many of those have no known price }
     --   auctionator  true when Auctionator is installed and the plan uses it
-    --   auctionNewest { item, at = time() it was scanned, when known, or days = its age }:
-    --                the newest Auctionator price the route uses, nil with none
-    --   staleAuction { items (oldest first), days (the oldest's age), accepted }: the
-    --                Auctionator prices the route uses that are older than
-    --                Planner.auctionMaxAge days; accepted when input.acceptStale planned
-    --                on them anyway. Unaccepted, the status is "stale": the window holds
-    --                the route back. nil when every price is fresh.
+    --   staleAuction { age (seconds since the last full scan, nil with none), accepted }:
+    --                set when the route uses Auctionator's prices and the last full scan
+    --                is older than Planner.auctionMaxAge, or there is none; accepted when
+    --                input.acceptStale planned on them anyway. Unaccepted, the status is
+    --                "stale": the window holds the route back.
     --   shopping     { { itemID, count, have, buy, source, each, npc, firstSkill, lastSkill, estimated,
     --                made = true when the route also makes it } }
     --   made         { [itemID] = true }: what the route makes on the way (its intermediates)
@@ -2694,7 +2692,7 @@ function Planner:Plan(input)
             auctionator = auctionator,
             patterns = patterns, patternsUnknown = patternsUnknown,
         },
-        auctionator = ctx:UsesAuctionator() or nil, staleAuction = stale, auctionNewest = newest,
+        auctionator = ctx:UsesAuctionator() or nil, staleAuction = stale,
         shopping = shopping, made = sizedLedger.made, makes = makes, selling = selling, suggestions = suggestions, ceiling = ceiling, gap = gap,
         materials = options.materials, ranOut = ranOutList, committed = committed,
         missingWhy = carriedOnly and "carried" or (not ctx.buyAH and "vendor") or "auction",
@@ -2713,10 +2711,10 @@ end
 -- The one sentence at the top of the planner window, and its kind:
 --
 --   done       the skill is already at the target: "Leatherworking is already at 150."
---   stale      the route uses Auctionator prices older than Planner.auctionMaxAge
---              days, and the player has not planned on them anyway: "Auction
---              prices are 2 days old (Ruined Leather Scraps, Light Leather and 3
---              more). Scan the auction house with Auctionator, or plan anyway."
+--   stale      the route uses Auctionator's prices, the last full scan with it is
+--              older than Planner.auctionMaxAge (or there is none), and the player
+--              has not planned on them anyway: "Last full auction scan 2d 3h ago.
+--              Run a full scan with Auctionator, or plan anyway."
 --   blocked    the recipes stop short of what was asked for want of a price, or
 --              no route at all: "Cannot plan past 83: Thick Leather and 3 more
 --              no vendor sells them. ..." (a route that simply
@@ -2755,11 +2753,8 @@ function Planner:Status(route, nameOf, data)
     end
     local stale = route.staleAuction
     if stale and not stale.accepted and not (route.startSkill >= route.target and #(route.runs or {}) == 0) then
-        local what = itemName(stale.items[1])
-        if #stale.items == 2 then what = what .. ", " .. itemName(stale.items[2])
-        elseif #stale.items > 2 then what = what .. ", " .. itemName(stale.items[2]) .. " and " .. (#stale.items - 2) .. " more" end
-        return { kind = "stale", text = "Auction prices are " .. stale.days .. " days old (" .. what
-            .. "). Scan the auction house with Auctionator, or plan anyway." }
+        return { kind = "stale", text = (stale.age and ("Last full auction scan " .. self.Ago(stale.age))
+            or "No full auction scan yet") .. ". Run a full scan with Auctionator, or plan anyway." }
     end
     local stopped = route.ceiling and route.ceiling.reason == "recipes"
     local carried = route.materials == "carried"

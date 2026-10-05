@@ -1474,7 +1474,7 @@ function Tab:Render(panel)
             or (status.text ~= "" and status.text) or "No steps."
     end
     if empty and #items == 0 then
-        self.list:SetState("empty", empty, action and { action = action } or nil)
+        self.list:SetState("empty", empty, action and { action = action, tone = "warning" } or nil)
     else
         self.list:SetState(nil)
     end
