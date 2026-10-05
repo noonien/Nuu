@@ -128,6 +128,8 @@ local SECTIONS = {
             help = "The arrow and the distance to the step in a window of their own." },
         { path = "navigation.mapPinsAhead", kind = "slider", label = "Map pins ahead", min = 0, max = 15, step = 1, format = "%d",
             help = "How many steps past the current one get a numbered pin on the world map. 0 pins the current step only." },
+        { path = "navigation.questPins", kind = "toggle", label = "Other quests", caption = "Mark them on the world map",
+            help = "A yellow dot where the game marks each quest in your log that this guide does not name." },
     } },
     { title = "Travel routes", rows = {
         { path = "navigation.travel.suggest", kind = "toggle", label = "Routes", caption = "Suggest travel routes",

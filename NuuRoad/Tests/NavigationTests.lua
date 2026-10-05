@@ -301,4 +301,71 @@ drawn = Navigation.MinimapPoints(edgeLocation, 0.25, 0.5, fakeOffset)
 assert(#drawn == 1 and drawn[1].onEdge and drawn[1].x == -0.2, "with nothing in range only the nearest point sits on the rim")
 assert(Navigation.ClusterPins({ { x = 1, y = 1, node = a, onEdge = true } }, 14)[1].onEdge, "a rim pin stays marked for its tooltip")
 
+-- The game's quest mark stands in for a step with no place: the map the
+-- player is on first, else the zone of the continent where the mark sits
+-- furthest from the edge. Only the place the step means counts: objectives
+-- while the quest has work left, the turn-in NPC once it is ready.
+Load(ns, "Domain/QuestIndex.lua")
+local inLog, ready, pins, onMap = {}, {}, {}, {}
+ns.modules.Client = {
+    IsQuestInLog = function(_, id) return inLog[id] == true end,
+    IsQuestReadyToTurnIn = function(_, id) return ready[id] == true end,
+    GetCurrentMapID = function() return 1458 end,
+    GetQuestPinOnMap = function(_, id, mapID)
+        local pin = pins[mapID] and pins[mapID][id]
+        if pin then return pin[1], pin[2], 1 end
+    end,
+    GetMapInfoTable = function(_, mapID)
+        local infos = { [1458] = { mapType = 3, parentMapID = 1415 }, [1415] = { mapType = 2, parentMapID = 947 } }
+        return infos[mapID]
+    end,
+    GetMapChildren = function(_, mapID)
+        if mapID ~= 1415 then return {} end
+        return { { mapID = 1420, mapType = 3 }, { mapID = 1421, mapType = 3 }, { mapID = 1458, mapType = 3 } }
+    end,
+    GetQuestsOnMap = function(_, mapID) return onMap[mapID] or {} end,
+    GetQuestTitle = function(_, id) return "Quest title " .. id end,
+}
+Navigation.zoneLists = nil
+inLog[97291], inLog[96988] = true, true
+pins[1458] = { [97291] = { 0.54, 0.49 } }
+pins[1420] = { [96988] = { 0.97, 0.5 } }
+pins[1421] = { [96988] = { 0.75, 0.49 } }
+pins[1415] = { [96988] = { 0.44, 0.31 } }
+local mapID, x = Navigation:QuestMarker(97291)
+assert(mapID == 1458 and x == 0.54, "a mark on the map the player is on comes first")
+mapID, x = Navigation:QuestMarker(96988)
+assert(mapID == 1421 and x == 0.75, "of two zones, the one where the mark is further from the edge")
+assert(Navigation:QuestMarker(12345) == nil, "a quest not in the log has no mark")
+
+local work = { index = 7, kind = "kill", title = "Kill the things", auto = { verb = "objective", quests = { 96988 } } }
+local stand = Navigation:QuestMarkerNode(work)
+assert(stand and stand.questMarker == 96988 and stand.location.mapID == 1421, "quest work without a place goes to the mark")
+assert(stand.index == 7 and stand.title == "Kill the things" and stand.auto == work.auto, "the stand-in reads as the step")
+assert(stand.location.arrivalYards == 40, "an objective mark is an area")
+ready[96988] = true
+assert(Navigation:QuestMarkerNode(work) == nil, "a ready quest's mark is the turn-in, not the work")
+local turnin = { index = 8, kind = "turnInQuest", auto = { verb = "turnin", quests = { 96988 } } }
+stand = Navigation:QuestMarkerNode(turnin)
+assert(stand and stand.location.arrivalYards == 10, "a ready quest's turn-in step goes to the mark")
+ready[96988] = nil
+assert(Navigation:QuestMarkerNode(turnin) == nil, "a turn-in waits for the quest to be ready")
+assert(Navigation:QuestMarkerNode({ auto = { verb = "accept", quests = { 96988 } } }) == nil, "an accept has no mark")
+assert(Navigation:QuestMarkerNode({ location = { mapID = 1, x = 0.1, y = 0.1 }, auto = work.auto }) == nil,
+    "a step with its own place keeps it")
+
+-- The quests the guide does not name, pinned on the open map, except the one
+-- the arrow already follows.
+onMap[1415] = { { questID = 96988, x = 0.44, y = 0.31 }, { questID = 97291, x = 0.44, y = 0.25 },
+    { questID = 555, x = 0.5, y = 0.5 }, { questID = 555, x = 0.5, y = 0.5 } }
+Navigation.activeGuide = { nodes = { { auto = { verb = "accept", quests = { 97291 } } } } }
+Navigation.activeNode = { questMarker = 555 }
+local others = Navigation:OtherQuestNodes(1415)
+assert(#others == 1 and others[1].questPin == 96988 and others[1].bead == "quest", "only the quests the guide leaves out")
+assert(others[1].title == "Quest title 96988" and others[1].location.mapID == 1415, "titled by the client, on the open map")
+Navigation.activeNode = nil
+others = Navigation:OtherQuestNodes(1415)
+assert(#others == 2, "a quest listed twice is pinned once")
+Navigation.activeGuide = nil
+
 return true

@@ -18,9 +18,10 @@ local Config = {
         -- the band in reverse.
         tracker = { shown = true, collapsed = false, scale = 1, markWaiting = false, upward = false },
         -- `mapPinsAhead` is how many steps past the current one get a
-        -- numbered pin on the world map. `standalone` shows the arrow in
-        -- its own window.
-        navigation = { standalone = true, mapPinsAhead = 5,
+        -- numbered pin on the world map. `questPins` marks there the quests
+        -- in the log the guide does not name. `standalone` shows the arrow
+        -- in its own window.
+        navigation = { standalone = true, mapPinsAhead = 5, questPins = true,
             -- The travel planner (TRAVEL.md): whether it suggests routes
             -- at all, and which kinds of travel it may use. Guide places
             -- (caves) apply either way; they are part of the guide.

@@ -182,6 +182,130 @@ function Navigation.CorpseNode(mapID, x, y)
     }
 end
 
+-- The game's own mark for a quest in the log (C_QuestLog.GetQuestsOnMap): the
+-- objective area while objectives are left, the turn-in NPC once the quest is
+-- ready (docs/api-compatibility.md, "Quest points on the map"). Arriving at
+-- an area means being somewhere in it, so its radius is wider than an NPC's.
+local markerAreaYards = 40
+local markerTurnInYards = 10
+
+-- Map types (Enum.UIMapType).
+local CONTINENT, ZONE = 2, 3
+
+-- The zone maps of the continent a map is on, looked up once per continent.
+function Navigation:ContinentZones(mapID)
+    local Client = ns.modules.Client
+    local continent = mapID
+    for _ = 1, 6 do
+        local info = type(continent) == "number" and Client:GetMapInfoTable(continent)
+        if not info then return nil, {} end
+        if info.mapType == CONTINENT then break end
+        continent = info.parentMapID
+    end
+    self.zoneLists = self.zoneLists or {}
+    local zones = self.zoneLists[continent]
+    if not zones then
+        zones = {}
+        for _, child in ipairs(Client:GetMapChildren(continent)) do
+            if child.mapType == ZONE then zones[#zones + 1] = child.mapID end
+        end
+        self.zoneLists[continent] = zones
+    end
+    return continent, zones
+end
+
+-- Where the game marks a quest: on the map the player is on when it is marked
+-- there; else on a zone of the player's continent, the one where the mark sits
+-- furthest from the edge (a mark near a border is given on both zones); else
+-- on the continent. Nil for a quest that is not in the log or has no mark,
+-- such as one whose objectives are inside a dungeon.
+function Navigation:QuestMarker(questID)
+    local Client = ns.modules.Client
+    if not Client or type(questID) ~= "number" or not Client:IsQuestInLog(questID) then return nil end
+    local current = Client:GetCurrentMapID()
+    if not current then return nil end
+    local x, y = Client:GetQuestPinOnMap(questID, current)
+    if x and y then return current, x, y end
+    local continent, zones = self:ContinentZones(current)
+    local bestMap, bestX, bestY, bestInside
+    for _, zone in ipairs(zones) do
+        local zx, zy = Client:GetQuestPinOnMap(questID, zone)
+        if zx and zy then
+            local inside = math.min(zx, 1 - zx, zy, 1 - zy)
+            if not bestInside or inside > bestInside then bestMap, bestX, bestY, bestInside = zone, zx, zy, inside end
+        end
+    end
+    if bestMap then return bestMap, bestX, bestY end
+    if continent then
+        x, y = Client:GetQuestPinOnMap(questID, continent)
+        if x and y then return continent, x, y end
+    end
+    return nil
+end
+
+-- A step with no place of its own, pointed at the game's mark for its quest:
+-- the step itself with a location added, so its title, number and pins read
+-- as the step's. Only a mark that is the place the step means counts: the
+-- objectives for a step of quest work, the turn-in NPC for a turn-in. An
+-- accept has none, since the game marks only quests already taken. Nil when
+-- the step has a place or nothing is marked.
+function Navigation:QuestMarkerNode(node)
+    if type(node) ~= "table" or node.location then return nil end
+    local QuestIndex, Client = ns.modules.QuestIndex, ns.modules.Client
+    if not QuestIndex or not Client then return nil end
+    for _, quest in ipairs(QuestIndex:NodeQuests(node)) do
+        local ready = Client:IsQuestReadyToTurnIn(quest.id) == true
+        if quest.role ~= "accept" and (quest.role == "turnin") == ready then
+            local mapID, x, y = self:QuestMarker(quest.id)
+            if mapID then
+                return setmetatable({
+                    questMarker = quest.id,
+                    location = { mapID = mapID, x = x, y = y, arrivalYards = ready and markerTurnInYards or markerAreaYards },
+                }, { __index = node })
+            end
+        end
+    end
+    return nil
+end
+
+-- Pins for the quests in the log that the guide never names, on the map the
+-- player has open: where the game marks each, titled with the quest, so the
+-- rest of the log is on the map beside the route. The quest the arrow already
+-- follows by its mark is left out.
+function Navigation:OtherQuestNodes(mapID)
+    local nodes, Client, QuestIndex = {}, ns.modules.Client, ns.modules.QuestIndex
+    if not Client or not QuestIndex or type(mapID) ~= "number" then return nodes end
+    local named = {}
+    local guide = self.activeGuide
+    if guide and guide.nodes then
+        self.namedQuests = self.namedQuests or setmetatable({}, { __mode = "k" })
+        named = self.namedQuests[guide]
+        if not named then
+            named = {}
+            for _, step in ipairs(guide.nodes) do
+                for _, quest in ipairs(QuestIndex:NodeQuests(step)) do named[quest.id] = true end
+            end
+            self.namedQuests[guide] = named
+        end
+    end
+    local following = self.activeNode and self.activeNode.questMarker
+    local seen = {}
+    for _, entry in ipairs(Client:GetQuestsOnMap(mapID)) do
+        local id = entry.questID
+        if not named[id] and id ~= following and not seen[id] and type(entry.x) == "number" and type(entry.y) == "number" then
+            seen[id] = true
+            nodes[#nodes + 1] = {
+                kind = "travel",
+                title = Client:GetQuestTitle(id) or ("Quest " .. id),
+                bead = "quest",
+                questPin = id,
+                location = { mapID = mapID, x = entry.x, y = entry.y },
+            }
+        end
+    end
+    return nodes
+end
+
 -- A place typed after `/nr way`, the way TomTom's /way takes one: two numbers
 -- are X and Y as map percentages ("45.2 60.1", "45.2, 60.1"), and a third in
 -- front of them is a map ID ("1413 45.2 60.1"). Returns the map ID or nil,
@@ -397,8 +521,15 @@ local function showPinTooltip(pin)
             GameTooltip:AddLine(line, 1, 1, 1, true)
         end
     end
-    if #pin.nodes > 1 then
+    local steps, quests = 0, 0
+    for _, node in ipairs(pin.nodes) do
+        if node.questPin then quests = quests + 1 else steps = steps + 1 end
+    end
+    if steps > 1 then
         GameTooltip:AddLine("These steps are close together here.", 0.56, 0.62, 0.7, true)
+    end
+    if quests > 0 then
+        GameTooltip:AddLine("In your quest log, not in this guide.", 0.56, 0.62, 0.7, true)
     end
     if pin.onEdge then
         GameTooltip:AddLine("Beyond the minimap, this way.", 0.56, 0.62, 0.7, true)
@@ -440,6 +571,10 @@ local function paintPin(pin, cluster, style, alpha)
         if node and node.bead == "accent" then
             pin.ring:SetVertexColor(0.02, 0.06, 0.1, 1)
             pin.fill:SetVertexColor(accent[1], accent[2], accent[3], 1)
+        elseif node and node.bead == "quest" then
+            -- The game's own quest yellow, for a quest the guide does not name.
+            pin.ring:SetVertexColor(0.12, 0.08, 0, 1)
+            pin.fill:SetVertexColor(1, 0.82, 0, 1)
         else
             pin.ring:SetVertexColor(0.12, 0.02, 0.02, 1)
             pin.fill:SetVertexColor(0.92, 0.12, 0.1, 1)
@@ -823,7 +958,7 @@ end
 -- Config tells every module of a setting changed (Config:Changed): how many
 -- steps ahead get a pin redraws the pins.
 function Navigation:OnSettingChanged(path)
-    if path == "navigation.mapPinsAhead" then self:UpdateWorldMapPOI() end
+    if path == "navigation.mapPinsAhead" or path == "navigation.questPins" then self:UpdateWorldMapPOI() end
 end
 
 -- Pins go on whatever map the player has open, for every step placed on it;
@@ -861,6 +996,9 @@ function Navigation:UpdateWorldMapPOI()
     if self.waypoint then addLocation(self.waypoint, not corpse, 0, true) end
     for rank, step in ipairs(self:PinSteps(self.activeGuide, self.activeNode, self:PinsAhead())) do
         addLocation(step.node, step.current, rank - 1)
+    end
+    if ns.modules.Config:Get("navigation.questPins") then
+        for _, node in ipairs(self:OtherQuestNodes(currentMapID)) do addLocation(node, false, 4) end
     end
     self.worldMapLayout = { canvas = canvas, points = points }
     self:LayoutWorldMapPins()
@@ -1225,6 +1363,9 @@ function Navigation:Update(node)
         return
     end
     local label = ns.modules.Steps:Title(node) or "Destination"
+    -- A step pointed at the game's quest mark says so: the guide gave no
+    -- place, and the mark is an area or an NPC rather than a spot.
+    if node.questMarker then label = label .. "\nAt the game's quest mark" end
     local stepTitle = label
     -- A travel leg takes the arrow: it points at the leg's end and says the
     -- leg ("Fly to Ratchet"), with the step under it.
@@ -1394,9 +1535,37 @@ end
 -- Called when the tracked step changes, not on a timer. The guide is what the
 -- world map walks for the pins of the steps after this one.
 function Navigation:Refresh(node, guide)
-    self.activeNode = node and node.location and node or nil
+    self.trackedNode = node
+    self.activeNode = node and (node.location and node or self:QuestMarkerNode(node)) or nil
     self.activeGuide = guide
     self:Retarget()
+end
+
+-- The quest log changed: a mark may have appeared, moved, or gone (the quest
+-- became ready, or was handed in), so a step pointed at one is pointed again,
+-- and the world map's pins are drawn again while it is open. Coalesced, since
+-- the log updates come in bursts.
+function Navigation:QuestLogChanged()
+    if self.questLogPending then return end
+    if type(C_Timer) ~= "table" or type(C_Timer.After) ~= "function" then return end
+    self.questLogPending = true
+    C_Timer.After(1, function()
+        self.questLogPending = nil
+        local tracked = self.trackedNode
+        if tracked and not tracked.location then
+            local before, marker = self.activeNode, self:QuestMarkerNode(tracked)
+            local moved = (before == nil) ~= (marker == nil) or (before and marker and (before.questMarker ~= marker.questMarker
+                or before.location.mapID ~= marker.location.mapID
+                or math.abs(before.location.x - marker.location.x) > 0.001
+                or math.abs(before.location.y - marker.location.y) > 0.001))
+            if moved then
+                self.activeNode = marker
+                return self:Retarget()
+            end
+        end
+        local map = _G.WorldMapFrame
+        if map and map.IsShown and map:IsShown() then self:UpdateWorldMapPOI() end
+    end)
 end
 
 -- Raw client answers behind the arrow, for `/nuuroad where`. Every call is
@@ -1517,10 +1686,11 @@ function Navigation:Initialize()
     -- for the walk back. Release and resurrection both come as PLAYER_ALIVE
     -- (and PLAYER_UNGHOST), so those re-read the ghost state rather than assume.
     local events = CreateFrame("Frame")
-    for _, event in ipairs({ "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD" }) do
+    for _, event in ipairs({ "PLAYER_DEAD", "PLAYER_ALIVE", "PLAYER_UNGHOST", "PLAYER_ENTERING_WORLD", "QUEST_LOG_UPDATE" }) do
         pcall(events.RegisterEvent, events, event)
     end
     events:SetScript("OnEvent", function(_, event)
+        if event == "QUEST_LOG_UPDATE" then return self:QuestLogChanged() end
         if event == "PLAYER_DEAD" then self.deathMap = ns.modules.Client:GetCurrentMapID() end
         self:RefreshLifeState()
     end)

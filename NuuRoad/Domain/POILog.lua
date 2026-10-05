@@ -178,10 +178,13 @@ function POILog:Reading(guide, node, questID, role)
     if not Client or type(questID) ~= "number" or not node then return nil end
     local location = node.location
     local authoredMap = location and Client:ResolveMapID(location.mapID)
-    -- The POI system answers for the map it was last pointed at, so point it
-    -- at the step's map before asking anything about the step's quest.
+    -- `GetNextWaypoint` may answer for the map the POI system was last
+    -- pointed at, so point it at the step's map for that one read, and back
+    -- at the world map's own map after.
+    local before = authoredMap and Client:GetMapForQuestPOIs()
     if authoredMap then Client:SetMapForQuestPOIs(authoredMap) end
     local waypointMap, waypointX, waypointY = Client:GetQuestWaypoint(questID)
+    if before then Client:SetMapForQuestPOIs(before) end
     local source = waypointMap and "waypoint" or nil
     -- `GetNextWaypoint` answered nothing before the map was being set, so the map's own pin
     -- list is the fallback and, so far, the only source that says anything.
@@ -433,7 +436,6 @@ function POILog:SweepMap(entry, inPass)
     local Client, store = ns.modules.Client, self:Store()
     if not Client or not store or not entry or not entry.mapID then return 0 end
     local mapID = entry.mapID
-    Client:SetMapForQuestPOIs(mapID)
     local record = store.maps[tostring(mapID)] or { mapID = mapID, reads = 0, best = 0 }
     record.name, record.mapType = entry.name or record.name, entry.mapType or record.mapType
     record.reads = record.reads + 1
@@ -818,6 +820,7 @@ function POILog:ProbeQuest(questID)
     record.spots, record.spread = #spots, self:SpotSpread(spots)
     record.last = stamp()
     record.reads = (record.reads or 0) + 1
+    local before = Client:GetMapForQuestPOIs()
     for _, mapID in ipairs(self:CandidateMaps(questID, spots)) do
         Client:SetMapForQuestPOIs(mapID)
         local info = Client:GetMapInfoTable(mapID)
@@ -857,6 +860,7 @@ function POILog:ProbeQuest(questID)
         if entry.blobs and entry.blobs > (record.blobs or 0) then record.blobs = entry.blobs end
         if #pins > 0 then self:RecordRange(questID, record.ready, mapID, pins[1].x, pins[1].y) end
     end
+    if before then Client:SetMapForQuestPOIs(before) end
     record.blobs = record.blobs or 0
     return record
 end

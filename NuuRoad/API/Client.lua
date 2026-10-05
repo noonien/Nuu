@@ -462,11 +462,12 @@ function Client:GetQuestMapID(questID)
 end
 
 -- Every quest the client would draw on a map, as { questID, x, y }. Empty
--- when the call is missing or the client has nothing for that map.
+-- when the call is missing or the client has nothing for that map. It needs no
+-- SetMapForQuestPOIs first, which would move the world map's own quest map
+-- (docs/api-compatibility.md, "Quest points on the map").
 function Client:GetQuestsOnMap(mapID)
     local quests = {}
     if type(mapID) ~= "number" or type(C_QuestLog) ~= "table" or type(C_QuestLog.GetQuestsOnMap) ~= "function" then return quests end
-    self:SetMapForQuestPOIs(mapID)
     local ok, entries = pcall(C_QuestLog.GetQuestsOnMap, mapID)
     if not ok or type(entries) ~= "table" then return quests end
     for _, entry in ipairs(entries) do
@@ -563,7 +564,6 @@ function Client:GetQuestPinsOnMap(questID, mapID)
     local at = GetTime and GetTime() or 0
     if not cached or at - cached.at > 5 then
         cached = { at = at, quests = {} }
-        self:SetMapForQuestPOIs(mapID)
         for _, quest in ipairs(self:GetQuestsOnMap(mapID)) do
             if type(quest.x) == "number" and type(quest.y) == "number" then
                 local list = cached.quests[quest.questID] or {}
