@@ -56,14 +56,8 @@ local function drawLinks(links)
     frame:Show()
 end
 
--- `filler` is a string (wrapped) or `fn(GameTooltip)`. `opts.anchor` is an
--- ANCHOR_ name, or a window to stand beside, level with the widget; the
--- cursor otherwise. `opts.links` is { item = id, spell = id } for the
--- game's own tooltip under it. `opts.reason` adds a line in the danger
--- colour: why a control is disabled.
-function Proto:Tooltip(owner, filler, opts)
-    opts = opts or {}
-    if not GameTooltip or not owner or (filler == nil and not opts.reason) then return end
+-- Fills and shows GameTooltip for Proto:Tooltip.
+local function show(ui, owner, filler, opts)
     local anchor = opts.anchor
     if type(anchor) == "table" then
         GameTooltip:SetOwner(owner, "ANCHOR_NONE")
@@ -83,7 +77,7 @@ function Proto:Tooltip(owner, filler, opts)
         GameTooltip:SetText(tostring(filler), 1, 1, 1, 1, true)
     end
     if opts.reason then
-        local c = self.tokens.danger
+        local c = ui.tokens.danger
         if filler == nil then
             GameTooltip:SetText(opts.reason, c[1], c[2], c[3], 1, true)
         else
@@ -93,6 +87,28 @@ function Proto:Tooltip(owner, filler, opts)
     GameTooltip:Show()
     UI.tipOwner = owner
     drawLinks(opts.links)
+end
+
+-- `filler` is a string (wrapped) or `fn(GameTooltip)`. `opts.anchor` is an
+-- ANCHOR_ name, or a window to stand beside, level with the widget; the
+-- cursor otherwise. `opts.links` is { item = id, spell = id } for the
+-- game's own tooltip under it. `opts.reason` adds a line in the danger
+-- colour: why a control is disabled. A filler that reads item names through
+-- Kit.Items:Name runs under its Track: a name not loaded yet shows as
+-- "Item <id>", and the tooltip is filled again when it comes, if it is still
+-- up for the same widget.
+function Proto:Tooltip(owner, filler, opts)
+    opts = opts or {}
+    if not GameTooltip or not owner or (filler == nil and not opts.reason) then return end
+    local items = Kit.Items
+    if type(filler) ~= "function" or not items then return show(self, owner, filler, opts) end
+    local first = true
+    local function fill()
+        if not first and (UI.tipOwner ~= owner or not GameTooltip:IsShown()) then return end
+        first = false
+        show(self, owner, filler, opts)
+    end
+    items:Track(fill)
 end
 
 function Proto:HideTooltip()

@@ -24,6 +24,7 @@ local suites = {
     { "errors", "Tests/Core/ErrorsTests.lua" },
     { "skill-up model", "Tests/Core/SkillUpTests.lua" },
     { "crafting", "Tests/Core/CraftingTests.lua" },
+    { "items", "Tests/Core/ItemsTests.lua" },
     { "comms codec", "Tests/Core/CommsCodecTests.lua" },
     { "comms", "Tests/Core/CommsTests.lua" },
     { "comms transport", "Tests/Core/CommsTransportTests.lua" },

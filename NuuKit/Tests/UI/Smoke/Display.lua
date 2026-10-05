@@ -447,6 +447,35 @@ fresh.swatches[2]:Click()
 assertTrue(fresh.kitLook.accent == UI.accents[1].hex, "a picker with no onChange still shows the change")
 appearance:Clear()
 
+-- A tooltip that showed "Item <id>" is filled again when the name comes,
+-- while it is still up for the same widget; not once it has moved on.
+do
+    local names, eventFrame = {}, nil
+    local savedItem, savedCreate, savedInfo = _G.C_Item, _G.CreateFrame, _G.GetItemInfo
+    _G.GetItemInfo = nil
+    _G.C_Item = { GetItemNameByID = function(id) return names[id] end, RequestLoadItemDataByID = function() end }
+    _G.CreateFrame = function(...)
+        local made = savedCreate(...)
+        eventFrame = made
+        return made
+    end
+    local Items = ctx.Kit.Items
+    local tipButton = body:Button{ "Salt" }
+    local fills = 0
+    ui:Tooltip(tipButton, function(tip) fills = fills + 1; tip:SetText("Buy " .. Items:Name(4289)) end)
+    assertTrue(GameTooltip.text == "Buy Item 4289" and fills == 1, "the stand-in while the name is not in: " .. tostring(GameTooltip.text) .. " " .. fills)
+    names[4289] = "Salt"
+    eventFrame:Fire("OnEvent", "ITEM_DATA_LOAD_RESULT", 4289, true)
+    assertTrue(GameTooltip.text == "Buy Salt" and fills == 2, "filled again with the name: " .. tostring(GameTooltip.text))
+    ui:Tooltip(tipButton, function(tip) tip:SetText("Buy " .. Items:Name(4291)) end)
+    ui:Tooltip(body:Button{ "Other" }, "Another widget's tooltip")
+    names[4291] = "Silken Thread"
+    eventFrame:Fire("OnEvent", "ITEM_DATA_LOAD_RESULT", 4291, true)
+    assertTrue(GameTooltip.text == "Another widget's tooltip", "not filled again once it is another widget's")
+    ui:HideTooltip()
+    _G.C_Item, _G.CreateFrame, _G.GetItemInfo = savedItem, savedCreate, savedInfo
+end
+
 for _, name in ipairs(standIns) do
     UI.types[name], UI.Proto[name], UI.Makers[name] = nil, nil, nil
 end

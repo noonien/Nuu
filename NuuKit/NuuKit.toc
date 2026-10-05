@@ -12,6 +12,7 @@ Core/Recorder.lua
 Core/BugReport.lua
 Core/SkillUp.lua
 Core/Crafting.lua
+Core/Items.lua
 Core/Comms/Codec.lua
 Core/Comms/Transport.lua
 Core/Comms/Comms.lua

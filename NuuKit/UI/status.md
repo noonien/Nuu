@@ -71,6 +71,7 @@ made with `UI.NewFrame`, which marks them, so neither the `parts` reset nor the 
 | `Theme/LookPicker.lua` | the Appearance section |
 | `Screens/Diagnostics.lua`, `SessionLog.lua`, `BugReportForm.lua` | `ui:DiagnosticsWindow` (report lines from the addon), `ui:SessionLogWindow` (a recorder's channel, the addon's row descriptions and marks, its recording switch and days bound to its own settings), `ui:BugReportWindow` (a `Kit.NewBugReports` object, with the addon's own fields, check and request); each returns a controller (`Show`, `Hide`, `Toggle`, `Refresh`, `.win`) |
 | `../Core/SkillUp.lua`, `../Core/Crafting.lua` | not UI: the skill-up model and what a Make button asks for, pure Lua, for both addons |
+| `../Core/Items.lua` | `Kit.Items`: `Name(id)` (the name, or "Item <id>" and the item asked for), `Track(fn)` (runs `fn` again once the names it missed are in; `ui:Tooltip` fills under it), `Preload(ids)` |
 | `../Dev/Gallery.lua`, `../Dev/Report.lua` | development only: `/nuukit ui` (every widget, and a Pooling tab), `/nuukit report` |
 
 **Tests.** `nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"` from `NuuKit/` runs six suites: the core, the
