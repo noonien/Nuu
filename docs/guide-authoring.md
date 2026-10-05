@@ -1,13 +1,16 @@
 # Guide authoring: tips and tricks
 
-Practical advice for writing NuuRoad guides, whether by hand in `NuuRoad/Data/BuiltIn/` or in the in-game editor.
+Practical advice for writing NuuRoad guides, by hand in `NuuRoad/Data/Guides/` or in the in-game editor.
 This is not the reference. For what every field means, see:
 
-- [`NuuRoad/docs/guide-schema.md`](../NuuRoad/docs/guide-schema.md): the v2 format, every verb, condition and field.
+- [`NuuRoad/docs/examples/guide-export.lua`](../NuuRoad/docs/examples/guide-export.lua): the guide format the packaged
+  guides are written in (export format 1), every step type, condition and field, with one worked example of each.
+- [`NuuRoad/docs/guide-schema.md`](../NuuRoad/docs/guide-schema.md): format v2, which the import turns a guide into
+  and the editor still writes, and the runtime shapes under it.
 - [`NuuRoad/docs/authoring.md`](../NuuRoad/docs/authoring.md): the editor, the tracker, and how a step behaves in play.
 - [`NuuRoad/GUIDE_PORTING_PLAN.md`](../NuuRoad/GUIDE_PORTING_PLAN.md): the rules for porting from RestedXP and Zygor.
 
-The best worked example is [`HordeTirisfal612.lua`](../NuuRoad/Data/BuiltIn/HordeTirisfal612.lua). Read its header
+The best worked example is [`HordeTirisfal612.lua`](../NuuRoad/Data/Guides/HordeTirisfal612.lua). Read its header
 comment and first few sections before you start a new guide.
 
 ## The workflow in one list
@@ -15,7 +18,8 @@ comment and first few sections before you start a new guide.
 1. Pick the route and its source (your own play, a session recording, or an authorized RestedXP/Zygor guide).
 2. Create the file, register it in `NuuRoad.toc`, and fill in the header comment as you go.
 3. Write the steps section by section, checking every ID against the database as you write it.
-4. Add every name the guide uses to its own `names` table.
+4. Add every NPC the guide names to its `npcs`, and every area, flight node and skill to `Data/IDNames.lua` by
+   running `python3 Tools/IDNames.py`.
 5. Run the tests, `Tools/CheckGroups.lua`, and `Tools/CompareGuideOrder.lua` for a RestedXP port.
 6. Play it in the client with **Debug log** on, run `/nuuroad audit`, and fix what it reports.
 7. Play it again on a character that is part way through, so you exercise the resume scan.
@@ -25,39 +29,49 @@ comment and first few sections before you start a new guide.
 Copy the shape of an existing guide:
 
 ```lua
-local _, ns = ...
-
 -- What the route is, where it came from, and what was checked against what.
 --
 -- Notes:
 --   * Every place you depart from the source on purpose, and why.
 --
--- Guide format v2 (see Data/Steps.lua). Coordinates are map percentages.
 -- Maps: 1420 Tirisfal Glades (guide default), 1458 Undercity.
-ns.builtInGuides = ns.builtInGuides or {}
-ns.builtInGuides["nuuroad:leveling:horde-tirisfal-6-12"] = {
-    schema = 2,
+
+local _, ns = ...
+
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide",
+    format = 1,
+
     id = "nuuroad:leveling:horde-tirisfal-6-12",
     updated = 1790640000,
-    map = 1420,
-    only = "Horde",
-    meta = { title = "Brill and the Undercity", author = "NuuRoad", category = "Leveling/Tirisfal Glades",
-             tags = { "horde", "undead", "tirisfal" }, levels = { 6, 12 } },
-    steps = { ... },
-}
+    title = "Brill and the Undercity",
+    category = "Leveling/Tirisfal Glades",
+    author = "NuuRoad",
+    tags = { "horde", "undead", "tirisfal" },
+    levels = { from = 6, to = 12 },
+    cond = { faction = "Horde" },
+
+    data = {
+        map = 1420,
+        sections = { ... },
+        npcs = { ... },
+    },
+})
 ```
 
 - **IDs** follow `nuuroad:<kind>:<slug>` (`leveling`, `dungeon`, `class`, `fixture`). Never change an ID once it has
   shipped: saved resume points use it.
 - **`updated`** is seconds since the epoch (`date +%s`). Bump it whenever you add, remove or reorder steps. A changed
   stamp discards players' saved resume position, which is what you want when step positions have moved.
-- **`category`** is the browser folder path. Leave the faction out of it; the guide's `only` decides who sees it.
+- **`category`** is the browser folder path. Leave the faction out of it; the guide's `cond` decides who sees it.
   Test guides go under `Fixtures/`.
-- **`map`** on the guide is the default. Give a section its own `map` when the whole section is in a city, and a
-  single point `map = ...` for the odd step elsewhere. Forgetting a map sends the arrow to the right numbers in the
+- **`map`** in `data` is the default. Give a section its own `map` when the whole section is in a city, and a
+  single point `map = ...` for the odd point elsewhere. Forgetting a map sends the arrow to the right numbers in the
   wrong zone.
-- **Register the file** in `NuuRoad.toc` with the other `Data/BuiltIn` guides, before the fixtures.
-  `Tests/BuiltInGuideTests.lua` validates every guide listed there.
+- **Register the file** in `NuuRoad.toc` with the other `Data/Guides` files, after `Data/Import.lua`.
+  `Data/Import.lua` reads each one at login; `Tests/BuiltInGuideTests.lua` and `Tests/ImportTests.lua` read every
+  guide listed there.
 - **The header comment** is where deviations from the source live. Reviewers and tools (`CompareGuideOrder`,
   `CheckGroups`) report candidates, not verdicts, and the header is how the next author knows a report was
   considered and kept on purpose.
@@ -72,27 +86,28 @@ own. Most porting bugs are wrong IDs.
   (`db/ingame/`, from NuuExperiments' quest-scan and quest-record).
   `db/horde/REPORT.md` says what each zone is missing.
 - **For new Forever NPCs and items**, check ForeverGuide's scan (`db/sources/ForeverGuide`) and the client item table.
+- **Places, flight paths and skills are IDs too**: an AreaTable ID (`area`), a TaxiNodes ID (`node`) and a SkillLine
+  ID (`skill`), from `db/sources/wago/forever`. Run `python3 Tools/IDNames.py` after adding one: it writes their
+  names to `Data/IDNames.lua`, and stops on an ID it cannot name. A skill line it does not list goes in its table.
 - **Never guess an ID from a name.** When no ID is known, say so: write one step that names the creatures in its
   `note` rather than inventing one step per kill line (the Tirisfal guide does this for the Cult of the Damned).
 - **Do not take data straight from cMaNGOS, VMaNGOS or TrinityCore.** Questie's database is fine.
-- **Add every name to the guide's `names` table**, under the right kind: `npcs`, `quests`, `items`, `factions` or
-  `spells` (`names = { npcs = { [2980] = "Grull Hawkwind" }, quests = { [747] = "The Hunt Begins" } }`, after
-  `steps`). Each guide names its own IDs, even ones another guide names too, and two guides naming one ID must
-  agree. The client only answers name lookups for creatures it has seen this session, so without the table a fresh
-  login shows `quest 870` or `NPC 3448`. The tests fail on any title that still reads like that.
-- **Say once where each NPC you visit stands**, in that NPC's entry: `[1496] = { "Deathguard Dillinger", at = { 58.20,
-  51.45 } }` (add `map = ...` inside `at` when it is not the guide's map). Steps that visit the NPC then leave `at`
-  out. Give a step its own `at` only when the NPC really is somewhere else for it (an escort's end, an NPC that
-  walks); the tests fail on a step that repeats its NPC's point. Something true of every visit ("Upstairs in the
-  inn.") goes in the entry's `note`, shown above the step's own note.
+- **Name every NPC in `npcs`**, under the map it is on: `npcs = { [1420] = { [1496] = ..., [1515] = "Rotting Dead" } }`.
+  Quests, items and spells are not named: the client names them in the player's language. Two guides naming one NPC
+  must agree. The tests fail on any title that reads `NPC 5678`.
+- **Say once where each NPC you visit stands**, in its entry: `[1496] = { name = "Deathguard Dillinger", at = { 5820,
+  5145 } }`. Steps that visit the NPC then leave `at` out. An NPC that stands in one of two places takes a list of
+  points (the arrow takes the nearest); one on a point of a guide place takes `at = "cave.chamber"`; one inside a
+  dungeon takes `instance` and a `note` saying where. Something true of every visit ("Upstairs in the inn.") goes
+  in the entry's `note`, shown above the step's own note. The tests fail on a step that repeats its NPC's point.
 
 ## Writing steps
 
-### Let the verb do the talking
+### Let the type do the talking
 
-One verb per step, and let the title generate itself. `{ accept = 404, npc = 1496 }` already
-reads "Accept A Putrid Task from Deathguard Dillinger". Use `note` only for what the line cannot say: where exactly
-someone stands, which floor of the inn, what to do if something went wrong.
+Every step has a `type`, and its title writes itself. `{ type = "accept", quests = { 404 }, npc = { 1496 } }`
+already reads "Accept A Putrid Task from Deathguard Dillinger". Use `note` only for what the line cannot say: where
+exactly someone stands, which floor of the inn, what to do if something went wrong.
 
 Good notes are short, concrete and plain ASCII:
 
@@ -105,43 +120,52 @@ Good notes are short, concrete and plain ASCII:
 - **Always put `npc` on accepts and turn-ins.** It gives the card its "Talk to" line, lets the target strip mark the
   NPC, and lets the audit catch a quest handed in somewhere else.
 - **Combine a hand-in and the next pickup at one NPC** into one visit:
-  `{ turnin = 383, accept = { 427, 99141 }, npc = 1515 }`.
+  `{ type = "talk", turnin = { 383 }, accept = { 427, 99141 }, npc = { 1515 } }`. A `talk` with neither is a plain
+  visit, such as a trainer: "Talk to ...", ticked off by the player.
+- **A turn-in the player may not be ready for** (an optional letter, a quest from another start zone) is
+  `optional = true`: passed over on arrival unless a quest is ready, never waited on.
 - **Wrap a hub in a `group`** so the player sees one card and can talk to the givers in any order. Groups stay
   within a section and cannot branch.
 
-### Objectives
+### Quest work
 
-- **Loot is a `collect`, not a `kill`.** An objective looted from mobs names the item with `collect` and the mobs
-  with `kill`, so it reads "Collect 7 Putrid Claw from Rotting Dead and Ravaged Corpse". A `kill`-only step whose
-  note says "loot" or "drop" fails the tests.
-- **Give objective steps `part`, `collect`/`kill` and `count`**, so the tracker can name the target and show the
-  count. A step with nothing of its own reads "<quest>, objective 1" until the quest is in the log.
+- **There is no objective step.** A step says what the work is (`kill`, `collect`, `interact`, `travel`) and
+  `quest = { id, n }` which objective it is for. It is done when the client says the objective is, and the count is
+  the client's: no `count` on such a step.
+- **Loot is a `collect`, not a `kill`.** An objective looted from mobs names the item and the mobs
+  (`{ type = "collect", item = 5087, kill = { 2955 }, quest = { 844, 1 } }`), so it reads "Collect 7 Plainstrider
+  Beak from Plainstrider". A `kill` step whose note says "loot" or "drop" fails the tests.
+- **One objective is one kind of creature or item**, so a quest asking for two kinds is two steps, usually grouped.
 - **Use `object`** for things picked up off the ground or clicked ("Collect 6 Dry Branch from Dry Branch").
 - **Use `use`** for the item the player has to press. It is often not the item being counted.
-- **Items that start a quest** get `starts = <quest>`; **quest items** get `quest = <quest>`. The step is then judged
-  by the quest log rather than the bags, and the resume scan treats it correctly.
+- **Items that start a quest** get `starts = <quest>`; **quest items with no objective line** get `quest = <quest>`.
+  The step is then judged by the quest log rather than the bags, and the resume scan treats it correctly.
+- **An accept from an item** (`item`, no `npc`) passes when the item is not in the bags. Add `kill` and
+  `sticky = true` for a rare whose drop starts a quest.
 
 ### Camps and pickups along the way
 
 - **Kills in one camp belong in one group**, so every target is marked at once and each keeps its own count.
-- **A pickup that happens on the way to something else** is `with = "next"`: it rides on the next step's card and
-  never stops the guide.
+- **A walk on the way to something else** is `with = "<label>"`: it rides on that step's card and never stops the
+  guide.
 - **Something to do whenever the chance comes** ("use the Motivator on any Deathguard") is `sticky = true`.
-- **Quest work spread over several sections** is a `track` / `untrack` pair. Every `track` must be closed by the end
-  of the guide; the tests check it.
-- **A rare whose drop starts a quest** is a sticky `collect` with `kill` and `starts`: it stays on the card until
-  the item is looted or the quest taken. A creature to avoid goes in the step's note.
+- **Background work** (drops off creatures fought for other reasons) is written once, where it is finished, with
+  `from = "<label>"` naming the earlier step where it starts. It rides on the card from there until it is done or
+  the guide reaches it.
+- **Creatures to mark without counting them** (a grind spot's mobs, a beast to tame) go in `mark`.
 
 ### Places and points
 
+- **Points are hundredths of a map percent**: 52.26, 31.93 on the map is `{ 5226, 3193 }`, and a radius of 2% of the
+  map is `radius = 200`.
 - **Roaming NPCs and spawn areas** take a list of points: `at = { { x, y }, { x, y }, ... }`. The arrow goes to the
   nearest one, so a player already at a later point is not sent back. Order the points along the path the player
   walks. Gordo in Tirisfal is the example: a list along the road he patrols.
-- **Widen `radius` for areas** (0.04 to 0.06 for a camp or a town) and leave the default for a single NPC.
-- **Arriving in a town or zone** is better judged by name: `{ travel = "Brill", subzone = "Brill", at = { ... } }`.
+- **Widen `radius` for areas** (400 to 600 for a camp or a town) and leave the default for a single NPC.
+- **Arriving in a town, zone or dungeon** is better judged by ID: `area = 159` (Brill), `zone = 1458` (a map) or
+  `instance = 43` (a dungeon) on a travel step.
 - **Caves and tunnels** want a `places` entry so the arrow does not point through rock. Walk the cave with
   **Menu -> Authoring -> Place recorder** rather than writing points by hand.
-- **Coordinates are map percentages** with two decimals, as the client's map shows them.
 
 ### Levels and grinding
 
@@ -149,23 +173,22 @@ Do not work out by hand how far into a level to grind. Name the step the level i
 count the turn-ins in between:
 
 ```lua
-{ level = 14, by = "ratchet", at = { 53.0, 22.4 }, note = "Grind here so the turn-ins before Ratchet bring you to 14." },
+{ type = "level", level = 14, by = "ratchet", at = { { 5300, 2240 } },
+  note = "Grind here so the turn-ins before Ratchet bring you to 14." },
 ```
 
 ## Conditions
 
-- **Prefer keywords over `when`.** `only = "Warrior | now gold 100"` reads as words in the tracker, can be edited in
-  the editor and is checked by the audit. A Lua `when` can do none of that.
-- **Know the difference between "never" and "not yet".** Class, race, faction, season and hardcore remove a step
-  for that character entirely. Level, quest, item and gold keep the step and make the guide wait on it.
-- **Use `now` for optional steps.** `only = "Rogue | now slot 16 dps < 3.3 | now gold 381"` offers the Stiletto only
-  to a rogue whose weapon is worse and who can pay for it when they arrive; otherwise the guide passes the step over
-  rather than waiting. Use `now level 6` for a quest the player may not be high enough for yet, with a note saying
-  they will pass by again.
-- **For a quest the player may or may not have** (an optional letter, a quest from another start zone), write
-  "Skip it if you do not have it" in the note. The card turns red and waits, and the note tells them what to do.
-- **The realm answers** (`xprate`, `auctionhouse`, `selffound`) stay unknown until the player sets them in Options.
-  Both branches show until then, so write both so they make sense on their own.
+- **`cond` is who the character is**: class, race, faction, season, hardcore. A step whose `cond` fails is not in
+  the guide for that character at all.
+- **`show` is what the character has chosen**: a profession (`skill`), or the realm answers under Options
+  (`ah`, `selffound`). It is read when the guide reaches the step, and the step is passed over if it does not hold.
+- **Nothing else gates a step.** There are no level, gold, item or quest conditions: a step waits by its own nature
+  (a turn-in for the quest to be ready, a train step for the skill) and the player presses Skip. Say in the note
+  when skipping is expected ("Skip this if you took another book.").
+- **Put a condition on the section or group** when all of its steps share it.
+- **The realm answers** stay unknown until the player sets them in Options. Both branches show until then, so write
+  both so they make sense on their own.
 
 ## Things a guide never says
 
@@ -199,14 +222,14 @@ The Nuu addons are player-directed. A guide tells the player what to do and leav
 From `NuuRoad/`:
 
 ```sh
-# Full test suite; validates every guide in the TOC
+# Full test suite; reads and validates every guide in the TOC
 nix-shell -p lua5_1 --run "lua Tests/TestRunner.lua"
 
 # Steps next to each other that look like one stop but are not grouped
-nix-shell -p lua5_1 --run "lua Tools/CheckGroups.lua Data/BuiltIn/HordeTirisfal612.lua"
+nix-shell -p lua5_1 --run "lua Tools/CheckGroups.lua Data/Guides/HordeTirisfal612.lua"
 
 # Order and map check against the RestedXP source (RestedXP ports only)
-nix-shell -p lua5_1 --run "lua Tools/CompareGuideOrder.lua Data/BuiltIn/HordeTirisfal612.lua \
+nix-shell -p lua5_1 --run "lua Tools/CompareGuideOrder.lua Data/Guides/HordeTirisfal612.lua \
   '<path to RXPGuides>/Guides/Forever/<file>.lua' '6-12 Tirisfal Glades'"
 ```
 
@@ -215,14 +238,13 @@ dropped `map` (Thunder Bluff steps pointing into Mulgore). `CheckGroups` has cau
 step ahead of the camp it stands in. Read the source around each report before you move anything.
 
 Add a block for a new guide to `Tests/BuiltInGuideTests.lua`, like the Mulgore and Tirisfal ones: it registers, has
-the right `only` and `map`, every step has a title with no raw IDs, every `track` is closed, and the last step is a
-`finish`.
+the right `cond` and `map`, every step has a title with no raw NPC IDs, and the last step is a `finish`.
 
 ## Checking your work in the client
 
 - **Turn on Menu -> Options -> Debug log.** Every auto-advance then reports the quest IDs the next step expects, and
-  the `[audit]` checks report any quest, NPC or item whose live name differs from the guide's `names`. Anything you
-  target, mouse over, talk to or loot that carries a guide name under a different ID is reported with the right ID.
+  the `[audit]` checks report any NPC whose live name differs from the guide's `npcs`. Anything you target, mouse
+  over, talk to or loot that carries a guide name under a different ID is reported with the right ID.
 - **Run `/nuuroad audit`** on a new guide. It checks every quest, item, NPC and objective at once, asks the server
   for anything it does not know yet, and reports IDs that do not exist on this client.
 - **Read `/nuuroad log`** for everything the audit found, grouped by guide and character, ready to paste.
@@ -237,12 +259,14 @@ the right `only` and `map`, every step has a title with no raw IDs, every `track
 
 | Symptom | Likely cause |
 | --- | --- |
-| Title reads `quest 1234` or `NPC 5678` | Name missing from the guide's `names`, or under the wrong kind. |
-| Title reads "<quest>, objective 1" | Objective step with no `collect`, `kill`, `npc` or `use`. |
+| A guide is missing at login, "could not be read" | A field the import refuses; the message names its path in the guide. |
+| Title reads `NPC 5678` | NPC missing from the guide's `npcs`. |
+| Title reads `quest 1234` outside the client | Normal: the client names quests. In the client it means a wrong ID. |
+| Title reads "<quest>, objective 1" | Step with `quest = { id, n }` and no `item`, `kill`, `object`, `npc`, `use` or `mark`. |
 | "Kill Rotting Dead" for a loot objective | Used `kill` where the step should `collect` the item. |
 | Arrow points somewhere in the wrong zone | Missing `map` on the section or point. |
 | Card is red, "You do not have this quest" | Accept step missing before it, or the accept is gated out for this character. |
-| Guide waits forever on a purchase | Optional step without `now` in its `only`. |
+| Guide waits on a turn-in the player may not have | Turn-in without `optional = true`. |
 | Players' saved position lands on the wrong step | Steps reordered without bumping `updated`. |
 | Audit says the quest was handed in elsewhere | Wrong `npc` on the turn-in, or the source used the Classic ID. |
 | Resume scan skips past work the player has not done | Quest item or starter without `quest` / `starts`. |

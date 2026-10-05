@@ -5,8 +5,8 @@
 --
 -- An export is a Lua value, not text: how that value is turned into something
 -- a player can share is a later step. It is built from the runtime guide
--- (every guide is one once loaded, packaged or the player's own) and owes
--- nothing to the authored format in Data/BuiltIn, which can change freely.
+-- (every guide is one once loaded, packaged or the player's own). The packaged
+-- guides in Data/Guides are written in it, and Data/Import.lua reads them.
 -- It holds what the author decided and nothing the import can work out again:
 -- no titles, no completion rules, no refs, no indexes. The import rebuilds
 -- those from the step's type and its facts, then runs Schema:Validate.
@@ -276,111 +276,59 @@
 -- click or the arrival starts it, the objective finishes it. A step with
 -- `quest = { id, n }` is never finished by its arrival alone.
 --
--- ADDON CHANGES THIS FORMAT NEEDS
+-- HOW THE ADDON READS IT
 --
--- The addon does not read this format yet. Following it means:
+-- Data/Import.lua turns an export into a v2 guide (docs/guide-schema.md),
+-- which Steps:Expand and Schema:Validate take on as before; the packaged
+-- guides in Data/Guides register their values in ns.packagedGuides and are
+-- read at login. What the import does beyond the plain mapping:
 --
---   * Export and import between this value and the runtime guide, with
---     Schema:Validate on the way in.
---   * `npcs` replaces `names`: NPCs only, grouped by map, with positions and
---     notes on the NPC rather than on the steps that visit it. Quest, item,
---     spell, and faction names come from the client (factions from a table in
---     NuuRoad where the client cannot name them).
---   * Steps carry `type` and named fields; conditions are predicate trees;
---     choice, `with`, and `by` name labels; place links name point ids.
---   * `objective`, `objectives`, `track`, and `untrack` go. Quest work is a
---     kill, collect, travel, or interact step with `quest`, as above:
---       - `quest = { id, n }` on any step type: done on objective n's finished
---         flag, progress from its numFulfilled / numRequired;
---       - steps ahead read their objective from C_QuestLog.GetQuestObjectives
---         before the quest is taken (the client answers for any quest), and a
---         quest the character has finished is done whatever its objectives
---         say: they read 0 again once it is turned in;
---       - kill steps lose `count` and the per-step kill tally: with an
---         objective the objective counts, without one the step is done when
---         the creature dies to the player or their party (PARTY_KILL). The
---         packaged Hillsbrad step drops its `count = 1`;
---       - the tracker's sticky quest lines (StickyLines, ActiveTracks) and
---         the editor's objective, track, and untrack forms go with them.
---     Background work across several steps, which `track` covered, is the
---     real step with `from`: carried from the labelled earlier step with its
---     own progress, marks, and kill targets, and passed over on arrival if
---     done by then. The label must be on an earlier step, group, or section,
---     checked at import like `with`. The packaged guides' 44 track / untrack
---     pairs each become `from` on the objective step they hand over to.
---   * `/nuuroad audit` checks every `{ id, n }` against the client's quest
---     data, which it has for every quest: the objective exists, its type
---     matches the step type, the item's client name is in its text, and on
---     an English client the creature's name is too.
---   * `only` and `when` become `cond` and `show`, which only hide steps:
---     `cond` the fixed facts (class, race, faction, season, hardcore), read
---     once per guide load and kept; `show` professions known and the two
---     realm answers, read at load and on SKILL_LINES_CHANGED or an Options
---     change. Both also on sections and groups; named conditions in
---     data.conds (`is`). Steps that join behind the current one are carried.
---   * Conditions no longer wait or skip: `now`, `when`, and the predicates
---     for quests, level, experience, gold, items, gear, spells, auras,
---     cooldowns, reputation, skill rank, zone, area, hearth, and Lua go.
---     A step waits by its own nature and the player skips. The only
---     automatic passes: a step whose quest is finished, a turn-in with
---     nothing to hand in, and a quest that can no longer be taken. The
---     packaged guides' `only` terms are rewritten to match; their 308 `now`
---     terms and the condition-only gates (gold, level, cooldown, slot) go.
---   * `say` on talk steps: when a dialog opens with the step's NPC, the
---     option whose gossipOptionID (C_GossipInfo.GetOptions) is next in `say`
---     is highlighted and named on the card. Whether the addon also picks it,
---     with Shift taking over as QuestDialog does for quests, is open. That
---     Forever's client gives gossipOptionID is unverified: a NuuExperiments
---     check. The port maps RestedXP's skipgossip and gossipoption to `say`
---     rather than to a note, and the Ragefire Chasm note becomes one.
---   * `optional` turn-ins (and talk steps) pass on arrival unless ready.
---   * Every point of a step keeps its own map. Today a step has one map,
---     its first point's, and the rest of its points borrow it; the runtime
---     carries a map per spot instead. Converting the packaged guides gives a
---     section the map its points are on where they relied on the first
---     point's: the Barrens guide's "Stonetalon Mountains" section gets
---     map = 1442.
---   * An accept with `item` and no `npc` passes on arrival when the item is
---     not in the bags. With `kill`, it is one step for kill, loot, and use:
---     titled as the kill until the item is in the bags, then as its use (the
---     item panel offers it), done when the quest is taken.
---   * Quests a guide's steps need but the player does not have (skipped,
---     never shared, or brought from another guide) are the addon's to handle:
---     it knows which quests each guide names and which guide accepts them, so
---     it can tell the player what they are missing and where it comes from,
---     or bring the accept in from that guide. The format carries nothing for
---     this; the default stays to stop on the step.
---   * NPC positions: a list of points (nearest wins), a place or place point,
---     and `instance` for NPCs inside a dungeon. Travel `instance` compares
---     GetInstanceInfo's instance ID; NuuRoad's travel data gains dungeon
---     entrances so the arrow can lead to them.
---   * Steps without a target: titled from the objective text. The editor
---     warns when a step leaves out its target or names an ID the guide does
---     not name; a guide checker in Tools/ (offline, on the packaged guides
---     and on exports) reports missing targets, unnamed or unplaced NPCs,
---     unresolved labels, and objective numbers whose type or target does not
---     match Questie's quest data; `/nuuroad audit` checks the same against
---     the client.
---   * `mark` lists creatures to mark and show as targets without counting
---     kills. `count` defaults to 1 on buy and on collect without an
---     objective. A travel with an objective finishes on the objective.
---   * The `skill` name table covers every SkillLine a step can name: weapon
---     skills and First Aid as well as professions.
---   * Markings derived from a step's own fields: quest failed (its quest),
---     item needed first (a `use` item not in the bags), on cooldown (its
---     spell or a `use` item, with the time left).
---   * The experience rate goes: the `xprate` predicate, its Options field
---     (realm.xpRate), and its packaged use in Southern Barrens (Hillsbrad only
---     mentions it in a comment).
---     Only WoW: Forever is targeted, where experience comes from food, legacy
---     points, and rest, none of which a realm-wide rate describes.
---   * Names are never compared. `zone` is a map ID, checked against the
---     player's map; `area` (travel and hearth steps) is an AreaTable ID, whose name the client gives in the
---     player's language (C_Map.GetAreaInfo) to compare with GetSubZoneText or
---     GetBindLocation; `node` is a TaxiNodes ID, from the taxi map's nodes;
---     `skill` is a SkillLine ID, named through a table in NuuRoad of each
---     profession's spell, whose name the client gives in the player's
---     language.
+--   * `cond` becomes a predicate on each step (a section's and a group's on
+--     each of theirs). `show` becomes a `now` term: read when the guide
+--     reaches the step, which is passed over if it does not hold.
+--   * `optional` turn-ins and talks pass on arrival unless a quest is ready;
+--     an accept from an item, not carried, passes when the item is not in the
+--     bags.
+--   * Areas and flight nodes are compared by name: an area's from the client
+--     (C_Map.GetAreaInfo) where it answers, otherwise Data/IDNames.lua, which
+--     Tools/IDNames.py writes from db/sources/wago/forever; flight nodes and
+--     skills from that table. `zone` is checked against the player's map ID;
+--     travel `instance` against GetInstanceInfo's instance ID.
+--   * `quest = { id, n }` finishes any step type on the objective (a travel
+--     only on it); kill and collect steps with one are the runtime's
+--     objective steps, titled by the client's objective line, and their count
+--     is asked of the client when the step is shown (Steps:Count).
+--   * `from` carries a step from the labelled step until done or reached
+--     (Progress:Carried); `mark` adds targets that count for nothing; `say`
+--     is kept on the step.
+--   * `npcs` becomes the runtime's NPC table, its map put on each point.
+--
+-- STILL TO DO
+--
+--   * Export: the runtime guide (and the editor's) back into this value.
+--   * `show` hides a step's row and number, and brings it back on
+--     SKILL_LINES_CHANGED or an Options change; today it passes the step over
+--     when reached, and a profession learned later does not bring it back.
+--   * An accept from an item with `kill` reads as the kill until looted and
+--     then as the item's use; today it reads as the accept, with the kill's
+--     targets marked.
+--   * `say`: highlight the option in the dialog. That Forever's client gives
+--     gossipOptionID is unverified (a NuuExperiments check).
+--   * Points in one `at` list on different maps: the runtime keeps one map
+--     per step, the first point's.
+--   * Travel data for dungeon entrances, so the arrow leads to an `instance`.
+--   * Quests a guide needs but the player does not have: say what is missing
+--     and which guide gives it.
+--   * Skill names by spell in the player's language, rather than the English
+--     names in Data/IDNames.lua.
+--   * Markings derived from a step's own fields: quest failed, item needed
+--     first, on cooldown.
+--   * The v2 constructs this format left behind (`objective`, `objectives`,
+--     `track`, `untrack`, the `now`/`when` predicates, `xprate`) are still in
+--     Data/Steps.lua for the fixtures and the editor, which writes v2.
+--   * `/nuuroad audit` and a guide checker in Tools/ for missing targets,
+--     unplaced NPCs, unresolved labels and objective numbers whose type or
+--     target does not match the quest.
 
 return {
     kind = "guide",

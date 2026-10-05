@@ -275,6 +275,12 @@ function Progress:Carried(guide, node)
         elseif candidate.sticky and candidate.index < node.index and not self:IsDone(statuses[candidate.index])
             and not (GuideScan and GuideScan:NodeCompleted(candidate)) then
             show = true
+        -- Carried from a labelled earlier step until the guide reaches it,
+        -- where it is a step like any other.
+        elseif candidate.carriedFrom and candidate.carriedFrom < node.index and node.index < candidate.index
+            and not self:IsDone(statuses[candidate.index])
+            and not (GuideScan and GuideScan:NodeCompleted(candidate)) then
+            show = true
         end
         if show and self:IsAvailable(candidate) then table.insert(carried, candidate) end
     end

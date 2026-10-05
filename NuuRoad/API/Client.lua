@@ -727,6 +727,25 @@ function Client:GetZoneName()
     return name
 end
 
+-- The instance the player is in (GetInstanceInfo's eighth value), nil
+-- outside one or where the client cannot say.
+function Client:GetInstanceID()
+    local inside = self:Read(IsInInstance)
+    if not inside or type(GetInstanceInfo) ~= "function" then return nil end
+    local ok, _, _, _, _, _, _, _, id = pcall(GetInstanceInfo)
+    return ok and plainNumber(id) or nil
+end
+
+-- An AreaTable ID's name in the player's language, which is what the subzone
+-- text and the bind location are compared with. Unverified on Forever; nil
+-- where the client has no C_Map.GetAreaInfo.
+function Client:GetAreaName(areaID)
+    if type(areaID) ~= "number" or not C_Map or not C_Map.GetAreaInfo then return nil end
+    local name = self:Read(C_Map.GetAreaInfo, areaID)
+    if type(name) ~= "string" or name == "" then return nil end
+    return name
+end
+
 -- What is worn in an equipment slot, for the "only buy this if what you have
 -- is worse" steps. Quality the client answers directly; damage per second is
 -- only ever printed on the tooltip, so it is read there and comes back nil
@@ -2703,7 +2722,13 @@ function Client:MatchesObservedCompletion(observed, location, stepIndex)
     if type(observed) ~= "table" then return false end
     if observed.type == "always" then return true end
     if observed.type == "location" then return self:IsAtLocation(location) end
-    -- Arrival by name rather than by coordinate.
+    -- Arrival by name rather than by coordinate, or by the map the player is on.
+    if observed.type == "zone" and observed.mapID then
+        return self:GetCurrentMapID() == observed.mapID
+    end
+    if observed.type == "instance" then
+        return observed.instanceID ~= nil and self:GetInstanceID() == observed.instanceID
+    end
     if observed.type == "zone" then
         local here = self:GetZoneName()
         return here ~= nil and type(observed.name) == "string" and here:lower() == observed.name:lower()

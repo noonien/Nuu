@@ -26,7 +26,7 @@ themselves, the questlog snapshots, and Data/Names.lua.
 
 `--unguided` is for a client that has moved on from the guides: every quest the
 player accepted, turned in, or carried in the log that none of the packaged
-guides in Data/BuiltIn/ mentions, with what the sessions know about it - who
+guides in Data/Guides/ mentions, with what the sessions know about it - who
 gave it, where, what it asked for, and every objective and loot row after.
 
 `--steps` reads the `guide` channel (Domain/StepState.lua, Domain/Progress.lua):
@@ -66,7 +66,7 @@ SAVED = os.path.join(WOW_ROOT, "WTF", "Account", "*", "SavedVariables", "NuuRoad
 # Set by --saved: read this file instead of every account's.
 saved_files = None
 NAMES = os.path.join(ADDON_ROOT, "Data", "Names.lua")
-BUILT_IN = os.path.join(ADDON_ROOT, "Data", "BuiltIn")
+GUIDES = os.path.join(ADDON_ROOT, "Data", "Guides")
 FIXED_BUGS = os.path.join(HERE, "fixed-bugs.md")
 
 
@@ -227,20 +227,21 @@ def load_names():
     return names
 
 
-# Every field a guide step names a quest by.
-GUIDE_QUEST = re.compile(r"\b(?:accept|turnin|objectives?|starts|quest|track|untrack)\s*=\s*(\{[^{}]*\}|\d+)")
-GUIDE_ONLY = re.compile(r"quest\s+(\d+)")
+# Every field a guide step (the export format) names quests by: lists, and
+# `quest`, whose { id, n } pair is a quest and an objective number.
+GUIDE_QUESTS = re.compile(r"\b(?:quests|accept|turnin|starts)\s*=\s*(\{[^{}]*\}|\d+)")
+GUIDE_QUEST = re.compile(r"\bquest\s*=\s*\{?\s*(\d+)")
 
 
 def guided_quests():
     """Every quest ID a packaged guide mentions."""
     found = set()
-    for path in glob.glob(os.path.join(BUILT_IN, "*.lua")):
+    for path in glob.glob(os.path.join(GUIDES, "*.lua")):
         with open(path, encoding="utf-8") as handle:
             text = handle.read()
-        for match in GUIDE_QUEST.finditer(text):
+        for match in GUIDE_QUESTS.finditer(text):
             found.update(int(n) for n in re.findall(r"\d+", match.group(1)))
-        found.update(int(n) for n in GUIDE_ONLY.findall(text))
+        found.update(int(n) for n in GUIDE_QUEST.findall(text))
     return found
 
 

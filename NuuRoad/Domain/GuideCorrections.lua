@@ -24,7 +24,7 @@ local _, ns = ...
 -- disagreements are reported and never acted on.
 --
 -- Corrections live for the session and touch nothing on disk. They are applied
--- to packaged guides only, because those are rebuilt from `Data/BuiltIn` at
+-- to packaged guides only, because those are rebuilt from `Data/Guides` at
 -- every login, so a corrected coordinate cannot outlive the session even by
 -- accident. A user guide is copied wholesale into SavedVariables when the
 -- editor saves it, so correcting one in memory could reach the disk; those are
@@ -227,7 +227,7 @@ function Corrections:ReportLines()
         "",
         "Applying corrections is " .. (self.applying and "ON" or "OFF") .. " (/nuuroad poi correct toggles it).",
         "Corrections live for this session only. They are applied to packaged guides, which are rebuilt from",
-        "Data/BuiltIn at every login; a user guide is left alone because the editor would write it to disk.",
+        "Data/Guides at every login; a user guide is left alone because the editor would write it to disk.",
         "",
         "Disagreements: " .. #self.findings,
     }

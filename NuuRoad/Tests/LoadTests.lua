@@ -30,13 +30,13 @@ assert(ns.recorder and ns.recorder.Records, "the session log is the kit's record
 for _, name in ipairs({ "Config", "Client", "Schema", "Names", "Steps", "Travel", "GuideRepository", "GuideEditing",
     "PlaceEditing", "Progress", "Experience", "ObservedProgress", "Materials", "GuideScan", "QuestIndex", "GuideCatalog",
     "GuideAudit", "NPCTracking", "TargetMarking", "QuestDialog", "QuestSelection", "JunkSelling", "LootReminder", "POILog", "Recording",
-    "GuideCorrections", "Navigation", "BugReport", "StepState" }) do
+    "GuideCorrections", "Navigation", "BugReport", "StepState", "GuideImport" }) do
     assert(ns.modules[name], name .. " is registered")
 end
 assert(ns.moduleOrder[1] == "Config", "Config loads first")
 assert(ns.modules.Recorder == nil and ns.modules.Prices == nil and ns.modules.ProfessionPlanner == nil
     and ns.modules.Crafting == nil, "what moved to the kit or to NuuProfessions is not here")
-assert(ns.builtInGuides and next(ns.builtInGuides), "the packaged guides")
+assert(ns.packagedGuides and #ns.packagedGuides == 22, "the packaged guides, in the export format")
 assert(ns.API and ns.API.apiVersion == 1, "the optional API")
 
 dofile("../NuuKit/Tests/Support/Frames.lua")
@@ -55,8 +55,11 @@ assert(db.settings.debug == nil)
 local store = Config:CharacterStore()
 assert(type(store) == "table" and rawget(_G, "NuuRoadCharacterDB")["unknown - unknown (no GUID)"] == store)
 assert(ns.modules.Client:GetPlayerPosition() == nil, "no map outside the client")
-assert(next(ns.modules.GuideRepository.builtIns),
-    "the repository has the packaged guides")
+local packaged = 0
+for id in pairs(ns.modules.GuideRepository.builtIns) do
+    if not id:find("^nuuroad:fixture:") then packaged = packaged + 1 end
+end
+assert(packaged == 22 and ns.packagedGuides == nil, "the repository has the packaged guides, read at login: " .. packaged)
 
 -- The optional API (API.lua), on the loaded addon. The UI is not loaded here,
 -- so the travel planner and the guide browser are missing: the calls that

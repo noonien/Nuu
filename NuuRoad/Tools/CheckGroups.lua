@@ -1,9 +1,9 @@
 -- Build-time guide check, not shipped behaviour: finds quest work that looks
 -- like one stop but is authored as separate steps. Run from the addon root:
 --
---   lua Tools/CheckGroups.lua [Data/BuiltIn/<Guide>.lua ...] [--near 3] [--near-npc 1]
+--   lua Tools/CheckGroups.lua [Data/Guides/<Guide>.lua ...] [--near 3] [--near-npc 1]
 --
--- With no files it reads every guide in Data/BuiltIn.
+-- With no files it reads every guide in Data/Guides, through the import.
 --
 -- Two kinds of stop are checked, each against its own kind only:
 --
@@ -29,6 +29,7 @@ _G = _G or _ENV
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
 Load(ns, "Data/Schema.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
+Load(ns, "Data/IDNames.lua"); Load(ns, "Data/Import.lua")
 ns.builtInGuides = {}
 local Names, Steps = ns.modules.Names, ns.modules.Steps
 
@@ -47,11 +48,12 @@ while arg[index] do
     index = index + 1
 end
 if #files == 0 then
-    local listing = io.popen('ls Data/BuiltIn/*.lua')
+    local listing = io.popen('ls Data/Guides/*.lua')
     for path in listing:lines() do table.insert(files, path) end
     listing:close()
 end
 for _, path in ipairs(files) do Load(ns, path) end
+ns.modules.GuideImport:RegisterPackaged()
 
 local sorts = { kill = "work", collect = "work", interact = "work", questObjective = "work",
     acceptQuest = "visit", turnInQuest = "visit", talk = "visit" }

@@ -185,7 +185,7 @@ a tested schema/UI/API implementation; no converter fallback silently degrades i
    name the same NPC or the NPCs stand within `--near-npc`, unless the second hands in what the first accepted. The two kinds are never paired with each other, and
    steps no one character sees both of (the Horde and Alliance halves of a visit) are left out. It caught "Badwind"
    Bennic ported as a step of its own ahead of the Highlands Bandits whose cave he is in. With no files it checks
-   every guide in `Data/BuiltIn`. Its reports are candidates too: two camps side by side can stay apart.
+   every guide in `Data/Guides`. Its reports are candidates too: two camps side by side can stay apart.
 
 4. Create small fixtures representing each converted construct, plus one end-to-end RestedXP-derived and one
    Zygor-derived authorized starter guide. Test selection, eligibility, routes/POIs, objective groups, manual controls,

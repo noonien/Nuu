@@ -1,0 +1,676 @@
+-- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
+-- Data/Import.lua reads it as the addon loads. Converted from the authored v2
+-- guide that was Data/BuiltIn/HordeBarrens.lua.
+--
+-- Horde 13-21 leveling route through The Barrens and Stonetalon Mountains. Step
+-- order, quest IDs, NPC IDs, item IDs, coordinates, and map markers cover the
+-- Warrior/Shaman path; text is NuuRoad's own. Class- and race-only steps carry
+-- `cond`, so other characters never see them.
+--
+-- Parts and Pieces (97253) is new in WoW: Forever: its giver and objective text
+-- come from a recorded session (Archive/, 2026-09-23); the camp pins are the
+-- Southsea camp the recording places north of the Baron's. Vrang's Game (95507)
+-- and Bruised Pride and Lion Hides (95494) are new the same way: Vrang
+-- Wildgore's spot and the trap pins are where a recorded session (2026-09-23)
+-- accepted them and looted the traps. The lions have not been recorded yet:
+-- their pin is the client's own objective marker for the quest
+-- (C_QuestLog.GetQuestsOnMap, logged 2026-09-24), which is one of the quest's
+-- two areas and good to roughly a hundred yards.
+--
+-- The Druid Cure Poison chain (6126-6130) is placed where this route already
+-- passes each spot.
+--
+-- Maps: 1413 The Barrens (guide default), 1454 Orgrimmar, 1456 Thunder Bluff,
+-- 1442 Stonetalon Mountains, 1450 Moonglade.
+--
+-- Check in client:
+--   * The lion hides for 95494: the creature IDs of the Savannah Matriarchs and
+--     Patriarchs and the hide's item ID are not known yet.
+--   * The Handfuls of Complicated Parts for 97253: item ID and objective
+--     number not known yet (the recorded objective has no index).
+--
+-- Conversion notes:
+--   * `only = "Horde"` on the guide -> wrapper cond = { faction = "Horde" }.
+--     "not Tauren" -> { none = { { race = "tauren" } } }; "Warrior", "Shaman",
+--     "Druid" -> { class = ... }; "Warrior or Shaman" -> { class = { "WARRIOR",
+--     "SHAMAN" } }; "Orc or Troll" -> { race = { "orc", "troll" } }.
+--   * Quest-state `only` terms dropped (no quest predicates in the format):
+--       - "quest 842", "quest 1358", "quest 863" (Sputtervalve) on turn-ins: a
+--         turn-in with nothing to hand in now passes by itself.
+--       - "quest 819" on Drohn's turnin 819 / accept 821 (a talk step now): left
+--         to the turn-in passing; 821 cannot be taken without 819. "quest 821"
+--         on the three Chen's Empty Keg objective steps and Drohn's 821 turn-in:
+--         the steps of a quest the player does not have stop as the format's
+--         default says (the addon's to handle), and the player skips.
+--       - "quest 858" on Lugwizzle and the 858 turn-in, "quest 863" on the
+--         escort: same; the shredder note already says to skip both if it is
+--         missing.
+--       - "not quest 819" on the Thorn Hill keg note: dropped; the note says to
+--         take the keg only if it was not found earlier.
+--   * No `now` terms or condition-only gates in the source.
+--   * 11 track / untrack pairs -> `from` on the objective steps, with labels on
+--     the earlier step, group, or section where tracking began:
+--       869 and 844 (tracked at the start of Thorn Hill) -> section label
+--       "thorn-hill"; 845 -> "zhevra" (Sergra's turnin 844 / accept 845); 821 ->
+--       "drohn" (turnin 819 / accept 821), on all three 821 objective steps
+--       since the track covered the whole quest; 855 and 848 -> "regthar"
+--       (accept 855, 850); 95494 -> "vrang"; 865 -> "mebok"; 6461 -> "xenzilla",
+--       on both 6461 objective steps; 1069 -> "besseleth" (the wanted poster);
+--       1062 -> "deepmoss" (the eggs and venomspitters group).
+--   * Kill and collect counts dropped on every objective step (the objective
+--     counts). The Zhevra Charger carcass (10338, no quest behind it) keeps
+--     count = 1, and the Flawed Power Stones keep count = 1 next to the whole
+--     quest 924 (the source's "quest item picked up for quest 924").
+--   * Objective steps with no kill or collect target became: travel for The
+--     Forgotten Pools' bubbling rock (870, 1); interact for the Altar of Fire
+--     (924, 1), the three Samophlange valves (900), the Bubbling Fissure
+--     (877, 1) and the three raptor nests (905); talk with the Beaten Corpse
+--     (npc 10668) for Lost in Battle (4921, 1); collect with no item for the
+--     lion hides (95494, 1) and for Parts and Pieces, which the source names
+--     as the whole quest (quest = 97253, no objective number inferred).
+--   * Curing the Sick (6129, 1): the source's npc 12296 is a creature the
+--     salve is used on, not a visit, so it is `mark` on an interact step with
+--     use = { 15826 }.
+--   * Accepts from an item got the item from the step before them: Chen's
+--     Empty Keg (accept 819, item 4926) and Lakota'mani (accept 883, item 5099);
+--     the hoof collect also got starts = 883. Ishamuhale (882, 1) got
+--     use = { 10338 }, the carcass its note says to use.
+--   * hearth: The Crossroads -> area 380, Camp Taurajo -> 378, Thunder Bluff
+--     -> 1638 (db/sources/ForeverGuide ZoneDB). flight: Ratchet -> node 80, Camp
+--     Taurajo -> 77, Sun Rock Retreat -> 29 (db/horde/flightpaths.json).
+--   * "Stonetalon Mountains" section given map = 1442 (its points relied on
+--     the first point's map); the points drop their own map.
+--   * NPC location notes moved from the steps to `npcs` (Ak'Zeloth, Kranal
+--     Fiss, Boorand Plainswind, Thun'grim Firegaze, Darsok Swiftdagger,
+--     Gazlowe, Turak Runetotem, Dendrite Starblaze, Regthar Deathgate, Vrang
+--     Wildgore, Zor Lonetree, Innkeeper Byula, Seereth Stonebreak, Makaba
+--     Flathoof, Xen'Zilla, Ziz Fizziks, Innkeeper Pala, Clarice Foster, Jin'Zil,
+--     Tsunaman); route directions stay on the step. Kaya Flathoof's and the
+--     shredder's notes stay on their steps (escort advice).
+--   * Every NPC the guide visits has a position. Trainers named in notes
+--     (Kardris Dreamseeker, Grezz Ragefist, Hanashi) and the Orgrimmar wind
+--     rider master have no NPC ID in the source and stay note steps with `at`.
+--   * Quest and item names (names.quests, names.items) dropped: the client
+--     names them. Coordinates and radii are whole hundredths of a percent.
+local _, ns = ...
+
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide",
+    format = 1,
+
+    id = "nuuroad:leveling:horde-barrens-13-21",
+    updated = 1789862400,
+    title = "The Barrens and Stonetalon",
+    category = "Leveling/The Barrens",
+    author = "NuuRoad",
+    tags = { "horde", "barrens", "stonetalon", "crossroads", "ratchet" },
+    levels = { from = 13, to = 21 },
+    cond = { faction = "Horde" },
+
+    data = {
+        map = 1413,
+
+        sections = {
+            { title = "Into the Barrens", steps = {
+                { type = "note", note = "Written for Warriors and Shamans. Other classes can follow it; class-only steps are hidden for them." },
+                { type = "talk", turnin = { 809 }, accept = { 924 }, npc = { 3521 },
+                  cond = { none = { { race = "tauren" } } } },
+                { type = "collect", item = 4986, count = 1, quest = 924, object = "Flawed Power Stones",
+                  at = { { 6234, 2003 } }, cond = { none = { { race = "tauren" } } },
+                  note = "The Demon Seed is timed: 30 minutes from picking up the Flawed Power Stone." },
+                { type = "talk", turnin = { 1498 }, accept = { 1502 }, npc = { 5810 }, cond = { class = "WARRIOR" } },
+                { type = "turnin", quests = { 1527 }, npc = { 5907 }, cond = { class = "SHAMAN" } },
+                { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg", at = { { 5578, 2001 } },
+                  note = "Chen's Empty Keg spawns on the ground here. Skip if it is not there; you pass by again later." },
+                { type = "accept", quests = { 819 }, item = 4926, note = "Use the keg to start its quest." },
+                { type = "interact", object = "The Altar of Fire", quest = { 924, 1 }, radius = 300,
+                  at = { { 4796, 1907 } }, cond = { none = { { race = "tauren" } } },
+                  note = "Run up Dreadmist Peak from 50.93, 22.55. The altar is inside the small cave." },
+                { type = "note", at = { { 4745, 1928 } }, cond = { none = { { race = "tauren" } } },
+                  note = "Fast travel: stand in the fire on the altar and die, then take the spirit healer's resurrection. You wake up next to the Crossroads." },
+            } },
+
+            { title = "Crossroads", steps = {
+                { type = "hearth", area = 380, npc = { 3934 } },
+                { group = {
+                    { type = "accept", quests = { 870 }, npc = { 3448 } },
+                    { type = "turnin", quests = { 842 }, npc = { 3338 } },
+                    { type = "accept", quests = { 844 }, npc = { 3338 } },
+                    { type = "accept", quests = { 869 }, npc = { 3464 } },
+                    { type = "accept", quests = { 871 }, npc = { 3429 } },
+                    { type = "turnin", quests = { 1358 }, npc = { 3390 } },
+                    { type = "accept", quests = { 1492, 848 }, npc = { 3390 } },
+                    { type = "turnin", quests = { 6386 }, npc = { 3489 }, cond = { race = { "orc", "troll" } } },
+                } },
+                { type = "talk", turnin = { 1502 }, accept = { 1503 }, npc = { 5878 }, cond = { class = "WARRIOR" } },
+                { type = "collect", item = 6534, quest = { 1503, 1 }, object = "Stolen Iron Chest", radius = 300,
+                  at = { { 5505, 2665 } }, cond = { class = "WARRIOR" } },
+                { type = "turnin", quests = { 1503 }, npc = { 5878 }, cond = { class = "WARRIOR" } },
+            } },
+
+            { title = "Thorn Hill", label = "thorn-hill", steps = {
+                { type = "note", at = { { 5570, 2729 } },
+                  note = "Chen's Empty Keg can also spawn here. Take it and use it if you did not find it earlier." },
+                { group = {
+                    { type = "kill", kill = { 3265 }, quest = { 871, 3 }, radius = 550,
+                      at = { { 5560, 2540 }, { 5300, 2520 }, { 5440, 2720 } } },
+                    { type = "kill", kill = { 3267 }, quest = { 871, 1 }, radius = 550,
+                      at = { { 5560, 2540 }, { 5300, 2520 }, { 5440, 2720 } } },
+                    { type = "kill", kill = { 3268 }, quest = { 871, 2 }, radius = 550,
+                      at = { { 5560, 2540 }, { 5300, 2520 }, { 5440, 2720 } } },
+                } },
+                { type = "collect", item = 5087, kill = { 3244, 3246 }, quest = { 844, 1 }, from = "thorn-hill", radius = 600,
+                  at = { { 5300, 2240 }, { 4740, 2640 }, { 4840, 2960 }, { 4880, 2340 }, { 5040, 3340 }, { 5100, 1960 }, { 5100, 2740 }, { 5300, 3040 }, { 5540, 2520 } } },
+                { type = "level", level = 14, by = "ratchet",
+                  at = { { 5300, 2240 }, { 4740, 2640 }, { 4840, 2960 }, { 4880, 2340 }, { 5040, 3340 }, { 5100, 1960 }, { 5100, 2740 }, { 5300, 3040 }, { 5540, 2520 } },
+                  note = "Grind here so the turn-ins before Ratchet bring you to 14." },
+                { group = {
+                    { type = "talk", turnin = { 871 }, accept = { 872, 5041 }, npc = { 3429 } },
+                    { type = "accept", quests = { 867 }, npc = { 3449 } },
+                    { type = "talk", turnin = { 844 }, accept = { 845 }, npc = { 3338 }, label = "zhevra" },
+                } },
+                { group = {
+                    { type = "collect", item = 5063, kill = { 3438 }, quest = { 872, 3 }, radius = 400, at = { { 5853, 2704 } },
+                      note = "Kreenig Snarlsnout walks around the north side of the mountain." },
+                    { type = "collect", item = 12708, quest = { 5041, 1 }, object = "Crossroads' Supply Crates", radius = 400,
+                      at = { { 5840, 2700 }, { 5850, 2580 }, { 5910, 2440 } },
+                      note = "Piles of brown boxes, several places around the camp." },
+                    { type = "kill", kill = { 3269 }, quest = { 872, 1 }, radius = 600,
+                      at = { { 5900, 2440 }, { 5640, 2440 }, { 5820, 2640 } } },
+                    { type = "kill", kill = { 3266 }, quest = { 872, 2 }, radius = 600,
+                      at = { { 5900, 2440 }, { 5640, 2440 }, { 5820, 2640 } } },
+                } },
+                { type = "turnin", quests = { 924 }, npc = { 3521 }, cond = { none = { { race = "tauren" } } } },
+            } },
+
+            { title = "Ratchet", label = "ratchet", steps = {
+                { type = "flight", node = 80, npc = { 16227 } },
+                { type = "note", at = { { 6264, 3742 } },
+                  note = "Fuzruckle is the banker. Bag space is tight in this zone; quest items you are not turning in yet can wait in the bank." },
+                { group = {
+                    { type = "accept", quests = { 887 }, npc = { 3391 } },
+                    { type = "accept", quests = { 894 }, npc = { 3442 } },
+                    { type = "turnin", quests = { 1492 }, npc = { 3453 } },
+                    { type = "accept", quests = { 895 }, object = "WANTED", at = { { 6259, 3747 } } },
+                    { type = "talk", turnin = { 819 }, accept = { 821 }, npc = { 3292 }, label = "drohn" },
+                } },
+                { group = {
+                    { type = "collect", item = 5084, kill = { 3467 }, quest = { 895, 1 }, radius = 500,
+                      at = { { 6420, 4720 }, { 6240, 4940 }, { 6340, 4920 } },
+                      note = "Baron Longshore wears a red trenchcoat and walks the coast south of Ratchet." },
+                    { type = "kill", kill = { 3382 }, quest = { 887, 2 }, radius = 600,
+                      at = { { 6340, 4580 }, { 6280, 4980 }, { 6340, 4320 } } },
+                    { type = "kill", kill = { 3381 }, quest = { 887, 1 }, radius = 600,
+                      at = { { 6340, 4580 }, { 6280, 4980 }, { 6340, 4320 } } },
+                } },
+                { type = "level", level = 14, xp = 10200, at = { { 6340, 4580 }, { 6280, 4980 }, { 6340, 4320 } } },
+                { group = {
+                    { type = "talk", turnin = { 887, 895 }, accept = { 890 }, npc = { 3391 } },
+                    { type = "talk", turnin = { 890 }, accept = { 892, 896 }, npc = { 3453 } },
+                    { type = "talk", turnin = { 892 }, accept = { 888 }, npc = { 3391 } },
+                    { type = "accept", quests = { 97253 }, npc = { 7161 },
+                      note = "New in WoW: Forever. The parts come on the next trip to the pirate camps." },
+                } },
+                { type = "note", cond = { class = { "WARRIOR", "SHAMAN" } },
+                  note = "This is a good point to train in Orgrimmar if you have not since level 12." },
+                { type = "travel", to = "Thunder Bluff", at = { { 7417, 2989, map = 1456 } }, radius = 400,
+                  cond = { class = "DRUID" }, note = "Druids: fly to Thunder Bluff for Cure Poison." },
+                { type = "accept", quests = { 6126 }, npc = { 3033 }, cond = { class = "DRUID" } },
+                { type = "travel", to = "Moonglade", at = { { 5621, 3064, map = 1450 } }, cond = { class = "DRUID" },
+                  note = "Cast Teleport: Moonglade." },
+                { type = "talk", turnin = { 6126 }, accept = { 6127 }, npc = { 11802 }, cond = { class = "DRUID" } },
+                { type = "travel", to = "The Crossroads", at = { { 5199, 2990 } }, radius = 500, cond = { class = "DRUID" },
+                  note = "Hearth back to the Crossroads." },
+            } },
+
+            { title = "Zhevra and the Oases", steps = {
+                { type = "turnin", quests = { 872, 5041 }, npc = { 3429 } },
+                { type = "collect", item = 5086, kill = { 3242 }, quest = { 845, 1 }, from = "zhevra", radius = 600,
+                  at = { { 5320, 3420 }, { 4940, 3680 }, { 5080, 3400 }, { 5140, 3700 }, { 5300, 3840 }, { 5360, 3620 }, { 5500, 3860 }, { 5540, 3340 }, { 5560, 3620 } },
+                  note = "Zhevra Runners are the zebras south of the Crossroads." },
+                { type = "talk", turnin = { 845 }, accept = { 903 }, npc = { 3338 } },
+                { type = "accept", quests = { 855, 850 }, npc = { 3389 }, label = "regthar" },
+                { type = "travel", to = "The Forgotten Pools", object = "bubbling rock", quest = { 870, 1 }, radius = 300,
+                  at = { { 4507, 2253 } }, note = "Swim next to the bubbling rock underwater." },
+                { type = "collect", item = 5012, quest = { 848, 1 }, object = "Laden Mushroom", from = "regthar", radius = 400,
+                  at = { { 4470, 2310 }, { 4390, 2440 }, { 4553, 2180 } }, note = "Large blue mushrooms around the pools." },
+                { type = "collect", item = 5022, kill = { 3394 }, quest = { 850, 1 }, radius = 400, at = { { 4272, 2361 } },
+                  note = "Barak Kodobane walks around the Kolkar camp north of the pools." },
+                { type = "talk", turnin = { 850 }, accept = { 851 }, npc = { 3389 },
+                  note = "Turn in Centaur Bracers too if you already have 15." },
+                { group = {
+                    { type = "collect", item = 5096, kill = { 3425 }, quest = { 903, 1 }, radius = 600,
+                      at = { { 4120, 2840 }, { 4040, 2060 }, { 4080, 2620 }, { 4200, 2340 }, { 4320, 3320 }, { 4340, 3940 }, { 4460, 3140 } },
+                      note = "Savannah Prowlers west of the bunker." },
+                    { type = "collect", item = 4893, kill = { 3425 }, quest = { 821, 1 }, from = "drohn", radius = 600,
+                      at = { { 4120, 2840 }, { 4040, 2060 }, { 4080, 2620 }, { 4200, 2340 }, { 4320, 3320 }, { 4340, 3940 }, { 4460, 3140 } } },
+                } },
+                { type = "collect", item = 5064, kill = { 3276, 3277 }, quest = { 867, 1 }, radius = 500,
+                  at = { { 4086, 1845 }, { 4020, 1660 }, { 4040, 1440 }, { 4040, 1940 } },
+                  note = "Harpies at the Dry Hills to the northwest." },
+                { type = "accept", quests = { 95494, 95507 }, npc = { 3682 }, label = "vrang",
+                  note = "New in WoW: Forever." },
+                { type = "collect", item = 269719, quest = { 95507, 1 }, object = "Sprung Trap", radius = 400,
+                  at = { { 4422, 1304 }, { 4390, 1380 }, { 4471, 1346 }, { 4533, 1318 }, { 5016, 1273 } },
+                  note = "Sprung traps lie along the valley east of Vrang; some hold more than one catch." },
+                { type = "collect", item = 15843, use = { 15842 }, quest = { 6127, 1 }, radius = 200, at = { { 4841, 1889 } },
+                  cond = { class = "DRUID" },
+                  note = "Run up Dreadmist Peak from 50.93, 22.55 and use the Empty Dreadmist Peak Sampler standing in the bubbling water at the top." },
+                { type = "talk", turnin = { 6127 }, accept = { 6128 }, npc = { 3448 }, cond = { class = "DRUID" } },
+            } },
+
+            { title = "Samophlange and the North", steps = {
+                { type = "talk", turnin = { 894 }, accept = { 900 }, object = "Control Console", at = { { 5241, 1164 } },
+                  note = "The Samophlange chain is all at the Sludge Fen." },
+                { type = "interact", object = "Fuel Control Valve", quest = { 900, 2 }, radius = 200, at = { { 5240, 1141 } },
+                  note = "Two enemies may attack at each valve." },
+                { type = "interact", object = "Regulator Valve", quest = { 900, 3 }, radius = 200, at = { { 5229, 1140 } } },
+                { type = "interact", object = "Main Control Valve", quest = { 900, 1 }, radius = 200, at = { { 5233, 1157 } } },
+                { type = "talk", turnin = { 900 }, accept = { 901 }, object = "Control Console", at = { { 5241, 1164 } } },
+                { type = "collect", item = 5089, kill = { 3471 }, quest = { 901, 1 }, radius = 300, at = { { 5284, 1039 } },
+                  note = "Tinkerer Sniggles is inside the building." },
+                { type = "talk", turnin = { 901 }, accept = { 902 }, object = "Control Console", at = { { 5241, 1164 } } },
+                { type = "collect", item = 5062, kill = { 3254, 3255 }, quest = { 869, 1 }, from = "thorn-hill", radius = 800,
+                  at = { { 5300, 1260 }, { 5040, 1300 }, { 5200, 1460 }, { 5240, 1660 }, { 5280, 1940 }, { 5400, 1040 }, { 5480, 1540 }, { 5540, 2100 }, { 5620, 1120 }, { 5640, 1740 }, { 5800, 2040 }, { 5840, 1520 }, { 5940, 1740 }, { 6340, 600 } },
+                  note = "Sunscale raptors are dense north of the Sludge Fen. Finish Raptor Thieves here." },
+                { type = "accept", quests = { 858 }, npc = { 3439 },
+                  note = "Wizzlecrank's Shredder starts an escort at the Venture Co. drill site. It has a long respawn; skip Ignition and The Escape if it is missing." },
+                { type = "collect", item = 5050, kill = { 3445 }, quest = { 858, 1 }, radius = 300, at = { { 5620, 825 } },
+                  note = "Supervisor Lugwizzle walks both levels of the platform. Skip if too hard." },
+                { type = "talk", turnin = { 858 }, accept = { 863 }, npc = { 3439 } },
+                { type = "escort", quest = 863, npc = { 3439 }, at = { { 5535, 770 } } },
+                { type = "collect", item = 5097, kill = { 3283, 3286 }, quest = { 896, 1 }, radius = 500,
+                  at = { { 6120, 500 }, { 6000, 320 }, { 6180, 380 }, { 6092, 382 } },
+                  note = "Boulder Lode Mine: follow the path up from 61.54, 6.68." },
+                { type = "level", level = 16, xp = 10275, at = { { 6120, 500 }, { 6000, 320 }, { 6180, 380 }, { 6092, 382 } } },
+            } },
+
+            { title = "Orgrimmar", map = 1454, steps = {
+                { type = "travel", to = "Orgrimmar", radius = 400, at = { { 1608, 6228 } },
+                  note = "Cross the bridge over the Southfury River into Orgrimmar." },
+                { type = "note", at = { { 3881, 3639 } }, cond = { class = "SHAMAN" },
+                  note = "Train with Kardris Dreamseeker in the Valley of Wisdom." },
+                { type = "accept", quests = { 1061 }, npc = { 4047 } },
+                { type = "note", at = { { 7978, 3142 } }, cond = { class = "WARRIOR" },
+                  note = "Train with Grezz Ragefist in the Valley of Honor." },
+                { type = "note", at = { { 8153, 1963 } }, cond = { class = { "WARRIOR", "SHAMAN" } },
+                  note = "Hanashi in the Valley of Honor teaches Two-Handed Axes; Warriors can also learn Staves." },
+                { type = "note", at = { { 4514, 6388 } },
+                  note = "The Wind Rider Master is on top of the tower. Fly back to the Crossroads." },
+            } },
+
+            { title = "Crossroads Turn-ins", steps = {
+                { group = {
+                    { type = "talk", turnin = { 867 }, accept = { 875 }, npc = { 3449 } },
+                    { type = "talk", turnin = { 870 }, accept = { 877 }, npc = { 3448 } },
+                    { type = "talk", turnin = { 903 }, accept = { 881 }, npc = { 3338 } },
+                    { type = "talk", turnin = { 869 }, accept = { 3281 }, npc = { 3464 } },
+                    { type = "turnin", quests = { 848 }, npc = { 3390 } },
+                } },
+                { type = "collect", item = 5100, kill = { 3475 }, use = { 10327 }, quest = { 881, 1 }, radius = 400,
+                  at = { { 5585, 1708 } },
+                  note = "Use the Horn of Echeyakee at the bones around the mountain northeast of the Crossroads. A white lion spawns nearby." },
+                { type = "collect", item = 4894, kill = { 3246, 3244, 3245 }, quest = { 821, 2 }, from = "drohn", radius = 600,
+                  at = { { 4800, 1320 }, { 4220, 1520 }, { 4360, 1700 }, { 4400, 1420 }, { 4560, 1560 }, { 4600, 1320 }, { 4800, 1120 } },
+                  note = "Plainstriders in the northwest." },
+                { type = "collect", item = 5065, kill = { 3278 }, quest = { 875, 1 }, radius = 500,
+                  at = { { 3940, 1480 }, { 3740, 1540 }, { 3820, 1240 }, { 3840, 1740 } },
+                  note = "Witchwing Slayers in the far northwest. Avoid Sister Rathtalon, the elite green harpy, and watch for stealthed harpies." },
+                { type = "collect", quest = { 95494, 1 }, from = "vrang", radius = 600, at = { { 4550, 1480 } },
+                  note = "Savannah Matriarchs and Patriarchs, the big lions of the northern Barrens, drop the hides." },
+                { type = "turnin", quests = { 95494, 95507 }, npc = { 3682 } },
+                { group = {
+                    { type = "talk", turnin = { 881 }, accept = { 905 }, npc = { 3338 } },
+                    { type = "accept", quests = { 899, 4921 }, npc = { 3432 } },
+                    { type = "talk", turnin = { 875 }, accept = { 876 }, npc = { 3449 } },
+                } },
+            } },
+
+            { title = "Ratchet and the Merchant Coast", steps = {
+                { group = {
+                    { type = "turnin", quests = { 863 }, npc = { 3442 } },
+                    { type = "talk", turnin = { 902 }, accept = { 1483 }, npc = { 3442 } },
+                    { type = "turnin", quests = { 896 }, npc = { 3453 } },
+                    { type = "accept", quests = { 865, 1069 }, npc = { 3446 }, label = "mebok" },
+                } },
+                { type = "collect", item = 5077, quest = { 888, 2 }, object = "Fragile - Do NOT Drop", radius = 300,
+                  at = { { 6358, 4924 } } },
+                { type = "collect", item = 5076, quest = { 888, 1 }, object = "Drizzlik's Emporium", radius = 300,
+                  at = { { 6263, 4964 } } },
+                { type = "collect", quest = 97253, radius = 500, at = { { 6400, 4450 }, { 6350, 4580 }, { 6440, 4360 } },
+                  note = "Collect 5 Handfuls of Complicated Parts, the pieces of Wrenix's machine scattered around the upper (northern) pirate camp." },
+                { type = "collect", item = 5061, quest = { 3281, 1 }, object = "Stolen Silver", radius = 300, at = { { 5803, 5387 } },
+                  note = "Run around the mountain and follow the path into the Raptor Grounds from 57.35, 52.24. The Stolen Silver is a chest at the back." },
+                { type = "collect", item = 5055, kill = { 3256 }, quest = { 865, 1 }, from = "mebok", radius = 500,
+                  at = { { 5736, 5238 }, { 5701, 5445 }, { 5785, 5390 } },
+                  note = "Keep 3 Sunscale Feathers from the same raptors for The Angry Scytheclaws." },
+            } },
+
+            { title = "Stagnant Oasis", steps = {
+                { type = "interact", object = "Bubbling Fissure", quest = { 877, 1 }, radius = 300, at = { { 5561, 4274 } },
+                  note = "Underwater." },
+                { group = {
+                    { type = "collect", item = 5023, kill = { 3395 }, quest = { 851, 1 }, radius = 600,
+                      at = { { 5291, 4177 }, { 5300, 4420 }, { 5440, 4640 }, { 5500, 4040 }, { 5620, 4280 } },
+                      note = "Kill Kolkar centaurs around the Stagnant Oasis until Verog the Dervish yells that he has been summoned, then kill him at his tent." },
+                    { type = "collect", item = 5030, kill = { 3397, 3274, 3273, 3272, 3275 }, quest = { 855, 1 }, from = "regthar", radius = 600,
+                      at = { { 5291, 4177 }, { 5300, 4420 }, { 5440, 4640 }, { 5500, 4040 }, { 5620, 4280 } } },
+                } },
+                { type = "interact", object = "Blue Raptor Nest", quest = { 905, 1 }, radius = 200, at = { { 5260, 4611 } } },
+                { type = "interact", object = "Red Raptor Nest", quest = { 905, 3 }, radius = 200, at = { { 5246, 4657 } } },
+                { type = "interact", object = "Yellow Raptor Nest", quest = { 905, 2 }, radius = 200, at = { { 5202, 4647 } } },
+                { type = "talk", npc = { 10668 }, quest = { 4921, 1 }, object = "Beaten Corpse", radius = 300,
+                  note = "Right-click the corpse and inspect the body." },
+                { type = "collect", item = 15852, kill = { 3234 }, quest = { 6128, 2 }, radius = 600, cond = { class = "DRUID" },
+                  at = { { 5193, 4365 }, { 5271, 4541 }, { 5516, 4559 }, { 4725, 4331 }, { 4577, 4328 }, { 4482, 4080 } },
+                  note = "Lost Barrens Kodos wander between the oasis and the road." },
+                { type = "collect", item = 2449, quest = { 6128, 1 }, cond = { class = "DRUID" },
+                  note = "Earthroot is an herb: pick it if you are an herbalist, or buy it at the Auction House." },
+            } },
+
+            { title = "Camp Taurajo", steps = {
+                { type = "hearth", area = 378, npc = { 7714 } },
+                { type = "accept", quests = { 878 }, npc = { 3430 } },
+                { type = "flight", node = 77, npc = { 10378 } },
+                { group = {
+                    { type = "turnin", quests = { 4921 }, npc = { 3432 } },
+                    { type = "talk", turnin = { 877 }, accept = { 880 }, npc = { 3448 } },
+                    { type = "talk", turnin = { 905 }, accept = { 3261 }, npc = { 3338 } },
+                    { type = "turnin", quests = { 3281 }, npc = { 3464 } },
+                    { type = "talk", turnin = { 6128 }, accept = { 6129 }, npc = { 3448 }, cond = { class = "DRUID" } },
+                } },
+                { type = "interact", use = { 15826 }, mark = { 12296 }, quest = { 6129, 1 }, radius = 600, cond = { class = "DRUID" },
+                  at = { { 5017, 3112 }, { 4877, 2954 }, { 4833, 2615 }, { 4884, 2388 }, { 4999, 2309 }, { 5179, 2051 }, { 5344, 2086 }, { 5429, 2165 }, { 5498, 2195 }, { 5352, 2692 } },
+                  note = "Use the Curative Animal Salve on 10 Sickly Gazelles, the green gazelles all over the northern Barrens." },
+                { type = "note", cond = { class = { "WARRIOR", "SHAMAN" } },
+                  note = "At level 18, train in Orgrimmar before heading west." },
+                { type = "talk", turnin = { 855, 851 }, accept = { 852 }, npc = { 3389 } },
+                { type = "collect", item = 5067, kill = { 3452 }, quest = { 876, 1 }, radius = 400, at = { { 3916, 1217 } },
+                  note = "Serena Bloodfeather is at the top of the Dry Hills. Stealthed harpies guard her." },
+                { group = {
+                    { type = "talk", turnin = { 1061 }, accept = { 1062 }, npc = { 4049 } },
+                    { type = "accept", quests = { 6548 }, npc = { 11857 } },
+                } },
+            } },
+
+            { title = "Stonetalon Mountains", map = 1442, steps = {
+                { group = {
+                    { type = "kill", kill = { 11911 }, quest = { 6548, 2 }, radius = 600,
+                      at = { { 8020, 9060 }, { 8040, 8840 }, { 8140, 8620 }, { 8260, 8820 }, { 8380, 8500 } },
+                      note = "Grimtotem Post, just inside Stonetalon." },
+                    { type = "kill", kill = { 11910 }, quest = { 6548, 1 }, radius = 600,
+                      at = { { 8020, 9060 }, { 8040, 8840 }, { 8140, 8620 }, { 8260, 8820 }, { 8380, 8500 } } },
+                } },
+                { type = "talk", turnin = { 6548 }, accept = { 6629 }, npc = { 11857 } },
+                { group = {
+                    { type = "kill", kill = { 11858 }, quest = { 6629, 1 }, radius = 400, at = { { 7365, 8613 } },
+                      note = "Follow the path deeper into Grimtotem Post from 71.50, 88.59. Grundig Darkcloud is in the largest hut." },
+                    { type = "kill", kill = { 11912 }, quest = { 6629, 2 }, radius = 600,
+                      at = { { 7400, 8540 }, { 7140, 8660 }, { 7540, 8360 }, { 7640, 8660 }, { 7940, 8680 } } },
+                } },
+                { type = "accept", quests = { 6523 }, npc = { 11856 },
+                  note = "Kaya Flathoof is inside the building and starts an escort. Wait for her respawn if she is missing. Three enemies attack near the end; kill the Grimtotem Sorcerer first." },
+                { type = "escort", quest = 6523, npc = { 11856 }, at = { { 7710, 9084 } } },
+                { type = "accept", quests = { 6461 }, npc = { 12816 }, label = "xenzilla" },
+                { type = "accept", quests = { 6284 }, object = "Wanted Poster: Besseleth", at = { { 5907, 7571 } },
+                  label = "besseleth" },
+                { group = {
+                    { type = "collect", item = 16192, kill = { 11921 }, quest = { 6284, 1 }, radius = 600,
+                      at = { { 5200, 7380 }, { 5240, 7180 }, { 5400, 7140 }, { 5460, 7280 } },
+                      note = "Besseleth is a large orange spider that wanders Sishir Canyon." },
+                    { type = "kill", kill = { 4005 }, quest = { 6461, 1 }, from = "xenzilla", radius = 600,
+                      at = { { 5920, 7800 }, { 5380, 7540 }, { 5860, 7580 }, { 5920, 7240 }, { 6140, 8140 } },
+                      note = "Green spiders." },
+                } },
+                { type = "talk", turnin = { 1483 }, accept = { 1093 }, npc = { 4201 },
+                  note = "Leave Sishir Canyon to the northeast from 57.27, 76.35." },
+                { label = "deepmoss", group = {
+                    { type = "collect", item = 5570, quest = { 1069, 1 }, object = "Deepmoss Eggs", from = "besseleth", radius = 600,
+                      at = { { 6240, 6140 }, { 5960, 6200 }, { 6100, 6420 }, { 6140, 5680 }, { 6150, 5940 }, { 6470, 6000 } },
+                      note = "Large white eggs among the spiders. Hatchlings can summon a level 22 spider; run if needed." },
+                    { type = "kill", kill = { 4007 }, quest = { 6461, 2 }, from = "xenzilla", radius = 600,
+                      at = { { 6240, 6140 }, { 5960, 6200 }, { 6100, 6420 }, { 6140, 5680 }, { 6150, 5940 }, { 6470, 6000 } } },
+                } },
+                { group = {
+                    { type = "collect", item = 5734, kill = { 3988 }, quest = { 1093, 1 }, radius = 600,
+                      at = { { 6220, 5200 }, { 6620, 4560 }, { 6620, 5180 }, { 7000, 5560 }, { 7140, 4980 }, { 7300, 5660 }, { 7400, 5400 } } },
+                    { type = "kill", kill = { 3989 }, quest = { 1062, 1 }, from = "deepmoss", radius = 600,
+                      at = { { 6660, 5500 }, { 5940, 5240 }, { 6140, 5500 }, { 6340, 4600 }, { 6420, 4900 }, { 6420, 5740 }, { 6480, 5240 }, { 6680, 4640 }, { 6740, 5020 }, { 6960, 5320 }, { 7020, 5640 }, { 7200, 5100 }, { 7300, 5420 } } },
+                } },
+                { type = "level", level = 19, at = { { 6660, 5500 } } },
+                { type = "talk", turnin = { 1093 }, accept = { 1094 }, npc = { 4201 } },
+            } },
+
+            { title = "Southern Barrens", steps = {
+                { type = "talk", turnin = { 3261 }, accept = { 882 }, npc = { 3387 },
+                  note = "Fly or run back to Camp Taurajo." },
+                { type = "collect", item = 5099, starts = 883, kill = { 3474 }, radius = 600,
+                  at = { { 4940, 5300 }, { 4520, 5240 }, { 4600, 4940 }, { 4720, 5160 } },
+                  note = "Lakota'mani is a grey kodo that wanders the fields north of Taurajo." },
+                { type = "accept", quests = { 883 }, item = 5099, note = "Use the hoof to start its quest." },
+                { type = "collect", item = 4895, kill = { 3240 }, quest = { 821, 3 }, from = "drohn", radius = 600,
+                  at = { { 4620, 5140 }, { 4220, 4880 }, { 4220, 5780 }, { 4340, 5340 }, { 4520, 4500 }, { 4520, 4840 }, { 4520, 5600 }, { 4840, 5720 }, { 4940, 5340 } },
+                  note = "Pink thunder lizards." },
+                { group = {
+                    { type = "kill", kill = { 3260 }, quest = { 878, 1 }, radius = 700,
+                      at = { { 5040, 5460 }, { 5060, 5760 }, { 5300, 5460 }, { 5320, 5260 }, { 4640, 5420 }, { 4340, 5480 }, { 4780, 5240 } } },
+                    { type = "kill", kill = { 3261 }, quest = { 878, 2 }, radius = 700,
+                      at = { { 5040, 5460 }, { 5060, 5760 }, { 5300, 5460 }, { 5320, 5260 }, { 4640, 5420 }, { 4340, 5480 }, { 4780, 5240 } } },
+                    { type = "kill", kill = { 3263 }, quest = { 878, 3 }, radius = 700,
+                      at = { { 5040, 5460 }, { 5060, 5760 }, { 5300, 5460 }, { 5320, 5260 }, { 4640, 5420 }, { 4340, 5480 }, { 4780, 5240 } } },
+                    { type = "collect", item = 5085, kill = { 3260, 3258, 3261, 3263 }, quest = { 899, 1 }, radius = 700,
+                      at = { { 5040, 5460 }, { 5060, 5760 }, { 5300, 5460 }, { 5320, 5260 }, { 4640, 5420 }, { 4340, 5480 }, { 4780, 5240 } },
+                      note = "Bristleback quilboar east of Taurajo. Keep any Blood Shards that drop." },
+                } },
+                { type = "level", level = 19, xp = 12175,
+                  at = { { 5040, 5460 }, { 5060, 5760 }, { 5300, 5460 }, { 5320, 5260 }, { 4640, 5420 }, { 4340, 5480 }, { 4780, 5240 } } },
+                { type = "collect", item = 5098, kill = { 3461 }, quest = { 880, 1 }, radius = 500, at = { { 5553, 4270 } },
+                  note = "Turtles in and around the Stagnant Oasis." },
+                { type = "collect", item = 10338, count = 1, kill = { 3426 }, radius = 500,
+                  at = { { 6060, 3560 }, { 6100, 3180 }, { 6260, 3340 } },
+                  note = "Zhevra Chargers southwest of Ratchet." },
+                { type = "collect", item = 5101, kill = { 3257 }, use = { 10338 }, quest = { 882, 1 }, radius = 400,
+                  at = { { 5989, 3029 } },
+                  note = "Use the carcass at the bones; Ishamuhale is the raptor that appears." },
+                { group = {
+                    { type = "turnin", quests = { 888 }, npc = { 3391 } },
+                    { type = "turnin", quests = { 97253 }, npc = { 7161 } },
+                    { type = "talk", turnin = { 1094 }, accept = { 1095 }, npc = { 3442 } },
+                    { type = "turnin", quests = { 865, 1069 }, npc = { 3446 } },
+                    { type = "turnin", quests = { 821 }, npc = { 3292 } },
+                } },
+                { type = "note", cond = { class = { "WARRIOR", "SHAMAN" } }, note = "Train in Orgrimmar if you are due." },
+                { group = {
+                    { type = "talk", turnin = { 876 }, accept = { 1060 }, npc = { 3449 } },
+                    { type = "turnin", quests = { 899 }, npc = { 3432 } },
+                    { type = "talk", turnin = { 880 }, accept = { 1489, 3301 }, npc = { 3448 } },
+                    { type = "accept", quests = { 853 }, npc = { 3390 },
+                      note = "Apothecary Zamah is timed once accepted. It is turned in at Thunder Bluff later in this route." },
+                } },
+                { group = {
+                    { type = "talk", turnin = { 878 }, accept = { 5052 }, npc = { 3430 } },
+                    { type = "turnin", quests = { 5052 }, npc = { 3430 } },
+                    { type = "talk", turnin = { 882, 883 }, accept = { 907, 6382 }, npc = { 3387 },
+                      note = "Mangletooth trades Blood Shards for 30-minute buffs: Agamaggan's Strength, Agility, Wisdom, Rising Spirit, Razorhide, and a 5-minute run speed. Spend spare shards here while you quest in the Barrens." },
+                } },
+                { type = "collect", item = 5143, kill = { 3239 }, quest = { 907, 1 }, radius = 500,
+                  at = { { 4680, 6060 }, { 4240, 6000 }, { 4400, 6260 }, { 4520, 6760 }, { 4700, 6500 }, { 4800, 5740 }, { 5040, 6020 } } },
+                { type = "talk", turnin = { 907 }, accept = { 913 }, npc = { 3387 } },
+                { type = "collect", item = 5164, kill = { 3247, 3424 }, quest = { 913, 1 }, radius = 500,
+                  at = { { 4560, 5620 }, { 4340, 5520 }, { 4420, 5320 }, { 4440, 4740 }, { 4660, 4960 }, { 4820, 5640 }, { 4980, 5340 }, { 4440, 6140 }, { 4520, 6720 }, { 4800, 5940 }, { 4840, 6180 } },
+                  note = "Flying snakes around Taurajo." },
+                { type = "talk", turnin = { 913 }, accept = { 874 }, npc = { 3387 } },
+            } },
+
+            { title = "Thunder Bluff", steps = {
+                { type = "travel", to = "Moonglade", at = { { 5621, 3064, map = 1450 } }, cond = { class = "DRUID" },
+                  note = "Druids: cast Teleport: Moonglade before heading to Thunder Bluff." },
+                { type = "talk", turnin = { 6129 }, accept = { 6130 }, npc = { 11802 }, cond = { class = "DRUID" } },
+                { type = "travel", to = "Thunder Bluff", at = { { 4429, 4587, map = 1450 } }, radius = 400, cond = { class = "DRUID" },
+                  note = "Take Bunthen Plainswind's flight from Nighthaven to Thunder Bluff." },
+                { type = "turnin", quests = { 6130 }, npc = { 3033 }, cond = { class = "DRUID" } },
+                { type = "hearth", area = 1638, npc = { 6746 }, note = "Fly to Thunder Bluff." },
+                { group = {
+                    { type = "accept", quests = { 264 }, npc = { 5543 } },
+                    { type = "turnin", quests = { 853 }, npc = { 3419 } },
+                    { type = "accept", quests = { 1529 }, npc = { 5906 }, cond = { class = "SHAMAN" } },
+                } },
+                { type = "collect", item = 5025, kill = { 3396 }, quest = { 852, 1 }, radius = 500,
+                  at = { { 4880, 3980 }, { 4500, 3940 }, { 4600, 3640 }, { 4620, 4140 }, { 4640, 3800 }, { 4740, 3920 }, { 4760, 4120 } },
+                  note = "Return to the Barrens. Hezrul Bloodmark walks the road south of the Forgotten Pools with two guards." },
+                { type = "turnin", quests = { 852 }, npc = { 3389 } },
+                { group = {
+                    { type = "turnin", quests = { 1062 }, npc = { 4049 } },
+                    { type = "accept", quests = { 1063 }, npc = { 4049 },
+                      note = "Watch the dialogue, then talk to Seereth Stonebreak again." },
+                    { type = "talk", turnin = { 6523, 6629 }, accept = { 6401 }, npc = { 11857 } },
+                } },
+            } },
+
+            { title = "Sun Rock Retreat", map = 1442, steps = {
+                { type = "talk", turnin = { 1060 }, accept = { 1058 }, npc = { 3995 },
+                  note = "Follow the path up through the mountains from 82.07, 98.57." },
+                { type = "turnin", quests = { 6461 }, npc = { 12816 } },
+                { type = "accept", quests = { 6562 }, npc = { 11862 },
+                  note = "Follow the path up to Sun Rock Retreat from 49.20, 61.91." },
+                { type = "flight", node = 29, npc = { 4312 } },
+                { group = {
+                    { type = "turnin", quests = { 6401 }, npc = { 11864 } },
+                    { type = "turnin", quests = { 6284 }, npc = { 11860 } },
+                } },
+                { type = "turnin", quests = { 1095 }, npc = { 4201 } },
+                { type = "finish", note = "The Barrens and Stonetalon route is complete. Ashenvale is next; keep The Ashenvale Hunt, Hamuul Runetotem, Mura Runetotem, Jin'Zil's Forest Magic, Trouble in the Deeps, The Elder Crone, and Until Death Do Us Part for later." },
+            } },
+        },
+
+        npcs = {
+            [1413] = { -- The Barrens
+                [3292] = { name = "Brewmaster Drohn", at = { 6226, 3839 } },
+                [3338] = { name = "Sergra Darkthorn", at = { 5224, 3101 } },
+                [3387] = { name = "Jorn Skyseer", at = { 4486, 5914 } },
+                [3389] = { name = "Regthar Deathgate", at = { 4534, 2841 },
+                           note = "Regthar Deathgate is upstairs in the bunker west of the Crossroads." },
+                [3390] = { name = "Apothecary Helbrim", at = { 5144, 3015 } },
+                [3391] = { name = "Gazlowe", at = { 6268, 3623 }, note = "Gazlowe is upstairs inside the building." },
+                [3429] = { name = "Thork", at = { 5150, 3087 } },
+                [3430] = { name = "Mangletooth", at = { 4455, 5924 } },
+                [3432] = { name = "Mankrik", at = { 5195, 3158 } },
+                [3439] = { name = "Wizzlecrank's Shredder", at = { 5651, 745 } },
+                [3442] = { name = "Sputtervalve", at = { 6298, 3722 } },
+                [3446] = { name = "Mebok Mizzyrix", at = { 6237, 3762 } },
+                [3448] = { name = "Tonga Runetotem", at = { 5226, 3193 } },
+                [3449] = { name = "Darsok Swiftdagger", at = { 5162, 3090 }, note = "Darsok Swiftdagger is on top of the tower." },
+                [3453] = { name = "Wharfmaster Dizzywig", at = { 6335, 3845 } },
+                [3464] = { name = "Gazrog", at = { 5193, 3032 } },
+                [3489] = { name = "Zargh", at = { 5262, 2984 } },
+                [3521] = { name = "Ak'Zeloth", at = { 6234, 2007 }, note = "Ak'Zeloth is on the road from Durotar." },
+                [3682] = { name = "Vrang Wildgore", at = { 4377, 1220 },
+                           note = "Vrang Wildgore is the vendor north of the Dry Hills." },
+                [3934] = { name = "Innkeeper Boorand Plainswind", at = { 5199, 2990 },
+                           note = "Innkeeper Boorand Plainswind is inside the inn." },
+                [4049] = { name = "Seereth Stonebreak", at = { 3526, 2788 },
+                           note = "Seereth Stonebreak and Makaba Flathoof camp at the western edge of the Barrens, on the road to Stonetalon." },
+                [5810] = { name = "Uzzek", at = { 6138, 2111 } },
+                [5878] = { name = "Thun'grim Firegaze", at = { 5723, 3034 },
+                           note = "Thun'grim Firegaze is on top of the mountain east of the Crossroads. Run up from 54.50, 27.94." },
+                [5907] = { name = "Kranal Fiss", at = { 5604, 1989 }, note = "Kranal Fiss walks around here." },
+                [7161] = { name = "Wrenix the Wretched", at = { 6306, 3634 } },
+                [7714] = { name = "Innkeeper Byula", at = { 4558, 5904 }, note = "Innkeeper Byula is inside the inn." },
+                [10378] = { name = "Omusa Thunderhorn", at = { 4445, 5915 } },
+                [10668] = { name = "Beaten Corpse", at = { 4933, 5032 } },
+                [11857] = { name = "Makaba Flathoof", at = { 3519, 2779 },
+                            note = "Seereth Stonebreak and Makaba Flathoof camp at the western edge of the Barrens, on the road to Stonetalon." },
+                [16227] = { name = "Bragok", at = { 6309, 3716 } },
+
+                [3234] = "Lost Barrens Kodo",
+                [3239] = "Thunderhead",
+                [3240] = "Stormsnout",
+                [3242] = "Zhevra Runner",
+                [3244] = "Greater Plainstrider",
+                [3245] = "Ornery Plainstrider",
+                [3246] = "Fleeting Plainstrider",
+                [3247] = "Thunderhawk Hatchling",
+                [3254] = "Sunscale Lashtail",
+                [3255] = "Sunscale Screecher",
+                [3256] = "Sunscale Scytheclaw",
+                [3257] = "Ishamuhale",
+                [3258] = "Bristleback Hunter",
+                [3260] = "Bristleback Water Seeker",
+                [3261] = "Bristleback Thornweaver",
+                [3263] = "Bristleback Geomancer",
+                [3265] = "Razormane Hunter",
+                [3266] = "Razormane Defender",
+                [3267] = "Razormane Water Seeker",
+                [3268] = "Razormane Thornweaver",
+                [3269] = "Razormane Geomancer",
+                [3272] = "Kolkar Wrangler",
+                [3273] = "Kolkar Stormer",
+                [3274] = "Kolkar Pack Runner",
+                [3275] = "Kolkar Marauder",
+                [3276] = "Witchwing Harpy",
+                [3277] = "Witchwing Roguefeather",
+                [3278] = "Witchwing Slayer",
+                [3283] = "Venture Co. Enforcer",
+                [3286] = "Venture Co. Overseer",
+                [3381] = "Southsea Brigand",
+                [3382] = "Southsea Cannoneer",
+                [3394] = "Barak Kodobane",
+                [3395] = "Verog the Dervish",
+                [3396] = "Hezrul Bloodmark",
+                [3397] = "Kolkar Bloodcharger",
+                [3424] = "Thunderhawk Cloudscraper",
+                [3425] = "Savannah Prowler",
+                [3426] = "Zhevra Charger",
+                [3438] = "Kreenig Snarlsnout",
+                [3445] = "Supervisor Lugwizzle",
+                [3452] = "Serena Bloodfeather",
+                [3461] = "Oasis Snapjaw",
+                [3467] = "Baron Longshore",
+                [3471] = "Tinkerer Sniggles",
+                [3474] = "Lakota'mani",
+                [3475] = "Echeyakee",
+                [12296] = "Sickly Gazelle",
+            },
+            [1442] = { -- Stonetalon Mountains
+                [3995] = { name = "Witch Doctor Jin'Zil", at = { 7454, 9794 },
+                           note = "Witch Doctor Jin'Zil is inside the small cave at Malaka'jin." },
+                [4201] = { name = "Ziz Fizziks", at = { 5899, 6260 },
+                           note = "Ziz Fizziks is inside the building at Windshear Crag." },
+                [4312] = { name = "Tharm", at = { 4513, 5984 } },
+                [11856] = { name = "Kaya Flathoof", at = { 7348, 8559 } },
+                [11860] = { name = "Maggran Earthbinder", at = { 4720, 6116 } },
+                [11862] = { name = "Tsunaman", at = { 4737, 6429 }, note = "Tsunaman walks around the camp." },
+                [11864] = { name = "Tammra Windfield", at = { 4746, 5838 } },
+                [12816] = { name = "Xen'Zilla", at = { 7124, 9502 }, note = "Xen'Zilla is inside the building at Camp Aparaje." },
+
+                [3988] = "Venture Co. Operator",
+                [3989] = "Venture Co. Logger",
+                [4005] = "Deepmoss Creeper",
+                [4007] = "Deepmoss Venomspitter",
+                [11858] = "Grundig Darkcloud",
+                [11910] = "Grimtotem Ruffian",
+                [11911] = "Grimtotem Mercenary",
+                [11912] = "Grimtotem Brute",
+                [11921] = "Besseleth",
+            },
+            [1454] = { -- Orgrimmar
+                [4047] = { name = "Zor Lonetree", at = { 3893, 3838 },
+                           note = "Zor Lonetree is inside the building in the Valley of Wisdom." },
+            },
+            [1456] = { -- Thunder Bluff
+                [3033] = { name = "Turak Runetotem", at = { 7670, 2730 },
+                           note = "Turak Runetotem is inside the building on the Elder Rise." },
+                [3419] = { name = "Apothecary Zamah", at = { 2281, 2090 } },
+                [5543] = { name = "Clarice Foster", at = { 2472, 2230 },
+                           note = "The Pools of Vision is the cave under the Spirit Rise; enter at 29.84, 29.88. Clarice Foster walks around inside." },
+                [5906] = { name = "Xanis Flameweaver", at = { 2516, 2053 } },
+                [6746] = { name = "Innkeeper Pala", at = { 4581, 6471 }, note = "Innkeeper Pala is inside the inn." },
+            },
+            [1450] = { -- Moonglade
+                [11802] = { name = "Dendrite Starblaze", at = { 5621, 3064 },
+                            note = "Dendrite Starblaze is upstairs in the building." },
+            },
+        },
+    },
+})

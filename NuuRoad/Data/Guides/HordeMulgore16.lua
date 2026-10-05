@@ -1,0 +1,239 @@
+-- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
+-- Data/Import.lua reads it as the addon loads. Converted from the authored v2
+-- guide that was Data/BuiltIn/HordeMulgore16.lua.
+--
+-- Horde 1-6 leveling route through Camp Narache. Step order, quest IDs, NPC IDs,
+-- item IDs, coordinates, and grind loops are NuuRoad's own.
+--
+-- Notes:
+--   * The season 2 (rune) branches are still to add. In this format they
+--     would be steps with `cond = { season = 2 }`, but the rune route is a
+--     second pass, not a line-for-line addition to this one.
+--
+-- Map: 1412 Mulgore. Coordinates are hundredths of a map percent.
+--
+-- Conversion notes:
+--   * `only` terms became `cond`: "Horde" -> wrapper cond { faction = "Horde" };
+--     "not Tauren" -> { none = { { race = "tauren" } } }; "Warrior or Shaman" ->
+--     { class = { "WARRIOR", "SHAMAN" } }; "not Shaman" -> { none = { { class =
+--     "SHAMAN" } } }; single classes -> { class = "..." }. No quest-state or
+--     `now` terms and no condition-only gates were in the source.
+--   * track / untrack pairs became `from`:
+--       - track 747: label "hunt" on the next step (turn in 752, take 753);
+--         both 747 objective steps carry from = "hunt".
+--       - track 750: label "cougars" on the next step (turn in 755, take 757);
+--         the 750 objective step carries from = "cougars".
+--       - track 780: the track sat right before the 780 objective steps, so the
+--         label "boars" is on the first of them (part 2) and part 1 carries
+--         from = "boars", riding on the card while part 2 is current.
+--     The untrack steps are dropped.
+--   * Objective numbers are the source's `part` values; none were inferred.
+--     Their `count` (7, 7, 10, 8, 8, 12, 2) is dropped: the objective counts.
+--   * The opening plainstrider kill (Warrior or Shaman) had `count = 4` and no
+--     quest. A kill step carries no count in this format, so it is a kill step
+--     without one (done on the first kill); its note still asks for about 10
+--     copper of trash. A note with `mark` would be the alternative.
+--   * NPC-only steps with a note (no verb in v2, so they were note steps):
+--       - "Sell the trash to Kawnie Softbreeze" -> type "vendor", sell = true.
+--       - Hunter Light Shot visit (npc 3072, item 2516) -> type "vendor",
+--         sell = true, item = { 2516 }; not a buy step, since the source gives
+--         no count.
+--       - Trainer visits (Battle Shout, Rockbiter Weapon, Healing Wave, Arcane
+--         Shot, Wrath, Parry, ...) stay type "note" with `npc`: a learn step
+--         needs spell IDs the source does not have.
+--   * Accept 781 from the Dirt-stained Map gets item = 4851 (no npc).
+--   * The buy of the Short Staff drops its count (default 1).
+--   * Location sentences moved from step notes to the NPC's note: Greatmother
+--     Hawkwind (whole note), Seer Graytongue ("south of the camp"), Antur
+--     Fallow ("on the road west out of the camp"); the rest of those notes
+--     stays on the step.
+--   * Radii: 0.06 -> 600, 0.03 -> 300.
+--   * The travel to Camp Narache has no `area`: no AreaTable ID for it in the
+--     repo, so it finishes on arrival at its point.
+--   * Every visited NPC has a position from the source's `names`. Quest and
+--     item names are dropped (the client names them).
+--   * No section needed a map of its own: every point is on Mulgore (1412).
+local _, ns = ...
+
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide",
+    format = 1,
+
+    id = "nuuroad:leveling:horde-mulgore-1-6",
+    updated = 1789862400,
+    title = "Camp Narache",
+    category = "Leveling/Mulgore",
+    author = "NuuRoad",
+    tags = { "horde", "tauren", "mulgore", "camp narache" },
+    levels = { from = 1, to = 6 },
+    cond = { faction = "Horde" },
+    source = "NuuRoad's own route through Camp Narache.",
+
+    data = {
+        map = 1412,
+
+        sections = {
+            { title = "Camp Narache", steps = {
+                { type = "note", note = "Written for Tauren starting in Camp Narache. The Rites questline is Tauren-only, so another race will find most of this zone closed to them.",
+                  cond = { none = { { race = "tauren" } } } },
+                { group = {
+                    { type = "accept", quests = { 747 }, npc = { 2980 } },
+                    { type = "accept", quests = { 752 }, npc = { 2981 } },
+                } },
+                { type = "kill", kill = { 2955 }, at = { { 4605, 7532 } },
+                  cond = { class = { "WARRIOR", "SHAMAN" } },
+                  note = "Kill plainstriders on the way and loot them until you have about 10 copper of vendor trash, your starting armour included. It pays for a weapon." },
+                { type = "vendor", sell = true, npc = { 3072 },
+                  cond = { class = { "WARRIOR", "SHAMAN" } },
+                  note = "Sell the trash to Kawnie Softbreeze." },
+                { type = "note", npc = { 3059 }, cond = { class = "WARRIOR" },
+                  note = "Train Battle Shout from Harutt Thunderhorn." },
+                { type = "note", npc = { 3062 }, cond = { class = "SHAMAN" },
+                  note = "Train Rockbiter Weapon from Meela Dawnstrider." },
+            } },
+
+            { title = "The Hunt Begins", steps = {
+                { type = "talk", turnin = { 752 }, accept = { 753 }, npc = { 2991 }, label = "hunt" },
+                { type = "collect", item = 4755, quest = { 753, 1 }, object = "Water Pitcher",
+                  at = { { 5022, 8137 } },
+                  note = "The pitcher sits on the well right behind her." },
+                { type = "collect", item = 4739, kill = { 2955 }, quest = { 747, 1 }, from = "hunt", radius = 600,
+                  at = { { 4736, 8305 }, { 5023, 7938 }, { 5102, 7868 }, { 5085, 7568 }, { 4843, 7718 },
+                         { 4710, 7654 }, { 4577, 8039 }, { 4556, 8239 } },
+                  note = "Circle the camp on the marked points. Meat and feathers drop from the same birds." },
+                { type = "collect", item = 4740, kill = { 2955 }, quest = { 747, 2 }, from = "hunt", radius = 600,
+                  at = { { 4736, 8305 }, { 5023, 7938 }, { 5102, 7868 }, { 5085, 7568 }, { 4843, 7718 },
+                         { 4710, 7654 }, { 4577, 8039 }, { 4556, 8239 } } },
+                { type = "talk", turnin = { 747 }, accept = { 750 }, npc = { 2980 } },
+                { type = "accept", quests = { 3091 }, npc = { 2980 }, cond = { class = "WARRIOR" },
+                  note = "Grull also hands out your class note." },
+                { type = "accept", quests = { 3092 }, npc = { 2980 }, cond = { class = "HUNTER" } },
+                { type = "accept", quests = { 3093 }, npc = { 2980 }, cond = { class = "SHAMAN" } },
+                { type = "accept", quests = { 3094 }, npc = { 2980 }, cond = { class = "DRUID" } },
+                { type = "vendor", sell = true, npc = { 3072 }, item = { 2516 }, cond = { class = "HUNTER" },
+                  note = "Sell your trash to Kawnie Softbreeze and spend what you get on Light Shot." },
+                { type = "talk", turnin = { 753 }, accept = { 755 }, npc = { 2981 } },
+                { type = "buy", item = 2132, npc = { 3073 }, cond = { class = "SHAMAN" },
+                  note = "A Short Staff costs about 1 silver and beats anything you start with. Equip it. Skip the step if you are short and come back once you have sold more trash." },
+            } },
+
+            { title = "Rite of Strength", steps = {
+                { type = "talk", turnin = { 755 }, accept = { 757 }, npc = { 2982 }, label = "cougars",
+                  note = "Kill cougars on the way down." },
+                { type = "collect", item = 4742, kill = { 2961 }, quest = { 750, 1 }, from = "cougars", radius = 600,
+                  at = { { 4460, 9086 }, { 4321, 8926 }, { 4464, 9158 }, { 4582, 9052 }, { 4635, 9145 },
+                         { 4805, 9183 }, { 4925, 9069 }, { 5098, 9037 }, { 4910, 8950 }, { 4706, 8864 },
+                         { 4506, 8989 } } },
+                { type = "level", level = 3, xp = 1150, radius = 600,
+                  at = { { 4556, 8795 }, { 4692, 8784 }, { 4867, 8683 }, { 5065, 8587 }, { 5101, 8371 },
+                         { 5206, 8153 }, { 5187, 7958 }, { 5167, 7739 }, { 5195, 7516 }, { 5032, 7633 },
+                         { 4885, 7582 }, { 4741, 7530 }, { 4680, 7821 }, { 4584, 8041 }, { 4503, 8215 },
+                         { 4409, 8389 }, { 4390, 8608 } },
+                  note = "Grind plainstriders back toward the camp until you are 1150 experience into level 3. Loot as you go: Warriors and Druids want about 2 silver of trash, everyone else about 1 silver." },
+                { type = "talk", turnin = { 750 }, accept = { 780 }, npc = { 2980 } },
+                { type = "vendor", sell = true, npc = { 3072 }, note = "Sell your trash to Kawnie Softbreeze." },
+                { type = "accept", quests = { 3376 }, npc = { 3209 } },
+                { type = "turnin", quests = { 3091 }, npc = { 3059 }, cond = { class = "WARRIOR" },
+                  note = "Train Rend, and Charge as well if you can afford both." },
+                { type = "turnin", quests = { 3092 }, npc = { 3061 }, cond = { class = "HUNTER" },
+                  note = "Train Serpent Sting." },
+                { type = "turnin", quests = { 3094 }, npc = { 3060 }, cond = { class = "DRUID" },
+                  note = "Train Moonfire." },
+                { type = "accept", quests = { 1519 }, npc = { 5888 }, cond = { class = "SHAMAN" } },
+                { type = "turnin", quests = { 3093 }, npc = { 3062 }, cond = { class = "SHAMAN" },
+                  note = "Train Earth Shock." },
+            } },
+
+            { title = "The Battleboars", steps = {
+                { type = "collect", item = 4849, kill = { 2966 }, quest = { 780, 2 }, label = "boars", radius = 600,
+                  at = { { 5599, 8546 }, { 5270, 7932 }, { 5419, 7983 }, { 5573, 8028 }, { 5648, 8167 },
+                         { 5563, 8386 }, { 5603, 8553 }, { 5580, 8771 }, { 5672, 8927 }, { 5792, 8927 },
+                         { 5769, 8677 }, { 5731, 8539 } } },
+                { type = "collect", item = 4848, kill = { 2966 }, quest = { 780, 1 }, from = "boars", radius = 600,
+                  at = { { 5599, 8546 }, { 5270, 7932 }, { 5419, 7983 }, { 5573, 8028 }, { 5648, 8167 },
+                         { 5563, 8386 }, { 5603, 8553 }, { 5580, 8771 }, { 5672, 8927 }, { 5792, 8927 },
+                         { 5769, 8677 }, { 5731, 8539 } } },
+                { type = "travel", to = "Bristleback cave", at = { { 5967, 8333 } },
+                  note = "The cave cuts through to the quilboar camp." },
+                { type = "collect", item = 10459, kill = { 8554 }, quest = { 3376, 1 }, radius = 300,
+                  at = { { 6471, 7767 }, { 6054, 8104 }, { 6235, 8127 }, { 6249, 7878 } },
+                  note = "Sharptusk is inside the big hut at the top of the camp." },
+                { type = "collect", item = 4851, starts = 781, object = "Dirt-stained Map", at = { { 6324, 8270 } },
+                  note = "The map lies on the ground in the small cave at the south edge of the camp." },
+                { type = "accept", quests = { 781 }, item = 4851, note = "Use the map to start its quest." },
+                { type = "collect", item = 4770, kill = { 2952 }, quest = { 757, 1 }, radius = 600,
+                  at = { { 6393, 7834 }, { 6381, 7665 }, { 6292, 7691 }, { 6131, 7722 }, { 6158, 7889 },
+                         { 6253, 7952 }, { 6420, 7901 }, { 6582, 7813 } } },
+                { type = "collect", item = 6634, kill = { 2953 }, quest = { 1519, 1 }, radius = 600,
+                  cond = { class = "SHAMAN" },
+                  at = { { 6386, 8014 }, { 6374, 8118 }, { 6386, 7997 }, { 6500, 7860 }, { 6605, 7783 },
+                         { 6593, 7710 }, { 6357, 7625 } },
+                  note = "Only the shamans of the camp carry the salve." },
+                { type = "level", level = 5, xp = 880, radius = 600, cond = { none = { { class = "SHAMAN" } } },
+                  at = { { 6398, 8008 }, { 6431, 7829 }, { 6367, 7618 }, { 6267, 7610 }, { 6134, 7713 },
+                         { 6172, 7898 }, { 6229, 8153 }, { 6082, 8081 }, { 6008, 8193 }, { 6103, 8232 },
+                         { 6227, 8203 } },
+                  note = "Grind the camp until you are 880 experience into level 5." },
+                { type = "level", level = 5, radius = 600, cond = { class = "SHAMAN" },
+                  at = { { 6398, 8008 }, { 6431, 7829 }, { 6367, 7618 }, { 6267, 7610 }, { 6134, 7713 },
+                         { 6172, 7898 }, { 6229, 8153 }, { 6082, 8081 }, { 6008, 8193 }, { 6103, 8232 },
+                         { 6227, 8203 } },
+                  note = "Grind the camp to level 5." },
+            } },
+
+            { title = "Back to Camp Narache", steps = {
+                { type = "travel", to = "Camp Narache", at = { { 4492, 7712 } },
+                  note = "Use your Hearthstone if it is up; the run back is long." },
+                { group = {
+                    { type = "turnin", quests = { 780 }, npc = { 2980 } },
+                    { type = "turnin", quests = { 3376 }, npc = { 3209 } },
+                    { type = "talk", turnin = { 1519 }, accept = { 1520 }, npc = { 5888 }, cond = { class = "SHAMAN" } },
+                    { type = "talk", turnin = { 781, 757 }, accept = { 763 }, npc = { 2981 } },
+                } },
+                { type = "travel", to = "The rock east of the camp", at = { { 5374, 8015 } }, cond = { class = "SHAMAN" },
+                  note = "Use the Earth Sapta at the rock to call the manifestation." },
+                { type = "talk", turnin = { 1520 }, accept = { 1521 }, npc = { 5891 }, cond = { class = "SHAMAN" } },
+                { type = "turnin", quests = { 1521 }, npc = { 5888 }, cond = { class = "SHAMAN" } },
+                { type = "note", npc = { 3062 }, cond = { class = "SHAMAN" },
+                  note = "Train Healing Wave from Meela Dawnstrider." },
+                { type = "note", npc = { 3061 }, cond = { class = "HUNTER" },
+                  note = "Train Arcane Shot from Lanka Farshot, and Hunter's Mark as well if you can afford both." },
+                { type = "note", npc = { 3060 }, cond = { class = "DRUID" },
+                  note = "Train Wrath from Gart Mistrunner, and Thorns as well if you can afford both." },
+                { type = "note", npc = { 3059 }, cond = { class = "WARRIOR" },
+                  note = "Train Parry from Harutt Thunderhorn, and Thunder Clap as well if you can afford both." },
+                { type = "accept", quests = { 1656 }, npc = { 6775 },
+                  note = "Take his quest with you: it turns in at Bloodhoof Village." },
+                { type = "finish", note = "Camp Narache is done. Continue with Bloodhoof and Thunder Bluff." },
+            } },
+        },
+
+        npcs = {
+            [1412] = { -- Mulgore
+                [2980] = { name = "Grull Hawkwind", at = { 4492, 7712 } },
+                [2981] = { name = "Chief Hawkwind", at = { 4418, 7607 } },
+                [2982] = { name = "Seer Graytongue", at = { 4258, 9218 }, note = "South of the camp." },
+                [2991] = { name = "Greatmother Hawkwind", at = { 5003, 8116 }, note = "At the south end of the camp." },
+                [3059] = { name = "Harutt Thunderhorn", at = { 4402, 7614 } },
+                [3060] = { name = "Gart Mistrunner", at = { 4509, 7593 } },
+                [3061] = { name = "Lanka Farshot", at = { 4426, 7570 } },
+                [3062] = { name = "Meela Dawnstrider", at = { 4501, 7595 } },
+                [3072] = { name = "Kawnie Softbreeze", at = { 4530, 7652 } },
+                [3073] = { name = "Marjak Keenblade", at = { 4407, 7747 } },
+                [3209] = { name = "Brave Windfeather", at = { 4467, 7668 } },
+                [5888] = { name = "Seer Ravenfeather", at = { 4473, 7618 } },
+                [5891] = { name = "Minor Manifestation of Earth", at = { 5374, 8015 } },
+                [6775] = { name = "Antur Fallow", at = { 3851, 8154 }, note = "On the road west out of the camp." },
+
+                -- Kill targets.
+                [2952] = "Bristleback Quilboar",
+                [2953] = "Bristleback Shaman",
+                [2955] = "Plainstrider",
+                [2961] = "Mountain Cougar",
+                [2966] = "Battleboar",
+                [8554] = "Chief Sharptusk Thornmantle",
+            },
+        },
+    },
+})

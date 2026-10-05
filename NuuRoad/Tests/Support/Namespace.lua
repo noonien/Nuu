@@ -3,7 +3,7 @@
 --
 --   local ns = NewNamespace()           -- a stand-in for the addon's ns
 --   Load(ns, "Domain/Progress.lua")     -- one file, as the client runs it
---   LoadBuiltIns(ns)                    -- every Data/BuiltIn and Dev/Fixtures file the TOC lists
+--   LoadBuiltIns(ns)                    -- every packaged guide and fixture the TOC lists
 _G = _G or _ENV
 
 local KIT = "../NuuKit/"
@@ -52,21 +52,31 @@ function Load(ns, path)
     return chunk("NuuRoad", ns)
 end
 
--- Every packaged guide NuuRoad.toc lists (fixtures included), in its order.
+-- Every packaged guide NuuRoad.toc lists (fixtures included), in its order,
+-- as authored guides in ns.builtInGuides: the packaged ones are read through
+-- Data/Import.lua, as GuideRepository does at login.
 function LoadBuiltIns(ns)
+    if not ns.modules.GuideImport then
+        Load(ns, "Data/IDNames.lua")
+        Load(ns, "Data/Import.lua")
+    end
     for line in io.lines("NuuRoad.toc") do
-        local file = line:match("^%s*(Data/BuiltIn/[^%s]*%.lua)%s*$") or line:match("^%s*(Dev/Fixtures/[^%s]*%.lua)%s*$")
+        local file = line:match("^%s*(Data/Guides/[^%s]*%.lua)%s*$") or line:match("^%s*(Dev/Fixtures/[^%s]*%.lua)%s*$")
         if file then Load(ns, file) end
     end
+    local problems = ns.modules.GuideImport:RegisterPackaged()
+    assert(#problems == 0, problems[1])
 end
 
--- The names the packaged guides carry, added the way the client has them
--- once every guide has loaded. For suites whose own guides use the packaged
--- guides' IDs; ns.builtInGuides is left as it was.
+-- The names a player would see once every guide has loaded: the NPCs the
+-- packaged guides name, and what the client names (quests, items, spells;
+-- Tests/Support/ClientNames.lua stands in for it). For suites whose own
+-- guides use the packaged guides' IDs; ns.builtInGuides is left as it was.
 function AddBuiltInNames(ns)
     local guides = ns.builtInGuides
     ns.builtInGuides = {}
     LoadBuiltIns(ns)
     for _, guide in pairs(ns.builtInGuides) do ns.modules.Names:Add(guide.names) end
+    ns.modules.Names:Add(dofile("Tests/Support/ClientNames.lua"))
     ns.builtInGuides = guides
 end

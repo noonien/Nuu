@@ -33,8 +33,8 @@ local observedCompletionTypes = {
     -- own.
     step = true,
     -- Arrival judged by the zone or subzone the client names, not by a
-    -- coordinate.
-    zone = true, subzone = true,
+    -- coordinate, or by entering a dungeon (its instance ID).
+    zone = true, subzone = true, instance = true,
     -- Spells known (a class trainer visit) and a spell cast on the step.
     spell = true, cast = true,
 }
@@ -200,6 +200,11 @@ local function validateObservedCompletion(observed, path, errors)
         if type(observed.standing) ~= "number" or observed.standing < 1 or observed.standing > 8 then
             addError(errors, path .. ".standing", "must be a standing from 1 (Hated) to 8 (Exalted)")
         end
+    elseif observed.type == "zone" then
+        if observed.mapID == nil and not isNonEmptyString(observed.name) then addError(errors, path, "needs a mapID or a zone name") end
+        if observed.mapID ~= nil and type(observed.mapID) ~= "number" then addError(errors, path .. ".mapID", "must be a map ID") end
+    elseif observed.type == "instance" then
+        if type(observed.instanceID) ~= "number" then addError(errors, path .. ".instanceID", "must be an instance ID") end
     elseif observed.type == "hearth" or observed.type == "flightpath" then
         if not isNonEmptyString(observed.name) then addError(errors, path .. ".name", "must be a non-empty string") end
     elseif observed.type == "kills" then
@@ -432,16 +437,33 @@ function Schema:PlaceConnections(place)
     return list, problems, duplicates
 end
 
--- An NPC the guide visits: { "Name", at = { x, y } or { x, y, map = id }, note = "..." }.
+local function isPoint(at)
+    return type(at) == "table" and type(at[1]) == "number" and type(at[2]) == "number"
+        and (at.map == nil or type(at.map) == "number")
+end
+
+-- An NPC the guide visits: { "Name", at = ..., note = "...", instance = id }.
+-- `at` is one point { x, y } (with map when it is not the guide's), a list
+-- of them (the spots it may be at; the arrow takes the nearest), or a place
+-- point "cave.chamber". `instance` is the dungeon it is inside.
 local function validateNPCEntry(entry, path, errors)
     if not isNonEmptyString(entry[1]) or not isASCII(entry[1]) then addError(errors, path, "must start with a non-empty ASCII name") end
     for key in pairs(entry) do
-        if key ~= 1 and key ~= "at" and key ~= "note" then addError(errors, path .. "." .. tostring(key), "is not at or note") end
+        if key ~= 1 and key ~= "at" and key ~= "note" and key ~= "instance" then
+            addError(errors, path .. "." .. tostring(key), "is not at, note, or instance")
+        end
     end
     local at = entry.at
-    if at ~= nil and (type(at) ~= "table" or type(at[1]) ~= "number" or type(at[2]) ~= "number"
-        or (at.map ~= nil and type(at.map) ~= "number")) then
-        addError(errors, path .. ".at", "must be one point { x, y }, with map when it is not the guide's")
+    local valid = at == nil or isPoint(at) or (type(at) == "string" and at:find(".", 1, true) ~= nil)
+    if not valid and type(at) == "table" and #at > 0 then
+        valid = true
+        for _, spot in ipairs(at) do valid = valid and isPoint(spot) end
+    end
+    if not valid then
+        addError(errors, path .. ".at", "must be a point { x, y }, a list of them, or a place point")
+    end
+    if entry.instance ~= nil and type(entry.instance) ~= "number" then
+        addError(errors, path .. ".instance", "must be an instance ID")
     end
     if entry.note ~= nil and (not isNonEmptyString(entry.note) or not isASCII(entry.note)) then
         addError(errors, path .. ".note", "must be non-empty ASCII text")
@@ -623,8 +645,21 @@ end
 Schema.groupKinds = { acceptQuest = true, turnInQuest = true, talk = true,
     kill = true, collect = true, interact = true, questObjective = true }
 
+-- Any other step that finishes a quest objective is quest work too: the
+-- thread bought for one, the graveyard an escort's scene starts at.
+local function finishesObjective(observed)
+    if type(observed) ~= "table" then return false end
+    if observed.type == "objective" then return true end
+    for _, child in ipairs(observed.type == "any" and observed.children or {}) do
+        if finishesObjective(child) then return true end
+    end
+    return false
+end
+
 function Schema:IsGroupMember(node)
-    return type(node) == "table" and self.groupKinds[node.kind] == true and node["next"] == nil and node.choices == nil
+    if type(node) ~= "table" or node["next"] ~= nil or node.choices ~= nil then return false end
+    if self.groupKinds[node.kind] == true then return true end
+    return node.completion ~= nil and node.completion.type == "observed" and finishesObjective(node.completion.observed)
 end
 
 function Schema:GroupAt(guide, index)

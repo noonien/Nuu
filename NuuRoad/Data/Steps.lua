@@ -1,7 +1,9 @@
 local _, ns = ...
 
--- The v2 guide format: what an author writes, what a packaged guide ships as,
--- and what an import reads. It is not the shape the addon runs on. Expand()
+-- The v2 guide format: what the editor and the fixtures write, and what
+-- Data/Import.lua turns a packaged guide (export format 1) into; the fields
+-- it adds for that are in docs/guide-schema.md, "Read from the export
+-- format". It is not the shape the addon runs on. Expand()
 -- converts a guide once, here, and everything downstream sees ordinary
 -- runtime nodes; anything derived -- titles, step positions, section and group
 -- spans, reference lists, completion rules -- is built on the way in and never
@@ -170,6 +172,9 @@ end
 
 local function verbOf(step)
     if step.turnin ~= nil and step.accept ~= nil then return "talk" end
+    -- `talk = true`: a visit with nothing to hand in or take, such as a
+    -- trainer. The player says when it is done.
+    if step.talk == true then return "talk" end
     -- `collect` and `kill` are modifiers when the step is a quest objective.
     if step.objective ~= nil then return "objective" end
     for _, verb in ipairs(verbs) do
@@ -257,6 +262,9 @@ function Steps:Title(node, literal)
         if pressed then return "Use " .. joinNames(pressed, Names.DescribeItem) end
         if auto.object then return "Click " .. auto.object end
         if auto.npc then return "Talk to " .. joinNames(auto.npc, Names.DescribeNPC) end
+        -- The creatures the work is done on (a beast to tame), with the
+        -- quest, when the client has no line to give.
+        if node.mark then return Names:DescribeQuest(auto.quests[1]) .. ": " .. joinNames(node.mark, Names.DescribeNPC) end
         return Names:DescribeQuest(auto.quests[1]) .. ", objective " .. tostring(auto.part)
     end
     if verb == "objective" or verb == "objectives" then
@@ -355,6 +363,9 @@ function Steps:Title(node, literal)
     if verb == "interact" then return "Click " .. auto.object end
     if verb == "accept" then return "Accept " .. joinNames(auto.quests, Names.DescribeQuest) .. suffix end
     if verb == "turnin" then return "Turn in " .. joinNames(auto.quests, Names.DescribeQuest) .. suffix end
+    if verb == "talk" and #auto.turnin + #auto.accept == 0 then
+        return "Talk to " .. joinNames(node.refs and node.refs.npcs or {}, Names.DescribeNPC) .. suffix
+    end
     if verb == "talk" then
         return "Turn in " .. joinNames(auto.turnin, Names.DescribeQuest) .. ", accept " .. joinNames(auto.accept, Names.DescribeQuest) .. suffix
     end
@@ -452,11 +463,34 @@ local function questProgress(Client, questID, index)
     return nil
 end
 
+-- How many an objective needs, by "quest:objective". The client answers for
+-- any quest, in the log or not, and the number never changes, so it is asked
+-- once.
+local objectiveNeeds = {}
+
+-- The step's target count: the authored one, or for an objective step that
+-- names none (an imported guide leaves the number to the quest) what the
+-- client says the objective needs. Nil when neither says.
+function Steps:Count(node)
+    local auto = node and node.auto
+    if not auto then return nil end
+    if auto.count then return auto.count end
+    if auto.verb ~= "objective" or not auto.part or not (auto.kill or auto.collect) then return nil end
+    local questID = auto.quests and auto.quests[1]
+    local key = tostring(questID) .. ":" .. tostring(auto.part)
+    if objectiveNeeds[key] then return objectiveNeeds[key] end
+    local Client = ns.modules.Client
+    local lines = Client and Client.GetQuestObjectives and Client:GetQuestObjectives(questID)
+    local need = type(lines) == "table" and lines[auto.part] and tonumber(lines[auto.part].need)
+    if need and need > 0 then objectiveNeeds[key] = need end
+    return objectiveNeeds[key]
+end
+
 -- What the player already has towards a step's count. Nil when the client
 -- cannot say, and then the authored count stands.
 function Steps:Have(node)
     local auto = node and node.auto
-    if not auto or not auto.count then return nil end
+    if not auto or not self:Count(node) then return nil end
     local Client = ns.modules.Client
     local canCount = Client ~= nil and Client.GetItemCount ~= nil
     local verb = auto.verb
@@ -487,7 +521,7 @@ end
 -- the count is met the whole figure comes back, so a finished line never
 -- reads "Collect 0".
 function Steps:CountText(node, literal)
-    local count = node and node.auto and node.auto.count
+    local count = self:Count(node)
     if not count then return "" end
     local have = not literal and self:Have(node) or nil
     if type(have) == "number" and have > 0 and have < count then return (count - have) .. " " end
@@ -614,6 +648,8 @@ function Steps:Goals(node)
             local _, text = Client and Client.GetQuestObjective and Client:GetQuestObjective(questID, auto.part)
             if text and text ~= "" then
                 add("objective", { part(text) }, goal)
+            elseif node.mark then
+                add("objective", nameParts({ part(Names:DescribeQuest(questID), "quest"), part(": ") }, node.mark, Names.DescribeNPC, "monster"), goal)
             else
                 add("objective", { part(Names:DescribeQuest(questID), "quest"), part(", objective " .. tostring(auto.part)) }, goal)
             end
@@ -1211,9 +1247,14 @@ local function build(step, verb, defaultMap)
         node.kind = "travel"
         node.auto = { verb = verb, label = type(step.travel) == "string" and step.travel or fmtCoord(step.at) }
         -- Arrival is normally a coordinate, but a zone or a subzone is what
-        -- the player actually crosses into, and the client names those.
-        if type(step.subzone) == "string" then
+        -- the player actually crosses into, and the client names those. A
+        -- dungeon has no map the client reports, only its instance ID.
+        if type(step.instance) == "number" then
+            node.completion = { type = "observed", observed = { type = "instance", instanceID = step.instance } }
+        elseif type(step.subzone) == "string" then
             node.completion = { type = "observed", observed = { type = "subzone", name = step.subzone } }
+        elseif type(step.zone) == "number" then
+            node.completion = { type = "observed", observed = { type = "zone", mapID = step.zone } }
         elseif type(step.zone) == "string" then
             node.completion = { type = "observed", observed = { type = "zone", name = step.zone } }
         else
@@ -1227,15 +1268,19 @@ local function build(step, verb, defaultMap)
         node.kind, node.completion = "turnInQuest", questCompletion("finished", quests, "all")
     elseif verb == "talk" then
         local turnin, accept = list(step.turnin), list(step.accept)
-        quests = {}
-        for _, id in ipairs(turnin) do table.insert(quests, id) end
-        for _, id in ipairs(accept) do table.insert(quests, id) end
         node.kind = "talk"
-        node.completion = { type = "observed", observed = { type = "all", children = {
-            { type = "quests", state = "finished", match = "all", ids = turnin },
-            { type = "quests", state = "acceptedOrFinished", match = "all", ids = accept },
-        } } }
         node.auto = { verb = verb, turnin = turnin, accept = accept }
+        if #turnin + #accept > 0 then
+            quests = {}
+            for _, id in ipairs(turnin) do table.insert(quests, id) end
+            for _, id in ipairs(accept) do table.insert(quests, id) end
+            node.completion = { type = "observed", observed = { type = "all", children = {
+                { type = "quests", state = "finished", match = "all", ids = turnin },
+                { type = "quests", state = "acceptedOrFinished", match = "all", ids = accept },
+            } } }
+        elseif step.npc == nil then
+            error("NuuRoad: a talk step with no quests names its NPC")
+        end
     elseif verb == "objective" and step.part then
         quests = list(step.objective)
         node.kind = step.collect and "collect" or (step.kill and "kill") or (step.object and "interact") or "questObjective"
@@ -1386,6 +1431,30 @@ local function build(step, verb, defaultMap)
         node.auto = node.auto or { verb = verb, quests = quests }
         node.refs = { quests = quests }
     end
+    -- The quest a travel, buy, or escort step's work is for (the objective
+    -- verb and a collect step read `quest` themselves). `{ id, n }` is one
+    -- objective: the step is done when the client says it is, and a travel
+    -- step only then, since the arrival starts a scene the objective ends.
+    -- A whole quest finishes the step once it is ready to hand in.
+    if step.quest ~= nil and verb ~= "objective" and verb ~= "collect" then
+        local finishes
+        if type(step.quest) == "table" and type(step.quest[1]) == "number" and type(step.quest[2]) == "number" then
+            finishes = { type = "objective", questID = step.quest[1], index = step.quest[2] }
+        elseif type(step.quest) == "number" then
+            finishes = { type = "quests", state = "readyToTurnIn", match = "all", ids = { step.quest } }
+        else
+            error("NuuRoad: quest is a quest ID or { quest, objective }")
+        end
+        local own = node.completion.type == "observed" and node.completion.observed
+        if verb == "travel" and finishes.type == "objective" or not own then
+            node.completion = { type = "observed", observed = finishes }
+        else
+            node.completion = { type = "observed", observed = { type = "any", children = { own, finishes } } }
+        end
+        node.refs = node.refs or {}
+        node.refs.quests = node.refs.quests or {}
+        table.insert(node.refs.quests, finishes.questID or step.quest)
+    end
     if node.auto then
         node.auto.object = step.object
         node.auto.count = node.auto.count or step.count
@@ -1458,6 +1527,22 @@ local function build(step, verb, defaultMap)
     end
     -- A step that stays on screen alongside the ones after it until it is done.
     if step.sticky then node.sticky = true end
+    -- Creatures to mark and list as targets without their kills counting for
+    -- anything: the mobs of a grind spot, a creature an item is used on.
+    if step.mark ~= nil then
+        node.mark = list(step.mark)
+        for _, id in ipairs(node.mark) do
+            if type(id) ~= "number" then error("NuuRoad: `mark` names creatures by ID") end
+        end
+    end
+    -- The dialog options to pick on a talk step, by gossip option ID, one per
+    -- page. Kept on the step; nothing picks them yet.
+    if step.say ~= nil then
+        node.say = list(step.say)
+        for _, id in ipairs(node.say) do
+            if type(id) ~= "number" then error("NuuRoad: `say` names gossip options by ID") end
+        end
+    end
     node.location = location(step, verb, defaultMap)
     -- A visit with no point of its own goes where the guide says the NPC
     -- stands, on the guide's map unless the point names another, and carries
@@ -1531,6 +1616,8 @@ function Steps:Expand(guide)
     -- "next" and a label both name a position that is only known once every
     -- step has one.
     local companions = {}
+    -- Steps carried from an earlier label until they are done or reached.
+    local carriedFrom = {}
     local section
 
     local function claim(name, index)
@@ -1558,6 +1645,12 @@ function Steps:Expand(guide)
                 error("NuuRoad: `with` names the step this one is carried alongside")
             end
             table.insert(companions, { node = node, target = step.with })
+        end
+        if step.from ~= nil then
+            if type(step.from) ~= "string" or step.from == "" then
+                error("NuuRoad: `from` names the earlier step this one is carried from")
+            end
+            table.insert(carriedFrom, { node = node, target = step.from })
         end
         for _, choice in ipairs(node.choices or {}) do
             if type(choice["next"]) ~= "string" then error("NuuRoad: a choice goes to a label") end
@@ -1650,6 +1743,14 @@ function Steps:Expand(guide)
         node.completion = { type = "observed", observed = own
             and { type = "any", children = { own, carried } } or carried }
     end
+    -- Background work written once, where it is finished: the drops off
+    -- creatures fought for other reasons, shown from the labelled step on.
+    for _, entry in ipairs(carriedFrom) do
+        local target = labels[entry.target]
+        if not target then error("NuuRoad: no step is labelled '" .. tostring(entry.target) .. "'") end
+        if target >= entry.node.index then error("NuuRoad: `from` names an earlier step") end
+        entry.node.carriedFrom = target
+    end
     return expanded
 end
 
@@ -1665,6 +1766,10 @@ function Steps:NPCs(node)
         killIDs = node.completion.observed.npcs
     end
     for _, id in ipairs(killIDs or {}) do
+        if type(id) == "number" and not isKill[id] then isKill[id] = true; table.insert(kill, id) end
+    end
+    -- Marked and listed like targets; no kill of theirs counts for the step.
+    for _, id in ipairs(node.mark or {}) do
         if type(id) == "number" and not isKill[id] then isKill[id] = true; table.insert(kill, id) end
     end
     for _, id in ipairs(node.refs and node.refs.npcs or {}) do

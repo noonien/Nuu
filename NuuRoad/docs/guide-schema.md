@@ -1,6 +1,6 @@
 # Guide format v2
 
-v2 is the authored format: what an author writes, what a packaged guide ships as, and what an import reads. It is not the shape the addon runs on. `Data/Steps.lua` converts a guide once, on the way in, and everything downstream sees runtime nodes. Anything derived - titles, step positions, section and group spans, reference lists, completion rules - is built during that conversion and never authored.
+v2 is what `Data/Steps.lua` expands: what the editor writes, what the fixtures in `Dev/Fixtures` are written in, and what `Data/Import.lua` turns a guide in the export format into. The packaged guides in `Data/Guides` are written in the export format (`docs/examples/guide-export.lua`); see [Read from the export format](#read-from-the-export-format) for the fields v2 gained for them. It is not the shape the addon runs on. `Data/Steps.lua` converts a guide once, on the way in, and everything downstream sees runtime nodes. Anything derived - titles, step positions, section and group spans, reference lists, completion rules - is built during that conversion and never authored.
 
 A guide requires `schema = 2`, a stable `id`, `updated` (seconds since the epoch), `meta` with a `title` and `category`, and `steps`, a list of sections. It may carry a guide-level `map`, an `only` condition, and in `meta`: `author`, `tags`, `levels = { from, to }`, `source`, and `materials` (`"section"` or `"guide"`, see Materials).
 
@@ -146,6 +146,23 @@ A step naming both a profession verb and `skill` keeps the verb: the `skill` is 
 `at` is one point `{ x, y }` or a list of points whose first is the arrow target and whose rest are map pins. A point may carry its own `map = 1454`, and a section carries `map` for its whole span; otherwise the guide's `map` applies. A step itself has no `map`. A step that visits an NPC (`npc`) with no `at` of its own goes where the guide's `names.npcs` says that NPC stands (below); a step's own `at` wins, which is how an escort's end or an NPC that walks is placed. Coordinates may be percentages or normalized; `radius` overrides the per-verb arrival radius (talk steps 0.02, travel 0.03, objectives 0.05). The arrow reads that map fraction in yards once the client can size the map and caps it at 7 yards, so a 5% radius on a zone-sized map does not announce arrival hundreds of yards out; inside it the arrow gives way to a pin icon that hops in place, rather than pointing at the player's own feet. `npc` and `item` accept one ID or a list and land in `refs`. Flattened positions include each group member; sections and group wrappers consume none. Nothing authored refers to a position: branches name labels.
 
 Titles are rendered at display time from the verb and the names in the guide's `names` table: `names = { npcs = { [3448] = "Tonga Runetotem" }, quests = { [870] = "The Forgotten Pools" }, items = {}, factions = {}, spells = {} }`, any kind left out. An NPC the guide visits is written `[3448] = { "Tonga Runetotem", at = { 52.26, 31.93 }, note = "Upstairs in the inn." }`: `at` is one point, on the guide's map unless it carries `map` (a section's map does not apply), and `note`, when given, is shown above the step's own note on every visit. Monsters and anyone never visited are their name alone. A guide names every ID it uses, so it stands on its own; the names of every loaded guide are shared at run time, so two guides naming one ID must agree (the tests check both). The client's quest title and creature tooltip lookups override the table when they answer. An ID missing from the table shows as `quest 870` or `NPC 3448` until the client resolves it, so add every referenced quest and quest giver to the table when porting.
+
+## Read from the export format
+
+`Data/Import.lua` writes v2 for a guide in the export format, and uses a few fields an author of v2 would not:
+
+| Field | Meaning |
+| --- | --- |
+| `{ talk = true, npc = 3344 }` | a visit with nothing to hand in or take (a trainer): "Talk to ...", manual |
+| `quest = { 870, 1 }` on a travel, buy, or escort step | done when the client says that objective is; a travel step only then, since the arrival starts what the objective ends |
+| `quest = 924` on a travel, buy, or escort step | also done once the quest is ready to hand in |
+| `zone = 1454` (a number) on a travel step | arrival is the player's map ID, not a zone name |
+| `instance = 43` on a travel step | arrival is entering that dungeon (GetInstanceInfo's instance ID) |
+| `from = "beaks"` | carried on the card from the labelled earlier step until done or reached, where it is an ordinary step |
+| `mark = { 2955, 2956 }` | creatures marked and listed as targets; their kills count for nothing |
+| `say = { 41231 }` | gossip option IDs to pick on a talk step, kept on the node; nothing reads them yet |
+
+`only` takes a predicate tree as well as text, which is what the import writes; `show` conditions are wrapped in `now`. An objective step's `count` may be left out: `Steps:Count` asks the client how many the objective needs. A group may also hold any step that finishes a quest objective. An NPC entry in `names.npcs` may give a list of points or a place point as its `at`, and `instance` for one inside a dungeon.
 
 ## Carried steps
 

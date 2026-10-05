@@ -1,0 +1,841 @@
+-- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
+-- Data/Import.lua reads it as the addon loads. Converted from the authored v2
+-- guide that was Data/BuiltIn/HordeTirisfal612.lua.
+--
+-- Horde 6-12 leveling route through Brill, Tirisfal Glades and the Undercity,
+-- ported from RestedXP's Forever "6-12 Tirisfal Glades". Step order follows the
+-- source; quest IDs, NPC IDs, item IDs and coordinates were checked against
+-- db/horde, ForeverGuide's Forever scan (the new NPCs) and the Forever client's
+-- item table (the new quest items).
+--
+-- Notes (from the packaged guide):
+--   * Softcore shortcuts (dying to reach the spirit healer) are never an
+--     instruction; NuuRoad never tells a player to die, so those steps are
+--     ordinary travel steps and the shortcut is a note. The Undercity logout
+--     skip, which the source already switches off, is left out.
+--   * The source's campfire for The Great Outdoors points into Kalimdor, a
+--     slip in its coordinates; the step stands at Eleanor Shackleton's fire.
+--   * The source visits the class trainers at level 12 twice, once before and
+--     once after Bandarion Keep. Only the second visit is kept: every class
+--     passes through Brill there, and a trainer step cannot tell whether the
+--     ranks were already bought.
+--   * The priest's self-made wand (tailoring, enchanting, eight vendor and
+--     trainer stops in the Undercity) is one note, not eight steps; the
+--     auction-house purchase stays a step.
+--   * The warrior steps that abandon Veteran Uzzek and Path of Defense are left
+--     out: they only matter to an orc or troll warrior who came from Durotar.
+--   * Varimathras stands on the Undercity map here (the database's position);
+--     the source gives his Royal Quarter spot in Tirisfal coordinates.
+--   * Forever's new creatures (the Cult of the Damned, the Tarnished, the
+--     Shadowvale dead, the Vile Fin raiders at Bandarion Keep) have no known
+--     IDs, so those quests are one step naming the creatures in the note
+--     rather than one step per kill line.
+--
+-- Maps: 1420 Tirisfal Glades (guide default), 1458 Undercity, 1421 Silverpine
+-- Forest (the last travel's zone).
+--
+-- Conversion notes (judgement calls made converting from format v2):
+--   * IDs looked up in the repo: SkillLine IDs from Client.professionSkillLines
+--     in API/Client.lua (Tailoring 197, Cooking 185, Enchanting 333, First Aid
+--     129, Mining 186); AreaTable IDs from db/sources/wago/forever/AreaTable.csv
+--     (Brill 159, Agamand Mills 157, Balnir Farmstead 165, Undercity 1497, the
+--     last for the Undercity hearth); map IDs from db/horde/maps.json (Tirisfal
+--     1420, Silverpine 1421, Undercity 1458). Travel `subzone` became `area`,
+--     `zone` names became map IDs, `hearth` names became areas.
+--   * Dropped `now` gates (the condition-only terms): "now level 6/7/8/10/12"
+--     on the trainer notes and the early A New Plague and The Chill of Death
+--     accepts, every "now gold N", every "now slot N dps < X", "not now spell
+--     6307" (Blood Pact grimoire). The steps stay, with only their class part
+--     as `cond`; a player without the gold, the level, or a worse weapon
+--     skips. Weapon buy steps repeated in several Brill and Undercity visits
+--     are all kept, so after the first purchase the repeats are for the player
+--     to skip.
+--   * Quest-state `only` terms, which `cond`/`show` cannot carry:
+--       - "not quest 361" / "quest 361" on the two Agamand Mills level steps
+--         (3840 xp without A Letter Undelivered, 3360 with it): one level step
+--         at 3840 xp; its note says a player holding the letter may stop at
+--         3360 and skip. One step fewer than the source.
+--       - "now quest 361" on the letter's turn-in, "now quest 95328" on the
+--         Whispering Horror Residue turn-in: dropped; a turn-in with nothing to
+--         hand in passes on its own.
+--       - "now quest 374 readyToTurnIn" and "now quest 1886 readyToTurnIn":
+--         `optional = true` on those turn-ins.
+--       - "now quest 1886 finished" on the rest of the Deathstalkers chain:
+--         dropped; the steps keep their rogue/undead `cond`, and the chain's
+--         accepts cannot be taken until 1886 is done.
+--       - "quest 99152 or quest 95314 or quest 99153" on the Shadowvale Crypt
+--         travel: dropped; everyone takes 99152 and 99153 at Bandarion Keep.
+--       - "now item 208185" on the mage primer turn-in: dropped; class kept.
+--   * `only` rewritten: classes -> cond.class (a list for "or"), "Undead" ->
+--     race "scourge" ("Undead or Troll" -> race list), "not Undead" / "not
+--     Paladin" -> `none`, "auctionhouse" -> show = { ah = true }, the guide's
+--     "Horde" -> wrapper cond. Every step of "Warlocks: the Magic Quarter",
+--     "Duskbats south of Brill" and "Paladins: A Lesson in Divinity" was for
+--     the same classes, so `cond` moved to those sections; the duskbat group's
+--     shared class `cond` sits on the section too.
+--   * track/untrack turned into `from` (the label on the step or section where
+--     the tracking began; the track's note joined the objective step's note):
+--       - 5481 Gloom Weed, 367 Darkhound Blood, 97558 part 2 (Darkhound Hide):
+--         from "west" (section "The fields west of Brill").
+--       - 427 Scarlet Warriors: from "solliden" (section).
+--       - 97558 part 3 (Vile Fin skins) and 5482 Doom Weed: from "gnolls"
+--         (section "The gnoll camps north of Brill").
+--       - 358 (tracked after the graverobber kills): from "graverobbers" on
+--         both 358 part 2 (mongrels) and part 3 (Embalming Ichor), since the
+--         track covered the whole quest.
+--       - 426 Notched Ribs and Blackened Skulls: from "agamand" (the travel
+--         into the mills); its note split between the two steps.
+--       - 374 Scarlet Insignia Rings: from "perrine" (the Captain Perrine group
+--         the track followed).
+--       - 99142 Tomb Weed: from "balnirarrive" (the travel into Balnir).
+--   * A carried step written twice in the source (an early `with = "next"` or
+--     `sticky` copy, then the real step) became the later step with `from`:
+--     the Dry Branches (from "branches", the Sticks and Bones accept), the
+--     Executor's Motivator (sticky; from "zygand", the talk that gives
+--     Discipline), and Egalin's Grimoire (from "scarletcamp", its section).
+--     Three steps fewer than the source; their notes were merged.
+--   * `with = "next"` before a group (Thurman's Letter) became `with = "mills"`,
+--     a label on that group. The two Astor Hadren steps keep `with` on the
+--     existing labels "balnir" (a section) and "uc2".
+--   * Objective numbers are the source's `part`s; none were inferred. Steps
+--     with a whole quest and no part (`objective = N`) keep `quest = N`: The
+--     Great Outdoors (an interact at the campfire; the quest finishes it, the
+--     player sits rather than clicks), and Murlocs at the Gates and The
+--     Tarnished (kill steps with no target IDs: the creatures are Forever's
+--     own and have none, so the note names them).
+--   * Objective steps with no collect/kill target: Patience's reports and
+--     Touring the Grounds' conversations are `talk` with `quest = { id, n }`;
+--     the Coarse Thread for The Chill of Death is a `buy` with its objective;
+--     Executor's Motivator and Deathguard Kel (spells cast on him) are
+--     `interact` with the objective (object "Deathguard" for the first).
+--   * NPC-only steps with a note (Holy Strike, "Train your new ranks") are
+--     `note` steps with `npc`.
+--   * The Whispering Horror Residue accept gained `item = 268812`, the item of
+--     the collect step before it that starts 95328.
+--   * NPCs lacking a position in the source's `names`: Gordo (10666) and
+--     Junior Apothecary Holland (10665) walk; their `at` is the list of points
+--     the steps that visit them gave, and the steps lose theirs (keeping their
+--     radius). NPCs lacking an ID: Ephram Barbaro, Ander Solliden, Jorin Croge
+--     and Owen Thadd; their steps keep their own `at` and name them in notes.
+--   * Notes that only say where an NPC stands ("second floor of the inn",
+--     "in the Magic Quarter", "walks around the graveyard") moved to that
+--     NPC's `note`, shown on every visit.
+--   * Sections given a `map`: none beyond the source's (the Undercity ones,
+--     1458); points off a section's map carry their own map as before.
+--   * Section and step labels were added for `from` and `with`: branches,
+--     zygand, west, solliden, gnolls, graverobbers, agamand, mills,
+--     scarletcamp, perrine, balnir (the source's), balnirarrive, uc2 (the
+--     source's).
+--   * The wrapper's `source` is from the header; the source guide had none.
+
+local _, ns = ...
+
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide",
+    format = 1,
+
+    id = "nuuroad:leveling:horde-tirisfal-6-12",
+    updated = 1790640000,
+    title = "Brill and the Undercity",
+    category = "Leveling/Tirisfal Glades",
+    author = "NuuRoad",
+    tags = { "horde", "undead", "tirisfal", "brill", "undercity" },
+    levels = { from = 6, to = 12 },
+    cond = { faction = "Horde" },
+    source = "Ported from RestedXP's Forever \"6-12 Tirisfal Glades\".",
+
+    data = {
+        map = 1420,
+
+        sections = {
+            { title = "The road to Brill", steps = {
+                { type = "accept", quests = { 365 }, npc = { 1519 } },
+                { type = "accept", quests = { 5481 }, npc = { 10666 }, radius = 500,
+                  note = "Follow the road until you meet him." },
+                { type = "train", skill = 197, npc = { 3523 }, cond = { class = "PRIEST" },
+                  note = "Bowen Brisboise, by the road. Keep your Linen Cloth from now on: it becomes a wand later." },
+                { type = "travel", to = "Brill", area = 159, at = { { 5847, 5140 } }, radius = 400,
+                  note = "Keep east along the road. If you play without hardcore rules and would rather not walk, dying and taking the spirit healer's resurrection puts you at the Brill graveyard." },
+            } },
+
+            { title = "Brill", steps = {
+                { type = "accept", quests = { 86784 }, npc = { 1742 }, label = "branches" },
+                { type = "accept", quests = { 404 }, npc = { 1496 } },
+                { type = "collect", item = 279991, quest = { 86784, 1 }, object = "Dry Branch", from = "branches",
+                  radius = 400,
+                  at = { { 5733, 5239 }, { 5882, 5282 }, { 6036, 5502 }, { 5518, 5368 }, { 5377, 5209 } },
+                  note = "Dry Branches lie on the ground under the trees around Brill. Pick them up as you pass, and finish them here." },
+                { type = "talk", turnin = { 86784, 96656 }, accept = { 96607 }, npc = { 265812 },
+                  note = "The Adventurer is the quest Executor Arren gave you in Deathknell; skip it if you do not have it." },
+                { type = "interact", object = "Campfire", quest = 96607, at = { { 5727, 5549 } }, wait = 60,
+                  note = "Type /sit beside her campfire and stay put for about a minute, until you have the Camp Benefits buff." },
+                { type = "talk", turnin = { 96607 }, accept = { 96658 }, npc = { 265812 } },
+                { type = "accept", quests = { 367 }, npc = { 1518 },
+                  note = "Apothecary Johaan offers A New Plague from level 6. You come back past him shortly if you are not there yet." },
+                { type = "talk", turnin = { 383 }, accept = { 427, 99141, 99134 }, npc = { 1515 }, label = "zygand" },
+                { type = "buy", item = 3131, count = 200, npc = { 2134 }, cond = { class = "ROGUE" },
+                  note = "Weighted Throwing Axes from Mrs. Winters. Equip them." },
+                { type = "vendor", sell = true, npc = { 2136 }, cond = { class = { "ROGUE", "WARRIOR", "PALADIN" } },
+                  note = "Sell your trash to Oliver Dwor, and your weapon too if that pays for the one in the next step." },
+                { type = "buy", item = 2494, npc = { 2136 }, cond = { class = "ROGUE" },
+                  note = "The Stiletto costs 3 silver 81 copper. Equip it." },
+                { type = "buy", item = 2488, npc = { 2136 }, cond = { class = "WARRIOR" },
+                  note = "The Gladius costs 5 silver 10 copper. Equip it." },
+                { type = "turnin", quests = { 91209 }, npc = { 246152 }, cond = { class = "PALADIN" } },
+                { type = "note", npc = { 246152 }, cond = { class = "PALADIN" },
+                  note = "Train Holy Strike from Shari Stilwell." },
+                { type = "buy", item = 2493, npc = { 2136 }, cond = { class = "PALADIN" },
+                  note = "The Wooden Mallet costs 6 silver 66 copper. Equip it." },
+                { type = "turnin", quests = { 8 }, npc = { 5688 },
+                  note = "The Nondescript Letter from Calvin Montague. Skip it if you never picked it up." },
+                { type = "hearth", area = 159, npc = { 5688 } },
+                { type = "train", skill = 185, npc = { 265944 } },
+                { type = "turnin", quests = { 96658 }, npc = { 265944 } },
+                { type = "accept", quests = { 375 }, npc = { 1521 },
+                  note = "She offers The Chill of Death from level 7; you come back to her later if you are not there yet." },
+                { type = "talk", turnin = { 5651 }, accept = { 5650 }, npc = { 2129 }, cond = { class = "PRIEST" } },
+                { type = "learn", spells = { 591, 17, 2053 }, npc = { 2129 }, cond = { class = "PRIEST" },
+                  note = "The quest needs the new heal." },
+                { type = "learn", spells = { 143, 2136 }, npc = { 2128 }, cond = { class = "MAGE" } },
+                { type = "learn", spells = { 3127 }, npc = { 2131 }, cond = { class = "WARRIOR" } },
+                { type = "learn", spells = { 1757 }, npc = { 2130 }, cond = { class = "ROGUE" } },
+                { type = "buy", item = 16321, npc = { 5750 }, cond = { class = "WARLOCK" },
+                  note = "The Grimoire of Blood Pact from Gina Lang. Read it to teach your imp, and sell her your trash. Skip it if your imp already has Blood Pact." },
+                { type = "learn", spells = { 695 }, npc = { 2127 }, cond = { class = "WARLOCK" },
+                  note = "Life Tap as well if you can afford both." },
+                { type = "train", skill = 333, npc = { 5695 }, cond = { class = { "PRIEST", "WARLOCK" } },
+                  note = "Vance Undergloom. With Tailoring it lets you make your own wand later." },
+                { type = "buy", item = 1179, count = 15, npc = { 5688 }, cond = { class = { "MAGE", "PRIEST", "PALADIN" } } },
+                { type = "buy", item = 4605, count = 10, npc = { 5688 }, cond = { class = { "WARRIOR", "ROGUE" } } },
+                { type = "buy", item = 1179, count = 10, npc = { 5688 }, cond = { class = "WARLOCK" } },
+                { type = "buy", item = 4605, count = 5, npc = { 5688 }, cond = { class = "WARLOCK" } },
+            } },
+
+            { title = "The Deathguard post east of Brill", steps = {
+                { type = "talk", npc = { 251001 }, quest = { 99141, 2 },
+                  note = "Ask Deathguard Kristof for a report for Executor Zygand." },
+                { type = "accept", quests = { 97558 }, npc = { 3549 } },
+                { type = "accept", quests = { 367 }, npc = { 1518 } },
+                { type = "interact", npc = { 12428 }, quest = { 5650, 1 }, cond = { class = "PRIEST" },
+                  note = "Cast Lesser Heal (rank 2) and Power Word: Fortitude on Deathguard Kel." },
+            } },
+
+            { title = "The fields west of Brill", label = "west", steps = {
+                { type = "collect", item = 2855, kill = { 1525, 1526 }, quest = { 404, 1 }, radius = 600,
+                  at = { { 5495, 5053 }, { 5335, 5029 }, { 5212, 5038 }, { 5128, 5163 }, { 5203, 5374 },
+                         { 5229, 5672 }, { 5395, 5653 }, { 5355, 5825 }, { 5263, 5698 } },
+                  note = "Rotting Dead and Ravaged Corpses drop the claws." },
+                { type = "talk", npc = { 10666 }, quest = { 99141, 3 }, radius = 500,
+                  note = "Find Gordo on the road again and ask him for a report for Executor Zygand." },
+                { type = "collect", item = 12737, quest = { 5481, 1 }, from = "west", radius = 600,
+                  at = { { 4443, 5733 }, { 3955, 5064 } },
+                  note = "Gloom Weed grows on the ground along the road west. Pick it up whenever you pass one, and finish it here, by the road." },
+                { type = "note", cond = { class = "PRIEST" },
+                  note = "Priests: from here on, keep three stacks of Linen Cloth for the wand you can make in the Undercity. Skip this if you would rather buy a wand at the auction house." },
+                { type = "collect", item = 2846, quest = { 365, 1 }, radius = 500,
+                  at = { { 3720, 5217 }, { 3664, 5009 }, { 3610, 4907 }, { 3508, 4982 }, { 3530, 5091 },
+                         { 3457, 5158 } },
+                  note = "The pumpkins lie in the field." },
+            } },
+
+            { title = "Solliden Farmstead", label = "solliden", steps = {
+                { type = "accept", quests = { 99144 }, npc = { 275954 },
+                  note = "Three Scarlet Warriors can reach you at once up there; pull them one at a time." },
+                { type = "escort", quest = 99144, npc = { 275954 }, at = { { 3907, 4877 } } },
+                { type = "kill", kill = { 1535 }, quest = { 427, 1 }, from = "solliden", radius = 600,
+                  at = { { 3373, 4934 }, { 3365, 5107 }, { 3178, 5136 }, { 3002, 5048 }, { 2991, 4924 },
+                         { 3062, 4753 }, { 3101, 4650 }, { 3215, 4483 }, { 3373, 4529 }, { 3410, 4788 } },
+                  note = "Kill Scarlet Warriors on the way. Rogues and warriors: after their defensive stance they parry half your attacks for 8 seconds." },
+                { group = {
+                    { type = "collect", item = 2858, kill = { 1547 }, quest = { 367, 1 }, from = "west", radius = 600,
+                      at = { { 3972, 4689 }, { 4047, 4297 }, { 4228, 4782 } },
+                      note = "Darkhounds drop their blood for A New Plague and their hides for Hides for the Forsaken. Kill any that come near." },
+                    { type = "collect", item = 278243, kill = { 1547 }, quest = { 97558, 2 }, from = "west", radius = 600,
+                      at = { { 3972, 4689 }, { 4047, 4297 }, { 4228, 4782 } } },
+                } },
+            } },
+
+            { title = "Back to Brill", steps = {
+                { type = "travel", to = "Brill", area = 159, at = { { 5771, 4896 } }, radius = 400,
+                  note = "Hearth if it is up; otherwise walk back east along the road." },
+                { type = "talk", turnin = { 5481 }, accept = { 5482 }, npc = { 10665 }, radius = 300 },
+                { group = {
+                    { type = "talk", npc = { 1496 }, quest = { 99141, 1 },
+                      note = "Ask Deathguard Dillinger for his report too." },
+                    { type = "talk", turnin = { 404 }, accept = { 426 }, npc = { 1496 } },
+                    { type = "talk", turnin = { 367, 365 }, accept = { 368, 407 }, npc = { 1518 } },
+                    { type = "accept", quests = { 95314 }, npc = { 2132 } },
+                } },
+                { type = "collect", item = 208185, cond = { class = "MAGE" }, at = { { 5945, 5240 } },
+                  note = "The Apothecary's Metaphysical Primer sits on a bookshelf in the apothecaries' building." },
+                { type = "interact", object = "Deathguard", use = { 286176 }, quest = { 99134, 1 }, from = "zygand",
+                  radius = 200, at = { { 6070, 5194 }, { 6144, 5305 }, { 6019, 5239 } },
+                  note = "Use the Executor's Motivator on five Deathguards in and around Brill whenever one is in reach. Finish motivating them here before you see the Executor." },
+                { type = "talk", turnin = { 427, 99141, 99134 }, accept = { 370 }, npc = { 1515 },
+                  note = "The Executor's Motivator is no use after this; destroy it if you want the bag space." },
+                { group = {
+                    { type = "accept", quests = { 374, 398 }, npc = { 1652 },
+                      note = "Deathguard Burgess, and the Wanted poster beside him." },
+                    { type = "accept", quests = { 358 }, npc = { 1499 } },
+                } },
+                { type = "turnin", quests = { 99144 }, npc = { 246152 },
+                  note = "Shari Stilwell. Paladins: train your new ranks from her while you are here." },
+                { type = "turnin", quests = { 5650 }, npc = { 2129 }, cond = { class = "PRIEST" } },
+                { type = "accept", quests = { 375 }, npc = { 1521 } },
+                { type = "note", npc = { 2129 }, cond = { class = "PRIEST" }, note = "Train your new ranks from Dark Cleric Beryl." },
+                { type = "note", npc = { 2128 }, cond = { class = "MAGE" }, note = "Train your new ranks from Cain Firesong." },
+                { type = "note", npc = { 2131 }, cond = { class = "WARRIOR" }, note = "Train your new ranks from Austil de Mon." },
+                { type = "note", npc = { 2130 }, cond = { class = "ROGUE" }, note = "Train your new ranks from Marion Call." },
+                { type = "note", npc = { 2127 }, cond = { class = "WARLOCK" }, note = "Train your new ranks from Rupert Boch." },
+                { type = "train", skill = 129, npc = { 5759 }, cond = { class = { "ROGUE", "WARRIOR" } },
+                  note = "Nurse Neela. Make bandages while you wait for things, such as zeppelins." },
+                { type = "buy", item = 2494, npc = { 2136 }, cond = { class = "ROGUE" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Stiletto." },
+                { type = "buy", item = 2488, npc = { 2136 }, cond = { class = "WARRIOR" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Gladius." },
+                { type = "buy", item = 2493, npc = { 2136 }, cond = { class = "PALADIN" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Wooden Mallet." },
+                { type = "buy", item = 4496, npc = { 2134 },
+                  note = "A Small Brown Pouch from Mrs. Winters, if you have a bag slot free." },
+            } },
+
+            { title = "Duskbats south of Brill", cond = { class = { "ROGUE", "WARRIOR" } }, steps = {
+                { type = "note",
+                  note = "Rogues and warriors take The Chill of Death early: the duskbats are easy for you now and the level is worth it." },
+                { group = {
+                    { type = "collect", item = 2876, kill = { 1553, 1554 }, quest = { 375, 1 }, radius = 600,
+                      at = { { 5820, 5815 }, { 5798, 6166 }, { 5645, 6262 }, { 5473, 6428 }, { 5284, 6226 },
+                             { 5052, 6121 }, { 4788, 6087 }, { 4609, 5970 }, { 4349, 6181 } } },
+                    { type = "collect", item = 278242, kill = { 1553, 1554 }, quest = { 97558, 1 }, radius = 600,
+                      at = { { 5820, 5815 }, { 5798, 6166 }, { 5645, 6262 }, { 5473, 6428 }, { 5284, 6226 },
+                             { 5052, 6121 }, { 4788, 6087 }, { 4609, 5970 }, { 4349, 6181 } } },
+                } },
+                { type = "level", level = 7, xp = 3260, radius = 600,
+                  at = { { 5820, 5815 }, { 5798, 6166 }, { 5645, 6262 }, { 5473, 6428 }, { 5284, 6226 },
+                         { 5052, 6121 }, { 4788, 6087 }, { 4609, 5970 }, { 4349, 6181 } },
+                  note = "Grind the duskbats until you are 3260 experience into level 7." },
+                { type = "buy", item = 2320, npc = { 2118 }, quest = { 375, 2 },
+                  note = "Buy a Coarse Thread from Abigail Shiel." },
+                { type = "turnin", quests = { 375 }, npc = { 1521 } },
+                { type = "note", npc = { 2131 }, cond = { class = "WARRIOR" }, note = "Train your new ranks from Austil de Mon." },
+                { type = "note", npc = { 2130 }, cond = { class = "ROGUE" }, note = "Train your new ranks from Marion Call." },
+                { type = "buy", item = 2494, npc = { 2136 }, cond = { class = "ROGUE" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Stiletto." },
+                { type = "buy", item = 2488, npc = { 2136 }, cond = { class = "WARRIOR" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Gladius." },
+            } },
+
+            { title = "The gnoll camps north of Brill", label = "gnolls", steps = {
+                { type = "kill", kill = { 1941 }, quest = { 358, 1 }, label = "graverobbers", radius = 600,
+                  at = { { 5631, 3967 }, { 5471, 4119 }, { 5390, 4393 }, { 5524, 4254 }, { 5643, 4392 } },
+                  note = "Rot Hide Graverobbers. Keep the Embalming Ichor they carry; the quest wants that as well." },
+                { type = "collect", item = 13702, quest = { 5482, 1 }, from = "gnolls", radius = 400,
+                  at = { { 5768, 3437 }, { 5745, 3596 }, { 5679, 3779 }, { 5605, 3876 }, { 5509, 3874 },
+                         { 5525, 4016 }, { 5468, 4212 }, { 5529, 4151 }, { 5658, 4199 }, { 5829, 4293 },
+                         { 5883, 4068 }, { 5836, 3855 } },
+                  note = "Doom Weed grows by the trees around the gnoll camps. Pick it up as you pass, and finish it here under the trees." },
+                { type = "collect", item = 3635, kill = { 1753 }, quest = { 398, 1 }, at = { { 5866, 3077 } },
+                  note = "Maggot Eye is in the northern camp. Kill him and loot his paw." },
+                { type = "kill", kill = { 1675 }, quest = { 358, 2 }, from = "graverobbers", radius = 600,
+                  at = { { 5871, 3547 }, { 5977, 3237 }, { 5825, 3128 }, { 6008, 3788 } } },
+                { type = "collect", item = 2834, kill = { 1674, 1675, 1941 }, quest = { 358, 3 }, from = "graverobbers",
+                  radius = 600, at = { { 5871, 3547 }, { 5977, 3237 }, { 5825, 3128 }, { 6008, 3788 } } },
+                { type = "collect", item = 2859, kill = { 1543, 1544, 1545 }, quest = { 368, 1 }, radius = 600,
+                  at = { { 5938, 2905 }, { 5954, 2786 }, { 6064, 2866 }, { 6149, 2940 }, { 6296, 2946 },
+                         { 6568, 3022 }, { 6748, 2897 }, { 6822, 2646 } },
+                  note = "Vile Fin murlocs along the lake shore. Loot their skins as well." },
+                { type = "collect", item = 278244, kill = { 1544, 1545 }, quest = { 97558, 3 }, from = "gnolls", radius = 600,
+                  at = { { 5938, 2905 }, { 5954, 2786 }, { 6064, 2866 }, { 6149, 2940 }, { 6296, 2946 },
+                         { 6568, 3022 }, { 6748, 2897 }, { 6822, 2646 } },
+                  note = "Puddlejumpers do not drop the skin; the oracles and muckdwellers do." },
+                { group = {
+                    { type = "collect", item = 2876, kill = { 1553, 1554 }, quest = { 375, 1 }, radius = 600,
+                      at = { { 6407, 3346 }, { 6445, 3685 }, { 6431, 4102 }, { 6245, 4289 }, { 6389, 4745 },
+                             { 6503, 5064 }, { 6624, 5276 }, { 7016, 5416 }, { 7135, 4813 } },
+                      note = "Duskbats on the way back south." },
+                    { type = "collect", item = 278242, kill = { 1553, 1554 }, quest = { 97558, 1 }, radius = 600,
+                      at = { { 6407, 3346 }, { 6445, 3685 }, { 6431, 4102 }, { 6245, 4289 }, { 6389, 4745 },
+                             { 6503, 5064 }, { 6624, 5276 }, { 7016, 5416 }, { 7135, 4813 } } },
+                } },
+            } },
+
+            { title = "Brill at level 9", steps = {
+                { type = "travel", to = "Brill", area = 159, at = { { 6172, 5229 } }, radius = 400,
+                  note = "Hearth if it is up." },
+                { group = {
+                    { type = "accept", quests = { 354, 362 }, npc = { 1500 } },
+                    { type = "buy", item = 2320, npc = { 2118 }, quest = { 375, 2 },
+                      note = "Buy a Coarse Thread from Abigail Shiel." },
+                    { type = "turnin", quests = { 398 }, npc = { 1515 } },
+                    { type = "talk", turnin = { 358 }, accept = { 359 }, npc = { 1499 } },
+                    { type = "accept", quests = { 405 }, npc = { 1499 }, cond = { class = { "MAGE", "WARLOCK" } } },
+                    { type = "turnin", quests = { 375 }, npc = { 1521 } },
+                } },
+                { type = "note", npc = { 2129 }, cond = { class = "PRIEST" }, note = "Train your new ranks from Dark Cleric Beryl." },
+                { type = "note", npc = { 2128 }, cond = { class = "MAGE" }, note = "Train your new ranks from Cain Firesong." },
+                { type = "note", npc = { 2131 }, cond = { class = "WARRIOR" }, note = "Train your new ranks from Austil de Mon." },
+                { type = "note", npc = { 2130 }, cond = { class = "ROGUE" }, note = "Train your new ranks from Marion Call." },
+                { type = "note", npc = { 2127 }, cond = { class = "WARLOCK" }, note = "Train your new ranks from Rupert Boch." },
+                { type = "note", npc = { 246152 }, cond = { class = "PALADIN" }, note = "Train your new ranks from Shari Stilwell." },
+                { type = "train", skill = 129, npc = { 5759 }, cond = { class = { "ROGUE", "WARRIOR" } } },
+                { type = "buy", item = 1179, count = 20, npc = { 5688 }, cond = { class = { "MAGE", "PRIEST", "PALADIN" } } },
+                { type = "buy", item = 4605, count = 20, npc = { 5688 }, cond = { class = { "WARRIOR", "ROGUE" } } },
+                { type = "buy", item = 1179, count = 10, npc = { 5688 }, cond = { class = "WARLOCK" } },
+                { type = "buy", item = 4605, count = 10, npc = { 5688 }, cond = { class = "WARLOCK" } },
+                { type = "buy", item = 2494, npc = { 2136 }, cond = { class = "ROGUE" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Stiletto." },
+                { type = "buy", item = 2488, npc = { 2136 }, cond = { class = "WARRIOR" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Gladius." },
+                { type = "buy", item = 2493, npc = { 2136 }, cond = { class = "PALADIN" },
+                  note = "Sell your trash and old weapon to Oliver Dwor first. Equip the Wooden Mallet." },
+                { group = {
+                    { type = "turnin", quests = { 97558 }, npc = { 3549 } },
+                    { type = "talk", turnin = { 359 }, accept = { 360, 356 }, npc = { 1495 } },
+                } },
+                { type = "talk", turnin = { 368 }, accept = { 369 }, npc = { 1518 } },
+                { type = "talk", turnin = { 5482 }, accept = { 99142 }, npc = { 10665 }, radius = 300 },
+            } },
+
+            { title = "Agamand Mills", steps = {
+                { type = "travel", to = "Agamand Mills", area = 157, at = { { 4737, 4371 } }, radius = 400,
+                  label = "agamand", note = "North-west of Brill." },
+                { type = "collect", item = 2831, kill = { 1657 }, quest = { 362, 1 }, at = { { 4734, 4078 } },
+                  note = "Devlin Agamand. Loot his remains." },
+                { type = "collect", item = 2828, kill = { 1655 }, quest = { 354, 2 }, at = { { 4934, 3602 } },
+                  note = "Nissa Agamand can be inside the building. Loot her remains." },
+                { type = "collect", item = 2839, starts = 361, kill = { 1520, 1522, 1523 }, with = "mills",
+                  note = "Thurman's Letter can drop from any of the dead here. If it does, use it to start its quest." },
+                { label = "mills", group = {
+                    { type = "collect", item = 2830, kill = { 1656 }, quest = { 354, 3 }, radius = 600,
+                      at = { { 4508, 3115 }, { 4371, 3525 }, { 4679, 2980 }, { 4282, 3193 } },
+                      note = "Thurman walks around the mill. Loot his remains." },
+                    { type = "collect", item = 2829, kill = { 1654 }, quest = { 354, 1 }, radius = 600,
+                      at = { { 4508, 3115 }, { 4371, 3525 }, { 4679, 2980 }, { 4282, 3193 } },
+                      note = "Gregor walks around the mill too. Loot his remains." },
+                    { type = "collect", item = 3162, kill = { 1520, 1523 }, quest = { 426, 1 }, from = "agamand", radius = 600,
+                      at = { { 4508, 3115 }, { 4371, 3525 }, { 4503, 3099 }, { 4679, 2980 }, { 4282, 3193 } },
+                      note = "Rattlecage and Cracked Skull Soldiers drop the ribs. Kill them all as you go." },
+                    { type = "collect", item = 3163, kill = { 1522 }, quest = { 426, 2 }, from = "agamand", radius = 600,
+                      at = { { 4508, 3115 }, { 4371, 3525 }, { 4503, 3099 }, { 4679, 2980 }, { 4282, 3193 } },
+                      note = "Darkeye Bonecasters drop the skulls. Kill them all as you go." },
+                } },
+                { type = "level", level = 9, xp = 3840, radius = 600,
+                  at = { { 4815, 3464 }, { 4765, 3165 }, { 4603, 3025 }, { 4444, 3084 }, { 4410, 3467 },
+                         { 4680, 3510 } },
+                  note = "Grind the mills until you are 3840 experience into level 9; the turn-ins in Brill carry you to 10. With A Letter Undelivered in your log, 3360 is enough, since the letter's turn-in makes up the rest: skip this step there." },
+            } },
+
+            { title = "Brill at level 10", steps = {
+                { type = "travel", to = "Brill", area = 159, at = { { 5820, 5144 } }, radius = 400,
+                  note = "Walk back; your hearthstone is better saved. Without hardcore rules, dying and taking the spirit healer's resurrection is faster." },
+                { group = {
+                    { type = "turnin", quests = { 426 }, npc = { 1496 } },
+                    { type = "turnin", quests = { 361 }, npc = { 1560 } },
+                    { type = "talk", turnin = { 354, 362 }, accept = { 355 }, npc = { 1500 } },
+                    { type = "turnin", quests = { 360, 355 }, npc = { 1499 } },
+                } },
+                { type = "note", npc = { 2129 }, cond = { class = "PRIEST" }, note = "Train your new ranks from Dark Cleric Beryl." },
+                { type = "accept", quests = { 1818 }, npc = { 2131 }, cond = { class = "WARRIOR" },
+                  note = "Train your new ranks from Austil de Mon as well." },
+                { type = "accept", quests = { 1478 }, npc = { 5724 }, cond = { class = "WARLOCK" } },
+                { type = "note", npc = { 2127 }, cond = { class = "WARLOCK" }, note = "Train your new ranks from Rupert Boch." },
+                { type = "accept", quests = { 1885 }, npc = { 2130 }, cond = { class = "ROGUE", race = "scourge" },
+                  note = "Train your new ranks from Marion Call as well." },
+                { type = "note", npc = { 2130 }, cond = { class = "ROGUE", none = { { race = "scourge" } } },
+                  note = "Train your new ranks from Marion Call." },
+                { type = "accept", quests = { 1881 }, npc = { 2128 }, cond = { class = "MAGE", race = { "scourge", "troll" } },
+                  note = "Train your new ranks from Cain Firesong as well." },
+                { type = "buy", item = 1179, count = 20, npc = { 5688 }, cond = { class = { "MAGE", "PRIEST", "PALADIN" } } },
+                { type = "buy", item = 4605, count = 20, npc = { 5688 }, cond = { class = { "WARRIOR", "ROGUE" } } },
+                { type = "buy", item = 1179, count = 15, npc = { 5688 }, cond = { class = "WARLOCK" } },
+                { type = "buy", item = 4605, count = 15, npc = { 5688 }, cond = { class = "WARLOCK" } },
+                { type = "talk", turnin = { 1818 }, accept = { 1819 }, npc = { 1496 }, cond = { class = "WARRIOR" } },
+                { type = "kill", kill = { 6390 }, quest = { 1819, 1 }, cond = { class = "WARRIOR" }, at = { { 5916, 4851 } },
+                  note = "Click the skull on the ground in the graveyard to summon Ulag the Cleaver, then kill him." },
+                { type = "talk", turnin = { 1819 }, accept = { 1820 }, npc = { 1496 }, cond = { class = "WARRIOR" } },
+                { type = "accept", quests = { 96895 }, npc = { 1738 } },
+                { type = "accept", quests = { 91282 }, npc = { 246152 }, cond = { class = "PALADIN" },
+                  note = "Train your new ranks from Shari Stilwell as well." },
+            } },
+
+            { title = "Warlocks: the Magic Quarter", map = 1458, cond = { class = "WARLOCK" }, steps = {
+                { type = "travel", to = "Undercity", zone = 1458, at = { { 6180, 6506, map = 1420 } }, radius = 300,
+                  note = "The ruined city south of Brill. Go in through the throne room and take a lift down." },
+                { type = "talk", turnin = { 1478 }, accept = { 1473 }, npc = { 5675 } },
+                { type = "turnin", quests = { 405 }, npc = { 1498 } },
+                { type = "travel", to = "Tirisfal Glades", zone = 1420, at = { { 5110, 7153, map = 1420 } }, radius = 400,
+                  note = "Leave through the sewers: from the Trade Quarter's outer ring, west, and out of the pipe." },
+            } },
+
+            { title = "The Scarlet camp by the Undercity", label = "scarletcamp", steps = {
+                { label = "perrine", group = {
+                    { type = "kill", kill = { 1662 }, quest = { 370, 1 }, radius = 500,
+                      at = { { 5116, 6573 }, { 5175, 6604 }, { 5293, 6762 }, { 5023, 6694 } },
+                      note = "Captain Perrine." },
+                    { type = "kill", kill = { 1537 }, quest = { 370, 2 }, radius = 500,
+                      at = { { 5007, 6887 }, { 5023, 6694 }, { 5116, 6573 }, { 5175, 6604 }, { 5293, 6762 },
+                             { 5272, 6933 }, { 5196, 6957 }, { 5103, 6955 } } },
+                    { type = "kill", kill = { 1536 }, quest = { 370, 3 }, radius = 500,
+                      at = { { 5007, 6887 }, { 5023, 6694 }, { 5116, 6573 }, { 5175, 6604 }, { 5293, 6762 },
+                             { 5272, 6933 }, { 5196, 6957 }, { 5103, 6955 } } },
+                } },
+                { type = "collect", item = 6285, quest = { 1473, 1 }, object = "Perrine's Chest", from = "scarletcamp",
+                  cond = { class = "WARLOCK" }, at = { { 5106, 6757 } },
+                  note = "Egalin's Grimoire is in Perrine's Chest, on the ground in the camp. Loot it if you have not yet." },
+            } },
+
+            { title = "The Undercity", map = 1458, steps = {
+                { type = "travel", to = "Undercity", zone = 1458, at = { { 4567, 4360 } }, radius = 300,
+                  note = "Go in through the sewer pipe south of the camp and up into the Trade Quarter." },
+                { type = "learn", spells = { 201 }, npc = { 11870 }, cond = { class = "ROGUE" } },
+                { type = "train", skill = 186, npc = { 4598 }, cond = { class = { "WARRIOR", "ROGUE" } },
+                  note = "Optional. Mining gives you Rough Stone, and Blacksmithing from Basil Frye (60.17, 29.11) turns it into sharpening stones: two more weapon damage for half an hour. Buy a Mining Pick at the trade supplies beside Brom Killian. Skip it if you have other plans for your professions." },
+                { type = "talk", turnin = { 1473 }, accept = { 1471 }, npc = { 5675 }, cond = { class = "WARLOCK" } },
+                { type = "kill", kill = { 5676 }, quest = { 1471, 1 }, use = { 6284 }, cond = { class = "WARLOCK" },
+                  at = { { 8664, 2710 } },
+                  note = "Use the Runes of Summoning at the summoning circle and kill the voidwalker." },
+                { type = "turnin", quests = { 1471 }, npc = { 5675 }, cond = { class = "WARLOCK" } },
+                { type = "buy", item = 1198, npc = { 4569 }, cond = { class = "WARRIOR" },
+                  note = "The Claymore costs 25 silver 43 copper; the auction house may have something better for less. Equip it." },
+                { type = "buy", item = 851, npc = { 4569 }, cond = { class = "ROGUE" },
+                  note = "The Cutlass costs 19 silver 22 copper; the auction house may have something better for less. Equip it." },
+                { type = "buy", item = 3107, count = 200, npc = { 4592 }, cond = { class = "ROGUE" },
+                  note = "Keen Throwing Knives. Equip them once you are level 11." },
+                { type = "talk", turnin = { 1885 }, accept = { 1886 }, npc = { 6467 }, cond = { class = "ROGUE", race = "scourge" } },
+                { type = "turnin", quests = { 79095 }, cond = { class = "MAGE" }, at = { { 7344, 3360 } },
+                  note = "Owen Thadd takes the primer you found in Brill." },
+                { type = "talk", turnin = { 1881 }, accept = { 1882 }, npc = { 4568 },
+                  cond = { class = "MAGE", race = { "scourge", "troll" } } },
+                { type = "turnin", quests = { 405 }, npc = { 1498 }, cond = { class = "MAGE" } },
+                { type = "hearth", area = 1497, npc = { 6741 }, cond = { class = "PALADIN" } },
+                { type = "travel", to = "Tirisfal Glades", zone = 1420, at = { { 6192, 6485, map = 1420 } }, radius = 300,
+                  note = "Leave the city the way you would have come in: up a lift and out through the throne room." },
+            } },
+
+            { title = "The Argent emissary", steps = {
+                { type = "collect", item = 7231, kill = { 6497 }, cond = { class = "ROGUE", race = "scourge" }, with = "balnir",
+                  note = "Astor Hadren walks the road between Brill and the Sepulcher. If you meet him, talk to him, kill him and take his letter." },
+                { type = "turnin", quests = { 374 }, npc = { 1652 }, optional = true },
+                { type = "talk", turnin = { 370 }, accept = { 371 }, npc = { 1515 } },
+                { type = "turnin", quests = { 1820 }, npc = { 1500 }, cond = { class = "WARRIOR" } },
+                { type = "talk", turnin = { 96895 }, accept = { 96897, 96898 }, npc = { 267009 } },
+                { group = {
+                    { type = "kill", kill = { 267006 }, quest = { 96897, 1 }, at = { { 7002, 6406 } },
+                      note = "They hit hard; take them one at a time." },
+                    { type = "kill", kill = { 275437 }, quest = { 96897, 2 }, at = { { 7002, 6406 } },
+                      note = "The Enforcers have an instant 50 to 70 damage attack." },
+                    { type = "collect", item = 275851, kill = { 267006, 275437 }, quest = { 96898, 1 }, at = { { 7002, 6406 } },
+                      note = "More fragments lie on the ground." },
+                } },
+                { type = "talk", turnin = { 96897, 96898 }, accept = { 96899 }, npc = { 267009 } },
+            } },
+
+            { title = "Balnir Farmstead", label = "balnir", steps = {
+                { type = "travel", to = "Balnir Farmstead", area = 165, at = { { 7651, 6177 } }, radius = 400,
+                  label = "balnirarrive" },
+                { type = "collect", item = 7227, quest = { 1882, 1 }, cond = { class = "MAGE" }, at = { { 7748, 6200 } },
+                  note = "Any of the flowers on the ground gives a Balnir Snapdragon." },
+                { group = {
+                    { type = "kill", kill = { 1529 }, quest = { 356, 1 }, radius = 600,
+                      at = { { 7431, 6098 }, { 7445, 5964 }, { 7508, 5856 }, { 7645, 5867 }, { 7741, 5866 },
+                             { 7855, 6043 }, { 7745, 6146 }, { 7679, 6260 }, { 7499, 6198 } } },
+                    { type = "kill", kill = { 1532 }, quest = { 356, 2 }, radius = 600,
+                      at = { { 7431, 6098 }, { 7445, 5964 }, { 7508, 5856 }, { 7645, 5867 }, { 7741, 5866 },
+                             { 7855, 6043 }, { 7745, 6146 }, { 7679, 6260 }, { 7499, 6198 } } },
+                } },
+                { type = "collect", item = 286204, quest = { 99142, 1 }, from = "balnirarrive", at = { { 7498, 5937 } },
+                  note = "Tomb Weed grows on the ground around the farm. Pick it up as you pass, and finish it here." },
+                { type = "note", cond = { class = "PALADIN" },
+                  note = "Paladins: keep 10 Linen Cloth from here on. A Lesson in Divinity asks for it; do not sell it." },
+            } },
+
+            { title = "The Scarlet Watch Post and Venomweb Vale", steps = {
+                { group = {
+                    { type = "collect", item = 2875, kill = { 1538, 1537 }, quest = { 374, 1 }, from = "perrine", radius = 500,
+                      at = { { 8095, 5721 }, { 8162, 5484 }, { 8156, 5307 }, { 7931, 5525 }, { 7714, 5492 },
+                             { 7615, 5530 }, { 7612, 5722 }, { 7716, 5675 }, { 7982, 5640 } },
+                      note = "Every Scarlet at the camp by the Undercity and here at the watch post drops Scarlet Insignia Rings. Keep looting them." },
+                    { type = "kill", kill = { 1538 }, quest = { 371, 2 }, radius = 500,
+                      at = { { 8095, 5721 }, { 8162, 5484 }, { 8156, 5307 }, { 7931, 5525 }, { 7714, 5492 },
+                             { 7615, 5530 }, { 7612, 5722 }, { 7716, 5675 }, { 7982, 5640 } } },
+                    { type = "kill", kill = { 1664 }, quest = { 371, 1 }, at = { { 7882, 5614 } },
+                      note = "Captain Vachon is inside the tower." },
+                } },
+                { type = "collect", item = 2872, kill = { 1555 }, quest = { 369, 1 }, radius = 500,
+                  at = { { 8350, 5556 }, { 8503, 5472 }, { 8656, 5451 }, { 8806, 5499 }, { 8894, 5356 },
+                         { 8970, 5188 }, { 9092, 5056 }, { 9087, 4833 }, { 8987, 4665 }, { 8504, 4668 },
+                         { 8452, 4929 }, { 8346, 5209 } } },
+            } },
+
+            { title = "Brill at level 11", steps = {
+                { type = "travel", to = "Brill", area = 159, at = { { 5945, 5239 } }, radius = 400,
+                  note = "Hearth if it is up." },
+                { group = {
+                    { type = "talk", turnin = { 369 }, accept = { 492, 445 }, npc = { 1518 } },
+                    { type = "turnin", quests = { 371 }, npc = { 1515 } },
+                    { type = "turnin", quests = { 374 }, npc = { 1652 } },
+                } },
+                { type = "vendor", sell = true, npc = { 5688 },
+                  note = "Sell your junk to Innkeeper Renee and restock on food and drink if you need to." },
+                { group = {
+                    { type = "turnin", quests = { 407 }, npc = { 1931 } },
+                    { type = "turnin", quests = { 492 }, npc = { 2211 } },
+                } },
+                { type = "turnin", quests = { 99142 }, npc = { 10665 }, radius = 300 },
+            } },
+
+            { title = "Bandarion Keep", steps = {
+                { type = "travel", to = "Bandarion Keep", at = { { 2176, 4562 } }, radius = 400,
+                  note = "Far to the west: follow the road past Solliden Farmstead." },
+                { type = "talk", turnin = { 91282 }, accept = { 91285 }, npc = { 246349 }, cond = { class = "PALADIN" } },
+                { type = "talk", turnin = { 96899 }, accept = { 96896 }, npc = { 267008 } },
+                { type = "talk", turnin = { 96896 }, accept = { 98545 }, npc = { 267008 } },
+                { type = "accept", quests = { 99152 }, npc = { 246389 } },
+                { type = "accept", quests = { 99153 }, at = { { 2017, 4650 } },
+                  note = "Ephram Barbaro is outside too." },
+                { type = "kill", quest = 91285, cond = { class = "PALADIN" }, radius = 600,
+                  at = { { 1348, 5595 }, { 1818, 6025 } },
+                  note = "Kill 8 Vile Fin Attackers and 8 Vile Fin Seers on the shore." },
+                { type = "talk", turnin = { 91285 }, accept = { 91294 }, npc = { 246349 }, cond = { class = "PALADIN" } },
+                { type = "talk", npc = { 246389 }, quest = { 91294, 1 }, cond = { class = "PALADIN" },
+                  note = "Speak with Hilda the Breaker, outside." },
+                { type = "talk", quest = { 91294, 3 }, cond = { class = "PALADIN" }, at = { { 2373, 4989 } },
+                  note = "Speak with Ander Solliden. He walks the road below the keep." },
+                { type = "talk", quest = { 91294, 2 }, cond = { class = "PALADIN" }, at = { { 2269, 4469 } },
+                  note = "Speak with Jorin Croge, inside the keep." },
+                { type = "talk", npc = { 246378 }, quest = { 91294, 4 }, cond = { class = "PALADIN" },
+                  note = "Speak with Danitha Morr, upstairs." },
+                { type = "talk", turnin = { 91294 }, accept = { 91317 }, npc = { 246378 }, cond = { class = "PALADIN" } },
+                { type = "accept", quests = { 91316 }, cond = { class = "PALADIN" }, at = { { 2270, 4468 } },
+                  note = "Jorin Croge, inside the keep." },
+                { type = "collect", item = 270435, quest = { 91317, 1 }, cond = { class = "PALADIN" }, at = { { 1148, 6420 } },
+                  note = "Rudolph Gelhardt is upstairs. Kill him and take his head." },
+                { type = "kill", quest = 91317, cond = { class = "PALADIN" }, at = { { 1207, 6398 } },
+                  note = "Kill 8 Tarnished Drudges and 6 Tarnished Zealots around the building." },
+            } },
+
+            { title = "Shadowvale Crypt", steps = {
+                { type = "travel", to = "Shadowvale Crypt", at = { { 1292, 6572 } }, radius = 200 },
+                { type = "collect", item = 268812, starts = 95328, kill = { 260396 }, at = { { 853, 6009 } },
+                  note = "The Whispering Horror is an elite with about 700 health. Its damage is manageable, but find a group if you can, and skip it if you cannot kill it." },
+                { type = "accept", quests = { 95328 }, item = 268812,
+                  note = "Use the Whispering Horror Residue to start its quest." },
+                { group = {
+                    { type = "collect", item = 286259, quest = { 99152, 1 }, at = { { 1056, 6535 } },
+                      note = "Shadowvale Lurchers and Mystics drop the bones." },
+                    { type = "collect", item = 268801, quest = { 95314, 1 }, object = "Bottle of Whispering Elixir",
+                      at = { { 853, 6712 } },
+                      note = "The bottles stand on the ground and on the walls." },
+                    { type = "collect", item = 246213, quest = { 91316, 1 }, object = "Lumber Pile",
+                      cond = { class = "PALADIN" }, at = { { 853, 6712 } } },
+                    { type = "collect", item = 286269, quest = { 99153, 1 }, at = { { 976, 6935 } },
+                      note = "The fragment lies on the ground in the crypt." },
+                } },
+                { type = "travel", to = "Bandarion Keep", at = { { 2196, 4718 } }, radius = 400,
+                  note = "Without hardcore rules, dying and taking the spirit healer's resurrection is the quick way out." },
+                { group = {
+                    { type = "turnin", quests = { 99152 }, npc = { 246389 } },
+                    { type = "turnin", quests = { 99153 }, at = { { 2016, 4650 } },
+                      note = "Ephram Barbaro." },
+                    { type = "turnin", quests = { 91316 }, cond = { class = "PALADIN" }, at = { { 2269, 4469 } },
+                      note = "Jorin Croge." },
+                    { type = "talk", turnin = { 91317 }, accept = { 95803, 94427 }, npc = { 246378 },
+                      cond = { class = "PALADIN" } },
+                } },
+            } },
+
+            { title = "Brill at level 12", steps = {
+                { type = "travel", to = "Brill", area = 159, cond = { none = { { class = "PALADIN" } } },
+                  at = { { 5944, 5219 } }, radius = 400, note = "Hearth." },
+                { type = "turnin", quests = { 95314 }, npc = { 2132 }, cond = { none = { { class = "PALADIN" } } } },
+                { type = "note", npc = { 2129 }, cond = { class = "PRIEST" }, note = "Train your new ranks from Dark Cleric Beryl." },
+                { type = "note", npc = { 2131 }, cond = { class = "WARRIOR" }, note = "Train your new ranks from Austil de Mon." },
+                { type = "note", npc = { 2127 }, cond = { class = "WARLOCK" }, note = "Train your new ranks from Rupert Boch." },
+                { type = "note", npc = { 2130 }, cond = { class = "ROGUE" }, note = "Train your new ranks from Marion Call." },
+                { type = "note", npc = { 2128 }, cond = { class = "MAGE" }, note = "Train your new ranks from Cain Firesong." },
+                { type = "collect", item = 7231, kill = { 6497 }, cond = { class = "ROGUE", race = "scourge" }, with = "uc2",
+                  note = "Astor Hadren walks the road between Brill and the Sepulcher. If you meet him, talk to him, kill him and take his letter." },
+                { type = "turnin", quests = { 356 }, npc = { 1495 }, cond = { none = { { class = "PALADIN" } } } },
+            } },
+
+            { title = "The Undercity again", map = 1458, steps = {
+                { type = "travel", to = "Undercity", zone = 1458, cond = { none = { { class = "PALADIN" } } }, label = "uc2",
+                  at = { { 6180, 6506, map = 1420 } }, radius = 300,
+                  note = "In through the throne room and down a lift." },
+                { type = "hearth", area = 1497, npc = { 6741 }, cond = { none = { { class = "PALADIN" } } } },
+                { type = "travel", to = "Undercity", zone = 1458, cond = { class = "PALADIN" }, at = { { 6774, 3796 } },
+                  radius = 400, note = "Hearth to the Undercity." },
+                { type = "talk", turnin = { 94427 }, accept = { 94434 }, npc = { 257648 }, cond = { class = "PALADIN" } },
+                { type = "talk", turnin = { 94434 }, accept = { 94435 }, npc = { 257648 }, cond = { class = "PALADIN" },
+                  note = "Hand over the 10 Linen Cloth." },
+                { type = "turnin", quests = { 98545 }, npc = { 272526 } },
+                { type = "buy", item = 851, npc = { 4569 }, cond = { class = "ROGUE" },
+                  note = "The Cutlass costs 19 silver 22 copper; the auction house may have something better for less. Equip it." },
+                { type = "buy", item = 1198, npc = { 4569 }, cond = { class = "WARRIOR" },
+                  note = "The Claymore costs 25 silver 43 copper; the auction house may have something better for less. Equip it." },
+                { type = "collect", item = 730, count = 3, show = { ah = true }, at = { { 6420, 4960 } },
+                  note = "Optional: three Murloc Eyes from the auction house save a little time in Silverpine Forest." },
+                { type = "turnin", quests = { 1882 }, npc = { 4568 }, cond = { class = "MAGE", race = { "scourge", "troll" } } },
+                { type = "turnin", quests = { 1886 }, npc = { 6467 }, optional = true,
+                  cond = { class = "ROGUE", race = "scourge" } },
+                { type = "accept", quests = { 1898 }, npc = { 6467 }, cond = { class = "ROGUE", race = "scourge" } },
+                { type = "talk", turnin = { 1898 }, accept = { 1899 }, npc = { 6522 }, cond = { class = "ROGUE", race = "scourge" } },
+                { type = "collect", item = 7294, quest = { 1899, 1 }, object = "Andron's Bookshelf",
+                  cond = { class = "ROGUE", race = "scourge" }, at = { { 5543, 7687 } },
+                  note = "The bookshelf is behind Andron Gant." },
+                { type = "talk", turnin = { 1899 }, accept = { 1978 }, npc = { 6467 }, cond = { class = "ROGUE", race = "scourge" } },
+                { type = "turnin", quests = { 1978 }, npc = { 2425 }, cond = { class = "ROGUE", race = "scourge" } },
+                { type = "turnin", quests = { 95328 }, npc = { 4607 } },
+                { type = "collect", item = 11287, cond = { class = "PRIEST" }, show = { ah = true }, at = { { 6420, 4960 } },
+                  note = "Buy a Lesser Magic Wand at the auction house. You can sell the Linen Cloth you saved there too. Skip it if your wand is already better." },
+                { type = "note", cond = { class = "PRIEST" }, at = { { 6247, 6180 } },
+                  note = "Priests without a wand can make one here: train Tailoring and make Bolts of Linen Cloth and Brown Linen Robes in the Magic Quarter, train Enchanting from Lavinia Crowe and disenchant the robes, buy a Copper Rod and Simple Wood from Thaddeus Webb for a Runed Copper Rod, then learn Lesser Magic Wand from Malcomb Wynn and make it. Skip this if you would rather buy one." },
+                { type = "turnin", quests = { 95803 }, npc = { 10181 }, cond = { class = "PALADIN" } },
+            } },
+
+            { title = "Paladins: A Lesson in Divinity", cond = { class = "PALADIN" }, steps = {
+                { type = "travel", to = "Tirisfal Glades", zone = 1420, at = { { 6192, 6485 } }, radius = 300,
+                  note = "Leave the city through the throne room." },
+                { type = "turnin", quests = { 356 }, npc = { 1495 } },
+                { type = "note", npc = { 246152 }, note = "Train your new ranks from Shari Stilwell." },
+                { type = "turnin", quests = { 95314 }, npc = { 2132 } },
+                { type = "note",
+                  note = "The rest of this section is the quest line for Redemption. It takes about fifteen minutes and gives little experience; skip it now and come back later if you prefer." },
+                { type = "talk", turnin = { 94435 }, accept = { 94436 }, npc = { 246378 },
+                  note = "Back at Bandarion Keep, far to the west." },
+                { type = "talk", turnin = { 94436 }, accept = { 94438 }, npc = { 257655 } },
+                { type = "talk", turnin = { 94438 }, accept = { 94440 }, npc = { 257663 }, use = { 6866 },
+                  note = "Use the Symbol of Life on him first." },
+                { type = "collect", item = 264693, kill = { 1538, 1537 }, quest = { 94440, 1 }, at = { { 8682, 4336 } },
+                  note = "Scarlet Friars and Zealots carry the attack plans." },
+                { type = "talk", turnin = { 94440 }, accept = { 94441 }, npc = { 257655 } },
+                { type = "turnin", quests = { 94441 }, npc = { 246378 } },
+            } },
+
+            { title = "Into Silverpine Forest", steps = {
+                { type = "travel", to = "Tirisfal Glades", zone = 1420, cond = { none = { { class = "PALADIN" } } },
+                  at = { { 5110, 7153 } }, radius = 400,
+                  note = "Leave the Undercity through the sewers." },
+                { type = "travel", to = "Silverpine Forest", zone = 1421, at = { { 5320, 7582 } }, radius = 400,
+                  note = "South along the road. Delivery to Silverpine Forest turns in at the Sepulcher." },
+                { type = "finish",
+                  note = "Tirisfal Glades is done. Continue in Silverpine Forest, or take the zeppelin to Orgrimmar for The Barrens." },
+            } },
+        },
+
+        npcs = {
+            [1420] = { -- Tirisfal Glades
+                -- Visited.
+                [1495] = { name = "Deathguard Linnea", at = { 6549, 6025 } },
+                [1496] = { name = "Deathguard Dillinger", at = { 5820, 5145 } },
+                [1499] = { name = "Magistrate Sevren", at = { 6126, 5084 } },
+                [1500] = { name = "Coleman Farthing", at = { 6172, 5229 } },
+                [1515] = { name = "Executor Zygand", at = { 6058, 5177 } },
+                [1518] = { name = "Apothecary Johaan", at = { 5945, 5240 } },
+                [1519] = { name = "Deathguard Simmer", at = { 4091, 5417 },
+                           note = "Where the Deathknell road meets the main road." },
+                [1521] = { name = "Gretchen Dedmar", at = { 6189, 5273 }, note = "On the second floor of the inn." },
+                [1560] = { name = "Yvette Farthing", at = { 6158, 5260 } },
+                [1652] = { name = "Deathguard Burgess", at = { 6093, 5201 } },
+                [1738] = { name = "Deathguard Terrence", at = { 6149, 5350 } },
+                [1742] = { name = "Deathguard Bartholomew", at = { 5847, 5140 } },
+                [1931] = { name = "Captured Scarlet Zealot", at = { 6197, 5129 },
+                           note = "Downstairs at the back of the inn." },
+                [2118] = { name = "Abigail Shiel", at = { 6103, 5235 } },
+                [2127] = { name = "Rupert Boch", at = { 6159, 5239 } },
+                [2128] = { name = "Cain Firesong", at = { 6197, 5247 }, note = "On the second floor of the inn." },
+                [2129] = { name = "Dark Cleric Beryl", at = { 6157, 5219 }, note = "On the second floor of the inn." },
+                [2130] = { name = "Marion Call", at = { 6175, 5200 }, note = "On the second floor of the inn." },
+                [2131] = { name = "Austil de Mon", at = { 6185, 5253 } },
+                [2132] = { name = "Carolai Anise", at = { 5944, 5219 } },
+                [2134] = { name = "Mrs. Winters", at = { 6115, 5259 } },
+                [2136] = { name = "Oliver Dwor", at = { 6012, 5345 } },
+                [2211] = { name = "Captured Mountaineer", at = { 6194, 5140 } },
+                [3523] = { name = "Bowen Brisboise", at = { 5259, 5553 } },
+                [3549] = { name = "Shelene Rhobart", at = { 6542, 6011 } },
+                [5688] = { name = "Innkeeper Renee", at = { 6171, 5206 } },
+                [5695] = { name = "Vance Undergloom", at = { 6176, 5156 } },
+                [5724] = { name = "Ageron Kargal", at = { 6162, 5266 }, note = "Inside the inn." },
+                [5750] = { name = "Gina Lang", at = { 6156, 5261 }, note = "On the second floor of the inn." },
+                [5759] = { name = "Nurse Neela", at = { 6181, 5282 } },
+                [10665] = { name = "Junior Apothecary Holland",
+                            at = { { 5771, 4896 }, { 5829, 4980 }, { 5926, 4673 } },
+                            note = "Walks around the graveyard." },
+                [10666] = { name = "Gordo",
+                            at = { { 4077, 5442 }, { 4204, 5511 }, { 4359, 5430 }, { 4621, 5678 }, { 4888, 5793 },
+                                   { 5073, 5727 }, { 5252, 5448 }, { 5449, 5265 }, { 5613, 5248 } },
+                            note = "An abomination who walks the road between the Deathknell turn and Brill." },
+                [12428] = { name = "Deathguard Kel", at = { 5918, 4649 } },
+                [246152] = { name = "Shari Stilwell", at = { 6023, 5266 } },
+                [246349] = { name = "Breton Samuels", at = { 2185, 4521 } },
+                [246378] = { name = "Danitha Morr", at = { 2209, 4466 }, note = "Upstairs." },
+                [246389] = { name = "Hilda the Breaker", at = { 2196, 4718 }, note = "Outside." },
+                [251001] = { name = "Deathguard Kristof", at = { 6525, 6022 } },
+                [257655] = { name = "Deathguard Billmuth", at = { 2191, 4449 } },
+                [257663] = { name = "Deathguard Falgan", at = { 8672, 4772 },
+                             note = "At the far eastern edge of Tirisfal." },
+                [265812] = { name = "Eleanor Shackleton", at = { 5727, 5549 }, note = "Camps south of the town." },
+                [265944] = { name = "William Pickman", at = { 6175, 5143 } },
+                [267008] = { name = "Leonid Barthalomew the Revered", at = { 2203, 4473 }, note = "Upstairs." },
+                [267009] = { name = "Hadric Harlson", at = { 6592, 6111 } },
+                [275954] = { name = "Bareth Dawnstone", at = { 3199, 4640 }, note = "At the top of the tower." },
+
+                -- Kill targets.
+                [1520] = "Rattlecage Soldier",
+                [1522] = "Darkeye Bonecaster",
+                [1523] = "Cracked Skull Soldier",
+                [1525] = "Rotting Dead",
+                [1526] = "Ravaged Corpse",
+                [1529] = "Bleeding Horror",
+                [1532] = "Wandering Spirit",
+                [1535] = "Scarlet Warrior",
+                [1536] = "Scarlet Missionary",
+                [1537] = "Scarlet Zealot",
+                [1538] = "Scarlet Friar",
+                [1543] = "Vile Fin Puddlejumper",
+                [1544] = "Vile Fin Minor Oracle",
+                [1545] = "Vile Fin Muckdweller",
+                [1547] = "Decrepit Darkhound",
+                [1553] = "Greater Duskbat",
+                [1554] = "Vampiric Duskbat",
+                [1555] = "Vicious Night Web Spider",
+                [1654] = "Gregor Agamand",
+                [1655] = "Nissa Agamand",
+                [1656] = "Thurman Agamand",
+                [1657] = "Devlin Agamand",
+                [1662] = "Captain Perrine",
+                [1664] = "Captain Vachon",
+                [1674] = "Rot Hide Gnoll",
+                [1675] = "Rot Hide Mongrel",
+                [1753] = "Maggot Eye",
+                [1941] = "Rot Hide Graverobber",
+                [6390] = "Ulag the Cleaver",
+                [6497] = "Astor Hadren",
+                [260396] = "Whispering Horror",
+                [267006] = "Dark Neophyte",
+                [275437] = "Dark Enforcer",
+            },
+            [1458] = { -- Undercity
+                [1498] = { name = "Bethor Iceshard", at = { 8406, 1744 } },
+                [2425] = { name = "Varimathras", at = { 5626, 9219 }, note = "In the Royal Quarter." },
+                [4568] = { name = "Anastasia Hartwell", at = { 8512, 1007 }, note = "In the Magic Quarter." },
+                [4569] = { name = "Charles Seaton", at = { 7708, 4940 }, note = "In the Rogues' Quarter." },
+                [4592] = { name = "Nathaniel Steenwick", at = { 7750, 4963 } },
+                [4598] = { name = "Brom Killian", at = { 5606, 3744 } },
+                [4607] = { name = "Father Lankester", at = { 4934, 1583 } },
+                [5675] = { name = "Carendin Halgar", at = { 8507, 2596 }, note = "In the Magic Quarter." },
+                [6467] = { name = "Mennet Carkad", at = { 8352, 6910 } },
+                [6522] = { name = "Andron Gant", at = { 5484, 7631 } },
+                [6741] = { name = "Innkeeper Norman", at = { 6774, 3796 } },
+                [10181] = { name = "Lady Sylvanas Windrunner", at = { 5806, 9176 }, note = "In the Royal Quarter." },
+                [11870] = { name = "Archibald", at = { 5729, 3272 }, note = "In the War Quarter." },
+                [257648] = { name = "Tanis Alderwood", at = { 6545, 3750 }, note = "In the Trade Quarter." },
+                [272526] = { name = "Glix Xizzix", at = { 7002, 4730 } },
+
+                -- Summoned at the circle.
+                [5676] = "Summoned Voidwalker",
+            },
+        },
+    },
+})

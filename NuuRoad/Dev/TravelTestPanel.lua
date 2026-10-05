@@ -4,7 +4,7 @@ local _, ns = ...
 -- `/nuuroad traveltest`. The window opens on a list of short tests, each
 -- about one thing and each saying where to stand before it starts, so a
 -- failure is rerun on its own. Loading a test loads its step guide when it
--- has one (Data/BuiltIn/TravelTestFixtures.lua): what a guide adds - the
+-- has one (Dev/Fixtures/TravelTestFixtures.lua): what a guide adds - the
 -- tracker's route line, the numbered pins, a step done on arrival - is only
 -- tested with one open, and what must work without one is tested without.
 --

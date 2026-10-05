@@ -16,6 +16,9 @@ local function copy(value, seen)
 end
 
 function Repository:Initialize()
+    -- The packaged guides ship in the export format; the import makes each an
+    -- authored guide beside the development fixtures.
+    ns.modules.GuideImport:RegisterPackaged()
     for id, guide in pairs(ns.builtInGuides or {}) do
         local expanded, result = pcall(ns.modules.Steps.Expand, ns.modules.Steps, guide)
         local valid, errors

@@ -1,7 +1,7 @@
 -- Build-time port check, not shipped behaviour: compares a ported guide's
 -- step order against the RestedXP source it was ported from.
 --
---   lua Tools/CompareGuideOrder.lua Data/BuiltIn/<Guide>.lua <source>.lua ["<#name>"]
+--   lua Tools/CompareGuideOrder.lua Data/Guides/<Guide>.lua <source>.lua ["<#name>"]
 --
 -- One RestedXP file holds several registrations of the same route - one per
 -- experience rate, and season variants besides - so the third argument names
@@ -38,8 +38,10 @@ _G = _G or _ENV
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
 Load(ns, "Data/Schema.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
+Load(ns, "Data/IDNames.lua"); Load(ns, "Data/Import.lua")
 ns.builtInGuides = {}
 Load(ns, arg[1])
+ns.modules.GuideImport:RegisterPackaged()
 
 -- The line range of the registration named by arg[3], or the whole file.
 local wanted = arg[3]

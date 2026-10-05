@@ -1,0 +1,529 @@
+-- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
+-- Data/Import.lua reads it as the addon loads. Converted from the authored v2
+-- guide that was Data/BuiltIn/HordeMulgore612.lua.
+--
+-- Horde 6-12 leveling route through Mulgore and Thunder Bluff. Step order, quest
+-- IDs, NPC IDs, item IDs, coordinates, and grind loops are NuuRoad's own.
+--
+-- Notes:
+--   * The season 2 (rune) branches are still to add. In this format they
+--     would be steps with `cond = { season = 2 }`.
+--   * Softcore shortcuts (dying to reach the spirit healer) are never an
+--     instruction; NuuRoad never tells a player to die, so those steps are
+--     ordinary travel steps and the shortcut is a note.
+--
+-- Maps: 1412 Mulgore (guide default), 1456 Thunder Bluff, 1413 The Barrens,
+-- 1411 Durotar, 1450 Moonglade. Coordinates are hundredths of a map percent.
+--
+-- Conversion notes:
+--   * `only` terms became `cond`: "Horde" -> wrapper cond { faction = "Horde" };
+--     "Tauren" -> { race = "tauren" }; single classes -> { class = "..." };
+--     "Shaman or Druid", "Warrior or Hunter" -> { class = { ..., ... } }.
+--   * `only = "quest 770"` (two turn-ins of The Demon Scarred Cloak, started
+--     from Ghost Howl's drop and never accepted in this guide) is a quest-state
+--     predicate the format drops; both turn-ins are `optional = true` instead,
+--     so they pass on arrival unless 770 is ready. No `now` terms or
+--     condition-only gates were in the source.
+--   * The first turn-in of Swoop Hunting (761, "skip this if you are still
+--     short of quills") is `optional = true` too, matching its note.
+--   * track / untrack pairs became `from`: tracks 766 and 761 opened the
+--     section "The plains east of the village", which now carries label
+--     "plains"; the 761 quill step (Windfury Ridge) and the 766 sweep step
+--     carry from = "plains". The untrack steps are dropped. The track 766 note
+--     (one of each part, keep the quest in mind) is merged into the note of
+--     the 766 step, which is carried from the start of that section.
+--   * Objective numbers are the source's `part` values; none were inferred.
+--     The 766 step was `objective = 766` with no part, so it is quest = 766
+--     (the whole quest), type "collect" without an item: the four Mazzranache
+--     items have no IDs in the source. The creatures its note names are not
+--     marked, for the same reason (not given as IDs on that step).
+--     Objective counts (6, 4, 2, 2, 10, 8, 5, 6, 6, 5, 8, 8, 6, 6, 4, 14, 6, 5)
+--     are dropped: the objective counts.
+--   * The three cleansing totem objectives (754, 758, 760) are travel steps to
+--     the well with `quest = { id, 1 }`, `use` and `item` = the totem: a
+--     scripted event set off at a place, finished by the objective. The
+--     well names in `to` are display text from the source's notes/section.
+--   * The Hunter taming objectives (6061, 6087, 6088) were objective steps with
+--     a `kill` target. Taming is not a kill, so they are type "interact" with
+--     the creature in `mark` (the creature an item is used on) and the
+--     objective in `quest`; no object text and no Taming Rod ID (not in the
+--     source). The Lunaclaw objective (6002) stays a kill with `use`/`item`.
+--   * The Great Bear Spirit objective (5930, 1) is a talk step with that npc.
+--   * Accept 819 from Chen's Empty Keg gets item = 4926 (the keg the step
+--     before collects), no npc, so it passes if the keg was never looted.
+--   * Morin Cloudstalker walks the eastern road: the five route points the
+--     steps carried are now his `at` in `npcs`, with the first step's note as
+--     his note; the steps drop their `at` and the two later notes that only
+--     repeated where he walks ("walking the eastern road again", "on the
+--     eastern road"). They keep radius = 500.
+--   * NPC-only steps with a note: trainer visits stay type "note" with `npc`
+--     (no spell IDs in the source); Harant Ironbrace ("sells and repairs")
+--     became type "vendor", sell and repair.
+--   * IDs looked up in the repo: hearth areas from db/sources/wago/forever/
+--     AreaTable.csv (Bloodhoof Village 222, Thunder Bluff 1638, The Crossroads
+--     380); flight nodes from db/horde/flightpaths.json (Camp Taurajo 77, The
+--     Crossroads 25); skills from API/Client.lua professionSkillLines (First
+--     Aid 129, Skinning 393).
+--   * Train Staves and Train Two-Handed Maces: SkillLine 136 (Staves) and 160
+--     (Two-Handed Maces); the notes still name the skill.
+--   * Travel steps keep the source's arrival points and add no `zone`/`area`:
+--     the v2 travel finished on arrival, and so do these.
+--   * The Gathering Leather steps (768) keep the source's "skip if no Skinning"
+--     notes and gain no `show = { skill = 393 }`; that would be a new rule,
+--     not a conversion. The Light Leather collect has no quest objective in
+--     the source, so it keeps count = 12.
+--   * Buys without a count drop it (default 1). Radii: 0.03 -> 300,
+--     0.04 -> 400, 0.05 -> 500, 0.06 -> 600, 0.08 -> 800.
+--   * Every visited NPC has a position from the source's `names`; NPCs are
+--     grouped by the map of that position. Kill targets are listed under the
+--     map they are fought on (Lightning Hide under Durotar, Lunaclaw under The
+--     Barrens). Quest and item names are dropped (the client names them).
+--   * No section needed a map of its own beyond the source's: points off a
+--     section's map already carried their own map.
+local _, ns = ...
+
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide",
+    format = 1,
+
+    id = "nuuroad:leveling:horde-mulgore-6-12",
+    updated = 1789862400,
+    title = "Bloodhoof and Thunder Bluff",
+    category = "Leveling/Mulgore",
+    author = "NuuRoad",
+    tags = { "horde", "tauren", "mulgore", "bloodhoof", "thunder bluff" },
+    levels = { from = 6, to = 12 },
+    cond = { faction = "Horde" },
+    source = "NuuRoad's own route through Mulgore and Thunder Bluff.",
+
+    data = {
+        map = 1412,
+
+        sections = {
+            { title = "Bloodhoof Village", steps = {
+                { type = "travel", to = "Bloodhoof Village", at = { { 4735, 6070 } }, radius = 400,
+                  note = "Run north out of Camp Narache. If you would rather not run it and you play without hardcore rules, dying and taking the spirit healer's resurrection puts you closer." },
+                { group = {
+                    { type = "accept", quests = { 743 }, npc = { 2985 } },
+                    { type = "talk", turnin = { 763 }, accept = { 745, 767, 746 }, npc = { 2993 } },
+                    { type = "turnin", quests = { 1656 }, npc = { 6747 } },
+                    { type = "accept", quests = { 766 }, npc = { 3055 } },
+                    { type = "talk", turnin = { 767 }, accept = { 771 }, npc = { 3054 } },
+                    { type = "accept", quests = { 761 }, npc = { 2947 } },
+                    { type = "accept", quests = { 748 }, npc = { 2948 }, cond = { race = "tauren" } },
+                } },
+                { type = "hearth", area = 222, npc = { 6747 } },
+                { type = "buy", item = 2495, npc = { 3077 }, cond = { class = { "SHAMAN", "DRUID" } },
+                  note = "Sell your trash to Mahnott first. The Walking Stick costs about 5 silver; skip the step and come back later if you are short. Equip it." },
+                { type = "buy", item = 2493, npc = { 3077 }, cond = { class = "WARRIOR" },
+                  note = "Sell your trash to Mahnott first. The Wooden Mallet costs about 7 silver; skip the step and come back later if you are short. Equip it." },
+                { type = "buy", item = 2509, npc = { 3078 }, cond = { class = "HUNTER" },
+                  note = "Sell your trash to Kennah first. The Ornate Blunderbuss costs about 4 silver. Equip it and buy Light Shot with what is left." },
+            } },
+
+            { title = "The plains east of the village", label = "plains", steps = {
+                { type = "collect", item = 4758, kill = { 2958 }, quest = { 748, 1 }, cond = { race = "tauren" }, radius = 600,
+                  at = { { 5082, 6666 }, { 5106, 6363 }, { 5279, 6206 }, { 5398, 6168 }, { 5567, 6277 },
+                         { 5646, 6493 }, { 5602, 6778 }, { 5502, 6965 }, { 5233, 7007 }, { 5040, 7024 },
+                         { 4860, 6943 }, { 4598, 6970 }, { 4858, 6737 } } },
+                { type = "collect", item = 4759, kill = { 2956 }, quest = { 748, 2 }, cond = { race = "tauren" }, radius = 600,
+                  at = { { 5082, 6666 }, { 5106, 6363 }, { 5279, 6206 }, { 5398, 6168 }, { 5567, 6277 },
+                         { 5646, 6493 }, { 5602, 6778 }, { 5502, 6965 }, { 5233, 7007 }, { 5040, 7024 },
+                         { 4860, 6943 }, { 4598, 6970 }, { 4858, 6737 } } },
+                { type = "collect", item = 4809, quest = { 771, 2 }, radius = 500,
+                  at = { { 5036, 6649 }, { 4871, 6444 }, { 5192, 6385 }, { 5113, 7106 } },
+                  note = "Ambercorns lie on the ground under the trees." },
+                { type = "talk", turnin = { 748 }, accept = { 754 }, npc = { 2948 }, cond = { race = "tauren" },
+                  note = "Mull plays out a short scene before he offers the next quest." },
+                { type = "collect", item = 4808, quest = { 771, 1 }, radius = 400,
+                  at = { { 5406, 6640 }, { 5335, 6578 }, { 5370, 6559 }, { 5398, 6594 } },
+                  note = "Well Stones lie around the Winterhoof well." },
+                { type = "travel", to = "Winterhoof Water Well", quest = { 754, 1 }, item = { 5411 }, use = { 5411 },
+                  cond = { race = "tauren" }, at = { { 5368, 6628 } },
+                  note = "Use the Winterhoof Cleansing Totem at the well." },
+            } },
+
+            { title = "Palemane Rock", steps = {
+                { type = "note", note = "Snagglespear, a level 9 rare, walks these camps. He hits far harder than the gnolls around him; leave him alone." },
+                { type = "kill", kill = { 2949 }, quest = { 745, 1 }, radius = 600,
+                  at = { { 5350, 7300 }, { 4830, 7200 } },
+                  note = "Two camps. Clear one, walk to the other, and by the time you are back the first has respawned." },
+                { type = "kill", kill = { 2950 }, quest = { 745, 2 }, radius = 600,
+                  at = { { 5350, 7300 }, { 4830, 7200 } } },
+                { type = "kill", kill = { 2951 }, quest = { 745, 3 }, radius = 600,
+                  at = { { 5350, 7300 }, { 4830, 7200 } } },
+                { type = "buy", item = 1179, count = 10, npc = { 3884 }, cond = { class = { "SHAMAN", "DRUID" } },
+                  note = "Sell your trash to Jhawna and stock up on drink." },
+                { type = "buy", item = 4541, count = 10, npc = { 3884 }, cond = { class = "WARRIOR" },
+                  note = "Sell your trash to Jhawna and stock up on food." },
+                { group = {
+                    { type = "talk", turnin = { 754 }, accept = { 756 }, npc = { 2948 }, cond = { race = "tauren" } },
+                    { type = "turnin", quests = { 745 }, npc = { 2993 } },
+                } },
+                { type = "train", skill = 129, npc = { 5939 }, cond = { class = "WARRIOR" } },
+                { type = "talk", turnin = { 771 }, accept = { 772 }, npc = { 3054 },
+                  note = "A wolf spirit appears when you take the quest. Do not follow it; you are going to the cave yourself." },
+                { type = "note", npc = { 3065 }, cond = { class = "HUNTER" }, note = "Train your new rank from Yaw Sharpmane." },
+                { type = "note", npc = { 3064 }, cond = { class = "DRUID" }, note = "Train your new rank from Gennia Runetotem." },
+                { type = "note", npc = { 3063 }, cond = { class = "WARRIOR" }, note = "Train your new rank from Krang Stonehoof." },
+                { type = "note", npc = { 3066 }, cond = { class = "SHAMAN" }, note = "Train your new rank from Narm Skychaser." },
+            } },
+
+            { title = "The eastern road", steps = {
+                { type = "accept", quests = { 749 }, npc = { 2988 }, radius = 500 },
+                { type = "collect", item = 4801, kill = { 2959 }, quest = { 756, 1 }, cond = { race = "tauren" }, radius = 600,
+                  at = { { 5810, 4860 }, { 5450, 4010 }, { 4640, 5070 } } },
+                { type = "collect", item = 4802, kill = { 3035 }, quest = { 756, 2 }, cond = { race = "tauren" }, radius = 600,
+                  at = { { 5810, 4860 }, { 5450, 4010 }, { 4640, 5070 } } },
+                { type = "talk", turnin = { 749 }, accept = { 751 }, object = "Sealed Supply Crate", at = { { 5374, 4817 } },
+                  note = "The crate is what is left of the caravan." },
+                { type = "travel", to = "Bloodhoof Village", at = { { 4650, 5550 } }, radius = 500 },
+                { type = "turnin", quests = { 761 }, npc = { 2947 }, optional = true,
+                  note = "Skip this if you are still short of quills." },
+                { type = "talk", turnin = { 756 }, accept = { 758 }, npc = { 2948 }, cond = { race = "tauren" } },
+                { type = "vendor", sell = true, repair = true, npc = { 3080 },
+                  note = "Harant Ironbrace sells and repairs if you need either." },
+            } },
+
+            { title = "Thunderhorn Water Well", steps = {
+                { type = "travel", to = "Thunderhorn Water Well", quest = { 758, 1 }, item = { 5415 }, use = { 5415 },
+                  cond = { race = "tauren" }, at = { { 4449, 4536 } },
+                  note = "Use the Thunderhorn Cleansing Totem at the well. The well is on the way west out of the village." },
+            } },
+
+            { title = "Bael'dun Digsite", steps = {
+                { type = "collect", item = 4702, count = 5, kill = { 2989, 2990 }, radius = 500, at = { { 3127, 4987 } },
+                  note = "Appraisers heal themselves and each other at half health; pull them apart. Keep the picks until you have five; they are spent at the forge." },
+                { type = "collect", item = 4703, quest = { 746, 1 }, use = { 4702 }, radius = 300, at = { { 3127, 4987 } },
+                  note = "Smash the picks at the forge in the middle of the dig." },
+            } },
+
+            { title = "Windfury Ridge", steps = {
+                { type = "collect", item = 4751, kill = { 2962, 2963 }, quest = { 743, 1 }, radius = 600,
+                  at = { { 3174, 4031 }, { 3408, 4371 }, { 3298, 4296 }, { 3172, 4308 }, { 3108, 4209 },
+                         { 3112, 4087 }, { 3244, 4117 }, { 3357, 4130 }, { 3382, 4026 }, { 3448, 4121 },
+                         { 3450, 4229 } } },
+                { type = "travel", to = "Cave north of the harpies", at = { { 3337, 3652 } }, radius = 400 },
+                { type = "talk", turnin = { 772 }, accept = { 773 }, npc = { 2984 } },
+                { type = "note", note = "Ghost Howl, a level 12 rare wolf, roams Mulgore and drops the Demon Scarred Cloak. Using the cloak starts a quest that turns in at Bloodhoof Village. Take him if you meet him and can handle a level 12; the turn-in steps below are skipped if you never do." },
+                { type = "accept", quests = { 833 }, npc = { 3233 } },
+                { type = "kill", kill = { 3232 }, quest = { 833, 1 }, radius = 500,
+                  at = { { 5985, 2562 }, { 6114, 2293 }, { 6177, 2249 }, { 6218, 2205 }, { 6232, 2089 },
+                         { 6162, 1950 }, { 6044, 1950 }, { 6016, 2106 }, { 6041, 2196 }, { 6112, 2288 } } },
+                { type = "talk", turnin = { 773 }, accept = { 775 }, npc = { 2994 },
+                  note = "The Ancestral Spirit waits at the top of the rise." },
+                { type = "turnin", quests = { 833 }, npc = { 3233 } },
+                { type = "collect", item = 4769, kill = { 2969, 2970, 2971 }, quest = { 761, 1 }, from = "plains", radius = 600,
+                  at = { { 5100, 1840 }, { 5952, 2336 }, { 5751, 1908 }, { 5521, 1867 }, { 5299, 1734 },
+                         { 4984, 2074 }, { 4982, 2369 }, { 4952, 2610 }, { 4972, 2814 }, { 5079, 2937 },
+                         { 5224, 3007 }, { 5421, 3043 }, { 5615, 3035 }, { 5777, 3048 }, { 5879, 2852 },
+                         { 6056, 2588 } } },
+                { type = "collect", quest = 766, from = "plains", radius = 600,
+                  at = { { 5506, 3248 }, { 5384, 4080 }, { 5319, 4516 }, { 5745, 4886 }, { 5904, 5279 },
+                         { 5912, 5809 }, { 4867, 4484 } },
+                  note = "Mazzranache wants one of each: a wolf heart, a cougar femur, a plainstrider scale and a swoop gizzard. They drop as you go, so keep the quest in mind all the way through this guide. Whatever Mazzranache is still missing is on this sweep south: wolves and stalkers, cougars, plainstriders and swoops." },
+                { type = "level", level = 9, xp = 3020, radius = 600,
+                  at = { { 5952, 2336 }, { 5751, 1908 }, { 5521, 1867 }, { 5299, 1734 }, { 5100, 1840 },
+                         { 4984, 2074 }, { 4982, 2369 }, { 4952, 2610 }, { 4972, 2814 }, { 5079, 2937 },
+                         { 5224, 3007 }, { 5421, 3043 }, { 5615, 3035 }, { 5777, 3048 }, { 5879, 2852 },
+                         { 6056, 2588 } },
+                  note = "Only if the turn-ins waiting for you will not carry you to 10 on their own: grind the north until you are 3020 experience into level 9." },
+            } },
+
+            { title = "Back to Bloodhoof Village", steps = {
+                { type = "travel", to = "Bloodhoof Village", at = { { 4733, 5717 } }, radius = 500,
+                  note = "Hearth if it is up." },
+                { type = "turnin", quests = { 770 }, npc = { 3052 }, optional = true },
+                { group = {
+                    { type = "turnin", quests = { 746 }, npc = { 2993 } },
+                    { type = "turnin", quests = { 743 }, npc = { 2985 } },
+                    { type = "talk", turnin = { 758 }, accept = { 759 }, npc = { 2948 }, cond = { race = "tauren" } },
+                    { type = "turnin", quests = { 761 }, npc = { 2947 } },
+                    { type = "turnin", quests = { 766 }, npc = { 3055 } },
+                } },
+                { type = "accept", quests = { 1505 }, npc = { 3063 }, cond = { class = "WARRIOR" },
+                  note = "Train your new ranks from Krang while you are here." },
+                { type = "accept", quests = { 2984 }, npc = { 3066 }, cond = { class = "SHAMAN" },
+                  note = "Train your new ranks from Narm while you are here." },
+                { type = "accept", quests = { 6061 }, npc = { 3065 }, cond = { class = "HUNTER" },
+                  note = "Train your new ranks from Yaw while you are here." },
+                { type = "accept", quests = { 5928 }, npc = { 3064 }, cond = { class = "DRUID" },
+                  note = "Train your new ranks from Gennia while you are here." },
+                { type = "interact", mark = { 2956 }, quest = { 6061, 1 }, cond = { class = "HUNTER" }, radius = 500,
+                  at = { { 3938, 5743 }, { 4287, 5488 }, { 4073, 5560 } },
+                  note = "Use the Taming Rod on an adult plainstrider from as far away as it will reach." },
+                { type = "talk", turnin = { 6061 }, accept = { 6087 }, npc = { 3065 }, cond = { class = "HUNTER" } },
+                { type = "interact", mark = { 2959 }, quest = { 6087, 1 }, cond = { class = "HUNTER" }, radius = 500,
+                  at = { { 4949, 4227 }, { 4718, 5015 }, { 4665, 4722 }, { 4818, 4527 } } },
+                { type = "talk", turnin = { 6087 }, accept = { 6088 }, npc = { 3065 }, cond = { class = "HUNTER" } },
+                { type = "interact", mark = { 2970 }, quest = { 6088, 1 }, cond = { class = "HUNTER" }, radius = 600,
+                  at = { { 4725, 4133 }, { 4541, 4029 }, { 5157, 4440 } },
+                  note = "Swoops knock you down and interrupt the cast. Start it again at once. If the rod runs out of charges, abandon the quest, take it again and come back." },
+                { type = "talk", turnin = { 6088 }, accept = { 6089 }, npc = { 3065 }, cond = { class = "HUNTER" } },
+                { type = "buy", item = 1179, count = 20, npc = { 3884 }, cond = { class = { "SHAMAN", "DRUID" } } },
+                { type = "buy", item = 4541, count = 20, npc = { 3884 }, cond = { class = "WARRIOR" } },
+                { type = "accept", quests = { 861 }, npc = { 3052 } },
+                { type = "talk", turnin = { 751 }, accept = { 764, 765 }, npc = { 2988 }, radius = 500 },
+                { type = "collect", item = 4803, kill = { 2960 }, quest = { 759, 1 }, cond = { race = "tauren" }, radius = 600,
+                  at = { { 6634, 6701 }, { 6719, 6378 }, { 6386, 6631 }, { 6181, 6552 }, { 6161, 6132 },
+                         { 6358, 6051 }, { 6556, 5937 }, { 6762, 5906 } },
+                  note = "Hunters: an alpha is worth taming here for the second rank of Bite." },
+                { type = "talk", turnin = { 759 }, accept = { 760 }, npc = { 2948 }, cond = { race = "tauren" } },
+            } },
+
+            { title = "Camp Taurajo", map = 1413, steps = {
+                { type = "travel", to = "The Barrens", at = { { 6960, 6040, map = 1412 } }, radius = 500,
+                  note = "Leave Mulgore by the eastern pass." },
+                { type = "flight", node = 77, npc = { 10378 } },
+                { type = "accept", quests = { 886 }, npc = { 5769 }, cond = { class = "DRUID" },
+                  note = "Druids: fly to Thunder Bluff first. Hamuul Runetotem is on the Elder Rise." },
+                { type = "hearth", area = 1638, npc = { 6746 }, cond = { class = "DRUID" } },
+                { type = "talk", turnin = { 5928 }, accept = { 5922 }, npc = { 3033 }, cond = { class = "DRUID" } },
+                { type = "travel", to = "Moonglade", cond = { class = "DRUID" }, at = { { 5621, 3064, map = 1450 } },
+                  note = "Cast Teleport: Moonglade. Dendrite Starblaze stands by the road." },
+                { type = "talk", turnin = { 5922 }, accept = { 5930 }, npc = { 11802 }, cond = { class = "DRUID" } },
+                { type = "talk", npc = { 11956 }, quest = { 5930, 1 }, cond = { class = "DRUID" },
+                  note = "Hear the Great Bear Spirit out." },
+                { type = "talk", turnin = { 5930 }, accept = { 5932 }, npc = { 11802 }, cond = { class = "DRUID" } },
+                { type = "travel", to = "Thunder Bluff", cond = { class = "DRUID" }, at = { { 4429, 4587, map = 1450 } }, radius = 400,
+                  note = "Hearth if it is up, otherwise take Bunthen Plainswind's flight from Nighthaven." },
+                { type = "talk", turnin = { 5932 }, accept = { 6002 }, npc = { 3033 }, cond = { class = "DRUID" } },
+                { type = "travel", to = "Camp Taurajo", cond = { class = "DRUID" }, at = { { 4700, 4982, map = 1456 } },
+                  note = "Tal flies you back to the Barrens." },
+                { type = "kill", kill = { 12138 }, quest = { 6002, 1 }, item = { 15710 }, use = { 15710 },
+                  cond = { class = "DRUID" }, at = { { 4200, 6086 } },
+                  note = "Use the Cenarion Lunardust at the Moonkin Stone, kill Lunaclaw when it appears, then speak to its spirit. Lunaclaw charges up extra attacks; keep clear of the thunderheads nearby." },
+                { type = "accept", quests = { 854 }, npc = { 3418 }, cond = { race = "tauren" } },
+            } },
+
+            { title = "The Crossroads", map = 1413, steps = {
+                { type = "travel", to = "The Crossroads", at = { { 5199, 2989 } }, radius = 500 },
+                { group = {
+                    { type = "talk", turnin = { 886 }, accept = { 870 }, npc = { 3448 } },
+                    { type = "turnin", quests = { 854 }, npc = { 3429 }, cond = { race = "tauren" } },
+                    { type = "accept", quests = { 848 }, npc = { 3390 } },
+                    { type = "accept", quests = { 6361 }, npc = { 3483 } },
+                } },
+                { type = "flight", node = 25, npc = { 3615 } },
+                { type = "collect", item = 5012, quest = { 848, 1 }, radius = 500,
+                  at = { { 4520, 2330 }, { 4520, 2200 }, { 4460, 2250 }, { 4390, 2440 } },
+                  note = "Laden Mushrooms lie around the Forgotten Pools. The Kolkar here are level 12 to 14; keep your distance. The follow-up rewards the Cauldron Stirrer, a strong staff at this level." },
+                { type = "travel", to = "Bubbling Fissure", at = { { 4506, 2254 } }, radius = 300,
+                  note = "Dive to the bottom of the pool. Reaching the fissure is what finishes the quest line; there is nothing to click." },
+                { type = "travel", to = "The Crossroads", at = { { 5199, 2989 } }, radius = 500 },
+                { type = "talk", turnin = { 870 }, accept = { 877 }, npc = { 3448 } },
+                { type = "hearth", area = 380, npc = { 3934 } },
+                { type = "talk", turnin = { 848 }, accept = { 853 }, npc = { 3390 },
+                  note = "Helbrim plays out a scene first. Apothecary Zamah is timed: 45 minutes to reach Thunder Bluff, so do not stop on the way." },
+                { type = "talk", turnin = { 6361 }, accept = { 6362 }, npc = { 3615 } },
+                { type = "travel", to = "Thunder Bluff", at = { { 5150, 3034 } }, radius = 400,
+                  note = "Take Devrak's flight." },
+            } },
+
+            { title = "Thunder Bluff", map = 1456, steps = {
+                { type = "talk", turnin = { 6362 }, accept = { 6363 }, npc = { 8359 } },
+                { type = "turnin", quests = { 6089 }, npc = { 3039 }, cond = { class = "HUNTER" } },
+                { type = "note", npc = { 10086 }, cond = { class = "HUNTER" },
+                  note = "Hesuwa Thunderhorn teaches pet skills. Put Beast Training on your bars and spend the points." },
+                { type = "train", skill = 160, npc = { 11869 }, cond = { class = "DRUID" },
+                  note = "Train Two-Handed Maces. About 11 silver, and worth it for the weapons this zone hands you." },
+                { type = "train", skill = 136, npc = { 11869 }, cond = { class = { "WARRIOR", "HUNTER" } },
+                  note = "Train Staves." },
+                { type = "accept", quests = { 744 }, npc = { 2987 } },
+                { type = "travel", to = "Spirit Rise", at = { { 2815, 3297 }, { 2852, 2895 } }, radius = 400,
+                  note = "Up the bridge and into the pools of vision." },
+                { type = "turnin", quests = { 853 }, npc = { 3419 },
+                  note = "Take the Cauldron Stirrer if you use a staff, and equip it." },
+                { type = "talk", turnin = { 6363 }, accept = { 6364 }, npc = { 2995 } },
+                { type = "talk", turnin = { 775 }, accept = { 776 }, npc = { 3057 } },
+                { type = "turnin", quests = { 6002 }, npc = { 3033 }, cond = { class = "DRUID" } },
+                { type = "train", skill = 393, npc = { 7089 },
+                  note = "Optional, and only if you have a profession slot free: it unlocks one easy quest." },
+                { type = "accept", quests = { 768 }, npc = { 3050 },
+                  note = "Skip this and the two steps after it if you did not train Skinning." },
+                { type = "collect", item = 2318, count = 12, npc = { 8674 },
+                  note = "Twelve Light Leather. Skin them yourself or buy them from Auctioneer Stampi's auction house." },
+                { type = "turnin", quests = { 768 }, npc = { 3050 } },
+                { type = "buy", item = 117, count = 5, npc = { 3025 }, cond = { class = "HUNTER" },
+                  note = "Tough Jerky keeps your pet fed." },
+            } },
+
+            { title = "Northern Mulgore", steps = {
+                { type = "travel", to = "Windfury Ridge", at = { { 3170, 2820 } }, radius = 500,
+                  note = "Down the lifts and north-west along the foot of the mesa." },
+                { type = "collect", item = 4752, kill = { 2964 }, quest = { 744, 1 }, radius = 600,
+                  at = { { 3170, 2820 }, { 3020, 1950 } } },
+                { type = "collect", item = 4753, kill = { 2965 }, quest = { 744, 2 }, radius = 600,
+                  at = { { 3170, 2820 }, { 3020, 1950 } } },
+                { type = "travel", to = "Wildmane Water Well", quest = { 760, 1 }, item = { 5416 }, use = { 5416 },
+                  cond = { race = "tauren" }, at = { { 4250, 1380 } },
+                  note = "Use the Wildmane Cleansing Totem at the last well." },
+                { type = "collect", item = 4841, kill = { 3058 }, quest = { 776, 1 }, radius = 800,
+                  at = { { 5260, 1220 }, { 4860, 1610 }, { 5180, 3380 }, { 5620, 3290 } },
+                  note = "Arra'chea is the big black kodo. He walks a slow clockwise circuit of northern Mulgore, so pick him up wherever the loop meets him." },
+                { type = "collect", item = 5203, kill = { 3566 }, quest = { 861, 1 }, radius = 600,
+                  at = { { 4378, 1096 }, { 3962, 1335 }, { 3712, 1684 }, { 4457, 1739 }, { 4870, 2085 } } },
+                { type = "travel", to = "Thunder Bluff", at = { { 4583, 6474, map = 1456 } }, radius = 400,
+                  note = "Up the lifts on the western side of the mesa." },
+                { type = "accept", quests = { 5722, 5723 }, npc = { 11833 },
+                  note = "Two Ragefire Chasm quests. Take them if you expect to run the instance; they keep." },
+                { group = {
+                    { type = "turnin", quests = { 776 }, npc = { 3057 } },
+                    { type = "turnin", quests = { 744 }, npc = { 2987 } },
+                    { type = "talk", turnin = { 861 }, accept = { 860 }, npc = { 3441 } },
+                } },
+                { type = "travel", to = "Bloodhoof Village", at = { { 4735, 6070 } }, radius = 500 },
+                { type = "turnin", quests = { 770 }, npc = { 3052 }, optional = true },
+                { type = "turnin", quests = { 760 }, npc = { 2948 }, cond = { race = "tauren" } },
+                { type = "note", npc = { 3066 }, cond = { class = "SHAMAN" }, note = "Train your new ranks from Narm Skychaser." },
+                { type = "note", npc = { 3064 }, cond = { class = "DRUID" }, note = "Train your new ranks from Gennia Runetotem." },
+                { type = "note", npc = { 3063 }, cond = { class = "WARRIOR" }, note = "Train your new ranks from Krang Stonehoof." },
+                { type = "note", npc = { 3065 }, cond = { class = "HUNTER" }, note = "Train your new ranks from Yaw Sharpmane." },
+            } },
+
+            { title = "The Venture Co. Mine", steps = {
+                { type = "travel", to = "The Venture Co. Mine", at = { { 6151, 4729 } }, radius = 400 },
+                { type = "collect", item = 4819, kill = { 3051 }, quest = { 765, 1 }, at = { { 6495, 4333 } }, radius = 300,
+                  note = "Run in and hug the eastern wall. Fizsprocket is at the back." },
+                { type = "kill", kill = { 2978 }, quest = { 764, 1 }, radius = 500,
+                  at = { { 6135, 4755 }, { 6010, 4784 }, { 5950, 4821 }, { 5968, 4885 }, { 6014, 4914 },
+                         { 6201, 4874 }, { 6189, 4784 } } },
+                { type = "kill", kill = { 2979 }, quest = { 764, 2 }, radius = 500,
+                  at = { { 6135, 4755 }, { 6010, 4784 }, { 5950, 4821 }, { 5968, 4885 }, { 6014, 4914 },
+                         { 6201, 4874 }, { 6189, 4784 } } },
+                { type = "level", level = 11, xp = 7150, radius = 500,
+                  at = { { 6135, 4755 }, { 6010, 4784 }, { 5950, 4821 }, { 5968, 4885 }, { 6014, 4914 },
+                         { 6201, 4874 }, { 6189, 4784 } },
+                  note = "Keep grinding the mine until you are 7150 experience into level 11." },
+                { type = "turnin", quests = { 764, 765 }, npc = { 2988 }, radius = 500 },
+            } },
+
+            { title = "Into the Barrens", map = 1413, steps = {
+                { type = "travel", to = "The Crossroads", at = { { 5199, 2989 } }, radius = 500,
+                  note = "Hearth if it is up; otherwise walk to Camp Taurajo and take Omusa Thunderhorn's flight from 44.45, 59.15." },
+                { type = "turnin", quests = { 6364 }, npc = { 3483 } },
+                { group = {
+                    { type = "accept", quests = { 1492 }, npc = { 3390 } },
+                    { type = "accept", quests = { 871, 5041 }, npc = { 3429 } },
+                    { type = "accept", quests = { 867 }, npc = { 3449 },
+                      note = "Darsok is at the top of the tower." },
+                    { type = "talk", turnin = { 860 }, accept = { 844 }, npc = { 3338 } },
+                    { type = "accept", quests = { 869 }, npc = { 3464 } },
+                } },
+                { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg", cond = { class = "SHAMAN" },
+                  at = { { 5578, 2001 } },
+                  note = "The keg spawns on the ground beside Kranal Fiss. Skip it if it is not there." },
+                { type = "accept", quests = { 819 }, item = 4926, cond = { class = "SHAMAN" },
+                  note = "Use the keg to start its quest. Skip both steps if the keg was not on the ground." },
+                { type = "talk", turnin = { 2984 }, accept = { 1524 }, npc = { 5907 }, cond = { class = "SHAMAN" } },
+                { type = "travel", to = "Telf Joolam", cond = { class = "SHAMAN" }, at = { { 3852, 5893, map = 1411 } }, radius = 300,
+                  note = "The path up the mountain from 36.74, 57.78 in Durotar is narrow. A fall from it kills." },
+                { type = "talk", turnin = { 1524 }, accept = { 1525 }, npc = { 5900 }, cond = { class = "SHAMAN" } },
+                { type = "talk", turnin = { 1505 }, accept = { 1498 }, npc = { 5810 }, cond = { class = "WARRIOR" } },
+                { type = "collect", item = 6486, kill = { 3131 }, quest = { 1498, 1 }, cond = { class = "WARRIOR" }, radius = 600,
+                  at = { { 3934, 2825, map = 1411 }, { 3911, 3076, map = 1411 }, { 3911, 2646, map = 1411 },
+                         { 3939, 2505, map = 1411 }, { 4000, 2406, map = 1411 }, { 4251, 2429, map = 1411 } } },
+                { type = "talk", turnin = { 1498 }, accept = { 1502 }, npc = { 5810 }, cond = { class = "WARRIOR" } },
+                { type = "finish", note = "Mulgore is done and the Crossroads quests are in your log. Continue with The Barrens and Stonetalon." },
+            } },
+        },
+
+        npcs = {
+            [1412] = { -- Mulgore
+                [2947] = { name = "Harken Windtotem", at = { 4871, 5932 } },
+                [2948] = { name = "Mull Thunderhorn", at = { 4853, 6040 } },
+                [2984] = { name = "Seer Wiserunner", at = { 3272, 3609 } },
+                [2985] = { name = "Ruul Eagletalon", at = { 4736, 6201 } },
+                [2988] = { name = "Morin Cloudstalker",
+                           at = { { 5514, 6065 }, { 5150, 5923 }, { 5300, 6024 }, { 5747, 6126 }, { 5965, 6240 } },
+                           note = "Morin Cloudstalker walks the road between the village and the eastern hills. Follow the road until you meet him." },
+                [2993] = { name = "Baine Bloodhoof", at = { 4751, 6016 } },
+                [2994] = { name = "Ancestral Spirit", at = { 6145, 2101 } },
+                [3052] = { name = "Skorn Whitecloud", at = { 4675, 6024 } },
+                [3054] = { name = "Zarlman Two-Moons", at = { 4776, 5753 } },
+                [3055] = { name = "Maur Raincaller", at = { 4697, 5707 } },
+                [3063] = { name = "Krang Stonehoof", at = { 4952, 6058 } },
+                [3064] = { name = "Gennia Runetotem", at = { 4848, 5964 } },
+                [3065] = { name = "Yaw Sharpmane", at = { 4781, 5569 } },
+                [3066] = { name = "Narm Skychaser", at = { 4838, 5915 } },
+                [3077] = { name = "Mahnott Roughwound", at = { 4566, 5860 } },
+                [3078] = { name = "Kennah Hawkseye", at = { 4550, 5847 } },
+                [3080] = { name = "Harant Ironbrace", at = { 4590, 5873 } },
+                [3233] = { name = "Lorekeeper Raintotem", at = { 5985, 2562 } },
+                [3884] = { name = "Jhawna Oatwind", at = { 4763, 6149 } },
+                [5939] = { name = "Vira Younghoof", at = { 4680, 6085 } },
+                [6747] = { name = "Innkeeper Kauth", at = { 4663, 6109 } },
+
+                [2949] = "Palemane Tanner",
+                [2950] = "Palemane Skinner",
+                [2951] = "Palemane Poacher",
+                [2956] = "Adult Plainstrider",
+                [2958] = "Prairie Wolf",
+                [2959] = "Prairie Stalker",
+                [2960] = "Prairie Wolf Alpha",
+                [2962] = "Windfury Harpy",
+                [2963] = "Windfury Wind Witch",
+                [2964] = "Windfury Sorceress",
+                [2965] = "Windfury Matriarch",
+                [2969] = "Wiry Swoop",
+                [2970] = "Swoop",
+                [2971] = "Taloned Swoop",
+                [2978] = "Venture Co. Worker",
+                [2979] = "Venture Co. Supervisor",
+                [2989] = "Bael'dun Digger",
+                [2990] = "Bael'dun Appraiser",
+                [3035] = "Flatland Cougar",
+                [3051] = "Supervisor Fizsprocket",
+                [3058] = "Arra'chea",
+                [3232] = "Bristleback Interloper",
+                [3566] = "Flatland Prowler",
+            },
+            [1456] = { -- Thunder Bluff
+                [2987] = { name = "Eyahn Eagletalon", at = { 3780, 5940 } },
+                [2995] = { name = "Tal", at = { 4700, 4982 } },
+                [3025] = { name = "Kaga Mistrunner", at = { 5232, 4779 } },
+                [3033] = { name = "Turak Runetotem", at = { 7670, 2730 } },
+                [3039] = { name = "Holt Thunderhorn", at = { 5740, 8940 } },
+                [3050] = { name = "Veren Tallstrider", at = { 4439, 4472 } },
+                [3057] = { name = "Cairne Bloodhoof", at = { 6000, 5170 } },
+                [3419] = { name = "Apothecary Zamah", at = { 2283, 2088 } },
+                [3441] = { name = "Melor Stonehoof", at = { 6130, 8090 } },
+                [5769] = { name = "Arch Druid Hamuul Runetotem", at = { 7810, 2860 } },
+                [6746] = { name = "Innkeeper Pala", at = { 4583, 6474 } },
+                [7089] = { name = "Mooranta", at = { 4443, 4319 } },
+                [8359] = { name = "Ahanu", at = { 4560, 5590 } },
+                [8674] = { name = "Auctioneer Stampi", at = { 4039, 5177 } },
+                [10086] = { name = "Hesuwa Thunderhorn", at = { 5407, 8400 } },
+                [11833] = { name = "Rahauro", at = { 7038, 2960 } },
+                [11869] = { name = "Ansekhwa", at = { 4093, 6273 } },
+            },
+            [1413] = { -- The Barrens
+                [3338] = { name = "Sergra Darkthorn", at = { 5223, 3100 } },
+                [3390] = { name = "Apothecary Helbrim", at = { 5144, 3015 } },
+                [3418] = { name = "Kirge Sternhorn", at = { 4490, 5860 } },
+                [3429] = { name = "Thork", at = { 5150, 3080 } },
+                [3448] = { name = "Tonga Runetotem", at = { 5226, 3193 } },
+                [3449] = { name = "Darsok Swiftdagger", at = { 5162, 3090 } },
+                [3464] = { name = "Gazrog", at = { 5193, 3032 } },
+                [3483] = { name = "Jahan Hawkwing", at = { 5121, 2905 } },
+                [3615] = { name = "Devrak", at = { 5150, 3034 } },
+                [3934] = { name = "Innkeeper Boorand Plainswind", at = { 5199, 2989 } },
+                [5810] = { name = "Uzzek", at = { 6140, 2110 } },
+                [5907] = { name = "Kranal Fiss", at = { 5586, 1995 } },
+                [10378] = { name = "Omusa Thunderhorn", at = { 4445, 5915 } },
+
+                [12138] = "Lunaclaw",
+            },
+            [1411] = { -- Durotar
+                [5900] = { name = "Telf Joolam", at = { 3852, 5893 } },
+
+                [3131] = "Lightning Hide",
+            },
+            [1450] = { -- Moonglade
+                [11802] = { name = "Dendrite Starblaze", at = { 5621, 3064 } },
+                [11956] = { name = "Great Bear Spirit", at = { 3920, 2750 } },
+            },
+        },
+    },
+})

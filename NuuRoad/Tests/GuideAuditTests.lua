@@ -160,7 +160,8 @@ local partThree = Steps:Expand({ schema = 2, id = "test:part", updated = 1789862
 assert(GuideAudit:CheckObjective(partThree))
 assert(last():find("is about objective 3 of quest 844 'Plainstrider Menace', which has only 1 objectives", 1, true), last())
 
--- A line the client calls an item, on a step that only names kills.
+-- A line the client calls an item, on a step that only names kills. The
+-- step names no count, so its title takes the objective's 7.
 local killOnly = Steps:Expand({ schema = 2, id = "test:loot", updated = 1789862400, map = 1413, meta = { title = "Loot", category = "test" },
     steps = {
     { section = "Steps", steps = {
@@ -171,7 +172,7 @@ C_QuestLog.GetQuestObjectives = function(id)
     return id == 844 and { { text = "Plainstrider Beak: 0/7", finished = false, type = "item" } } or nil
 end
 assert(GuideAudit:CheckObjective(killOnly), "a kill step for an item line is reported")
-assert(last():find("is an item to loot ('Plainstrider Beak: 0/7'), but step 'Kill Greater Plainstrider' names no collect item", 1, true), last())
+assert(last():find("is an item to loot ('Plainstrider Beak: 0/7'), but step 'Kill 7 Greater Plainstrider' names no collect item", 1, true), last())
 before = count()
 assert(not GuideAudit:CheckObjective(objectiveNode), "a collect step for an item line is silent")
 assert(count() == before)
