@@ -4,9 +4,10 @@ local _, ns = ...
 --   /nuux              the experiments window (Window.lua); without the kit, the list
 --   /nuux list         the loaded experiments and how each last went, in chat
 --   /nuux run <id|all> run now (results replace the last ones), then show them
+--   /nuux stop <id>    end a run still going (a scan, a recorder)
 --   /nuux show <id|all> the last results in a window, to copy
 --   /nuux clear <id|all> forget results
---   /nuux prune        forget the results of experiments no longer loaded
+--   /nuux prune        forget the results (and data) of experiments no longer loaded
 -- The game writes the results to disk on /reload or logout.
 
 local function list()
@@ -48,14 +49,18 @@ local function clear(id)
     ns:Changed()
 end
 
--- Forgets the results of experiments no longer loaded; answers how many.
+-- Forgets the results and data of experiments no longer loaded; answers how
+-- many results it forgot.
 function ns:Prune()
-    local results, count = self:DB().results, 0
-    for id in pairs(results) do
+    local db, count = self:DB(), 0
+    for id in pairs(db.results) do
         if not self.experiments[id] then
-            results[id] = nil
+            db.results[id] = nil
             count = count + 1
         end
+    end
+    for id in pairs(db.data) do
+        if not self.experiments[id] then db.data[id] = nil end
     end
     self:Changed()
     return count
@@ -90,6 +95,8 @@ SlashCmdList.NUUEXPERIMENTS = function(message)
         list()
     elseif command == "run" and rest ~= "" then
         run(rest)
+    elseif command == "stop" and rest ~= "" then
+        if not ns:Stop(rest) then ns:Print(rest .. " is not running") end
     elseif command == "show" and rest ~= "" then
         show(rest)
     elseif command == "clear" and rest ~= "" then
@@ -97,6 +104,6 @@ SlashCmdList.NUUEXPERIMENTS = function(message)
     elseif command == "prune" then
         prune()
     else
-        ns:Print("/nuux [list | run <id|all> | show <id|all> | clear <id|all> | prune]")
+        ns:Print("/nuux [list | run <id|all> | stop <id> | show <id|all> | clear <id|all> | prune]")
     end
 end

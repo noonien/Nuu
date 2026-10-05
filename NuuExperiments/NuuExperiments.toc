@@ -16,3 +16,9 @@ Commands.lua
 # and move the file to Experiments/Retired/. See README.md.
 Experiments/Client.lua
 Experiments/QuestData.lua
+
+# Data collection: kept loaded, never retired (README.md, "Quest data").
+Experiments/QuestScanIDs.lua
+Experiments/QuestScan.lua
+# Paused 2026-10-05: no recording for now. Put the line back to record again.
+# Experiments/QuestRecord.lua

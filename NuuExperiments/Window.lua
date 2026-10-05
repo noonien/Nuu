@@ -10,7 +10,9 @@ local Window = {}
 ns.Window = Window
 
 local TONES = {
-    ok = "success", error = "danger", timeout = "warning", replaced = "warning", running = "accent",
+    ok = "success", error = "danger", timeout = "warning", replaced = "warning", stopped = "warning",
+    interrupted = "warning",
+    running = "accent", watching = "accent",
 }
 
 -- One entry per loaded experiment, then one per retired result.
@@ -75,6 +77,10 @@ local function runClicked()
     if id and ns.experiments[id] then ns:Run(id) end
 end
 
+local function stopClicked()
+    if Window.selected then ns:Stop(Window.selected) end
+end
+
 local function copyClicked()
     if Window.selected then ns:ShowResults({ Window.selected }) end
 end
@@ -130,9 +136,11 @@ function Window:Build()
     self.meta = details:Text{ "", style = "label", wrap = true }
     local buttons = details:Row{ gap = 8 }
     self.run = buttons:Button{ "Run", tone = "accent", onClick = runClicked }
+    self.stop = buttons:Button{ "Stop", tooltip = "Ends the run now; its data so far is kept", onClick = stopClicked }
     self.copy = buttons:Button{ "Copy", tooltip = "Opens the results selected, to copy with Ctrl-C",
         onClick = copyClicked }
     self.clear = buttons:ConfirmButton{ "Clear", onConfirm = clearClicked }
+    self.progress = details:ProgressBar{ label = "Running", hidden = true }
     details:Rule{}
     self.area = details:ScrollArea{ grow = true, gap = 4 }
     self.body = self.area:Text{ "", wrap = true }
@@ -180,12 +188,37 @@ function Window:Draw()
 
     self.run:SetEnabled(experiment ~= nil and not ns.running[item.id],
         experiment and "Running now." or "Retired: put its file back in the TOC to run it.")
+    self.stop:SetEnabled(ns.running[item.id] ~= nil, "Not running.")
     self.copy:SetEnabled(result ~= nil, "Not run yet.")
     self.clear:SetEnabled(result ~= nil and not ns.running[item.id], "Nothing to clear.")
+    self:DrawProgress()
     self.body:SetText(result and table.concat(ns.WriteResult({}, result), "\n") or "Not run yet.")
     -- Back to the top for another experiment, not when this one changes.
     if self.drawn ~= item.id then self.area:ScrollToTop() end
     self.drawn = item.id
+end
+
+-- How far the chosen experiment's run has got, while it runs and says so
+-- (t:Progress).
+function Window:DrawProgress()
+    local t = self.selected and ns.running[self.selected]
+    local p = t and t.progress
+    if not p or t.result.status ~= "running" or type(p.total) ~= "number" or p.total <= 0 then
+        self.progress:Hide()
+        return
+    end
+    self.progress:SetValue(math.min(p.done or 0, p.total), p.total)
+    local label = p.label or "Running"
+    if label ~= self.progressLabel then
+        self.progressLabel = label
+        self.progress:SetLabel(label)
+    end
+    self.progress:Show()
+end
+
+-- A run moved on (t:Progress).
+function ns:Progressed(id)
+    if Window.win and Window.win:IsShown() and Window.selected == id then Window:DrawProgress() end
 end
 
 -- Opening ---------------------------------------------------------------------------------

@@ -11,6 +11,9 @@ local _, ns = ...
 -- not it answered. The first quest in the log is read the same way, to see the
 -- shape an objective has when the client certainly knows it.
 
+-- Seconds the server gets to answer before the last read.
+local WAIT = 10
+
 -- Quests unlikely to be in the log or done on whichever character runs this:
 -- starting zones of both factions, a Barrens quest, a high-level one, and an
 -- ID that does not exist.
@@ -97,7 +100,12 @@ ns:Experiment({
         local logged = firstLoggedQuest()
         t:Set("logged", logged and { questID = logged, read = read(logged) } or "no quest in the log")
 
-        local quests, answered = {}, 0
+        local quests, answered, waited = {}, 0, 0
+        -- The bar runs over the wait; its line counts the answers.
+        local function progress()
+            t:Progress(waited, WAIT, string.format("%d of %d quests answered, last read in %d s",
+                answered, #QUESTS, WAIT - waited))
+        end
         for _, questID in ipairs(QUESTS) do quests[questID] = { before = read(questID) } end
         t:Set("quests", quests)
 
@@ -110,6 +118,7 @@ ns:Experiment({
             answered = answered + 1
             t:Log("QUEST_DATA_LOAD_RESULT %s %s", tostring(questID), tostring(success))
             t:Set("quests", quests)
+            progress()
         end)
         for _, questID in ipairs(QUESTS) do
             local requested = call(C_QuestLog and C_QuestLog.RequestLoadQuestByID, questID)
@@ -117,8 +126,16 @@ ns:Experiment({
         end
         t:Set("quests", quests)
 
+        progress()
+        local function second()
+            waited = waited + 1
+            progress()
+            if waited < WAIT then t:After(1, second) end
+        end
+        t:After(1, second)
+
         -- Whatever answered by now, and a last read of every quest either way.
-        t:After(10, function()
+        t:After(WAIT, function()
             for _, questID in ipairs(QUESTS) do quests[questID].late = read(questID) end
             t:Set("quests", quests)
             t:Set("answered", answered)

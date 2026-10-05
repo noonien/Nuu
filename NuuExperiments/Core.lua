@@ -15,6 +15,11 @@ local addonName, ns = ...
 --       run = function(t) ... end,      -- t: see Context below
 --   })
 --
+-- Most experiments keep a few values in their result. One that collects data
+-- in bulk (quest-scan, quest-record) keeps it in t:Data() instead: a plain
+-- table under NuuExperimentsDB.data[id], not copied or cut, that outlives its
+-- runs, so the next run carries on where the last one stopped.
+--
 -- Taking an experiment's file out of the TOC stops it loading and running;
 -- its last results stay in the saved variables until /nuux prune.
 
@@ -28,6 +33,7 @@ _G.NuuExperiments = ns
 
 local MAX_DEPTH, MAX_ITEMS, MAX_LOG = 6, 200, 200
 local DEFAULT_WAIT = 10
+ns.LONG_RUN = 3 -- seconds a run may go on without saying how far it has got (t:Progress)
 
 function ns:Print(text)
     if DEFAULT_CHAT_FRAME then
@@ -41,6 +47,8 @@ local function now()
     if type(debugprofilestop) == "function" then return debugprofilestop() end
     return os.clock() * 1000
 end
+
+ns.Now = now
 
 local function stamp()
     if type(date) == "function" then return date("%Y-%m-%d %H:%M:%S") end
@@ -226,6 +234,32 @@ function Context:Wait(seconds)
     end
 end
 
+-- How far a long run has got, for the window's progress bar: `done` of
+-- `total`, and a line saying what ("120 of 6605 quests answered"). Every
+-- experiment known to take longer than LONG_RUN seconds calls it; one that
+-- does not gets a line in its log saying so.
+function Context:Progress(done, total, label)
+    self.progress = { done = done, total = total, label = label }
+    if ns.Progressed then ns:Progressed(self.experiment.id) end
+end
+
+-- The run stays open for the rest of the session, listening, with no
+-- timeout: status "watching" until logout or /nuux stop.
+function Context:Keep()
+    self.waiting = true
+    self.waitToken = {}
+    self.result.status = "watching"
+end
+
+-- This experiment's bulk data (NuuExperimentsDB.data[id]), kept across runs.
+-- Only strings, numbers, booleans and tables of them belong in it.
+function Context:Data()
+    local data = ns:DB().data
+    local id = self.experiment.id
+    data[id] = type(data[id]) == "table" and data[id] or {}
+    return data[id]
+end
+
 function Context:Done()
     if not self.finished then self:Finish() end
 end
@@ -293,6 +327,7 @@ end
 function ns:DB()
     NuuExperimentsDB = type(NuuExperimentsDB) == "table" and NuuExperimentsDB or {}
     NuuExperimentsDB.results = NuuExperimentsDB.results or {}
+    NuuExperimentsDB.data = NuuExperimentsDB.data or {}
     return NuuExperimentsDB
 end
 
@@ -322,15 +357,44 @@ function ns:Run(id)
     self.running[id] = t
     if self.Changed then self:Changed() end
     t:Call(experiment.run, t)
-    if not t.waiting then t:Finish() end
+    if not t.waiting then
+        t:Finish()
+    elseif type(C_Timer) == "table" and type(C_Timer.After) == "function" then
+        C_Timer.After(ns.LONG_RUN, function()
+            if self.running[id] == t and t.result.status == "running" and not t.progress then
+                t:Log("still running after %d s without t:Progress: give it a progress bar", ns.LONG_RUN)
+            end
+        end)
+    end
     return t
+end
+
+-- Ends a run that is still going (waiting, or watching): status "stopped".
+function ns:Stop(id)
+    local t = self.running[id]
+    if not t then return false end
+    t:Finish("stopped")
+    return true
+end
+
+-- A run saved as still going ("running", "watching") was cut off by a reload
+-- or logout: it says so, instead of looking busy forever. Runs going now
+-- (none, after a real reload) are left alone.
+function ns:MarkInterrupted()
+    for id, result in pairs(self:DB().results) do
+        if (result.status == "running" or result.status == "watching") and not self.running[id] then
+            result.status = "interrupted"
+            result.log = type(result.log) == "table" and result.log or {}
+            table.insert(result.log, "the client reloaded or logged out before it ended")
+        end
+    end
 end
 
 local function due(experiment, results, build)
     if experiment.auto == "login" then return true end
     if experiment.auto ~= "build" then return false end
     local last = results[experiment.id]
-    return not last or last.build ~= build or last.status == "running"
+    return not last or last.build ~= build or last.status == "interrupted"
 end
 
 -- The experiments due at login, out of combat unless they say otherwise.
@@ -365,7 +429,7 @@ if type(CreateFrame) == "function" then
     frame:RegisterEvent("PLAYER_REGEN_ENABLED")
     frame:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_LOGIN" then
-            ns:DB()
+            ns:MarkInterrupted()
             -- A moment after login, so the experiments see a settled client.
             if type(C_Timer) == "table" and C_Timer.After then
                 C_Timer.After(2, function() ns:RunDue() end)
