@@ -68,7 +68,8 @@ Forever is not Classic. Quests, NPCs and items that look familiar can have new I
 own. Most porting bugs are wrong IDs.
 
 - **Check every ID as you write it**, not afterwards. Look it up in `db/horde/` (`quests.json`, `npcs.json`,
-  `items.json`, `objects.json`), which merges Questie, ForeverGuide's in-game scan, RestedXP and the client tables.
+  `items.json`, `objects.json`), which merges Questie, ForeverGuide's in-game scan, RestedXP, the client tables and our own in-game data
+  (`db/ingame/`, from NuuExperiments' quest-scan and quest-record).
   `db/horde/REPORT.md` says what each zone is missing.
 - **For new Forever NPCs and items**, check ForeverGuide's scan (`db/sources/ForeverGuide`) and the client item table.
 - **Never guess an ID from a name.** When no ID is known, say so: write one step that names the creatures in its

@@ -5,6 +5,12 @@ Development tool only; nothing here ships. Run fetch_sources.py and
 questie_extract.py first.
 
 Sources, and what each is trusted for:
+  ingame     db/ingame/ (NuuExperiments/Tools/QuestExport.py): what the Forever client
+             itself says, from the quest-scan and quest-record experiments. Trusted
+             first for names, levels, objective counts, givers, turn-ins, NPC
+             positions and XP (worked out from the server's XP difficulty and
+             multiplier in the client's quest cache); quests the server answered it
+             does not have are left out. Optional: without it the build is what it was.
   ours       db/quests.json, db/npcs.json: taken from our guides, played on Forever.
              Notes, counts, positions. Its Mulgore points use the Classic map
              bounds (copied from RestedXP comments) and are converted.
@@ -62,8 +68,9 @@ MAX_QUEST_LEVEL = 30    # a level-20 minimum on a level-35 quest (Gnomeregan) is
 JUNK = re.compile(r"\btest\b|zzOLD|UNUSED|Temp Disabled|^None$|\[DNT\]|DEPRECATED", re.I)
 SERVICE_ROLES = {"vendor", "trainer", "flightMaster", "innkeeper", "repair", "stablemaster", "banker",
                  "spiritHealer", "auctioneer"}
+# QuestSorts that are world events. Not "Special": Forever files ordinary quests there (79095, a level 20 book).
 EVENT_SORTS = ("Seasonal", "Darkmoon", "Lunar", "Brewfest", "Children", "Hallow", "Midsummer", "Winter Veil",
-               "Love is in the Air", "Noblegarden", "Pilgrim", "Harvest", "Special", "Event", "Holiday",
+               "Love is in the Air", "Noblegarden", "Pilgrim", "Harvest", "Event", "Holiday",
                "Battleground", "Alterac", "Warsong", "Arathi")
 
 
@@ -106,6 +113,12 @@ class Maps:
         self.era_bounds = self._bounds(load_csv(os.path.join(era, "UiMapAssignment.csv")))
         self.info = {int(r["ID"]): {"name": r["Name_lang"], "parent": int(r["ParentUiMapID"]), "type": int(r["Type"])}
                      for r in load_csv(os.path.join(forever, "UiMap.csv"))}
+        # Area ID -> uiMapID, from the map assignments, else through the area's parents (a subzone names its zone).
+        self.area_parent = {int(r["ID"]): int(r["ParentAreaID"]) for r in load_csv(os.path.join(forever, "AreaTable.csv"))}
+        self.area_map = {}
+        for r in self.assign:
+            if int(r["AreaID"]) and int(r["AreaID"]) not in self.area_map:
+                self.area_map[int(r["AreaID"])] = int(r["UiMapID"])
         # Maps whose bounds Forever changed; points taken from Classic-era percentages need converting.
         self.changed = {m for m, b in self.bounds.items() if m in self.era_bounds
                         and any(abs(x - y) > 0.5 for x, y in zip(b, self.era_bounds[m]))}
@@ -149,6 +162,15 @@ class Maps:
                 if not best or area < best[0]:
                     best = (area, ui_map)
         return best and best[1]
+
+    def map_of_area(self, area):
+        seen = set()
+        while area and area not in seen:
+            if area in self.area_map:
+                return self.area_map[area]
+            seen.add(area)
+            area = self.area_parent.get(area)
+        return None
 
     def name(self, ui_map):
         return self.info.get(ui_map, {}).get("name", str(ui_map))
@@ -253,6 +275,31 @@ class ForeverGuide:
                 if xy:
                     out.append(point(m, *xy))
         return out
+
+
+# --- In game (NuuExperiments) -------------------------------------------------------------
+
+# Objective types as the client names them, as this database names them.
+INGAME_TYPES = {"monster": "kill", "item": "item", "object": "object", "event": "event", "log": "other"}
+
+
+class InGame:
+    def __init__(self):
+        base = os.path.join(DB, "ingame")
+        def load(name):
+            path = os.path.join(base, name)
+            return load_json(path) if os.path.exists(path) else {}
+        self.quests, self.npcs, self.objects = load("quests.json"), load("npcs.json"), load("objects.json")
+        self.source = load("source.json")
+
+    def quest(self, qid):
+        return self.quests.get(str(qid)) or {}
+
+    def refs(self, qid, side):
+        return self.quest(qid).get(side) or []
+
+    def missing(self, qid):
+        return self.quest(qid).get("exists") is False
 
 
 # --- RestedXP ------------------------------------------------------------------------------
@@ -447,6 +494,17 @@ class Builder:
         self.fg = ForeverGuide(self.maps)
         self.rxp = RestedXP(self.maps)
         self.ours = Ours(self.maps, self.questie)
+        self.ig = InGame()
+        # Chains: the quests the server offers straight after each one, turned round; and Questie's breadcrumbs
+        # by the quest they lead to (a breadcrumb names its target; the target does not always name it back).
+        self.server_into = defaultdict(list)
+        for k, q in self.ig.quests.items():
+            if q.get("next"):
+                self.server_into[q["next"]].append(int(k))
+        self.breadcrumbs_to = defaultdict(list)
+        for k, q in self.questie.quests.items():
+            if q.get("breadcrumbForQuestId"):
+                self.breadcrumbs_to[q["breadcrumbForQuestId"]].append(int(k))
         forever = os.path.join(SOURCES, "wago", "forever")
         self.client_quests = {int(r["ID"]) for r in load_csv(os.path.join(forever, "QuestV2.csv"))}
         self.sorts = {int(r["ID"]): r["SortName_lang"] for r in load_csv(os.path.join(forever, "QuestSort.csv"))}
@@ -467,7 +525,7 @@ class Builder:
 
     def _npc_names(self):
         by_name = defaultdict(set)
-        for src in (self.questie.npcs, self.fg.npcs, self.ours.npcs):
+        for src in (self.questie.npcs, self.fg.npcs, self.ours.npcs, self.ig.npcs):
             for nid, n in src.items():
                 name = n.get("name") or n.get("n")
                 if name:
@@ -481,6 +539,8 @@ class Builder:
         key = str(nid)
         classic = self.questie.spawns(self.questie.npcs.get(key, {}))
         observed, srcs = [], []
+        if add_points(observed, self.ig.npcs.get(key, {}).get("positions", [])):
+            srcs.append("ingame")
         if key in self.ours.npcs:
             if add_points(observed, self.ours.fix(self.ours.npcs[key]["positions"], classic)) or self.ours.npcs[key]["positions"]:
                 srcs.append("ours")
@@ -535,6 +595,9 @@ class Builder:
             if iq in self.blacklist:
                 self.report["blacklisted"].append(iq)
                 continue
+            if self.ig.missing(iq):
+                self.report["serverMissing"].append((iq, q["name"]))
+                continue
             if iq not in self.client_quests:
                 self.report["notInClient"].append((iq, q["name"]))
                 continue
@@ -565,8 +628,10 @@ class Builder:
                 continue
             chosen[iq] = "fg"
         # Anything our guides or RestedXP's Horde routes use that is still missing.
-        for iq in [int(k) for k in self.ours.quests] + list(self.rxp.quests):
-            if iq in chosen:
+        # And quests a Horde character was offered in game.
+        recorded = [int(k) for k, q in self.ig.quests.items() if q.get("starts") or q.get("startItem")]
+        for iq in [int(k) for k in self.ours.quests] + list(self.rxp.quests) + recorded:
+            if iq in chosen or self.ig.missing(iq):
                 continue
             faction, level, where = self.custom_faction(iq, self.fg.quests.get(str(iq), {}))
             if faction in ("Horde", "both"):
@@ -622,6 +687,9 @@ class Builder:
         spots = self.fg.positions(fgq.get("start", {})) + (rx["starts"] if rx else [])
         for n in fgq.get("snpc") or []:
             spots += self.npc_positions(n)[0]
+        for r in self.ig.refs(qid, "starts"):
+            if "npc" in r:
+                spots += self.npc_positions(r["npc"])[0]
         if ours:
             for s in ours["starts"]:
                 if "npc" in s:
@@ -636,17 +704,19 @@ class Builder:
                     faction = "Alliance"
         if fgq.get("classes") and not faction:
             faction = "both"
-        return faction, fgq.get("lvl"), where
+        return faction, fgq.get("lvl") or self.ig.quest(qid).get("level"), where
 
     # ---- Quest records
 
-    def ender_or_starter(self, q_ids, fg_rec, rx_points, rx_targets, ours_list, questie_ref):
+    def ender_or_starter(self, q_ids, fg_rec, rx_points, rx_targets, ours_list, questie_ref, ig_refs=()):
         out = []
         seen = set()
         near = list(rx_points)
         for s in ours_list or []:
             near += s.get("positions", [])
-        npc_ids = list(questie_ref.get("npcs", []))
+        # Who the client showed offering or taking in the quest comes first.
+        npc_ids = [r["npc"] for r in ig_refs if "npc" in r]
+        npc_ids += questie_ref.get("npcs", [])
         npc_ids += fg_rec.get("snpc" if q_ids == "start" else "enpc", []) if isinstance(fg_rec, dict) else []
         for s in ours_list or []:
             if "npc" in s:
@@ -682,7 +752,9 @@ class Builder:
             seen.add(nid)
             self.want_npc(nid)
             out.append({"npc": int(nid)})
-        for oid in questie_ref.get("objects", []):
+        for oid in [r["object"] for r in ig_refs if "object" in r] + list(questie_ref.get("objects", [])):
+            if {"object": int(oid)} in out:
+                continue
             self.want_object(oid)
             out.append({"object": int(oid)})
         for iid in questie_ref.get("items", []):
@@ -717,7 +789,7 @@ class Builder:
                     best = (d if d is not None else 1e9, int(oid))
         return best and best[1]
 
-    def objectives(self, qid, qq, oq, fgq, rx):
+    def objectives(self, qid, qq, oq, fgq, rx, igq=None):
         """Merged objective list; each entry says what to do, how many, and where."""
         out = []
         text = " ".join(qq.get("text", []) if qq else [])
@@ -821,6 +893,41 @@ class Builder:
             for n in o.get("near") or []:
                 self.want_npc(n)
 
+        # In game: the client's own objectives, by index; its counts win.
+        ig_objectives = [o for o in (igq or {}).get("objectives", []) if o.get("type") or o.get("text") or o.get("count")]
+        for o in ig_objectives:
+            index = o["index"]
+            match = next((m for m in out if m.get("index") == index), None)
+            if match is None and o.get("text"):
+                name = o["text"].lower()
+                match = next((m for m in out if "index" not in m and self._name_of(m)
+                              and self._name_of(m).lower() in name), None)
+            if match is None and len(out) == len(ig_objectives) and "index" not in out[index - 1]:
+                match = out[index - 1]
+            if match is None:
+                match = {"type": INGAME_TYPES.get(o.get("type"), "other")}
+                if o.get("text"):
+                    match["text"] = o["text"]
+                out.append(match)
+            match["index"] = index
+            if o.get("count"):
+                if match.get("count") and match["count"] != o["count"]:
+                    self.report["countChanged"].append((qid, index, match["count"], o["count"]))
+                match["count"] = o["count"]
+                match.setdefault("src", []).append("ingame")
+            if o.get("text"):
+                match["text"] = o["text"]
+            add_points(match.setdefault("positions", []), o.get("positions", []))
+            votes = sorted(((v, int(n)) for n, v in (o.get("targets") or {}).items()), reverse=True)
+            if votes:
+                if match["type"] == "kill" and "npc" not in match:
+                    match["npc"] = votes[0][1]
+                    self.want_npc(votes[0][1])
+                elif match["type"] == "item":
+                    for _, n in votes:
+                        self.want_npc(n)
+                    match["from"] = sorted(set(match.get("from", [])) | {n for _, n in votes})
+
         # Counts still missing: read them from the quest text.
         for o in out:
             if o.get("text"):
@@ -878,18 +985,22 @@ class Builder:
         key = str(qid)
         qq, oq, fgq = self.questie.quests.get(key), self.ours.quests.get(key), self.fg.quests.get(key, {})
         rx = self.rxp.quests.get(qid)
+        igq = self.ig.quest(qid)
         rec = {}
-        names = [n for n in ((fgq or {}).get("n"), (qq or {}).get("name"), (oq or {}).get("name")) if n]
+        names = [n for n in (igq.get("name"), (fgq or {}).get("n"), (qq or {}).get("name"), (oq or {}).get("name")) if n]
         if rx:
             names += sorted(rx["names"])
         rec["name"] = names[0].rstrip(".") if names else None
-        if fgq.get("lvl") is not None:
-            rec["level"] = fgq["lvl"]
-            if qq and qq.get("questLevel") not in (None, fgq["lvl"]) and qq.get("questLevel", 0) > 0:
-                self.report["levelChanged"].append((qid, rec["name"], qq["questLevel"], fgq["lvl"]))
+        forever_level = igq.get("level") or fgq.get("lvl")
+        if forever_level is not None:
+            rec["level"] = forever_level
+            if qq and qq.get("questLevel") not in (None, forever_level) and qq.get("questLevel", 0) > 0:
+                self.report["levelChanged"].append((qid, rec["name"], qq["questLevel"], forever_level))
         elif qq and "questLevel" in qq:
             rec["level"] = qq["questLevel"]
-        if qq and qq.get("requiredLevel"):
+        if igq.get("minLevel"):
+            rec["minLevel"] = igq["minLevel"]
+        elif qq and qq.get("requiredLevel"):
             rec["minLevel"] = qq["requiredLevel"]
         elif fgq.get("req"):
             rec["minLevel"] = fgq["req"]
@@ -916,28 +1027,43 @@ class Builder:
                             classes.add(CLASSES[CLASS_BY_NAME[token.lower()]])
             if classes:
                 rec["classes"] = sorted(classes)
+        # What the server said (the quest cache) wins: races as Forever has them (Troll druids, the Skyborne), the
+        # faction where the races limit it, and the class a class quest is filed under.
+        if "flags" in igq:
+            rec.pop("races", None)
+            if igq.get("races"):
+                rec["races"] = igq["races"]
+            if igq.get("faction"):
+                rec["faction"] = igq["faction"]
+            sort_name = self.sorts.get(-igq.get("sort", 0), "") if igq.get("sort", 0) < 0 else ""
+            if sort_name.lower() in CLASS_BY_NAME:
+                rec["classes"] = sorted(set(rec.get("classes", [])) | {CLASSES[CLASS_BY_NAME[sort_name.lower()]]})
+            if igq.get("type"):
+                rec["type"] = igq["type"]
 
         rec["starts"] = self.ender_or_starter("start", fgq, rx["starts"] if rx else [], rx["startTargets"] if rx else [],
-                                              (oq or {}).get("starts"), (qq or {}).get("starts", {}))
+                                              (oq or {}).get("starts"), (qq or {}).get("starts", {}), igq.get("starts", []))
         rec["ends"] = self.ender_or_starter("end", fgq, rx["ends"] if rx else [], rx["endTargets"] if rx else [],
-                                            (oq or {}).get("ends"), (qq or {}).get("ends", {}))
-        objectives = self.objectives(qid, qq, oq, fgq, rx)
+                                            (oq or {}).get("ends"), (qq or {}).get("ends", {}), igq.get("ends", []))
+        if igq.get("startItem") and {"item": igq["startItem"]} not in rec["starts"]:
+            self.want_item(igq["startItem"])
+            rec["starts"].append({"item": igq["startItem"]})
+        objectives = self.objectives(qid, qq, oq, fgq, rx, igq)
         if objectives:
             rec["objectives"] = objectives
         if qq and qq.get("text"):
             rec["text"] = qq["text"]
 
-        prereq = {}
-        if qq and qq.get("preQuestGroup"):
-            prereq["all"] = qq["preQuestGroup"]
-        if qq and qq.get("preQuestSingle"):
-            prereq["any"] = qq["preQuestSingle"]
-        if not prereq and fgq.get("pre"):
-            prereq["all"] = fgq["pre"]
-        if prereq:
-            rec["requires"] = prereq
+        prereqs = self.prereqs(qid, qq, fgq)
+        if prereqs:
+            rec["prereqs"] = prereqs
+        following = igq.get("next") or (qq or {}).get("nextQuestInChain")
+        if igq.get("next") and qq and qq.get("nextQuestInChain") and igq["next"] != qq["nextQuestInChain"]:
+            self.report["nextChanged"].append((qid, rec["name"], qq["nextQuestInChain"], igq["next"]))
+        if following and following != qid:
+            rec["next"] = following
         for src, dst in (("exclusiveTo", "exclusiveWith"), ("breadcrumbForQuestId", "breadcrumbFor"),
-                         ("breadcrumbs", "breadcrumbs"), ("nextQuestInChain", "nextInChain"), ("parentQuest", "parent"),
+                         ("parentQuest", "parent"),
                          ("childQuests", "children"), ("inGroupWith", "groupWith"),
                          ("availableUntilCompleted", "unavailableAfter"), ("availableStartingWith", "availableWith"),
                          ("disabledByQuest", "disabledBy"), ("requiredSkill", "requiresSkill"),
@@ -947,10 +1073,25 @@ class Builder:
                          ("questFlags", "questFlags"), ("specialFlags", "specialFlags")):
             if qq and qq.get(src):
                 rec[dst] = qq[src]
+        if igq.get("providesItem"):
+            rec["providesItem"] = igq["providesItem"]
+            self.want_item(igq["providesItem"])
+        if "flags" in igq:
+            rec["questFlags"] = igq["flags"]
         if qid in self.quest_lines:
             rec["questLine"] = self.quest_lines[qid]
-        if qq and qq.get("xp"):
-            rec["xp"] = qq["xp"]
+        # XP: ours is worked out the way the client does it from what the server sent (QuestExport.py), or is
+        # what a turn-in paid, so it wins over Questie's, which predates Forever's changes.
+        ig_xp, questie_xp = igq.get("xp"), (qq.get("xp") if qq else None)
+        if ig_xp:
+            rec["xp"] = ig_xp
+            rec["xpFrom"] = {"server": "client formula", "turnin": "turn-in", "scan": "scan"}.get(igq.get("xpFrom"), "in game")
+            if igq.get("xpScaledFrom"):
+                rec["xpFrom"] += ", scaled up from level %d" % igq["xpScaledFrom"]
+            if questie_xp and questie_xp != ig_xp:
+                self.report["xpChanged"].append((qid, rec["name"], questie_xp, ig_xp, rec["xpFrom"], igq.get("xpMultiplier")))
+        elif questie_xp:
+            rec["xp"] = questie_xp
             if qq.get("xpLevel"):
                 rec["xpLevel"] = qq["xpLevel"]
         rewards = self.questie.reward_items.get(key)
@@ -959,8 +1100,8 @@ class Builder:
             for iid in rewards:
                 self.want_item(iid)
 
-        rec["zone"], rec["category"] = self.zone_of(qq, rec)
-        if not qq and rec.get("classes") and rec["category"] == "zone" and not (rec["zone"] or {}).get("map"):
+        rec["zone"], rec["category"] = self.zone_of(qq, rec, igq)
+        if not qq and rec.get("classes") and rec["category"] in ("zone", "other") and not (rec["zone"] or {}).get("map"):
             rec["category"] = "class"
         if oq:
             if oq.get("notes"):
@@ -971,12 +1112,80 @@ class Builder:
                 rec["guideConditions"] = oq["only"]
         if rx:
             rec["rxpGuides"] = sorted(rx["guides"])
-        rec["src"] = [s for s, have in (("questie", qq), ("fg", fgq), ("rxp", rx), ("ours", oq)) if have]
+        rec["src"] = [s for s, have in (("questie", qq), ("fg", fgq), ("rxp", rx), ("ours", oq), ("ingame", igq)) if have]
         rec["missing"] = self.missing(rec)
         return rec
 
-    def zone_of(self, qq, rec):
-        sort = (qq or {}).get("zoneOrSort")
+    def has_objectives(self, qid):
+        """True or False from the scan; None when the scan never answered for it."""
+        q = self.ig.quest(qid)
+        if not q.get("exists"):
+            return None
+        return any(o.get("type") or o.get("text") or o.get("count") for o in q.get("objectives", []))
+
+    def prereqs(self, qid, qq, fgq):
+        """What must be turned in before this quest, and what only leads here.
+
+        all          every one of these first
+        anyOf        at least one of these first
+        breadcrumbs  optional quests that send the player here; none is needed
+        maybe        the server offers this quest straight after one of these, which has no objectives: either a
+                     prerequisite or an optional breadcrumb, the data cannot say (about a quarter of such links
+                     in Classic are breadcrumbs)
+        src          where it came from: questie (Classic's chains), server (the quest cache's next-quest
+                     links, which confirm or add), foreverguide (its "one of" lists, from RestedXP's routes)
+
+        A link from a quest with objectives is a prerequisite: of the 137 Questie breadcrumbs on the server, one
+        has objectives. Quests the server does not have are left out (the report lists them)."""
+        out = {"all": [], "anyOf": [], "breadcrumbs": [], "maybe": []}
+        src = []
+        if qq:
+            out["all"] = list(qq.get("preQuestGroup") or [])
+            out["anyOf"] = list(qq.get("preQuestSingle") or [])
+            out["breadcrumbs"] = sorted(set(qq.get("breadcrumbs") or []) | set(self.breadcrumbs_to.get(qid, [])))
+            if any(out.values()):
+                src.append("questie")
+        known = set(out["all"]) | set(out["anyOf"]) | set(out["breadcrumbs"])
+        into = [a for a in self.server_into.get(qid, []) if a != qid]
+        if any(a in known for a in into):
+            src.append("server")
+        new = [a for a in into if a not in known]
+        if new:
+            if qq:
+                # Questie has the quest and no such link: Forever may have added it; not sure what it is.
+                out["maybe"] += new
+                self.report["serverLinkNew"].append((qid, new))
+            else:
+                strong = [a for a in new if self.has_objectives(a)]
+                out["maybe"] += [a for a in new if a not in strong]
+                if len(strong) == 1 and not out["all"] and not out["anyOf"]:
+                    out["all"] = strong
+                else:
+                    out["anyOf"] += strong
+            if "server" not in src:
+                src.append("server")
+        if not out["all"] and not out["anyOf"] and fgq.get("pre"):
+            out["anyOf"] = [p for p in fgq["pre"] if p not in known and p not in out["maybe"]]
+            if out["anyOf"]:
+                src.append("foreverguide")
+        result = {}
+        for k, ids in out.items():
+            kept = []
+            for p in ids:
+                if p == qid or p in kept:
+                    continue
+                if self.ig.missing(p):
+                    self.report["prereqGone"].append((qid, k, p))
+                    continue
+                kept.append(p)
+            if kept:
+                result[k] = sorted(kept)
+        if result:
+            result["src"] = src
+        return result
+
+    def zone_of(self, qq, rec, igq=None):
+        sort = (igq or {}).get("sort") or (qq or {}).get("zoneOrSort")
         category = "zone"
         zone = None
         if sort and sort < 0:
@@ -984,10 +1193,10 @@ class Builder:
             category = ("class" if name.lower() in CLASS_BY_NAME else
                         "event" if any(e.lower() in name.lower() for e in EVENT_SORTS) else "profession" if name in (
                             "Alchemy", "Blacksmithing", "Cooking", "Enchanting", "Engineering", "First Aid", "Fishing",
-                            "Herbalism", "Leatherworking", "Mining", "Skinning", "Tailoring") else "other")
+                            "Herbalism", "Leatherworking", "Mining", "Skinning", "Tailoring", "Camping") else "other")
             zone = {"sort": name}
         elif sort:
-            ui_map = self.questie.ui_map(sort)
+            ui_map = self.questie.ui_map(sort) or self.maps.map_of_area(sort)
             dungeon = str(sort) in self.questie.dungeons
             category = "dungeon" if dungeon else "zone"
             zone = {"map": ui_map, "name": self.questie.dungeons[str(sort)]["name"] if dungeon else self.maps.name(ui_map)} if ui_map or dungeon else None
@@ -1054,7 +1263,8 @@ class Builder:
     def build_npc(self, nid, quest_ids):
         key = str(nid)
         qn, on, fn = self.questie.npcs.get(key, {}), self.ours.npcs.get(key, {}), self.fg.npcs.get(key, {})
-        rec = {"name": qn.get("name") or on.get("name") or fn.get("n")}
+        ign = self.ig.npcs.get(key, {})
+        rec = {"name": ign.get("name") or qn.get("name") or on.get("name") or fn.get("n")}
         for k in ("subName", "minLevel", "maxLevel", "rank", "roles", "friendlyToFaction", "factionID", "waypoints"):
             if qn.get(k):
                 rec[k] = qn[k]
@@ -1077,6 +1287,12 @@ class Builder:
     def build_object(self, oid):
         o = self.questie.objects.get(str(oid), {})
         rec = {"name": o.get("name"), "positions": self.questie.spawns(o)}
+        igo = self.ig.objects.get(str(oid))
+        if igo:
+            rec["name"] = igo.get("name") or rec["name"]
+            positions = list(igo.get("positions", []))
+            add_points(positions, rec["positions"])
+            rec["positions"] = positions
         fo = self.fg.objects.get(str(oid))
         if fo:
             rec["name"] = rec["name"] or fo.get("n")
@@ -1206,8 +1422,8 @@ class Builder:
         q = self.quests
         lines = ["# Horde 1-%d questing database: coverage report" % MAX_LEVEL, "",
                  "Generated by `db/tools/build_horde.py`. Every quest a Horde character can pick up by level %d, "
-                 "from Questie (Classic), ForeverGuide (Forever scan and recordings), RestedXP's Forever guides and "
-                 "our own guides. Positions are Forever map coordinates." % MAX_LEVEL, "",
+                 "from Questie (Classic), ForeverGuide (Forever scan and recordings), RestedXP's Forever guides, "
+                 "our own guides and what we saw in game. Positions are Forever map coordinates." % MAX_LEVEL, "",
                  "## Sources", ""]
         with open(os.path.join(SOURCES, "wago", "forever", "BUILD")) as f:
             lines.append("- Forever client tables: build %s (wago.tools)" % f.read().strip())
@@ -1215,6 +1431,13 @@ class Builder:
         lines.append("- ForeverGuide: `db/sources/ForeverGuide` (`data-src/forever.json`)")
         lines.append("- RestedXP Forever guides and flight times: `AddOns/RXPGuides`")
         lines.append("- Ours: `db/quests.json`, `db/npcs.json`")
+        if self.ig.quests:
+            lines.append("- In game: `db/ingame/` (NuuExperiments quest-scan and quest-record), %d quests, %d NPCs" % (
+                sum(1 for x in self.ig.quests.values() if x.get("exists") is not False), len(self.ig.npcs)))
+            if self.ig.source.get("cacheWritten"):
+                lines.append("- XP: the client's quest cache, build %s, written %s (%d quests); a server change since "
+                             "shows only after the cache is cleared and the scan run again" % (
+                                 self.ig.source["cacheBuild"], self.ig.source["cacheWritten"], self.ig.source["cacheQuests"]))
         lines += ["", "## Totals", ""]
         cats = Counter(x["category"] for x in q.values())
         lines.append("| Category | Quests |")
@@ -1243,7 +1466,7 @@ class Builder:
             lines.append("| %s | %d | %d | %d | %d | %d | %d | %d | %d | %d |" % (
                 name, len(xs), has("level"), has("xp"), sum(1 for x in xs if not {"starts", "startPosition"} & set(x["missing"])),
                 sum(1 for x in xs if not {"ends", "endPosition"} & set(x["missing"])), has("objectivePosition"), has("count"),
-                sum(1 for x in xs if x.get("requires")), sum(1 for x in xs if "questie" not in x["src"])))
+                sum(1 for x in xs if x.get("prereqs")), sum(1 for x in xs if "questie" not in x["src"])))
 
         miss = Counter(m for x in q.values() if x["category"] != "event" for m in x["missing"])
         lines += ["", "## Gaps", "", "| Missing | Quests |", "| --- | ---: |"]
@@ -1261,10 +1484,52 @@ class Builder:
         lines.append("- Mulgore's map bounds changed in Forever. %d of our Mulgore points used the Classic bounds "
                      "(copied from RestedXP's comments) and were converted; %d already matched Forever and were kept. "
                      "Our NuuRoad Mulgore guides carry the unconverted points." % (len(self.ours.converted), len(self.ours.kept)))
-        if self.report["levelChanged"]:
-            lines += ["", "Quest levels that differ between Forever's scan and Classic (%d):" % len(self.report["levelChanged"]), ""]
-            for qid, name, classic, forever in sorted(self.report["levelChanged"]):
+        level_changed = sorted(set(self.report["levelChanged"]))   # every quest is built twice
+        if level_changed:
+            lines += ["", "Quest levels that differ between Forever's scan and Classic (%d):" % len(level_changed), ""]
+            for qid, name, classic, forever in level_changed:
                 lines.append("- %d %s: Classic %s, Forever %s" % (qid, name, classic, forever))
+        from collections import Counter as _C
+        with_pre = [x for x in q.values() if x.get("prereqs")]
+        lines += ["", "Prerequisites (`prereqs`): %d quests have some; by source: %s. %d have a `maybe` (needed or an "
+                  "optional breadcrumb, unknown); %d Forever-only quests have none at all (a chain's first quest, or "
+                  "not in the quest cache yet)." % (
+                      len(with_pre), ", ".join("%s %d" % kv for kv in _C(s for x in with_pre for s in x["prereqs"]["src"]).most_common()),
+                      sum(1 for x in with_pre if x["prereqs"].get("maybe")),
+                      sum(1 for x in q.values() if "questie" not in x["src"] and not x.get("prereqs")))]
+        gone = sorted(set(self.report["prereqGone"]))
+        if gone:
+            lines += ["", "Prerequisites left out because the server does not have them (%d):" % len(gone), ""]
+            for qid, kind, p in gone:
+                if qid in q:
+                    lines.append("- %d %s: %s %d" % (qid, q[qid]["name"], kind, p))
+        new_links = sorted({(qid, tuple(n)) for qid, n in self.report["serverLinkNew"]})
+        if new_links:
+            lines += ["", "Server chain links Questie does not have, kept as `maybe` (%d):" % len(new_links), ""]
+            for qid, n in new_links:
+                if qid in q:
+                    lines.append("- %d %s, after %s" % (qid, q[qid]["name"], ", ".join(str(x) for x in n)))
+        next_changed = sorted(set(self.report["nextChanged"]))
+        if next_changed:
+            lines += ["", "Next quest in the chain that differs from Questie's (%d); the server's is used:" % len(next_changed), ""]
+            for qid, name, classic, forever in next_changed:
+                lines.append("- %d %s: Questie %d, server %d" % (qid, name, classic, forever))
+
+        xp_changed = sorted(set(self.report["xpChanged"]))
+        if xp_changed:
+            rounding = [x for x in xp_changed if abs(x[3] - x[2]) <= 25]
+            real = [x for x in xp_changed if abs(x[3] - x[2]) > 25]
+            lines += ["", "Quest XP that differs from Questie's (%d); ours is used. %d differ by the client's rounding only "
+                      "(Questie keeps the table's 910 where the client pays 900); the rest:" % (len(xp_changed), len(rounding)), ""]
+            for qid, name, classic, forever, source, multiplier in real:
+                lines.append("- %d %s: Questie %d, ours %d (%s%s)" % (qid, name, classic, forever, source,
+                                                                    ", multiplier %g" % multiplier if multiplier else ""))
+        changed = sorted(set(self.report["countChanged"]))   # every quest is built twice
+        if changed:
+            lines += ["", "Objective counts the client gives differently from the other sources (%d); the client's is used:" %
+                      len(changed), ""]
+            for qid, index, other, client in changed:
+                lines.append("- %d %s, objective %d: %s, client %s" % (qid, q.get(qid, {}).get("name", "?"), index, other, client))
         if self.report["npcMoved"]:
             lines += ["", "NPCs seen on Forever more than 3 map units from every Classic spawn (%d); the Forever position is used:" %
                       len(self.report["npcMoved"]), ""]
@@ -1274,6 +1539,8 @@ class Builder:
         lines += ["", "## Left out", ""]
         lines.append("- Blacklisted by Questie on Forever: %d" % len(self.report["blacklisted"]))
         lines.append("- Questie quests the Forever client does not have: %d" % len(self.report["notInClient"]))
+        if self.ig.quests:
+            lines.append("- Questie quests the Forever server says it does not have (quest-scan): %d" % len(self.report["serverMissing"]))
         lines.append("- Forever test or disabled quests: %d" % len(self.report["junk"]))
         why = Counter(w for _, _, w, _ in self.report["outOfScope"])
         lines.append("- Outside the Horde 1-%d zones and dungeons: %d (%s)" % (

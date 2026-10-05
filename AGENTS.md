@@ -45,6 +45,12 @@ the results are written up in `docs/api-compatibility.md`, retire the experiment
 move the file to `Experiments/Retired/`. Experiments do not use NuuKit (only that window does) and NuuExperiments is
 never built.
 
+Two experiments collect quest data instead and are never retired: `quest-scan` (by hand: every quest the server
+knows, with its objectives) and `quest-record` (every login: givers, turn-ins, XP and where objectives went up; paused for now, its TOC
+line commented out).
+`python3 NuuExperiments/Tools/QuestExport.py` turns their saved data into `db/ingame/`, which
+`db/tools/build_horde.py` trusts first (`NuuExperiments/README.md`, "Quest data").
+
 ## UI kit
 
 - The kit's UI (widgets, themes, window chrome) follows `docs/ui-kit/PLAN.md`; the mockups are linked from

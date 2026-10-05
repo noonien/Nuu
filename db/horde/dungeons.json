@@ -1,6 +1,6 @@
 {
 "209": {"name":"Shadowfang Keep","quests":[1013,1014,1098],"entrances":[{"map":1421,"x":44.8,"y":67.8}],"questLevels":[25,27]},
 "718": {"name":"Wailing Caverns","quests":[914,959,962,1486,1487,1489,1490,1491,6981],"entrances":[{"map":1413,"x":46,"y":36.5}],"questLevels":[16,26]},
-"719": {"name":"Blackfathom Deeps","quests":[1198,6561,6562,6563,6564,6565,6921,6922],"entrances":[{"map":1440,"x":14.5,"y":14.2}],"questLevels":[22,30]},
+"719": {"name":"Blackfathom Deeps","quests":[1198,6561,6562,6563,6564,6565,6921],"entrances":[{"map":1440,"x":14.5,"y":14.2}],"questLevels":[22,27]},
 "2437": {"name":"Ragefire Chasm","quests":[5722,5723,5724,5725,5728,5761],"entrances":[{"map":1454,"x":52.6,"y":49}],"questLevels":[15,16]}
 }
