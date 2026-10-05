@@ -413,6 +413,7 @@ UI.Define("Disclosure", UI.ClickableType({
     stretch = false,
     Build = function(w)
         buttonDef.Build(w)
+        w.kitOwnLabel = true
         w.kitTextPad, w.kitTextReserve = 34, 34
         w.foldedGlyph = UI.NewGlyph(w, "next", 8, 1.6)
         w.openGlyph = UI.NewGlyph(w, "down", 8, 1.6)

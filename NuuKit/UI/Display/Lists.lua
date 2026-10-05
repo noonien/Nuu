@@ -133,6 +133,8 @@ local function paintRow(w, row, t)
         wash = t.accentWash
     elseif row.hover and not row.kitDisabled then
         wash = UI.Faded(t, t.text, 0.06)
+    elseif row.kitTint then
+        wash = UI.Colour(t, row.kitTint)
     end
     UI.TexColor(row.bg, wash)
     UI.TexColor(row.bar, selected and t.accent or nil)
@@ -310,7 +312,16 @@ UI.Define("ListRow", {
         row:HookScript("OnMouseDown", take)
     end,
     Init = function(row, spec) UI.SetStack(row, "row", spec) end,
-    methods = { SetDisabled = rowSetDisabled },
+    methods = {
+        SetDisabled = rowSetDisabled,
+        -- A wash under the row at rest (a token or a colour, nil for none):
+        -- a header row among plain ones. Set it in `draw` for every item.
+        SetTint = function(row, tint)
+            if row.kitTint == tint then return end
+            row.kitTint = tint
+            if row.kitList then paintRow(row.kitList, row, row.ui.tokens) end
+        end,
+    },
 })
 
 -- Its place in the list: one row height below the last, the list's width

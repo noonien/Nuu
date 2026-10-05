@@ -109,3 +109,39 @@ if UI.sharedMethods then
     body:Remove(late)
 end
 UI.types.SmokeLateType = nil
+
+-- Icons, chips, and a notice's action as a button.
+do
+    local _, col = testWindow(ui, 600, 400)
+    local icon = col:Icon{ "Interface/GossipFrame/AvailableQuestIcon", fallback = "!", color = "quest", size = 18 }
+    layout()
+    assertTrue(icon.kitPW == 18 and icon.texture:IsShown(), "an icon at its size")
+    icon:SetIcon(nil, "?")
+    assertTrue(not icon.texture:IsShown() and icon.fallback:GetText() == "?", "the fallback where no texture loads")
+    local removed = 0
+    local chip = col:Chip{ "Executor Zygand", initials = "EZ", hint = "Brill 61.9, 52.3", onRemove = function() removed = removed + 1 end }
+    local bare = col:Chip{ "Vital Intelligence", tone = "quest" }
+    layout()
+    assertTrue(chip.badge:IsShown() and chip.initials:GetText() == "EZ" and chip.hint:IsShown(), "initials and a hint")
+    assertTrue(chip.kitPW > bare.kitPW and chip.close:IsShown() and not bare.close:IsShown(), "the mark only with onRemove")
+    chip.close:Click()
+    assertTrue(removed == 1, "the mark takes it out")
+    local withIcon = col:Chip{ "Vital Intelligence", icon = "Interface/GossipFrame/ActiveQuestIcon", tone = "quest" }
+    layout()
+    assertTrue(withIcon.icon:IsShown() and not withIcon.badge:IsShown(), "an icon instead of initials")
+    col:Remove(chip)
+    local pooled = col:Chip{ "Plain" }
+    assertTrue(pooled == chip and not pooled.hint:IsShown() and not pooled.badge:IsShown() and not pooled.close:IsShown(),
+        "a pooled chip keeps nothing")
+    local fixed = 0
+    local notice = col:Notice{ "Nothing in this guide accepts this quest.", tone = "warning",
+        action = { caption = "Make it optional", button = true, onClick = function() fixed = fixed + 1 end } }
+    layout()
+    assertTrue(notice.actionButton and notice.actionButton:IsShown() and not (notice.action and notice.action:IsShown()),
+        "the action as a button")
+    notice.actionButton:Click()
+    assertTrue(fixed == 1, "which acts")
+    col:Remove(notice)
+    local linked = col:Notice{ "Plain", action = { caption = "Undo", onClick = function() end } }
+    assertTrue(linked == notice and not linked.actionButton:IsShown() and linked.action:IsShown(), "a pooled notice takes the link again")
+end

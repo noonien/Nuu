@@ -114,6 +114,18 @@ them with methods copied instead of shared. `Tests/Bench/Run.lua` (the bench scr
   `slot:FadePicture(alpha)` fades only the icon and that model.
 - `slot:SetCount(text, tone)` writes a short note in a tone, with no shaded strip.
 
+**Added for NuuRoad's guide editor** (2026-10-05):
+
+- `Button{ icon, iconColor, glyph, iconSize, iconAbove, chevron }`: an icon (a texture, in its own colours unless
+  tinted) or a line glyph before the caption, the icon over the caption on a tall button, and a chevron after it for
+  a button that opens a menu; `button:SetIcon(path)`. A type built on the button that places its caption itself (a
+  select's box, a disclosure) sets `kitOwnLabel` and is left alone.
+- Glyphs `undo`, `redo` and `play`.
+- `Icon{ path, fallback, color, size }`: a client texture, with a character where it does not load.
+- `Chip{ caption, tone, icon or initials, hint, onRemove }`: what a field holds, on one plate, with its mark.
+- `Notice{ action = { caption, onClick, button = true } }`: the action as a button at the right of the text.
+- `row:SetTint(token)` on a list's row: a wash at rest, for a header row among plain ones.
+
 **Added for the planner** (2026-09-29, while moving the planner to NuuProfessions on the kit):
 
 - `List` and `Table` take `tooltip(item, row)`: a row's tooltip, answered with a filler and `{ links, anchor }`.

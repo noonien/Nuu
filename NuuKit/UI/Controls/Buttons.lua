@@ -211,13 +211,131 @@ end
 
 local function getCaption(self) return self.kitCaption end
 
+-- A button's own mark beside its caption: an icon (a texture, in its own
+-- colours or tinted), or a line glyph; and a chevron after the caption for
+-- a button that opens a menu. With `iconAbove` the icon sits over the
+-- caption, for a tall button. Placed whenever the size or caption changes.
+local ICON_GAP, CHEVRON = 6, 8
+
+local function markWidth(w)
+    if w.kitOwnLabel then return 0 end
+    if w.kitIconAbove then return 0 end
+    if w.icon and w.icon:IsShown() then return w.kitIconSize + ICON_GAP end
+    if w.markGlyph then return w.kitIconSize + ICON_GAP end
+    return 0
+end
+
+-- `kitOwnLabel`: a type built on the button that places its caption itself
+-- (a select's box, a disclosure) is left alone.
+local function placeContent(w)
+    -- A plain button keeps the centred caption its Build gave it: no calls.
+    if w.kitOwnLabel or not w.kitMarked then return end
+    local label = w.label
+    local width = w.kitPW or w:GetWidth() or 0
+    local hasIcon = w.icon and w.icon:IsShown()
+    if w.kitIconAbove and (hasIcon or w.markGlyph) then
+        local size = w.kitIconSize
+        local textHeight = math.ceil(label:GetStringHeight() or 12)
+        local total = size + 3 + textHeight
+        local top = UI.Snap(w, ((w.kitPH or w:GetHeight() or total) - total) / 2)
+        if hasIcon then
+            w.icon:ClearAllPoints()
+            w.icon:SetPoint("TOP", w, "TOP", 0, -top)
+        end
+        if w.markGlyph then w.markGlyph:Offset(0, (w.kitPH or 0) / 2 - top - size / 2) end
+        label:ClearAllPoints()
+        label:SetPoint("TOP", w, "TOP", 0, -(top + size + 3))
+        return
+    end
+    local mark, chevron = markWidth(w), w.chevron and (ICON_GAP + CHEVRON) or 0
+    local total = mark + math.ceil(UI.StringWidth(label)) + chevron
+    local x = UI.Snap(w, math.max(4, (width - total) / 2))
+    if hasIcon then
+        w.icon:ClearAllPoints()
+        w.icon:SetPoint("LEFT", w, "LEFT", x, 0)
+    end
+    if w.markGlyph then w.markGlyph:Offset(x + w.kitIconSize / 2 - width / 2, 0) end
+    label:ClearAllPoints()
+    if mark == 0 and chevron == 0 then
+        label:SetPoint("CENTER", w, "CENTER", 0, 0)
+    else
+        label:SetPoint("LEFT", w, "LEFT", x + mark, 0)
+    end
+    if w.chevron then w.chevron:Offset(x + total - CHEVRON / 2 - width / 2, 0) end
+end
+
+-- The spec's mark and chevron: made the first time a spec asks, shown or
+-- hidden on every Init.
+local function initMarks(w, spec)
+    if w.kitOwnLabel then return end
+    w.kitIconSize = spec.iconSize or 14
+    w.kitIconAbove = spec.iconAbove and true or false
+    w.kitIconColor = spec.iconColor
+    local wasMarked = w.kitMarked
+    if spec.icon then
+        if not w.icon then w.icon = w:CreateTexture(nil, "ARTWORK") end
+        w.icon:SetSize(w.kitIconSize, w.kitIconSize)
+        local loaded = w.icon:SetTexture(spec.icon) ~= false and w.icon:GetTexture() ~= nil
+        local cropped = type(spec.icon) == "number" or tostring(spec.icon):lower():gsub("\\", "/"):find("^interface/icons/") ~= nil
+        w.icon:SetTexCoord(cropped and 0.08 or 0, cropped and 0.92 or 1, cropped and 0.08 or 0, cropped and 0.92 or 1)
+        w.icon:SetShown(loaded)
+    elseif w.icon and w.kitMarked then
+        w.icon:Hide()
+    end
+    if w.kitGlyphSet and w.kitMarked then for _, glyph in pairs(w.kitGlyphSet) do glyph:SetShown(false) end end
+    w.markGlyph, w.chevron = nil, nil
+    local function glyph(kind, size)
+        w.kitGlyphSet = w.kitGlyphSet or {}
+        local key = kind .. ":" .. size
+        local made = w.kitGlyphSet[key]
+        if not made then
+            made = UI.NewGlyph(w, kind, size, 1.6)
+            w.kitGlyphSet[key] = made
+        end
+        made:Offset(0, 0)
+        made:SetShown(true)
+        return made
+    end
+    if spec.glyph and not (w.icon and w.icon:IsShown()) then w.markGlyph = glyph(spec.glyph, w.kitIconSize) end
+    if spec.chevron then w.chevron = glyph("down", CHEVRON) end
+    local hasIcon = w.icon and w.icon:IsShown()
+    w.kitMarked = (hasIcon or w.markGlyph or w.chevron) and true or false
+    if not w.kitMarked then
+        -- Plain, as most buttons are: the caption centred once more only
+        -- when the last use had marks.
+        if wasMarked then
+            w.label:ClearAllPoints()
+            w.label:SetPoint("CENTER", w, "CENTER", 0, 0)
+        end
+        w.kitPlainParts = w.kitPlainParts or { w.label }
+        w.kitPressParts = w.kitPlainParts
+        w.kitTextReserve = nil
+        return
+    end
+    local parts = { w.label }
+    if hasIcon then parts[#parts + 1] = w.icon end
+    if w.markGlyph then parts[#parts + 1] = w.markGlyph end
+    if w.chevron then parts[#parts + 1] = w.chevron end
+    w.kitPressParts = parts
+    w.kitTextReserve = 8 + markWidth(w) + (w.chevron and (ICON_GAP + CHEVRON) or 0)
+end
+
 local buttonMethods = {
     SetText = function(self, text)
         if not setCaption(self, text) then return end
         clip(self)
+        placeContent(self)
         self:Changed()
     end,
     GetText = getCaption,
+    -- Another icon (a texture), in place of the one the spec gave.
+    SetIcon = function(self, icon)
+        if not self.icon then return end
+        local loaded = icon ~= nil and self.icon:SetTexture(icon) ~= false and self.icon:GetTexture() ~= nil
+        self.icon:SetShown(loaded and true or false)
+        placeContent(self)
+        self:PaintState(self.ui.tokens)
+    end,
     SetActive = function(self, active)
         self.kitActive = active and true or false
         self:PaintState(self.ui.tokens)
@@ -229,10 +347,21 @@ local buttonMethods = {
     end,
     Measure = function(self)
         local width = self.kitFixedWidth
-        if not width then width = math.max(BUTTON_HEIGHT, math.ceil(UI.StringWidth(self.label) + (self.kitTextPad or 20))) end
-        return width, self.kitHeight
+        local extra = markWidth(self) + (self.chevron and (ICON_GAP + CHEVRON) or 0)
+        if not width then width = math.max(BUTTON_HEIGHT, math.ceil(UI.StringWidth(self.label) + (self.kitTextPad or 20) + extra)) end
+        local height = self.kitHeight
+        if self.kitIconAbove and ((self.icon and self.icon:IsShown()) or self.markGlyph) then
+            height = math.max(height, self.kitIconSize + 3 + math.ceil(self.label:GetStringHeight() or 12) + 12)
+            if not self.kitFixedWidth then
+                width = math.max(width - extra, math.ceil(UI.StringWidth(self.label)) + 16, self.kitIconSize + 16)
+            end
+        end
+        return width, height
     end,
-    Sized = function(self) clip(self) end,
+    Sized = function(self)
+        clip(self)
+        placeContent(self)
+    end,
     Paint = function(self, t)
         UI.ApplyStyle(self.label, self.kitTextStyle or "body", t, nil, true)
         self:PaintState(t)
@@ -259,6 +388,12 @@ local buttonMethods = {
         if not drew then self.plate:Flat(fill, edge) end
         UI.TexColor(self.shine, WHITE, drew and state == "hover" and 0.08 or 0)
         UI.TextColor(self.label, ink)
+        if self.markGlyph then self.markGlyph:SetColor(UI.Colour(t, self.kitIconColor) or ink) end
+        if self.chevron then self.chevron:SetColor(state == "disabled" and ink or t.muted) end
+        if self.icon and self.icon:IsShown() then
+            local tint = self.kitIconColor and UI.Colour(t, self.kitIconColor) or WHITE
+            self.icon:SetVertexColor(tint[1], tint[2], tint[3], state == "disabled" and 0.45 or 1)
+        end
         if self.holdFill and self.kitHold then
             UI.TexColor(self.holdFill, UI.Faded(t, UI.Tone(t, tone) or t.accentRaw, 0.35))
         end
@@ -269,7 +404,11 @@ local buttonMethods = {
 -- quest, or a colour), style (solid, soft, outline, ghost; neutral buttons
 -- are "plate"), width (else as wide as the caption), height, tooltip,
 -- onClick(button), disabled (or a reason string), active, hold (seconds to
--- hold instead of a click), textStyle, stretch.
+-- hold instead of a click), textStyle, stretch; icon (a texture before the
+-- caption, in its own colours unless iconColor tints it), glyph (a line
+-- glyph there instead: "undo", "play"), iconSize (14), iconAbove (the icon
+-- over the caption, for a tall button), chevron (a down mark after the
+-- caption, for a button that opens a menu).
 local function buildButton(w)
     w.plate = UI.NewPlate(w)
     w.shine = w:CreateTexture(nil, "BORDER", nil, 7)
@@ -294,8 +433,10 @@ local function initButton(w, spec)
     end
     if w.holdFill then w.holdFill:Hide() end
     w.kitCaption = nil
+    initMarks(w, spec)
     UI.InitClickable(w, spec)
     w:SetText(spec[1])
+    placeContent(w)
 end
 
 UI.Define("Button", clickableType({

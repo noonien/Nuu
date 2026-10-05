@@ -686,6 +686,7 @@ local function buildSelect(w)
     w.label:SetPoint("TOPLEFT", w, "TOPLEFT", 0, 0)
     local button = UI.Make(ui, "Button", w, { "", width = SELECT_WIDTH, height = SELECT_HEIGHT })
     button.kitSelect = w
+    button.kitOwnLabel = true
     button.label:ClearAllPoints()
     button.label:SetPoint("LEFT", button, "LEFT", 10, 0)
     button.label:SetPoint("RIGHT", button, "RIGHT", -24, 0)

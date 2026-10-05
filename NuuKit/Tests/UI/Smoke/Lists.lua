@@ -639,3 +639,15 @@ assertTrue(pager.label:GetText() == "Page 1 of 3", "a pager from the pool: " .. 
 assertTrue(figs:Get("a") == 1 and figs:Get("c") == nil and #figs.kitFigures == 2 and figs.cells[2]:IsShown(), "figures from the pool")
 assertTrue(panes.left and panes.one == nil and panes.three == nil and #panes.kitChildren == 2, "panes from the pool, no old keys")
 assertTrue(#area.content.kitChildren == 1 and area.content.kitChildren[1]:GetText() == "Round 1", "a scroll area holds only this round's")
+
+-- A tinted row: a wash at rest, gone when the item draws without one.
+do
+    local _, col = testWindow(ui, 400, 300)
+    local tinted = col:List{ rows = 3, draw = function(row, item)
+        row:SetTint(item == "Brill" and "band" or nil)
+    end }
+    tinted:SetItems({ "Brill", "Accept", "Kill" })
+    layout()
+    local first, second = tinted.rows[1], tinted.rows[2]
+    assertTrue(first.kitTint == "band" and second.kitTint == nil, "the header row is tinted, the others not")
+end

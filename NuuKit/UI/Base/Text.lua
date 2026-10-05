@@ -253,6 +253,152 @@ UI.Define("Tag", {
     },
 })
 
+-- Icons ----------------------------------------------------------------------------------
+
+-- Loads `path` on `texture`, trimming an inventory icon's border as the game
+-- does. Answers whether it loaded.
+local function loadIcon(texture, path)
+    if path == nil then return false end
+    local loaded = texture:SetTexture(path) ~= false and texture:GetTexture() ~= nil
+    local cropped = type(path) == "number" or tostring(path):lower():gsub("\\", "/"):find("^interface/icons/") ~= nil
+    texture:SetTexCoord(cropped and 0.08 or 0, cropped and 0.92 or 1, cropped and 0.08 or 0, cropped and 0.92 or 1)
+    return loaded
+end
+UI.LoadIcon = loadIcon
+
+-- A small picture: a client texture in its own colours (or tinted), with a
+-- character in its place where the texture does not load. Spec: [1] the
+-- texture, fallback (the character), color (a token or colour: the tint,
+-- and the fallback's colour), size (16).
+UI.Define("Icon", {
+    stretch = false,
+    Build = function(w)
+        w.texture = w:CreateTexture(nil, "ARTWORK")
+        w.texture:SetAllPoints()
+        w.fallback = UI.NewText(w)
+        w.fallback:SetPoint("CENTER", w, "CENTER", 0, 0)
+    end,
+    Init = function(w, spec)
+        w.kitSize = spec.size or 16
+        w.kitColor = spec.color
+        w.kitFallback = spec.fallback or ""
+        w:SetSize(w.kitSize, w.kitSize)
+        w.kitLoaded = loadIcon(w.texture, spec[1])
+        w.texture:SetShown(w.kitLoaded)
+        w.fallback:SetText(w.kitLoaded and "" or w.kitFallback)
+    end,
+    methods = {
+        SetIcon = function(self, path, fallback)
+            self.kitFallback = fallback or self.kitFallback
+            self.kitLoaded = loadIcon(self.texture, path)
+            self.texture:SetShown(self.kitLoaded)
+            self.fallback:SetText(self.kitLoaded and "" or self.kitFallback)
+            self:Paint(self.ui.tokens)
+        end,
+        SetColor = function(self, color)
+            self.kitColor = color
+            self:Paint(self.ui.tokens)
+        end,
+        Measure = function(self) return self.kitSize, self.kitSize end,
+        Paint = function(self, t)
+            local tint = UI.Colour(t, self.kitColor)
+            if tint then self.texture:SetVertexColor(tint[1], tint[2], tint[3], 1) else self.texture:SetVertexColor(1, 1, 1, 1) end
+            UI.ApplyStyle(self.fallback, "fine", t, tint or t.text)
+        end,
+    },
+})
+
+-- Chips ------------------------------------------------------------------------------------
+
+local CHIP_HEIGHT, CHIP_PAD, CHIP_MARK, CHIP_GAP = 26, 7, 18, 6
+
+local function chipRemove(button)
+    local w = button.kitChip
+    if w and w.kitOnRemove then w.kitOnRemove(w) end
+end
+
+-- What a field holds, on one plate: an icon or initials, the caption, a
+-- muted hint, and a mark that takes it out. Spec: [1] the caption, tone
+-- (the plate's tint; accent by default), icon (a texture) or initials,
+-- hint, onRemove (shows the mark), tooltip.
+UI.Define("Chip", {
+    stretch = false, tooltip = true,
+    Build = function(w)
+        w.plate = UI.NewPlate(w)
+        w.icon = w:CreateTexture(nil, "ARTWORK")
+        w.icon:SetSize(CHIP_MARK, CHIP_MARK)
+        w.badge = w:CreateTexture(nil, "ARTWORK")
+        w.badge:SetSize(CHIP_MARK, CHIP_MARK)
+        w.initials = UI.NewText(w)
+        w.label = UI.NewText(w)
+        w.hint = UI.NewText(w)
+        w.close = UI.Make(w.ui, "GlyphButton", w, { "close", size = 18 })
+        w.close.kitChip = w
+        w.close:SetOnClick(chipRemove)
+    end,
+    Init = function(w, spec)
+        w.kitTone = spec.tone
+        w.kitOnRemove = spec.onRemove
+        w.label:SetText(spec[1] or "")
+        w.hint:SetText(spec.hint or "")
+        w.hint:SetShown(spec.hint ~= nil and spec.hint ~= "")
+        local hasIcon = spec.icon ~= nil and loadIcon(w.icon, spec.icon)
+        w.icon:SetShown(hasIcon and true or false)
+        local initials = not hasIcon and spec.initials or nil
+        w.initials:SetText(initials or "")
+        w.initials:SetShown(initials ~= nil)
+        w.badge:SetShown(initials ~= nil)
+        w.close:SetShown(spec.onRemove ~= nil)
+        w:SetHeight(CHIP_HEIGHT)
+    end,
+    methods = {
+        SetText = function(self, value)
+            self.label:SetText(value or "")
+            self:Changed()
+        end,
+        GetText = function(self) return self.label:GetText() end,
+        SetHint = function(self, value)
+            self.hint:SetText(value or "")
+            self.hint:SetShown(value ~= nil and value ~= "")
+            self:Changed()
+        end,
+        Measure = function(self)
+            local width = CHIP_PAD
+            if self.icon:IsShown() or self.badge:IsShown() then width = width + CHIP_MARK + CHIP_GAP end
+            width = width + math.ceil(UI.StringWidth(self.label))
+            if self.hint:IsShown() then width = width + CHIP_GAP + math.ceil(UI.StringWidth(self.hint)) end
+            width = width + (self.close:IsShown() and (4 + 18 + 3) or CHIP_PAD)
+            return width, CHIP_HEIGHT
+        end,
+        Sized = function(self)
+            local x = CHIP_PAD
+            for _, mark in ipairs({ self.icon, self.badge }) do
+                mark:ClearAllPoints()
+                mark:SetPoint("LEFT", self, "LEFT", x, 0)
+            end
+            self.initials:ClearAllPoints()
+            self.initials:SetPoint("CENTER", self.badge, "CENTER", 0, 0)
+            if self.icon:IsShown() or self.badge:IsShown() then x = x + CHIP_MARK + CHIP_GAP end
+            self.label:ClearAllPoints()
+            self.label:SetPoint("LEFT", self, "LEFT", x, 0)
+            x = x + math.ceil(UI.StringWidth(self.label)) + CHIP_GAP
+            self.hint:ClearAllPoints()
+            self.hint:SetPoint("LEFT", self, "LEFT", x, 0)
+            self.close:ClearAllPoints()
+            self.close:SetPoint("RIGHT", self, "RIGHT", -3, 0)
+        end,
+        Paint = function(self, t)
+            local base = UI.Tone(t, self.kitTone) or t.accent
+            self.plate:Flat(UI.Faded(t, base, 0.12), UI.Faded(t, base, 0.5))
+            UI.TexColor(self.badge, t.raised)
+            UI.ApplyStyle(self.initials, "fine", t, t.text)
+            UI.ApplyStyle(self.label, "body", t, t.text)
+            UI.ApplyStyle(self.hint, "fine", t, t.muted)
+            self:Changed()
+        end,
+    },
+})
+
 -- Notices --------------------------------------------------------------------------------
 
 local NOTICE_TONES = { info = "accent", warning = "warning", danger = "danger", success = "success" }
@@ -266,7 +412,8 @@ end
 
 -- A message in the flow of a window. Spec: [1] the text, tone (info,
 -- warning, danger, success), action { caption, onClick } for a link under
--- it, dismiss for a close mark, onDismiss.
+-- it (with `button = true`, a button at the right of the text instead),
+-- dismiss for a close mark, onDismiss.
 UI.Define("Notice", {
     wraps = true,
     Build = function(w)
@@ -291,7 +438,21 @@ UI.Define("Notice", {
         w.mark:SetText(NOTICE_MARK[w.kitKind])
         w.message:SetPoint("RIGHT", w, "RIGHT", w.kitDismiss and -28 or -10, 0)
         w.message:SetText(spec[1] or "")
-        if spec.action then
+        local inline = spec.action and spec.action.button
+        if inline then
+            if not w.actionButton then
+                w.actionButton = UI.Make(w.ui, "Button", w, { "", tone = "accent" })
+                w.actionButton:SetPoint("TOPRIGHT", w, "TOPRIGHT", w.kitDismiss and -28 or -8, -6)
+            end
+            w.actionButton:SetText(spec.action.caption or "")
+            w.actionButton:SetOnClick(spec.action.onClick)
+            UI.Fit(w.actionButton)
+            w.actionButton:Show()
+            w.message:SetPoint("RIGHT", w.actionButton, "LEFT", -10, 0)
+        elseif w.actionButton then
+            w.actionButton:Hide()
+        end
+        if spec.action and not inline then
             if not w.action then
                 w.action = UI.Make(w.ui, "Link", w, { "" })
                 w.action:SetPoint("TOPLEFT", w.message, "BOTTOMLEFT", 0, -4)
@@ -322,8 +483,10 @@ UI.Define("Notice", {
             self:Changed()
         end,
         Measure = function(self, width)
-            if width and width > 0 then self.message:SetWidth(width - 33 - (self.kitDismiss and 28 or 10)) end
+            local button = self.actionButton and self.actionButton:IsShown() and (self.actionButton:GetWidth() + 18) or 0
+            if width and width > 0 then self.message:SetWidth(width - 33 - (self.kitDismiss and 28 or 10) - button) end
             local height = 9 + (self.message:GetStringHeight() or 12) + 9
+            if button > 0 then height = math.max(height, 36) end
             if self.action and self.action:IsShown() then height = height + 4 + (self.action:GetHeight() or 14) end
             return 240, math.ceil(math.max(34, height))
         end,

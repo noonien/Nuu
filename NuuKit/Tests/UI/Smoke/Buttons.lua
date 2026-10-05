@@ -110,3 +110,33 @@ do
     assertTrue(#objects == count, "switching art themes again makes no textures: " .. (#objects - count) .. " new")
     ui:SetLook({})
 end
+
+-- Marks on a button: an icon or a line glyph before the caption, a chevron
+-- after it, and an icon over the caption on a tall button.
+do
+    local _, marks = testWindow(ui, 600, 300)
+    local line = marks:Row{ gap = 8 }
+    local plain = line:Button{ "Guide" }
+    local menu = line:Button{ "Guide", chevron = true }
+    local play = line:Button{ "Play from this step", glyph = "play" }
+    local undo = line:Button{ "Undo", glyph = "undo" }
+    local iconic = line:Button{ "Accept", icon = "Interface/GossipFrame/AvailableQuestIcon" }
+    layout()
+    assertTrue(menu.kitPW > plain.kitPW and menu.chevron, "a chevron takes room after the caption")
+    assertTrue(play.markGlyph and undo.markGlyph and not plain.markGlyph, "a glyph before the caption")
+    assertTrue(iconic.icon and iconic.icon:IsShown() and iconic.icon.texture == "Interface/GossipFrame/AvailableQuestIcon",
+        "an icon before the caption")
+    assertTrue(#iconic.kitPressParts == 2, "the press moves the icon with the caption")
+    local tall = marks:Button{ "Accept", icon = "Interface/GossipFrame/AvailableQuestIcon", iconAbove = true, iconSize = 18 }
+    layout()
+    assertTrue(tall.kitPH >= 18 + 3 + 12 + 12, "an icon over the caption makes the button taller: " .. tostring(tall.kitPH))
+    iconic:SetIcon("Interface/GossipFrame/ActiveQuestIcon")
+    assertTrue(iconic.icon.texture == "Interface/GossipFrame/ActiveQuestIcon", "SetIcon")
+    -- From the pool: none of it carried to a plain button.
+    marks:Remove(iconic)
+    marks:Remove(menu)
+    local again = marks:Button{ "Plain" }
+    local twice = marks:Button{ "Plain too" }
+    assertTrue(not (again.icon and again.icon:IsShown()) and not again.chevron and not twice.chevron and not twice.markGlyph,
+        "a pooled button keeps no mark")
+end
