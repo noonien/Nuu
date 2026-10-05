@@ -700,7 +700,8 @@ UI.Define("Rule", {
 -- States: loading, empty, error -------------------------------------------------------------
 
 -- Puts a stack's content aside for a message: "loading" (with a moving
--- ellipsis), "empty", or "error" (in the danger colour). `opts.action` is
+-- ellipsis), "empty", or "error" (in the danger colour). `opts.tone` is a
+-- colour token for the message instead ("warning"). `opts.action` is
 -- { caption, onClick } for a button under the message; `opts.height` the
 -- room it takes. `SetState(nil)` brings the content back.
 local function stateTick(overlay, elapsed)
@@ -714,7 +715,8 @@ local function stateTick(overlay, elapsed)
 end
 
 local function paintState(overlay, t)
-    UI.ApplyStyle(overlay.message, "body", t, overlay.kind == "error" and "danger" or (overlay.kind == "empty" and "text" or "muted"))
+    UI.ApplyStyle(overlay.message, "body", t,
+        overlay.tone or (overlay.kind == "error" and "danger" or (overlay.kind == "empty" and "text" or "muted")))
 end
 
 function Stack:SetState(kind, text, opts)
@@ -747,6 +749,7 @@ function Stack:SetState(kind, text, opts)
         inner.kitStateFrame = overlay
     end
     overlay.kind, overlay.text, overlay.clock, overlay.dots = kind, text or "", 0, 0
+    overlay.tone = opts.tone
     overlay.message:SetText(overlay.text)
     if opts.action then
         if not overlay.action then

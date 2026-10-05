@@ -86,6 +86,22 @@ assertTrue(not title:IsShown(), "a state hides the content")
 body:SetState(nil)
 layout()
 assertTrue(title:IsShown(), "the content comes back")
+-- A tone colours the message instead of its kind's colour.
+do
+    local painted, textColor = nil, UI.TextColor
+    local overlay = (body.kitInner or body).kitStateFrame
+    UI.TextColor = function(fontString, color)
+        if fontString == overlay.message then painted = color end
+        return textColor(fontString, color)
+    end
+    body:SetState("empty", "Prices are old", { tone = "warning" })
+    assertTrue(painted == UI.Colour(ui.tokens, "warning"), "a state in the warning colour")
+    body:SetState("empty", "Nothing here")
+    assertTrue(painted == UI.Colour(ui.tokens, "text"), "without a tone, its kind's colour again")
+    UI.TextColor = textColor
+    body:SetState(nil)
+    layout()
+end
 
 -- Looks repaint, and a new text size measures again.
 local height = title.kitPH
