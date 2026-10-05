@@ -3,7 +3,10 @@ local _, ns = ...
 -- `version` moves whenever the set of guides changes, so indexes built over
 -- the guides (QuestIndex) know when to rebuild.
 -- `session` holds guides built while playing: they run like any other guide but are never saved.
-local Repository = { builtIns = {}, session = {}, pendingID = "user:pending", version = 0 }
+-- `sources` keeps each packaged guide as written (format v1), which the
+-- editor copies; `user` holds the player's guides built for play, from the
+-- v1 values kept in NuuRoadDB.account.guides.
+local Repository = { builtIns = {}, session = {}, sources = {}, user = {}, pendingID = "user:pending", version = 0 }
 
 local function copy(value, seen)
     if type(value) ~= "table" then return value end
@@ -30,19 +33,51 @@ function Repository:Initialize()
         end
         if valid then
             self.builtIns[result.id] = result
+            self.sources[result.id] = source
         else
             ns:Print("Packaged guide '" .. tostring(id) .. "' was rejected: " .. table.concat(errors, "; "))
         end
     end
     ns.packagedGuides = nil
+    self:BuildUserGuides()
     local count = 0
     for _ in pairs(self.builtIns) do count = count + 1 end
     self.version = self.version + 1
     ns:Log("repository: " .. count .. " built-in guides loaded")
 end
 
+-- The player's guides, each built the way the editor builds it: a step
+-- that cannot be read is left out and the rest plays. A guide kept by an
+-- older editor (a runtime guide, not v1) plays as it is.
+function Repository:BuildUserGuides()
+    self.user = {}
+    local Draft = ns.modules.GuideDraft
+    for id, value in pairs(ns.db.account.guides or {}) do
+        if type(value) == "table" and value.kind == "guide" and Draft then
+            local built = Draft:Open(value).built
+            if built then self.user[id] = built else ns:Log("user guide '" .. tostring(id) .. "' has no step that can be read") end
+        elseif type(value) == "table" and type(value.nodes) == "table" then
+            self.user[id] = ns.modules.Schema:IndexNodes(value) or value
+        end
+    end
+end
+
 function Repository:Get(id)
-    return self.builtIns[id] or self.session[id] or ns.db.account.guides[id]
+    return self.builtIns[id] or self.session[id] or self.user[id]
+end
+
+-- The guide as written, in format v1, for the editor: a packaged guide's
+-- source or a guide of the player's. Nil for a session guide or one kept by
+-- an older editor.
+function Repository:Source(id)
+    if self.sources[id] then return self.sources[id] end
+    local value = ns.db.account.guides[id]
+    if type(value) == "table" and value.kind == "guide" then return value end
+    return nil
+end
+
+function Repository:IsUserGuide(id)
+    return ns.db.account.guides[id] ~= nil
 end
 
 function Repository:IsBuiltIn(id)
@@ -65,6 +100,7 @@ function Repository:SetSessionGuide(guide)
     if self.builtIns[result.id] then return nil, { "guide.id: packaged guide IDs are immutable" } end
     ns.modules.Schema:IndexNodes(result)
     self.session[result.id] = result
+    self.sources[result.id] = guide
     self.version = self.version + 1
     return result
 end
@@ -73,7 +109,7 @@ function Repository:List()
     local guides = {}
     for _, guide in pairs(self.builtIns) do table.insert(guides, guide) end
     for _, guide in pairs(self.session) do table.insert(guides, guide) end
-    for _, guide in pairs(ns.db.account.guides) do table.insert(guides, guide) end
+    for _, guide in pairs(self.user) do table.insert(guides, guide) end
     table.sort(guides, function(a, b) return a.meta.title < b.meta.title end)
     return guides
 end
@@ -92,51 +128,58 @@ local function now()
     return clock and clock() or 0
 end
 
-function Repository:SaveUserGuide(guide)
-    local valid, errors = ns.modules.Schema:Validate(guide)
-    if not valid then return false, errors end
-    if self.builtIns[guide.id] then return false, { "guide.id: packaged guide IDs are immutable" } end
-    if guide.id == self.pendingID then guide.id = allocateID() end
-    ns.modules.Schema:IndexNodes(guide)
-    local previous = ns.db.account.guides[guide.id]
-    -- Saving stamps the guide, which is what tells two copies apart and what
-    -- the saved resume step is checked against.
-    if previous then guide.updated = now() end
+-- Keeps a draft (Domain/GuideDraft.lua): its v1 value on the account, and
+-- its runtime guide for play. A draft of a packaged guide becomes a guide
+-- of the player's own here, with an ID of its own, on its first save.
+-- Answers the runtime guide that was played before (nil for a new guide)
+-- and the one to play now (nil when no step can be read yet, which keeps
+-- the old one playing).
+function Repository:SaveDraft(draft)
+    local guide = draft.guide
+    local previous = self:Get(draft.id)
+    if draft.copyOf or guide.id == self.pendingID or self.builtIns[guide.id] or self.session[guide.id] then
+        guide.id = allocateID()
+        if draft.copyOf then
+            guide.title = tostring(guide.title or "Guide") .. " (my copy)"
+            guide.author = "Player"
+            guide.tags = guide.tags or {}
+            table.insert(guide.tags, "personal")
+        end
+        draft.copyOf, draft.isNew = nil, nil
+        draft:Rebuild()
+    end
+    guide.updated = now()
+    draft.id = guide.id
     ns.db.account.guides[guide.id] = copy(guide)
-    -- Positional references have no identity across edits. A fresh scan places
-    -- the player again when the editor selects the newly saved guide.
-    local Progress = ns.modules.Progress
-    if Progress then Progress.session[guide.id] = nil end
+    local built = draft.built
+    if built then
+        built.id, built.updated = guide.id, guide.updated
+        self.user[guide.id] = built
+    end
+    self.version = self.version + 1
+    return previous, built or self.user[guide.id]
+end
+
+-- Takes one of the player's guides off the account.
+function Repository:DeleteUserGuide(id)
+    if not ns.db.account.guides[id] then return false end
+    ns.db.account.guides[id] = nil
+    self.user[id] = nil
     self.version = self.version + 1
     return true
 end
 
-function Repository:CreateUserGuide()
-    return {
-        schema = ns.modules.Schema.currentVersion,
-        id = self.pendingID,
-        updated = now(),
-        meta = { title = "Untitled guide", author = "Player", category = "Personal", tags = { "personal" } },
-        sections = { { id = "main", title = "Guide", nodeIndexes = { 1 } } },
-        nodes = {
-            { index = 1, kind = "action", title = "First step", body = "Describe what the player should do.", completion = { type = "manual" } },
-        },
-    }
-end
-
-function Repository:CloneToUserGuide(source)
-    local guide = copy(source)
-    guide.id = self.pendingID
-    guide.updated = now()
-    guide.meta.author = "Player"
-    guide.meta.title = "Copy of " .. source.meta.title
-    guide.meta.tags = guide.meta.tags or {}
-    table.insert(guide.meta.tags, "personal")
-    return guide
-end
-
-function Repository:CopyGuide(guide)
-    return copy(guide)
+-- A guide read from text (format v1), kept as a guide of the player's own
+-- under a new ID. Answers the runtime guide, or nil and what is wrong.
+function Repository:Import(value)
+    local Draft = ns.modules.GuideDraft
+    local draft = Draft:Open(value)
+    draft.guide.id = self.pendingID
+    if not draft.built then
+        return nil, draft.guideProblems[1] or "No step of it can be read."
+    end
+    local _, built = self:SaveDraft(draft)
+    return built, nil, draft
 end
 
 ns:RegisterModule("GuideRepository", Repository)

@@ -403,7 +403,7 @@ chooses to rewrite the guide.
 - Selecting two points offers connect, disconnect, and one-way (from the first selected to the second).
 - Each point has an entrance / exit / inside toggle, an optional label, and an optional ID.
 - A step's location field offers the guide's named points as well as coordinates, and a `near` point.
-- Deleting a point removes its connections and renumbers the others, the way `GuideEditing` remaps step edges.
+- Deleting a point removes its connections and renumbers the others, the way the editor's draft (`Domain/GuideDraft.lua`) keeps what points at a step.
 - The place is drawn on the world map while the panel is open, with its points, connections (one-way ones with
   arrowheads), IDs, labels and kinds, so the author can see and fix a bad point.
 - Validation, reported at load like a bad `goto` label:

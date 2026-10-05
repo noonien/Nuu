@@ -76,7 +76,8 @@
 -- Every step has a `type`; the fields after it are that type's.
 --
 --   note          note
---   finish        note
+--   finish        note; next, the guide to go on with (its ID, or a list of
+--                 IDs: the first the player has and may follow is offered)
 --   travel        to (shown), and zone (a map), area, or instance (a dungeon's
 --                 instance ID, GetInstanceInfo) to finish on entering it
 --                 instead of on arriving. With `quest = { id, n }`, the
@@ -317,7 +318,6 @@
 --
 -- STILL TO DO
 --
---   * Export: the runtime guide (and the editor's) back into this value.
 --   * `show` hides a step's row and number, and brings it back on
 --     SKILL_LINES_CHANGED or an Options change; today it passes the step over
 --     when reached, and a profession learned later does not bring it back.

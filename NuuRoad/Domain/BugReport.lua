@@ -352,13 +352,19 @@ end)
 
 section("editor", "Editor", function()
     local Editor = modules().Editor
-    local working = Editor and Editor.working
-    if not working then return { "Nothing is open in the editor." } end
-    local lines = { string.format("Editing %s (%s), %d steps, step %s selected", quote(working.meta and working.meta.title or "?"),
-        tostring(working.id), #(working.nodes or {}), tostring(Editor.stepIndex)) }
-    local node = working.nodes and working.nodes[Editor.stepIndex]
-    if node then table.insert(lines, "Selected: " .. inline(node)) end
-    if working.places then table.insert(lines, #working.places .. " places") end
+    local draft = Editor and Editor.draft
+    if not draft then return { "Nothing is open in the editor." } end
+    local guide = draft.guide
+    local entry = Editor.step and draft:EntryOf(Editor.step)
+    local lines = { string.format("Editing %s (%s), %d steps, step %s selected, %d problems%s",
+        quote(guide.title or "?"), tostring(guide.id), draft:Count(), tostring(entry and entry.position),
+        draft:ProblemCount(), draft.copyOf and (", copy of " .. tostring(draft.copyOf)) or "") }
+    if Editor.step then table.insert(lines, "Selected: " .. inline(Editor.step)) end
+    for _, problem in ipairs(Editor.step and draft:ProblemsOf(Editor.step) or {}) do
+        table.insert(lines, "Problem: " .. problem.text)
+    end
+    for _, problem in ipairs(draft.guideProblems or {}) do table.insert(lines, "Guide problem: " .. problem) end
+    if guide.data.places then table.insert(lines, #guide.data.places .. " places") end
     return lines
 end)
 

@@ -4,7 +4,7 @@ local _, ns = ...
 -- authored shape: `{ place, name, width, map, points = { ... },
 -- connections = { { a, b }, { a, b, true } } }`. A connection names a point by
 -- its position or by its `id`; deleting a point renumbers the positions after
--- it, the way GuideEditing remaps step edges, and a step standing on a point
+-- it, the way the editor's draft keeps what points at a step, and a step standing on a point
 -- by position ("cave.4") follows it. Pure, so the tests run it.
 local PlaceEditing = { sampleYards = 15, turnDegrees = 30, turnYards = 5 }
 

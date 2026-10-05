@@ -195,7 +195,7 @@ This produces four nodes, one section spanning them, and `groups = { { first = 1
 
 The tracker and NPC conveniences use the current member and the available members after it in that same range. Each member can complete independently; progress advances through finished leading members. Back/Forward and the arrow still refer to individual steps. Ungrouped steps stand alone, even when adjacent or at the same NPC. Distance, map APIs, and a fixed member limit never determine membership. A group does not imply that prerequisite quests are already offered.
 
-Saving from the editor clears the guide's session progress and restamps `updated`. The character's saved resume point stores a step position and that stamp; a changed or missing stamp discards the position and allows a fresh scan.
+The editor keeps the player's guides as written (format v1, in `NuuRoadDB.account.guides`) and builds them like a packaged guide, leaving out a step it cannot read. Each change restamps `updated`, and the editor tells the tracker where every step went (`Progress:Rebuilt`), so the player stays on the step they were on. The character's saved resume point stores a step position and that stamp; a changed or missing stamp at login discards the position and allows a fresh scan.
 
 ## Materials
 
@@ -256,7 +256,7 @@ places = {
 - `links`: `{ from, to }` (both ways) or `{ from, to, oneway = true }` (`from` to `to` only), by point id. Links are the only walks inside a place; loops and junctions need no syntax.
 - A step stands on a point with `stand = "windfury.chamber"`: the point's coordinates become the step's. A step with its own coordinates can add `near = "windfury.chamber"`, which joins it to that point's passages rather than whichever passage is nearest, for levels that lie over each other on the map. An NPC's `at` may be `"windfury.chamber"`, or `"windfury"` for any point of the place.
 
-At runtime a place keeps its points (`at` in map percentages) and its links as `connections = { { a, b, oneWay } }`; that is the shape the editor's Places panel edits and SavedVariables stores. Validation, reported at load like a bad label: unique place IDs and point IDs, ASCII, no dots; every link end names a point, no point joined to itself, and the same two points joined both one way and both ways are errors (a plain repeat is merged, and the editor says so); at least one entrance; every point reachable from an entrance and able to reach an entrance or exit; width 5 to 60; every step `stand` or `near` names a place point.
+At runtime a place keeps its points (`at` in map percentages) and its links as `connections = { { a, b, oneWay } }`; that is the shape the editor's Places panel edits, on a copy the editor converts back to the guide's v1 places when the panel reports or closes. Validation, reported at load like a bad label: unique place IDs and point IDs, ASCII, no dots; every link end names a point, no point joined to itself, and the same two points joined both one way and both ways are errors (a plain repeat is merged, and the editor says so); at least one entrance; every point reachable from an entrance and able to reach an entrance or exit; width 5 to 60; every step `stand` or `near` names a place point.
 
 At runtime the location carries `point` (the `"place.point"` a step stands on) and `near` beside the usual fields.
 

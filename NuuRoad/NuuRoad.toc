@@ -15,6 +15,7 @@ API/Client.lua
 Data/Schema.lua
 Data/Names.lua
 Data/Steps.lua
+Data/GuideText.lua
 Data/Travel.lua
 Data/IDNames.lua
 Data/Guides/HordeBarrens.lua
@@ -51,8 +52,8 @@ Dev/Fixtures/PortConstructFixture.lua
 Dev/Fixtures/CavePlaceFixture.lua
 Dev/Fixtures/TravelTestFixtures.lua
 #@end-debug@
+Domain/GuideDraft.lua
 Domain/GuideRepository.lua
-Domain/GuideEditing.lua
 Domain/PlaceEditing.lua
 Domain/Progress.lua
 Domain/Experience.lua
@@ -76,6 +77,7 @@ Domain/Navigation.lua
 Domain/BugReport.lua
 Domain/StepState.lua
 UI/Editor.lua
+UI/AddingPanel.lua
 UI/PlacesPanel.lua
 UI/PlaceRecorder.lua
 UI/MainWindow.lua

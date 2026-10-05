@@ -345,11 +345,8 @@ function PlaceRecorder:SendToEditor()
         Editor:SelectTab("places")
         return
     end
-    if not Editor.working then
-        local Progress = ns.modules.Progress
-        Editor:OpenGuide(Progress and Progress:GetActiveGuide())
-    end
-    local guide = Editor.working
+    local guide = Editor:PlacesGuide()
+    if not guide then return end
     guide.places = guide.places or {}
     local base, id, number = self.place.place, self.place.place, 1
     while editing().Find(guide, id) do number = number + 1; id = base .. "_" .. number end
@@ -365,7 +362,7 @@ function PlaceRecorder:SendToEditor()
     if Places then Places.placeIndex = #guide.places end
     Editor:Show()
     Editor:SelectTab("places")
-    Editor:SetStatus("Added " .. id .. " to this guide. Save to keep it.")
+    Editor:SetStatus("Added " .. id .. " to this guide.")
     self:Render()
 end
 

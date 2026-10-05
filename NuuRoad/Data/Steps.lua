@@ -1282,6 +1282,13 @@ local function build(step, path, defaultMap)
         node.kind, node.title, node.body = "note", "Note", step.note or ""
     elseif kind == "finish" then
         node.kind, node.title, node.body = "end", "Guide complete", step.note or ""
+        -- The guide to go on with: the first that suits the character is offered.
+        if step.next ~= nil then
+            node.nextGuides = list(step.next)
+            for index, id in ipairs(node.nextGuides) do
+                if type(id) ~= "string" or id == "" then fail(path .. ".next[" .. index .. "]", "a guide is named by its ID") end
+            end
+        end
     elseif kind == "travel" then
         node.kind = "travel"
         local first = type(step.at) == "table" and step.at[1]
@@ -1314,10 +1321,12 @@ local function build(step, path, defaultMap)
             quests = {}
             for _, id in ipairs(turnin) do table.insert(quests, id) end
             for _, id in ipairs(accept) do table.insert(quests, id) end
-            node.completion = { type = "observed", observed = { type = "all", children = {
-                { type = "quests", state = "finished", match = "all", ids = turnin },
-                { type = "quests", state = "acceptedOrFinished", match = "all", ids = accept },
-            } } }
+            -- Only the halves the step has: a talk may only turn in, or only accept.
+            local children = {}
+            if #turnin > 0 then table.insert(children, { type = "quests", state = "finished", match = "all", ids = turnin }) end
+            if #accept > 0 then table.insert(children, { type = "quests", state = "acceptedOrFinished", match = "all", ids = accept }) end
+            node.completion = { type = "observed", observed = #children == 1 and children[1]
+                or { type = "all", children = children } }
         elseif questPair(step.quest) then
             quests, objective, verb = objectiveNode(node, step), true, "objective"
         elseif step.quest ~= nil then

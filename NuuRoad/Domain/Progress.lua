@@ -678,7 +678,10 @@ end
 -- it; with the current step gone, the player lands on the first step not yet
 -- done or skipped. Nothing is observed here: the load-time scan still runs
 -- when the guide is selected.
-function Progress:Carry(old, new)
+--
+-- `known` (old position -> new position), when given, is where the editor
+-- says each step went; a step it does not name is matched as above.
+function Progress:Carry(old, new, known)
     local before = old and self.session[old.id]
     local state = newState(new)
     self.session[new.id] = state
@@ -686,6 +689,7 @@ function Progress:Carry(old, new)
     local oldKeys, newIndex = identities(old), {}
     for index, key in ipairs(identities(new)) do newIndex[key] = index end
     local function map(index)
+        if type(index) == "number" and known and known[index] then return known[index] end
         local key = type(index) == "number" and oldKeys[index]
         return key and newIndex[key] or nil
     end
@@ -716,6 +720,25 @@ function Progress:Carry(old, new)
     state.currentStep = current or new.nodes[1].index
     state.holdStep = before.holdStep and map(before.holdStep) or nil
     return state
+end
+
+-- A guide saved by the editor: the player stays on the step they were on,
+-- with what they had done. `old` is the guide played until now, `new` the
+-- one to play, `map` where the editor says each step went. A guide saved
+-- under a new ID (a packaged guide's first change makes a copy) takes the
+-- old one's tab, and the tracker follows the copy from then on.
+function Progress:Rebuilt(old, new, map)
+    if not (old and new and self.store) then return end
+    local hadState = self.session[old.id] ~= nil
+    if hadState then self:Carry(old, new, map) end
+    if old.id == new.id then return end
+    if hadState then self.session[old.id] = nil end
+    local ids = self:OpenIDs()
+    for index, id in ipairs(ids) do
+        if id == old.id then ids[index] = new.id end
+    end
+    if self.store.activeGuideID == old.id then self.store.activeGuideID = new.id end
+    if type(self.store.resumes) == "table" then self.store.resumes[old.id] = nil end
 end
 
 function Progress:Reset(guide)

@@ -68,7 +68,7 @@ local Config = {
     defaults = {
         schemaVersion = 1,
         settings = {},
-        account = { guides = {}, drafts = {}, nextUserGuideNumber = 0 },
+        account = { guides = {}, drafts = {}, history = {}, nextUserGuideNumber = 0 },
         -- One key per one-time migration that has run.
         migrationLog = {},
         audit = { findings = {} },

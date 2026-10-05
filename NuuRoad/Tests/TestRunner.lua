@@ -10,7 +10,7 @@ local suites = {
     { "settings", "Tests/SettingsTests.lua" },
     { "schema", "Tests/SchemaTests.lua" },
     { "groups", "Tests/GroupTests.lua" },
-    { "guide editing", "Tests/GuideEditingTests.lua" },
+    { "guide draft", "Tests/GuideDraftTests.lua" },
     { "progress", "Tests/ProgressTests.lua" },
     { "navigation", "Tests/NavigationTests.lua" },
     { "travel", "Tests/TravelTests.lua" },

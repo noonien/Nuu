@@ -27,7 +27,7 @@ assert(files > 40, "the TOC lists the addon's files")
 assert(rawget(_G, "NuuRoad") == ns, "the one global is the addon's ns")
 assert(ns.Kit == kit and ns.Kit.Crafting and ns.Kit.NewBugReports, "the kit")
 assert(ns.recorder and ns.recorder.Records, "the session log is the kit's recorder")
-for _, name in ipairs({ "Config", "Client", "Schema", "Names", "Steps", "Travel", "GuideRepository", "GuideEditing",
+for _, name in ipairs({ "Config", "Client", "Schema", "Names", "Steps", "Travel", "GuideText", "GuideDraft", "GuideRepository",
     "PlaceEditing", "Progress", "Experience", "ObservedProgress", "Materials", "GuideScan", "QuestIndex", "GuideCatalog",
     "GuideAudit", "NPCTracking", "TargetMarking", "QuestDialog", "QuestSelection", "JunkSelling", "LootReminder", "POILog", "Recording",
     "GuideCorrections", "Navigation", "BugReport", "StepState" }) do

@@ -10,6 +10,8 @@ Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
+Load(ns, "Data/GuideText.lua")
+Load(ns, "Domain/GuideDraft.lua")
 Load(ns, "Domain/GuideRepository.lua")
 Load(ns, "Domain/QuestIndex.lua")
 local Steps, Repository, QuestIndex, Names = ns.modules.Steps, ns.modules.GuideRepository, ns.modules.QuestIndex, ns.modules.Names
@@ -89,14 +91,14 @@ assert(text:find(Names:Quest(869):lower(), 1, true), "search text has quest titl
 assert(QuestIndex:SearchText({ id = "nope" }) == "" and QuestIndex:SearchText(nil) == "", "unknown guides search as nothing")
 
 -- The index follows the repository: saving a personal guide is picked up.
-local personal = Steps:Expand({
+local personal = ns.modules.GuideDraft:Open({
     kind = "guide", schema = 1, id = Repository.pendingID, updated = 1789862400, title = "Personal", category = "custom",
     data = { map = 1413, sections = {
         { title = "Steps", steps = { { type = "accept", quests = { 264 }, npc = { 3464 } } } },
     } },
 })
 assert(#QuestIndex:GuidesFor(264) == 0, "not yet")
-local saved, errors = Repository:SaveUserGuide(personal)
-assert(saved, errors and table.concat(errors, "; "))
+local _, saved = Repository:SaveDraft(personal)
+assert(saved, "saved")
 assert(#QuestIndex:GuidesFor(264) == 1 and QuestIndex:GuidesFor(264)[1].guide.meta.title == "Personal", "saved guide indexed")
 assert(#QuestIndex:GuidesFor(871) == 2, "others unchanged")

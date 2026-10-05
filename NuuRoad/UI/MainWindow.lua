@@ -1308,6 +1308,7 @@ end
 
 local function drawListRow(row, node, at) MainWindow:DrawListRow(row, node, at) end
 local function listPicked(node) MainWindow:ListPicked(node) end
+local function listRightClicked(node) MainWindow:OpenStepMenu(node) end
 local function listTooltip(node) return MainWindow:ListTooltip(node), LIST_TIP end
 
 -- The list for `rows` rows (0: none). Made again only when that count
@@ -1325,7 +1326,7 @@ function MainWindow:BuildList(rows)
     self.list = self.listHolder:List{
         rows = rows, rowHeight = LIST_ROW, gap = SPACING, wheelRows = 1, dividers = false, padLeft = LIST_PAD,
         numbers = listNumber, numberWidth = LIST_NUMBER,
-        make = makeListRow, draw = drawListRow, onPick = listPicked, tooltip = listTooltip,
+        make = makeListRow, draw = drawListRow, onPick = listPicked, onRightClick = listRightClicked, tooltip = listTooltip,
     }
     self.listAnchor = nil
 end
@@ -1596,6 +1597,13 @@ function MainWindow:DrawStep(guide, node, state)
             tooltip = "Click for the next route on offer.",
         })
     end
+    local nextGuide = node.kind == "end" and self:NextGuide(node)
+    if nextGuide then
+        self:AddCardButton("Continue with " .. tostring(nextGuide.meta.title), function()
+            M("Progress"):Select(nextGuide)
+            self:Refresh()
+        end, true, "The guide this one leads on to.", "accent")
+    end
     if byHand then
         self:AddCardButton("Done - next step", function()
             if not self:AcceptAction() then return end
@@ -1823,6 +1831,12 @@ function MainWindow:GuideMenuItems(guide)
     local function current() return M("GuideRepository"):Get(id) or guide end
     local items = { { header = tabCaption(guide) } }
     table.insert(items, { caption = "Edit", onClick = function() call("Editor", "OpenGuide", current()) end })
+    table.insert(items, { caption = "Add steps while playing", desc = "A small panel beside the tracker",
+        onClick = function() call("AddingPanel", "Open", current()) end })
+    local Progress = M("Progress")
+    local state = Progress and Progress:PeekState(current())
+    local node = state and current().nodes[state.currentStep]
+    if node then table.insert(items, { caption = "This step", items = self:StepMenuItems(current(), node, true) }) end
     -- A reset cannot be undone, so the entry asks for the click twice and the
     -- menu stays open in between to say so. An entry armed and then left
     -- alone is disarmed by the next opening, never carried into it.
@@ -1844,6 +1858,50 @@ function MainWindow:GuideMenuItems(guide)
     -- again. With one guide open there is no strip, so the band is the way.
     table.insert(items, { caption = "Close", onClick = function() self:CloseGuide(id) end })
     return items
+end
+
+-- The guide a finished guide leads on to: the first of its finish step's
+-- `next` guides the repository has and the character may follow.
+function MainWindow:NextGuide(node)
+    local Repository, client = M("GuideRepository"), M("Client")
+    for _, id in ipairs(node.nextGuides or NO_OPTS) do
+        local guide = Repository and Repository:Get(id)
+        if guide and (not guide.condition or not client or client:MatchesCondition(guide.condition) ~= false) then return guide end
+    end
+    return nil
+end
+
+-- A step's own actions: open it in the editor, or fix it where the player
+-- stands, which changes the guide (a packaged guide becomes the player's
+-- copy, and the tracker follows the copy). `current` leaves out going to it.
+function MainWindow:StepMenuItems(guide, node, current)
+    local index = node.index
+    local function fix(method)
+        return function()
+            local module = M("Editor")
+            if not (module and module[method]) then return end
+            local ok, text, problem = pcall(module[method], module, guide, index)
+            if not ok then return report(text) end
+            ns:Print(text or problem or "")
+            self:Refresh()
+        end
+    end
+    local items = { { header = "Step " .. index } }
+    if not current then
+        table.insert(items, { caption = "Go to this step", onClick = function() self:JumpAction(guide, node)() end })
+    end
+    table.insert(items, { caption = "Edit this step", onClick = function() call("Editor", "EditStep", guide, index) end })
+    table.insert(items, { caption = "The NPC is here", desc = "Your target, or this step's NPC, stands where you are",
+        onClick = fix("NPCIsHere") })
+    table.insert(items, { caption = "Move the spot to me", desc = "The step's spot is where you stand",
+        onClick = fix("SpotIsHere") })
+    return items
+end
+
+function MainWindow:OpenStepMenu(node)
+    local guide = self.listGuide
+    if not guide or not node then return end
+    self:UI():OpenMenu(self:StepMenuItems(guide, node), { at = "cursor" })
 end
 
 -- `id` a tab's guide; none, the guide shown (the band's). No guide, no menu.
