@@ -28,6 +28,7 @@ local suites = {
     { "recording", "Tests/RecordingTests.lua" },
     { "bug report", "Tests/BugReportTests.lua" },
     { "guide corrections", "Tests/GuideCorrectionsTests.lua" },
+    { "quest marks", "Tests/QuestMarksTests.lua" },
     { "built-in guide", "Tests/BuiltInGuideTests.lua" },
     { "guide format", "Tests/GuideFormatTests.lua" },
     { "guide audit", "Tests/GuideAuditTests.lua" },

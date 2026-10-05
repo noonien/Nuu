@@ -7,6 +7,7 @@
     python3 Tools/SessionLog/sessions.py --event accept  only that kind of row (repeatable)
     python3 Tools/SessionLog/sessions.py --since 20260922-2300
     python3 Tools/SessionLog/sessions.py --unguided      quests seen in play that no packaged guide names
+    python3 Tools/SessionLog/sessions.py --marks         where the game marks quests the guides lack or place elsewhere
     python3 Tools/SessionLog/sessions.py --bugs          bug reports not yet listed in fixed-bugs.md
     python3 Tools/SessionLog/sessions.py --errors        Lua errors a development build kept, with their stacks
     python3 Tools/SessionLog/sessions.py --steps         what the step viewer showed, each change as a diff
@@ -28,6 +29,14 @@ themselves, the questlog snapshots, and Data/Names.lua.
 player accepted, turned in, or carried in the log that none of the packaged
 guides in Data/Guides/ mentions, with what the sessions know about it - who
 gave it, where, what it asked for, and every objective and loot row after.
+
+`--marks` reads the `marks` channel (Domain/QuestMarks.lua): where the game
+marked a quest in the log - its objective area, or its turn-in NPC once ready -
+when no guide names the quest (unguided), none places that part of it
+(missing), or the nearest place a guide gives is too far off (differs). The
+latest mark of each quest and part across every session kept, with the point
+in the guides' own units to paste. Each row was judged against the guides of
+its session, so a guide fixed since still shows until --since leaves it out.
 
 `--steps` reads the `guide` channel (Domain/StepState.lua, Domain/Progress.lua):
 every move of the step pointer, and every change in what the flow saw at the
@@ -361,6 +370,9 @@ def say(row, book):
             d.get("guide"), d.get("step"), d.get("role"), book.quest(q), d.get("missing"),
             book.npc(d["npc"]) if d.get("npc") else "no NPC", d.get("map"), d.get("x"), d.get("y"),
             d.get("npcName") or "-", d.get("authored"))
+    if row.get("c") == "marks":
+        return "MARK %s %s %s: game @ map %s %s" % (d.get("status"), d.get("role"), book.quest(q), d.get("map"),
+                                                   point(d.get("x"), d.get("y")))
     if row.get("c") == "session" and not event:
         return "session  %s L%s %s %s, client %s build %s" % (
             d.get("character"), d.get("level"), d.get("race"), d.get("class"), d.get("client"), d.get("build"))
@@ -387,6 +399,49 @@ def say(row, book):
         return "talk %s %s" % (d.get("kind"), book.npc(d.get("npc")))
     rest = {k: v for k, v in d.items() if k not in ("event", "map", "at")}
     return "%s %s" % (event or row.get("c"), json.dumps(rest, sort_keys=True))
+
+
+def point(x, y):
+    """A point in the guides' units (hundredths of a map percent) as map percent."""
+    if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+        return "?"
+    return "%.2f, %.2f" % (x / 100, y / 100)
+
+
+def marks(sessions, book):
+    """The latest mark of each quest and part, by status, from the marks channel."""
+    latest = {}
+    for name, rows in sessions:
+        for row in rows:
+            d = row.get("d")
+            if row.get("c") != "marks" or not isinstance(d, dict) or not d.get("quest"):
+                continue
+            key = (d["quest"], d.get("role"))
+            entry = latest.setdefault(key, {"sessions": set()})
+            entry["sessions"].add(name)
+            entry["row"], entry["session"] = d, name
+    if not latest:
+        print("no rows on the marks channel in the sessions kept")
+        return
+    order = {"differs": 0, "missing": 1, "unguided": 2}
+    keys = sorted(latest, key=lambda k: (order.get(latest[k]["row"].get("status"), 9), str(latest[k]["row"].get("guide")),
+                                         latest[k]["row"].get("step") or 0, k[0]))
+    status = None
+    for key in keys:
+        d = latest[key]["row"]
+        if d.get("status") != status:
+            status = d.get("status")
+            print("== %s" % {"differs": "the guides place it elsewhere", "missing": "the guides do not place this part",
+                             "unguided": "no guide names the quest"}.get(status, status))
+        print("%-9s %s" % (d.get("role"), book.quest(d.get("quest"))))
+        print("          game:  map %s %s  (last seen %s, in %d session%s)" % (
+            d.get("map"), point(d.get("x"), d.get("y")), latest[key]["session"],
+            len(latest[key]["sessions"]), "" if len(latest[key]["sessions"]) == 1 else "s"))
+        if d.get("guide"):
+            print("          guide: %s step %s, map %s %s, %s yd off" % (
+                d.get("guide"), d.get("step"), d.get("guideMap"), point(d.get("guideX"), d.get("guideY")),
+                d.get("gap") if d.get("gap") is not None else "another continent,"))
+        print("          at = { { %s, %s } }, map = %s" % (d.get("x"), d.get("y"), d.get("map")))
 
 
 def mentions(row, quest=None, npc=None):
@@ -618,6 +673,7 @@ def main():
     parser.add_argument("--full", action="store_true", help="print every field of each row")
     parser.add_argument("--jsonl", action="store_true", help="print the rows as JSON lines, each tagged with its session")
     parser.add_argument("--unguided", action="store_true", help="quests seen in play that no packaged guide mentions")
+    parser.add_argument("--marks", action="store_true", help="quest marks the guides lack or place elsewhere")
     parser.add_argument("--bugs", action="store_true", help="every open bug report filed from the game, in full")
     parser.add_argument("--errors", action="store_true", help="every Lua error a development build kept, with its stack")
     parser.add_argument("--all", action="store_true", help="with --bugs, the fixed ones in fixed-bugs.md too")
@@ -652,6 +708,8 @@ def main():
         steps(sessions, args)
     elif args.unguided:
         unguided(sessions, book)
+    elif args.marks:
+        marks(sessions, book)
     else:
         timeline(sessions, book, args)
 

@@ -70,6 +70,7 @@ Domain/QuestSelection.lua
 Domain/JunkSelling.lua
 Domain/LootReminder.lua
 Domain/POILog.lua
+Domain/QuestMarks.lua
 Domain/Recording.lua
 Domain/GuideCorrections.lua
 Domain/Travel.lua
