@@ -121,8 +121,9 @@ function Progress:IsOpen(guide)
     return false
 end
 
--- Shuts a guide's tab. Its session progress is kept, so opening it again
--- picks up where it was. Shutting the active guide shows the tab that takes
+-- Shuts a guide's tab and forgets its progress, saved step and session alike:
+-- loading it again starts afresh, placed by the scan from what the client
+-- knows, never on the step it was left at. Shutting the active guide shows the tab that takes
 -- its place (the next, else the one before); shutting the last leaves the
 -- tracker with no guide. Returns the guide active after.
 function Progress:Close(guide)
@@ -133,6 +134,7 @@ function Progress:Close(guide)
     if not at then return self:GetActiveGuide() end
     table.remove(ids, at)
     if type(self.store.resumes) == "table" then self.store.resumes[guide.id] = nil end
+    self.session[guide.id] = nil
     if self.store.activeGuideID ~= guide.id then return self:GetActiveGuide() end
     local Repository = ns.modules.GuideRepository
     local nextID = ids[at] or ids[at - 1]

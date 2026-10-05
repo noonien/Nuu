@@ -311,7 +311,7 @@ do
     assert(Progress.store.resumes[one.id] == nil, "and forgets its saved step")
     assert(Progress:Close(two) == three and Progress:GetActiveGuide() == three, "shutting the shown tab shows the next")
     Progress:Select(two)
-    assert(open() == "test:tab-three,test:tab-two" and Progress:GetCurrentIndex(two) == 2, "opened again at the end, where it was")
+    assert(open() == "test:tab-three,test:tab-two" and Progress:GetCurrentIndex(two) == 1, "opened again at the end, from the start")
     assert(Progress:Close(two) == three, "shutting the last tab shows the one before")
     assert(Progress:Close(three) == nil and Progress:GetActiveGuide() == nil and open() == "", "shutting every tab leaves no guide")
     -- A character saved before tabs: its guide is open, its step kept; a
