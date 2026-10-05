@@ -6,14 +6,25 @@ ns.Kit = ns.Kit or LoadKit()
 Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
--- Every packaged guide listed in the real addon manifest, read through the
--- import, and the development fixtures.
+-- Every packaged guide listed in the real addon manifest, as the guide
+-- (format v1) its file holds, and the development fixtures.
 LoadBuiltIns(ns)
 
--- The guide's own condition as the import writes it: one predicate.
-local function onlyFor(source, kind, value)
-    local only = source.only
-    return type(only) == "table" and only.type == kind and only.values ~= nil and only.values[1] == value
+-- The guide's own condition, holding one key: as the guide writes it
+-- (`cond = { faction = "Horde" }`), or as the expanded guide keeps it (one
+-- predicate).
+local function onlyFor(guide, kind, value)
+    if guide.kind == "guide" then
+        local cond = guide.cond
+        if type(cond) ~= "table" then return false end
+        local held = cond[kind]
+        if type(held) == "table" then held = held[1] end
+        local keys = 0
+        for _ in pairs(cond) do keys = keys + 1 end
+        return keys == 1 and held == value
+    end
+    local condition = guide.condition
+    return type(condition) == "table" and condition.type == kind and condition.values ~= nil and condition.values[1] == value
 end
 for _, source in pairs(ns.builtInGuides) do
     local expanded = ns.modules.Steps:Expand(source)
@@ -26,7 +37,10 @@ end
 -- factions are the client's to name.
 local unnamed = {}
 for id, source in pairs(ns.builtInGuides) do
-    local alone = { modules = {}, Kit = ns.Kit }
+    -- The IDs the client cannot be asked about (areas, skills, flight
+    -- points) are named from Data/IDNames.lua, which the addon loads before
+    -- any guide.
+    local alone = { modules = {}, Kit = ns.Kit, idNames = ns.idNames }
     function alone:RegisterModule(name, module) self.modules[name] = module end
     Load(alone, "Data/Schema.lua")
     Load(alone, "Data/Names.lua")
@@ -48,46 +62,55 @@ end
 table.sort(unnamed)
 assert(#unnamed == 0, "every NPC a guide shows is in its npcs: " .. table.concat(unnamed, "; "))
 
--- Names are shared once the guides load, so two guides that name one ID
--- must agree.
+-- NPC names are shared once the guides load, so two guides that name one
+-- NPC must agree.
 local named, disagree = {}, {}
 for id, source in pairs(ns.builtInGuides) do
-    for kind, entries in pairs(source.names or {}) do
-        named[kind] = named[kind] or {}
-        for key, name in pairs(entries) do
-            if type(name) == "table" then name = name[1] end
-            local other = named[kind][key]
+    for _, byID in pairs(source.data and source.data.npcs or {}) do
+        for key, name in pairs(byID) do
+            if type(name) == "table" then name = name.name end
+            local other = named[key]
             if other and other.name ~= name then
-                table.insert(disagree, string.format("%s %d: '%s' (%s) and '%s' (%s)", kind, key, name, id, other.name, other.guide))
+                table.insert(disagree, string.format("npc %d: '%s' (%s) and '%s' (%s)", key, name, id, other.name, other.guide))
             end
-            named[kind][key] = other or { name = name, guide = id }
+            named[key] = other or { name = name, guide = id }
         end
     end
 end
 assert(#disagree == 0, "guides agree on names: " .. table.concat(disagree, "; "))
 
--- A visit goes where its NPC stands (names.npcs), so a step repeats that
--- point only when the NPC really is elsewhere for it.
+-- A visit goes where its NPC stands (data.npcs), so a step repeats that
+-- point only when the NPC really is elsewhere for it. Points are hundredths
+-- of a map percent, so a quarter of a percent is 25.
 local repeated = {}
 for id, source in pairs(ns.builtInGuides) do
-    local npcs = source.names and source.names.npcs or {}
+    local npcs = source.data and source.data.npcs or {}
+    local function stands(npc)
+        for map, byID in pairs(npcs) do
+            local entry = byID[npc]
+            if type(entry) == "table" and type(entry.at) == "table" then return entry.at, map end
+        end
+    end
     local function walk(steps, map)
         for _, step in ipairs(steps) do
-            if step.section then walk(step.steps, step.map or map)
-            elseif step.group then walk(step.group, map)
+            if step.group then walk(step.group, map)
             else
                 local visited = type(step.npc) == "table" and step.npc[1] or step.npc
-                local entry = visited and npcs[visited]
-                local at = type(entry) == "table" and entry.at
-                if at and type(step.at) == "table" and type(step.at[1]) == "number"
-                    and (step.at.map or map) == (at.map or source.map)
-                    and math.abs(step.at[1] - at[1]) <= 0.25 and math.abs(step.at[2] - at[2]) <= 0.25 then
+                local at, npcMap
+                if visited then at, npcMap = stands(visited) end
+                local here = type(step.at) == "table" and step.at[1]
+                -- An NPC that moves about lists several points; a visit goes
+                -- to the first, so a step may name one of the others.
+                local spot = type(at) == "table" and (type(at[1]) == "table" and at[1] or at)
+                if spot and type(here) == "table" and type(here[1]) == "number"
+                    and (here.map or map) == (spot.map or npcMap)
+                    and math.abs(here[1] - spot[1]) <= 25 and math.abs(here[2] - spot[2]) <= 25 then
                     table.insert(repeated, id .. ": npc " .. visited)
                 end
             end
         end
     end
-    walk(source.steps, source.map)
+    for _, section in ipairs(source.data.sections or {}) do walk(section.steps, section.map or source.data.map) end
 end
 assert(#repeated == 0, "steps that repeat their NPC's point: " .. table.concat(repeated, "; "))
 
@@ -153,11 +176,12 @@ for _, node in ipairs(guide.nodes) do
 end
 assert(onlyFor(compact, "faction", "Horde") and guide.condition.type == "faction", "the Barrens guide is Horde-only")
 for _, source in pairs(ns.builtInGuides) do
-    assert(source.schema == 2, source.id .. " must declare schema 2")
+    assert(source.kind == "guide" and source.schema == 1, source.id .. " must be a guide in format 1")
     assert(type(source.updated) == "number", source.id .. " must carry an updated stamp")
-    for _, wrapper in ipairs(source.steps) do
-        assert(type(wrapper.section) == "string" and type(wrapper.steps) == "table",
-            source.id .. ": every top-level entry is a section")
+    assert(type(source.data) == "table" and type(source.data.sections) == "table", source.id .. " must hold its sections in data")
+    for _, section in ipairs(source.data.sections) do
+        assert(type(section.title) == "string" and type(section.steps) == "table",
+            source.id .. ": every section has a title and steps")
     end
 end
 for _, node in ipairs(guide.nodes) do
@@ -187,7 +211,7 @@ local mulgoreMaps = { [1411] = true, [1412] = true, [1413] = true, [1450] = true
 for _, id in ipairs({ "nuuroad:leveling:horde-mulgore-1-6", "nuuroad:leveling:horde-mulgore-6-12" }) do
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1412, id .. " is a Horde guide on the Mulgore map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1412, id .. " is a Horde guide on the Mulgore map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -209,8 +233,6 @@ for _, id in ipairs({ "nuuroad:leveling:horde-mulgore-1-6", "nuuroad:leveling:ho
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -218,7 +240,7 @@ end
 for _, id in ipairs({ "nuuroad:leveling:horde-tirisfal-1-6", "nuuroad:leveling:horde-tirisfal-6-12" }) do
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1420, id .. " is a Horde guide on the Tirisfal map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1420, id .. " is a Horde guide on the Tirisfal map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -239,8 +261,6 @@ for _, id in ipairs({ "nuuroad:leveling:horde-tirisfal-1-6", "nuuroad:leveling:h
             id .. ": every NPC is named -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -249,7 +269,7 @@ do
     local id = "nuuroad:leveling:horde-silverpine-12-14"
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1421, id .. " is a Horde guide on the Silverpine map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1421, id .. " is a Horde guide on the Silverpine map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -268,8 +288,6 @@ do
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -278,7 +296,7 @@ do
     local id = "nuuroad:leveling:horde-hillsbrad-22-24"
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1424, id .. " is a Horde guide on the Hillsbrad map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1424, id .. " is a Horde guide on the Hillsbrad map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -297,8 +315,6 @@ do
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -307,7 +323,7 @@ do
     local id = "nuuroad:leveling:horde-southern-barrens-24-25"
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1413, id .. " is a Horde guide on the Barrens map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1413, id .. " is a Horde guide on the Barrens map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -326,8 +342,6 @@ do
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -336,7 +350,7 @@ do
     local id = "nuuroad:leveling:horde-stonetalon-25-26"
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1442, id .. " is a Horde guide on the Stonetalon map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1442, id .. " is a Horde guide on the Stonetalon map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -354,8 +368,6 @@ do
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -364,7 +376,7 @@ do
     local id = "nuuroad:leveling:horde-thousand-needles-28-30"
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1441, id .. " is a Horde guide on the Thousand Needles map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1441, id .. " is a Horde guide on the Thousand Needles map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -383,8 +395,6 @@ do
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 
@@ -392,7 +402,7 @@ end
 local skyborneID = "nuuroad:leveling:skyborne-zephras-isle"
 local skyborneSource = ns.builtInGuides[skyborneID]
 assert(skyborneSource, skyborneID .. " must register")
-assert(onlyFor(skyborneSource, "race", "skyborne") and skyborneSource.map == 2521, "the Skyborne guide is for Skyborne, on Zephras Isle")
+assert(onlyFor(skyborneSource, "race", "skyborne") and skyborneSource.data.map == 2521, "the Skyborne guide is for Skyborne, on Zephras Isle")
 local skyborne = ns.modules.Steps:Expand(skyborneSource)
 assert(skyborne.condition.type == "race" and skyborne.condition.values[1] == "skyborne", "Skyborne is a race term")
 local skyborneMaps = { [2521] = true, [1416] = true, [1453] = true, [1412] = true, [1456] = true, [1454] = true }
@@ -411,28 +421,32 @@ for _, node in ipairs(skyborne.nodes) do
     assert(not title:find(", objective %d+$"),
         skyborneID .. ": a step must say what it asks for, not a quest and an index -> " .. title)
 end
-local function names(predicate, faction)
-    if type(predicate) ~= "table" then return false end
-    if predicate.type == "faction" then
-        for _, value in ipairs(predicate.values or {}) do if value == faction then return true end end
+-- Whether a step's `cond` names a faction: as its own key, or inside an
+-- any, all or none list, or a named condition (`is`) in data.conds.
+local conds = skyborneSource.data.conds or {}
+local function names(cond, faction)
+    if type(cond) ~= "table" then return false end
+    local held = cond.faction
+    if held == faction then return true end
+    if type(held) == "table" then
+        for _, value in ipairs(held) do if value == faction then return true end end
     end
-    if names(predicate.child, faction) then return true end
-    for _, child in ipairs(predicate.children or {}) do if names(child, faction) then return true end end
+    if cond.is and names(conds[cond.is], faction) then return true end
+    for _, key in ipairs({ "any", "all", "none" }) do
+        for _, child in ipairs(cond[key] or {}) do if names(child, faction) then return true end end
+    end
     return false
 end
 local function countFactions(steps)
     for _, step in ipairs(steps) do
-        if step.steps then countFactions(step.steps) end
         if step.group then countFactions(step.group) end
         for faction in pairs(factionSteps) do
-            if names(step.only, faction) then factionSteps[faction] = factionSteps[faction] + 1 end
+            if names(step.cond, faction) then factionSteps[faction] = factionSteps[faction] + 1 end
         end
     end
 end
-countFactions(skyborneSource.steps)
+for _, section in ipairs(skyborneSource.data.sections) do countFactions(section.steps) end
 assert(factionSteps.Alliance > 50 and factionSteps.Horde > 20, "both factions' forks of the island are ported")
-local skyborneOpen = ns.modules.Steps:ActiveTracks(skyborne, skyborne.nodes[#skyborne.nodes])
-assert(#skyborneOpen == 0, skyborneID .. ": every track is closed by the end: " .. table.concat(skyborneOpen, ","))
 assert(skyborne.nodes[#skyborne.nodes].kind == "end", skyborneID .. " ends with a closing step")
 assert(lastMap == 1454, "the Horde road ends at Thrall in Orgrimmar")
 local skyborneQuests = {}
@@ -645,7 +659,7 @@ do
     local id = "nuuroad:leveling:horde-ashenvale-26-30"
     local source = ns.builtInGuides[id]
     assert(source, id .. " must register")
-    assert(onlyFor(source, "faction", "Horde") and source.map == 1440, id .. " is a Horde guide on the Ashenvale map")
+    assert(onlyFor(source, "faction", "Horde") and source.data.map == 1440, id .. " is a Horde guide on the Ashenvale map")
     local ported = ns.modules.Steps:Expand(source)
     local valid, problems = ns.modules.Schema:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
@@ -664,8 +678,6 @@ do
             id .. ": a step must say what it asks for, not a quest and an index -> " .. title)
         if node.body then assert(#node.body > 0, id .. ": body text is never empty at " .. node.index) end
     end
-    local open = ns.modules.Steps:ActiveTracks(ported, ported.nodes[#ported.nodes])
-    assert(#open == 0, id .. ": every track is closed by the end: " .. table.concat(open, ","))
     assert(ported.nodes[#ported.nodes].kind == "end", id .. " ends with a closing step")
 end
 

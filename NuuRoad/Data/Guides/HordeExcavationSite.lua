@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeExcavationSite.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- The Horde quests of Excavation Site: Wetlands, a dungeon new in WoW: Forever, from the
 -- pickups in Orgrimmar and Hammerfall to the last turn-in in Mulgore. No recorded session
@@ -62,52 +60,12 @@
 --
 -- Maps: 1437 Wetlands (guide default), 1454 Orgrimmar, 1417 Arathi Highlands,
 -- 1456 Thunder Bluff, 1412 Mulgore.
---
--- Conversion notes:
---   * Guide `only = "Horde"` became the wrapper's cond = { faction = "Horde" }; meta
---     levels { 24, 30 } became levels = { from = 24, to = 30 }.
---   * Every step-level `only` was a quest-state predicate, which the format drops:
---       - "quest N readyToTurnIn" on the 95663, 95682, 95697 and 95664/98823 hand-ins and
---         the 98823 turn-in became optional = true (passed on arrival unless ready).
---       - "quest 95682" / "quest 95697" on the four objective steps: dropped. Without the
---         quest the step stops for the player to skip (the format's default).
---       - "not quest 95664 finished" on the Titan Relic collect: dropped; the collect has
---         starts = 95664, so it is done once 95664 was ever taken.
---       - "now item 270866" on the relic accept: dropped (a `now` gate); an accept from an
---         item passes when the item is not in the bags.
---   * The relic is kept as two steps (collect with starts, then accept with item), as in
---     the source, rather than merged into one accept with kill.
---   * Objective numbers are the source's `part` values; none was inferred. kill
---     `count = 2` / `count = 4` and collect `count = 4` dropped: the objective counts.
---     The four objective steps keep `sticky = true`.
---   * No track/untrack pairs, no `with`, no labels needed.
---   * Turn-in 95664 plus accept 98823 at Bashana became a `talk` (turnin + accept),
---     optional.
---   * Travel `zone = "Excavation Site: Wetlands"` was a name; the dungeon's instance ID
---     (GetInstanceInfo) is not in the repo, so the step carries no zone/instance and
---     finishes on arrival at the portal point (4780, 5630). AreaTable 16732 is the
---     instance's area, but `area` is compared with the subzone text, which inside is not
---     known, so it is left out too. Travel out: zone = 1437 (Wetlands).
---   * Step notes that only placed an NPC moved to the NPC's note: Borstan ("the meat
---     vendor in the Drag"), the Deathstalker Agent ("in the hills above the Dragonmaw
---     camp"), Bashana Runetotem (Elder Rise), Muln Earthfury (Skywatcher Plateau), Zaruk
---     (Hammerfall; the rest of that step's note stays on the step).
---   * The travel to the hills above the Dragonmaw camp keeps its own `at`, which is the
---     same spot as the Agent's.
---   * Kill targets inside the dungeon (Relic Guardian, Dragonmaw Warder and Saboteur) are
---     listed under 1437, the map of the entrance, by name only, without `instance` (ID
---     unknown) and without positions. Saltspine (260322) and Shadetooth (260325) are only
---     named in a note in the source and are not listed.
---   * Sections Orgrimmar (1454) and Hammerfall (1417) keep their maps; the others need
---     none (their points are on the Wetlands, and the turn-in NPCs carry their own maps).
---   * Quest and item names (`names.quests`, `names.items`) dropped: the client names them.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-excavation-site-quests",
     updated = 1790985600,

@@ -14,11 +14,13 @@ Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
 Load(ns, "Data/IDNames.lua")
-Load(ns, "Data/Import.lua")
+-- The guide file puts its guide (format v1) in ns.packagedGuides, as at
+-- login; Steps:Expand reads it directly.
+ns.packagedGuides = {}
 Load(ns, "Data/Guides/SkyborneZephrasIsle.lua")
-ns.modules.GuideImport:RegisterPackaged()
 local Progress, Steps = ns.modules.Progress, ns.modules.Steps
-local guide = Steps:Expand(ns.builtInGuides["nuuroad:leveling:skyborne-zephras-isle"])
+local guide = Steps:Expand(ns.packagedGuides[1])
+assert(guide.id == "nuuroad:leveling:skyborne-zephras-isle")
 
 local stubbed = { "UnitClass", "UnitRace", "UnitFactionGroup", "UnitLevel", "GetMoney", "GetItemCount",
     "GetNumSkillLines", "GetSkillLineInfo", "GetProfessions", "GetProfessionInfo", "C_QuestLog" }
@@ -67,7 +69,7 @@ end
 local pick = find(function(node) return node.kind == "buy" and only(node):find("Mining") end)
 assert(not Progress:IsBypassed(pick) and Progress:IsAvailable(pick), "a miner buys the pick")
 local knife = find(function(node) return node.kind == "buy" and node.auto.item == 7005 end)
-assert(only(knife) == "now profession Skinning" and Progress:IsBypassed(knife), "a miner does not buy the skinning knife")
+assert(only(knife) == "skill Skinning" and Progress:IsBypassed(knife), "a miner does not buy the skinning knife")
 
 -- A Hunter or Druid trainer visit is not in a Warrior's guide; the Warrior's
 -- own is waited on whatever gold they carry: short of silver, they skip it.
@@ -83,7 +85,7 @@ assert(not Progress:IsRuledOut(warrior) and not Progress:IsBypassed(warrior) and
     "a Warrior's trainer visit stays, gold or not")
 
 -- The crystals are clicked while the Agitators are killed: one group.
-local crystals = find(function(node) return node.kind ~= "reminder" and Steps:Title(node):find("Windstone Cluster") end)
+local crystals = find(function(node) return Steps:Title(node):find("Windstone Cluster") end)
 local range = ns.modules.Schema:GroupAt(guide, crystals.index)
 assert(range, "the Windstone Cluster step is in a group")
 local convert = find(function(node) return Steps:Title(node):find("Al'Aketh Convert") end)
@@ -101,7 +103,7 @@ local campingQuests = { [97971] = true, [97968] = true, [97965] = true, [97967] 
     [97964] = true, [97970] = true, [97973] = true, [98286] = true, [97969] = true }
 local camping = {}
 for _, node in ipairs(guide.nodes) do
-    local name = only(node):match("^now profession (.+)$")
+    local name = only(node):match("^skill (.+)$")
     if name and node.kind == "acceptQuest" and campingQuests[node.auto.quests[1]] then camping[name] = node end
 end
 assert(camping.Skinning and camping.Mining and camping["First Aid"], "the guide offers each Camping 101 quest")

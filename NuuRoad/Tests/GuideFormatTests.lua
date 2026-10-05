@@ -1,7 +1,8 @@
 _G = _G or _ENV
--- The import (Data/Import.lua) on the export format's worked example, which
--- uses every feature once: it must expand and validate like a packaged guide,
--- and each feature must land where the runtime reads it.
+-- Guide format v1 on its worked example (docs/examples/guide-v1.lua), which
+-- uses every feature once: Steps:Expand reads it directly, it must validate
+-- like a packaged guide, and each feature must land where the runtime reads
+-- it.
 local ns = { modules = {}, idNames = nil }
 function ns:RegisterModule(name, module) self.modules[name] = module end
 ns.Kit = ns.Kit or LoadKit()
@@ -10,23 +11,22 @@ Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Data/IDNames.lua")
-Load(ns, "Data/Import.lua")
-local Import, Steps, Schema = ns.modules.GuideImport, ns.modules.Steps, ns.modules.Schema
+local Steps, Schema = ns.modules.Steps, ns.modules.Schema
 
-local example = dofile("docs/examples/guide-export.lua")
+local EXAMPLE = "docs/examples/guide-v1.lua"
+local example = dofile(EXAMPLE)
 -- The example's IDs are made up; the areas, flight node and skills it names
 -- are real ones the packaged guides use, but not every one is in the table.
 ns.idNames.areas[380] = ns.idNames.areas[380] or "The Crossroads"
 ns.idNames.areas[392] = ns.idNames.areas[392] or "Ratchet"
 ns.idNames.taxiNodes[25] = ns.idNames.taxiNodes[25] or "Crossroads, The Barrens"
 
-local authored = Import:ToAuthored(example)
-local guide = Steps:Expand(authored)
+local guide = Steps:Expand(example)
 local ok, errors = Schema:Validate(guide)
 assert(ok, table.concat(errors or {}, "; "))
 
 -- The wrapper.
-assert(guide.id == "nuuroad:example:every-feature" and guide.updated == 1790985600)
+assert(guide.schema == 1 and guide.id == "nuuroad:example:every-feature" and guide.updated == 1790985600)
 assert(guide.meta.title == "Example: every feature" and guide.meta.category == "Fixtures/Examples")
 assert(guide.meta.levels[1] == 13 and guide.meta.levels[2] == 16, "levels { from, to } -> { 13, 16 }")
 assert(guide.meta.materials == "section")
@@ -142,6 +142,20 @@ assert(#craft.needs == 3 and craft.needs[1].source == "ah" and craft.needs[3].co
 assert(guide.places[1].place == "windfury" and #guide.places[1].points == 5)
 assert(guide.places[1].connections[4][3] == true and guide.places[1].connections[1][3] == nil)
 
+-- A level step with no `at` waits wherever the player is.
+local sixteen = find(function(node) return node.kind == "levelTarget" and node.auto.level == 16 end)
+assert(sixteen.location == nil and sixteen.completion.observed.atLeast == 16)
+
+-- A quest's level: said before its accept, after the turn-in of the same visit.
+local console = find(function(node) return node.kind == "talk" and node.auto.accept[1] == 900 end)
+assert(console.auto.level == 15)
+local verbs = {}
+for _, goal in ipairs(Steps:Goals(console)) do table.insert(verbs, goal.verb) end
+assert(table.concat(verbs, " ") == "interact turnin level accept", table.concat(verbs, " "))
+local reach = Steps:Goals(console)[3]
+assert(Steps:GoalText(reach) == "Reach level 15" and reach.observed.type == "level" and reach.observed.atLeast == 15)
+assert(find(function(node) return node.kind == "acceptQuest" and node.auto.quests[1] == 863 end).auto.level == nil)
+
 -- The objective's count is the client's, asked when the step is shown.
 ns.modules.Client = { GetQuestObjectives = function(_, questID)
     return questID == 871 and { { text = "Razormane Water Seeker slain: 2/8", need = 8 } } or {}
@@ -150,21 +164,38 @@ assert(Steps:Count(razormanes) == 8)
 assert(Steps:Title(razormanes, true) == "Kill 8 Razormane Water Seeker", Steps:Title(razormanes, true))
 ns.modules.Client = nil
 
--- What the import refuses.
+-- What Expand refuses, each error naming the field it is about.
 local function refuses(mutate, expected)
-    local copy = dofile("docs/examples/guide-export.lua")
+    local copy = dofile(EXAMPLE)
     mutate(copy)
-    local fine, message = pcall(Import.ToAuthored, Import, copy)
-    assert(not fine and tostring(message):find(expected, 1, true), tostring(message))
+    local fine, message = pcall(Steps.Expand, Steps, copy)
+    assert(not fine and tostring(message) == "NuuRoad: " .. expected, tostring(message))
 end
-refuses(function(value) value.format = 2 end, "guide.format")
-refuses(function(value) value.data.sections[1].steps[1].type = "teleport" end, "unknown step type 'teleport'")
-refuses(function(value) value.data.sections[1].steps[1].cond = { colour = "red" } end, "is not a condition")
-refuses(function(value) value.data.sections[1].steps[1].cond = { is = "missing" } end, "no condition named 'missing'")
-refuses(function(value) value.data.sections[3].steps[3].quest = { 914 } end, "must be { quest, objective }")
-refuses(function(value) value.data.sections[4].steps[1].area = 999999 end, "no name for areas 999999")
+refuses(function(value) value.kind = nil end, "guide: is not a guide")
+refuses(function(value) value.schema = 2 end, "guide.schema: must be 1")
+refuses(function(value) value.levels = { 13, 16 } end, "guide.levels: is { from, to }")
+refuses(function(value) value.data.sections[1].steps[1].type = "teleport" end,
+    "data.sections[1].steps[1].type: unknown step type 'teleport'")
+refuses(function(value) value.data.sections[1].steps[1].cond = { colour = "red" } end,
+    "data.sections[1].steps[1].cond.colour: is not a condition")
+refuses(function(value) value.data.sections[1].steps[1].cond = { is = "missing" } end,
+    "data.sections[1].steps[1].cond.is: no condition named 'missing' in data.conds")
+refuses(function(value) value.data.sections[3].steps[3].quest = { 914 } end,
+    "data.sections[3].steps[3].quest: must be { quest, objective }")
+refuses(function(value) value.data.sections[4].steps[1].area = 999999 end,
+    "data.sections[4].steps[1].area: no name for areas 999999 (Tools/IDNames.py)")
+refuses(function(value) value.data.sections[1].steps[2].level = 0 end,
+    "data.sections[1].steps[2].level: must be a positive level")
+refuses(function(value) value.data.sections[1].steps[1].level = 10 end,
+    "data.sections[1].steps[1].level: is for level, accept and talk steps")
+refuses(function(value) value.data.sections[4].steps[4].level = 10 end,
+    "data.sections[4].steps[4].level: is for a talk that accepts quests")
+refuses(function(value) value.data.sections[1].steps[9].group[2].type = "travel" end,
+    "data.sections[1].steps[9].group[2]: group members are quest visits or quest objectives")
+refuses(function(value) value.data.sections[1].colour = "red" end,
+    "data.sections[1].colour: is not a field of a section")
 
--- Every packaged guide reads, expands and validates.
+-- Every packaged guide (and every fixture) is v1, and expands and validates.
 local packaged = { modules = {}, Kit = ns.Kit }
 function packaged:RegisterModule(name, module) self.modules[name] = module end
 Load(packaged, "Data/Schema.lua")
@@ -173,12 +204,12 @@ Load(packaged, "Data/Steps.lua")
 LoadBuiltIns(packaged)
 local count = 0
 for id, source in pairs(packaged.builtInGuides) do
-    if not id:find("^nuuroad:fixture:") then
-        count = count + 1
-        local expanded = packaged.modules.Steps:Expand(source)
-        local valid, problems = packaged.modules.Schema:Validate(expanded)
-        assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
-    end
+    assert(source.kind == "guide" and source.schema == 1, id .. " is a guide in format v1")
+    local expanded = packaged.modules.Steps:Expand(source)
+    assert(expanded.schema == 1 and expanded.id == id and #expanded.nodes > 0, id)
+    local valid, problems = packaged.modules.Schema:Validate(expanded)
+    assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
+    if not id:find("^nuuroad:fixture:") then count = count + 1 end
 end
 assert(count == 22, "the 22 packaged guides read, got " .. count)
 
@@ -186,7 +217,7 @@ assert(count == 22, "the 22 packaged guides read, got " .. count)
 Load(packaged, "Domain/Progress.lua")
 local Progress = packaged.modules.Progress
 Progress.store, Progress.session = {}, {}
-local carriedGuide = packaged.modules.Steps:Expand(Import:ToAuthored(dofile("docs/examples/guide-export.lua")))
+local carriedGuide = packaged.modules.Steps:Expand(dofile(EXAMPLE))
 packaged.modules.GuideRepository = { Get = function(_, id) return id == carriedGuide.id and carriedGuide or nil end }
 local carried = carriedGuide.nodes[beaks.index]
 local function carriedOn(index)
@@ -200,5 +231,4 @@ assert(carriedOn(carried.carriedFrom + 1), "from the step after the label")
 assert(carriedOn(carried.index - 1), "up to the step before it")
 assert(not carriedOn(carried.index), "the step itself once reached")
 
-print("NuuRoad import tests passed")
 return true

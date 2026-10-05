@@ -14,14 +14,14 @@ Load(ns, "Domain/NPCTracking.lua")
 local Steps, Progress, NPCTracking = ns.modules.Steps, ns.modules.Progress, ns.modules.NPCTracking
 
 local guide = Steps:Expand({
-    schema = 2, id = "test:npc", updated = 1789862400, map = 1413, meta = { title = "NPC", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { kill = { 3244, 3245 }, count = 2 },
-        { accept = 870, npc = 3448 },
-        { finish = "End" },
+    kind = "guide", schema = 1, id = "test:npc", updated = 1789862400, title = "NPC", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "kill", kill = { 3244, 3245 }, count = 2 },
+            { type = "accept", quests = { 870 }, npc = { 3448 } },
+            { type = "finish", note = "End" },
+        } },
     } },
-},
 })
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == guide.id and guide or nil end }
@@ -298,19 +298,19 @@ assert(Steps:GoalStatus(Steps:Goals(Progress:GetCurrentNode(guide))[1], Progress
 -- once, a turn-in NPC waits for its quest, and a dialog credits every step
 -- that names the NPC.
 local hub = Steps:Expand({
-    schema = 2, id = "test:hub", updated = 1789862400, map = 1413, meta = { title = "Hub", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { group = {
-        { accept = 870, npc = 3448 },
-        { accept = 869, npc = 3464 },
-        { turnin = 842, npc = 3338 },
-        { turnin = 869, accept = 871, npc = 3464 },
+    kind = "guide", schema = 1, id = "test:hub", updated = 1789862400, title = "Hub", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { group = {
+                { type = "accept", quests = { 870 }, npc = { 3448 } },
+                { type = "accept", quests = { 869 }, npc = { 3464 } },
+                { type = "turnin", quests = { 842 }, npc = { 3338 } },
+                { type = "talk", turnin = { 869 }, accept = { 871 }, npc = { 3464 } },
+            } },
+            { type = "kill", quest = 870 },
+            { type = "turnin", quests = { 870 }, npc = { 3448 } },
         } },
-        { objectives = 870 },
-        { turnin = 870, npc = 3448 },
     } },
-},
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == hub.id and hub or nil end }
 Progress.store, Progress.session = {}, {}
@@ -361,16 +361,16 @@ assert(stepChanges == 2 and #NPCTracking:Entries() == 0, "the objective step is 
 -- Kill steps in one camp can be grouped: every target is marked at once, and
 -- a kill counts for the step that names the creature, not the current one.
 local camp = Steps:Expand({
-    schema = 2, id = "test:camp", updated = 1789862400, map = 1413, meta = { title = "Camp", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { group = {
-            { kill = 3265, count = 3 },
-            { kill = 3267, count = 2 },
+    kind = "guide", schema = 1, id = "test:camp", updated = 1789862400, title = "Camp", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { group = {
+                { type = "kill", kill = { 3265 }, count = 3 },
+                { type = "kill", kill = { 3267 }, count = 2 },
+            } },
+            { type = "finish", note = "End" },
         } },
-        { finish = "End" },
     } },
-},
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == camp.id and camp or nil end }
 ns.modules.ObservedProgress = nil

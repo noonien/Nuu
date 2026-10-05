@@ -15,25 +15,26 @@ local function copy(value, seen)
     return clone
 end
 
+-- The packaged guides (and, in development, the fixtures) put themselves in
+-- ns.packagedGuides as they load, in guide format v1; each is expanded and
+-- checked here. One that cannot be read is reported and left out.
 function Repository:Initialize()
-    -- The packaged guides ship in the export format; the import makes each an
-    -- authored guide beside the development fixtures.
-    ns.modules.GuideImport:RegisterPackaged()
-    for id, guide in pairs(ns.builtInGuides or {}) do
-        local expanded, result = pcall(ns.modules.Steps.Expand, ns.modules.Steps, guide)
+    for _, source in ipairs(ns.packagedGuides or {}) do
+        local id = type(source) == "table" and source.id or "?"
+        local expanded, result = pcall(ns.modules.Steps.Expand, ns.modules.Steps, source)
         local valid, errors
         if expanded then
-            guide = result
-            valid, errors = ns.modules.Schema:Validate(guide)
+            valid, errors = ns.modules.Schema:Validate(result)
         else
             errors = { tostring(result) }
         end
         if valid then
-            self.builtIns[id] = guide
+            self.builtIns[result.id] = result
         else
-            ns:Print("Built-in guide '" .. tostring(id) .. "' was rejected: " .. table.concat(errors, "; "))
+            ns:Print("Packaged guide '" .. tostring(id) .. "' was rejected: " .. table.concat(errors, "; "))
         end
     end
+    ns.packagedGuides = nil
     local count = 0
     for _ in pairs(self.builtIns) do count = count + 1 end
     self.version = self.version + 1
@@ -54,7 +55,7 @@ function Repository:IsSessionGuide(id)
     return self.session[id] ~= nil
 end
 
--- Registers a v2 guide for this session only, replacing one with the same ID.
+-- Registers a guide (format v1) for this session only, replacing one with the same ID.
 -- Returns the runtime guide, or nil and the problems found.
 function Repository:SetSessionGuide(guide)
     local expanded, result = pcall(ns.modules.Steps.Expand, ns.modules.Steps, guide)

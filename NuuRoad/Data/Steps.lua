@@ -1,124 +1,17 @@
 local _, ns = ...
 
--- The v2 guide format: what the editor and the fixtures write, and what
--- Data/Import.lua turns a packaged guide (export format 1) into; the fields
--- it adds for that are in docs/guide-schema.md, "Read from the export
--- format". It is not the shape the addon runs on. Expand()
--- converts a guide once, here, and everything downstream sees ordinary
--- runtime nodes; anything derived -- titles, step positions, section and group
--- spans, reference lists, completion rules -- is built on the way in and never
--- authored.
---
--- A guide is a list of sections; a section is a list of steps and groups:
---
---   {
---       schema = 2, id = "nuuroad:leveling:barrens", updated = 1789862400,
---       map = 1413, only = "Horde",
---       meta = { title = "...", author = "...", category = "Leveling/The Barrens",
---                tags = { ... }, levels = { 13, 21 }, source = "..." },
---       steps = {
---           { section = "Crossroads", steps = { ... } },
---           { section = "Orgrimmar", map = 1454, steps = { ... } },
---       },
---   }
---
--- Steps, one verb key each:
---
---   { note = "Turn in Crossroads Conscription first." }      -- a step of its own
---   { accept = 870, npc = 3448, note = "Inside the inn." }   -- shown under that step
---   { travel = "Ratchet", at = { 63, 37.2 } }
---   { turnin = { 870, 845 }, npc = 3448, at = { ... } }
---   { turnin = 871, accept = { 872, 5041 }, npc = 3429 }  -- one visit, both
---   { objective = 870, at = { ... }, radius = 0.05 }      -- readyToTurnIn
---   { objective = 821, part = 2, at = { ... } }           -- one objective line
---   { objectives = { 871, 844 }, at = { ... } }           -- all readyToTurnIn
---   { objective = 871, part = 1, kill = 3267, count = 8 }   -- fallback title "Kill 8 ..."
---   { objective = 844, part = 1, collect = 5087, count = 7 } -- fallback title "Collect 7 ..."
---   { escort = 99144, npc = 275954, at = { ... } }          -- "Escort <npc>" to `at`: readyToTurnIn
---   { collect = 4926, object = "Chen's Empty Keg", at = { ... } } -- item in bags
---   { collect = 4926, starts = 819, object = "Chen's Empty Keg" } -- item that begins quest 819
---   { collect = 4986, quest = 924, object = "Flawed Power Stones" } -- quest item picked up for quest 924
---   { hearth = "The Crossroads", npc = 3934, at = { ... } }
---   { flight = "Ratchet", npc = 16227, at = { ... } }
---   { track = 869 } / { untrack = 869 }                     -- sticky objective shown alongside later steps
---   { object = "Control Console", turnin = 894, accept = 900 } -- interaction target on any step
---   { kill = 3267, count = 8, at = { ... } }                 -- no quest: counted from the combat log
---   { objective = 746, part = 1, collect = 4703, count = 5, use = 4702 } -- press the pick, count the tools
---   { train = "Mining", npc = 3357, at = { ... } }          -- learn it, or its next rank
---   { learn = { 100, 772 }, npc = 3353, at = { ... } }      -- class spells from a trainer: known
---   { cast = 1259686, at = { ... } }                        -- cast that spell while on the step
---   { skill = "Mining", rank = 150 }                        -- raise a skill to a rank
---   { gather = 2770, count = 20, skill = "Mining", at = { ... } } -- pick it, or buy it
---   { gather = 2770, count = 20, skill = "Mining", upto = 150 } -- ... or until the rank lands
---   { gather = 2835, count = 40, upto = { "Blacksmithing", 100 } } -- ... a rank in another profession
---   { craft = 2862, count = 30, skill = "Blacksmithing" }   -- make that many
---   { skillup = 2862, skill = "Blacksmithing", rank = 100 } -- make them until that rank
---   { buy = 2320, count = 10, npc = 3134, at = { ... } }    -- buy from that vendor
---   { equip = 7360 }                                        -- wear it
---   { reputation = 576, standing = "Honored" }              -- reach a standing
---   { craft = 2862, needs = { { 2840, 10 }, { 3466, 2, "ah" } } } -- materials
---   { level = 17 } / { level = 13, xp = 9200 }
---   { level = 14, by = "ratchet" }   -- the turn-ins before that label count
---   { group = { { accept = 870 }, { accept = 869 } } }    -- concurrent quest visits
---   { finish = "Closing text." }
---
--- Steps run in order. A branch is a `choice` whose options name labels, never
--- positions: any step or section may carry `label = "circuit"`, and an option
--- says `goto = "circuit"`. A label behind the choice runs that stretch again,
--- which is how a farming circuit is written.
---
---   { section = "Copper circuit", label = "circuit", steps = { ... } },
---   { choice = "Another lap?", options = {
---       { "Run the circuit again", goto = "circuit" },
---       { "Done farming", goto = "done" } } },
---
--- `at` is one point `{ x, y }`, or a list of points whose first is the arrow
--- target and whose rest are map pins. Either may carry `map = 1454` for a
--- coordinate off the guide's map; a section carries `map` for its whole span.
--- Coordinates may be percentages (52.26, 31.93) or normalized (0.5226).
---
--- Any step may carry `only`: "Warrior", "Warrior or Shaman", "not Tauren",
--- "Horde", "quest 858", "not quest 858", "Mage | level 4 | now gold 100".
--- `|` joins groups that must all hold; inside a group positive terms are
--- OR-ed and negated terms AND-ed. A step for another class, race, or faction
--- is left out for that character; one waiting on a quest or a level is
--- stopped on until it opens or the player skips it. A term marked `now` is
--- read as it stands when the guide reaches the step and never waited on: the
--- step is passed over if it does not hold (item count, money, xp and
--- cooldown gates). A guide carries `only` the same way.
---
--- IDs only; the guide's `names` table names them, by kind:
---   names = { npcs = { [2980] = "Grull Hawkwind" }, quests = { [747] = "The Hunt Begins" } }
--- (npcs, quests, items, factions, spells). An NPC the guide visits also says
--- where it stands, and may carry a note shown on every visit:
---   [3448] = { "Tonga Runetotem", at = { 52.26, 31.93 }, note = "..." }
--- so `{ accept = 870, npc = 3448 }` needs no `at`; a step's own `at` wins. `object` is the one exception:
--- world objects are named, not numbered. ASCII only.
+-- Guides are written in guide format v1 (docs/examples/guide-v1.lua, which
+-- documents every field). Expand() reads one once, here, and everything
+-- downstream sees ordinary runtime nodes; anything derived -- titles, step
+-- positions, section and group spans, reference lists, completion rules -- is
+-- built on the way in and never written in a guide.
 local Steps = {}
 
-
--- `kill` comes after `collect` so a collect step with kill targets stays a collect step.
--- The profession verbs come before `skill`, which they carry as the
--- profession they use, so a step that names its profession keeps its verb.
-local verbs = { "travel", "turnin", "accept", "objective", "objectives", "escort", "collect", "kill", "gather", "skillup", "craft", "buy", "vendor", "equip", "train", "learn", "cast", "skill", "reputation", "hearth", "flight", "track", "untrack", "level", "choice", "finish" }
 local radiusByVerb = {
-    accept = 0.02, turnin = 0.02, talk = 0.02, travel = 0.03, objective = 0.05, objectives = 0.05, escort = 0.05,
+    accept = 0.02, turnin = 0.02, talk = 0.02, travel = 0.03, objective = 0.05, escort = 0.05,
     level = 0.025, collect = 0.04, kill = 0.05, hearth = 0.02, interact = 0.02,
     train = 0.02, learn = 0.02, cast = 0.03, buy = 0.02, vendor = 0.02, craft = 0.03, skillup = 0.03, equip = 0.03, skill = 0.05, reputation = 0.05,
     gather = 0.05, flight = 0.02, finish = 0.02,
-}
-
-local classTokens = {
-    warrior = "WARRIOR", paladin = "PALADIN", hunter = "HUNTER", rogue = "ROGUE", priest = "PRIEST",
-    shaman = "SHAMAN", mage = "MAGE", warlock = "WARLOCK", druid = "DRUID",
-}
-local factionTokens = { horde = "Horde", alliance = "Alliance" }
-local raceTokens = {
-    orc = "orc", troll = "troll", tauren = "tauren", undead = "scourge", ["blood elf"] = "bloodelf", bloodelf = "bloodelf",
-    human = "human", dwarf = "dwarf", ["night elf"] = "nightelf", nightelf = "nightelf", gnome = "gnome", draenei = "draenei",
-    -- Forever's own race, either faction. Matches the client's
-    -- UnitRace token "Skyborne"; unverified here, see docs/api-compatibility.md.
-    skyborne = "skyborne",
 }
 
 local function list(value)
@@ -134,57 +27,6 @@ end
 -- Where a material comes from. The guide says which; nothing is looked up,
 -- and no price, stock, or auction data is ever read.
 Steps.materialSources = { gather = true, vendor = true, ah = true, drop = true, craft = true }
-
--- `needs = { { 2840, 10 }, { 3466, 2, "ah" } }` -> the node's material list.
--- Counts are the whole step's, not per item made, so what an author writes is
--- what the list asks for.
-local function materials(step)
-    if step.needs == nil then return nil end
-    if type(step.needs) ~= "table" then error("NuuRoad: needs must be a list of materials") end
-    local list = {}
-    for _, entry in ipairs(step.needs) do
-        if type(entry) ~= "table" then error("NuuRoad: each material is { itemID, count, source }") end
-        local itemID, count, source = entry[1], entry[2] or 1, entry[3] or "gather"
-        if type(itemID) ~= "number" then error("NuuRoad: a material is named by item ID") end
-        if not Steps.materialSources[source] then error("NuuRoad: unknown material source '" .. tostring(source) .. "'") end
-        table.insert(list, { itemID = itemID, count = count, source = source })
-    end
-    if #list == 0 then return nil end
-    return list
-end
-
--- The profession rank that makes the step moot. A materials step in a
--- profession guide is only ever a means to a rank, so reaching the rank
--- finishes it however few were gathered, bought, or made -- an escape hatch
--- on every such step.
---
---   upto = 150                      -- the step's own profession
---   upto = { "Blacksmithing", 100 } -- another one: a crafting guide's
---                                      gather step escapes on the craft
-local function uptoRank(step)
-    if step.upto == nil then return nil end
-    local skill, rank = step.skill, tonumber(step.upto)
-    if type(step.upto) == "table" then skill, rank = step.upto[1], tonumber(step.upto[2]) end
-    if not rank then error("NuuRoad: upto is a rank, or { skill, rank }") end
-    if type(skill) ~= "string" then error("NuuRoad: upto has no skill, and the step names no profession") end
-    return { skill = skill, rank = rank }
-end
-
-local function verbOf(step)
-    if step.turnin ~= nil and step.accept ~= nil then return "talk" end
-    -- `talk = true`: a visit with nothing to hand in or take, such as a
-    -- trainer. The player says when it is done.
-    if step.talk == true then return "talk" end
-    -- `collect` and `kill` are modifiers when the step is a quest objective.
-    if step.objective ~= nil then return "objective" end
-    for _, verb in ipairs(verbs) do
-        if step[verb] ~= nil then return verb end
-    end
-    if step.object ~= nil then return "interact" end
-    -- `note` is a step of its own only when nothing else is on it.
-    if step.note ~= nil then return "note" end
-    return nil
-end
 
 local function joinNames(ids, describe)
     -- One creature can carry several IDs (a copy per phase); it is named once.
@@ -267,7 +109,7 @@ function Steps:Title(node, literal)
         if node.mark then return Names:DescribeQuest(auto.quests[1]) .. ": " .. joinNames(node.mark, Names.DescribeNPC) end
         return Names:DescribeQuest(auto.quests[1]) .. ", objective " .. tostring(auto.part)
     end
-    if verb == "objective" or verb == "objectives" then
+    if verb == "objective" then
         local title = "Complete " .. joinNames(auto.quests, Names.DescribeQuest)
         if auto.kill then title = pressText .. "Kill " .. Steps:CountText(node, literal) .. joinNames(auto.kill, Names.DescribeNPC) end
         if auto.collect then title = pressText .. "Collect " .. Steps:CountText(node, literal) .. joinNames(auto.collect, Names.DescribeItem) .. fromText end
@@ -358,8 +200,6 @@ function Steps:Title(node, literal)
     end
     if verb == "hearth" then return "Set your hearthstone at " .. auto.name end
     if verb == "flight" then return "Learn the " .. auto.name .. " flight path" end
-    if verb == "track" then return "Meanwhile: " .. Names:DescribeQuest(auto.track) end
-    if verb == "untrack" then return "Done tracking " .. Names:DescribeQuest(auto.untrack) end
     if verb == "interact" then return "Click " .. auto.object end
     if verb == "accept" then return "Accept " .. joinNames(auto.quests, Names.DescribeQuest) .. suffix end
     if verb == "turnin" then return "Turn in " .. joinNames(auto.quests, Names.DescribeQuest) .. suffix end
@@ -497,7 +337,7 @@ function Steps:Have(node)
     if verb == "objective" and auto.part then
         return questProgress(Client, auto.quests and auto.quests[1], auto.part)
     end
-    if verb == "objective" or verb == "objectives" then
+    if verb == "objective" then
         if not (auto.kill or auto.collect) then return nil end
         local quests = auto.quests or {}
         if #quests ~= 1 then return nil end
@@ -619,6 +459,12 @@ function Steps:Goals(node)
             add("interact", { part("Click "), part(auto.object, "location") })
         end
         for _, id in ipairs(turnins) do add("turnin", { part("Turn in "), part(Names:DescribeQuest(id), "quest") }, { quest = id, state = "finished" }) end
+        -- The level the quests are taken from, on the line before them and
+        -- after the turn-ins, which may be what brings it.
+        if auto.level and #accepts > 0 then
+            add("level", { part("Reach level "), part(tostring(auto.level), "count") },
+                { observed = { type = "level", atLeast = auto.level } })
+        end
         for _, id in ipairs(accepts) do add("accept", { part("Accept "), part(Names:DescribeQuest(id), "quest") }, { quest = id, state = "acceptedOrFinished" }) end
     elseif verb == "objective" and auto.part then
         local questID = auto.quests[1]
@@ -654,7 +500,7 @@ function Steps:Goals(node)
                 add("objective", { part(Names:DescribeQuest(questID), "quest"), part(", objective " .. tostring(auto.part)) }, goal)
             end
         end
-    elseif verb == "objective" or verb == "objectives" then
+    elseif verb == "objective" then
         local single = #auto.quests == 1 and auto.quests[1] or nil
         if auto.kill then
             add("kill", withAt(withPress(nameParts({ part("Kill "), part(countText, "count") }, auto.kill, Names.DescribeNPC, "monster"))), { quest = single, state = single and "readyToTurnIn" or nil })
@@ -730,10 +576,6 @@ function Steps:Goals(node)
         add("hearth", { part("Set your hearthstone at "), part(auto.name, "location") }, { observed = node.completion and node.completion.observed })
     elseif verb == "flight" then
         add("flight", { part("Learn the "), part(auto.name, "location"), part(" flight path") }, { observed = node.completion and node.completion.observed })
-    elseif verb == "track" then
-        add("reminder", { part("Meanwhile: "), part(Names:DescribeQuest(auto.track), "quest") }, { quest = auto.track })
-    elseif verb == "untrack" then
-        add("reminder", { part("Done tracking "), part(Names:DescribeQuest(auto.untrack), "quest") }, { quest = auto.untrack })
     elseif verb == "interact" then
         add("interact", { part("Click "), part(auto.object, "location") })
     elseif verb == "travel" then
@@ -904,287 +746,367 @@ local function normalize(x, y)
     return x, y
 end
 
--- `at` is one point or a list of them: the first is the arrow's target and
--- the rest are map pins. A `map` on the point, or on the list, overrides the
--- section's map for that step alone.
--- The guide's places while Expand runs, so a step's `at = "cave.chamber"`
--- can be looked up.
-local expandingPlaces
--- The guide's NPCs (`names.npcs`) and its map while Expand runs, so a visit
--- with no `at` of its own goes where the NPC stands.
-local expandingNPCs, expandingMap
-
--- `{ "Tonga Runetotem", at = { 52.26, 31.93 }, note = "..." }` for an NPC the
--- guide visits; a monster is its name alone.
-local function npcEntry(id)
-    local entry = expandingNPCs and expandingNPCs[id]
-    return type(entry) == "table" and entry or nil
-end
-
--- "cave.chamber" (or "cave.3") -> the place and its point, or nil.
-function Steps.FindPlacePoint(places, reference)
-    if type(reference) ~= "string" then return nil end
-    local placeID, pointRef = reference:match("^([^%.]+)%.(.+)$")
-    if not placeID then return nil end
-    for _, place in ipairs(type(places) == "table" and places or {}) do
-        if type(place) == "table" and place.place == placeID and type(place.points) == "table" then
-            local index = tonumber(pointRef)
-            if not index then
-                for candidate, point in ipairs(place.points) do
-                    if type(point) == "table" and point.id == pointRef then index = candidate end
-                end
-            end
-            local point = index and place.points[index]
-            if type(point) == "table" then return place, point, index end
-        end
-    end
-    return nil
-end
-
-local function placeLocation(step, verb, defaultMap)
-    local place, point = Steps.FindPlacePoint(expandingPlaces, step.at)
-    if not place then error("NuuRoad: no place point '" .. step.at .. "'") end
-    local x, y = normalize(point.at and point.at[1], point.at and point.at[2])
-    if not x then error("NuuRoad: place point '" .. step.at .. "' has no position") end
-    return { mapID = point.map or place.map or defaultMap, x = x, y = y,
-        arrivalRadiusNormalized = step.radius or radiusByVerb[verb], point = step.at }
-end
-
-local function location(step, verb, defaultMap)
-    local at = step.at
-    if type(at) == "string" then return placeLocation(step, verb, defaultMap) end
-    if type(at) ~= "table" then return nil end
-    local points, mapID = at, at.map or defaultMap
-    if type(at[1]) ~= "table" then points = { at } end
-    local x, y = normalize(points[1] and points[1][1], points[1] and points[1][2])
-    if not x then return nil end
-    mapID = (points[1].map) or mapID
-    local spots
-    for index = 2, #points do
-        local sx, sy = normalize(points[index][1], points[index][2])
-        if sx and sy then
-            spots = spots or {}
-            table.insert(spots, { x = sx, y = sy })
-        end
-    end
-    -- The arrow takes whichever point is nearest; `loop` is kept only to say
-    -- the points are a circuit, which changes nothing now.
-    -- `near` says which part of a guide place the spot belongs to, so the
-    -- planner joins it to that point's passages rather than guessing by
-    -- distance (two levels of a cave can lie over each other on the map).
-    local near = step.near
-    if near ~= nil and not Steps.FindPlacePoint(expandingPlaces, near) then
-        error("NuuRoad: no place point '" .. tostring(near) .. "'")
-    end
-    return { mapID = mapID, x = x, y = y, arrivalRadiusNormalized = step.radius or radiusByVerb[verb],
-        spots = spots, loop = step.loop and true or nil, near = near }
-end
-
-local function questCompletion(state, ids, match)
-    return { type = "observed", observed = { type = "quests", state = state, match = match, ids = ids } }
-end
-
--- "Warrior or Shaman", "not Tauren", "Horde", "quest 858", "not quest 858 or Orc",
--- and one keyword per registered predicate: "season 2", "skill Mining 75",
--- "item 2495", "equipped 2495", "spell 8017", "level 10", "gold 5000",
--- "reputation 576 Honored", "profession Skinning", "zone 1412", "hardcore",
--- "instance". Positive terms are OR-ed, negated terms AND-ed, and `|`
--- separates groups so "not Warrior | not Druid" means neither.
+-- READING A GUIDE
 --
--- Every keyword here names a predicate API/Client.lua registers. Adding a
--- condition is one entry in this table and one RegisterPredicate call; the
--- `when` field below is the escape hatch for the one-off that never will be.
-local conditionTerms = {
-    { "^quest%s+(%d+)%s+(%a+)$", function(id, state)
-        local states = { accepted = "accepted", finished = "finished", readytoturnin = "readyToTurnIn" }
-        local resolved = states[state:lower()]
-        if not resolved then error("NuuRoad: unknown quest state '" .. state .. "'") end
-        return { type = "quest", id = tonumber(id), state = resolved }
-    end },
-    { "^quest%s+(%d+)$", function(id) return { type = "quest", id = tonumber(id) } end },
-    { "^season%s+(%d+)$", function(id) return { type = "season", id = tonumber(id) } end },
-    { "^season$", function() return { type = "season" } end },
-    { "^hardcore$", function() return { type = "hardcore" } end },
-    { "^instance$", function() return { type = "instance" } end },
-    { "^level%s+(%d+)$", function(level) return { type = "level", atLeast = tonumber(level) } end },
-    { "^experience%s+(%d+)$", function(xp) return { type = "experience", atLeast = tonumber(xp) } end },
-    { "^gold%s+(%d+)$", function(copper) return { type = "gold", atLeast = tonumber(copper) } end },
-    { "^item%s+(%d+)%s+x(%d+)$", function(id, count) return { type = "item", id = tonumber(id), count = tonumber(count) } end },
-    { "^item%s+(%d+)$", function(id) return { type = "item", id = tonumber(id) } end },
-    { "^equipped%s+(%d+)$", function(id) return { type = "equippedItem", id = tonumber(id) } end },
-    { "^spell%s+(%d+)$", function(id) return { type = "spell", id = tonumber(id) } end },
-    { "^zone%s+(%d+)$", function(mapID) return { type = "zone", mapID = tonumber(mapID) } end },
-    { "^skill%s+(.-)%s+(%d+)$", function(name, rank) return { type = "skill", name = name, atLeast = tonumber(rank) } end },
-    { "^skill%s+(.+)$", function(name) return { type = "skill", name = name } end },
-    { "^profession%s+(.+)$", function(name) return { type = "profession", name = name } end },
-    { "^hearth%s+(.+)$", function(name) return { type = "hearth", name = name } end },
-    { "^subzone%s+(.+)$", function(name) return { type = "subzone", name = name } end },
-    { "^aura%s+(%d+)$", function(id) return { type = "aura", id = tonumber(id) } end },
-    { "^cooldown%s+item%s+(%d+)$", function(id) return { type = "cooldown", id = tonumber(id), kind = "item" } end },
-    { "^cooldown%s+(%d+)$", function(id) return { type = "cooldown", id = tonumber(id) } end },
-    { "^xprate%s+<%s*([%d%.]+)$", function(rate) return { type = "xprate", below = tonumber(rate) } end },
-    { "^xprate%s+>=?%s*([%d%.]+)$", function(rate) return { type = "xprate", atLeast = tonumber(rate) } end },
-    { "^auctionhouse$", function() return { type = "auctionHouse" } end },
-    { "^selffound$", function() return { type = "selfFound" } end },
-    -- "slot 16 dps < 4.2": what the player already wears is worse than this.
-    { "^slot%s+(%d+)%s+(%a+)%s*<%s*([%d%.]+)$", function(slot, stat, value)
-        return { type = "slot", slot = tonumber(slot), stat = stat:lower(), below = tonumber(value) }
-    end },
-    { "^slot%s+(%d+)%s+(%a+)%s*>=?%s*([%d%.]+)$", function(slot, stat, value)
-        return { type = "slot", slot = tonumber(slot), stat = stat:lower(), atLeast = tonumber(value) }
-    end },
-    { "^reputation%s+(%d+)%s+(.+)$", function(factionID, standing)
-        local value = ns.modules.Names and ns.modules.Names:StandingValue(standing)
-        if not value then error("NuuRoad: unknown reputation standing '" .. standing .. "'") end
-        return { type = "reputation", factionID = tonumber(factionID), standing = value }
-    end },
-}
+-- Expand() reads a guide in format v1 and builds the runtime guide. Errors
+-- name the field they are about: "NuuRoad: data.sections[2].steps[4].quest:
+-- must be { quest, objective }".
 
--- Keywords keep the author's capitalization, because a skill is named, not
--- tokenized; only the bare class, race, and faction words are folded.
-local unpackList = table.unpack or unpack
-
-local function parseTerm(piece)
-    for _, term in ipairs(conditionTerms) do
-        local captures = { piece:match(term[1]) }
-        if captures[1] ~= nil then return term[2](unpackList(captures, 1, term[3] or #captures)) end
-    end
-    local body = piece:lower()
-    if factionTokens[body] then return { type = "faction", values = { factionTokens[body] } } end
-    if classTokens[body] then return { type = "class", values = { classTokens[body] } } end
-    if raceTokens[body] then return { type = "race", values = { raceTokens[body] } } end
-    error("NuuRoad: unknown condition term '" .. piece .. "'")
+local function fail(path, message)
+    error("NuuRoad: " .. path .. ": " .. message, 0)
 end
 
--- One term, with its `not` and `now` in front: "not quest 858", "now item
--- 247840", "not now aura 1254832".
-local function parsePiece(piece)
-    local negated = piece:match("^not%s+(.+)$")
-    local body = negated or piece
-    local now = body:match("^now%s+(.+)$")
-    local predicate = parseTerm(now or body)
-    if now then predicate = { type = "now", child = predicate } end
-    if negated then predicate = { type = "not", child = predicate } end
-    return predicate, negated ~= nil
+local function sortedKeys(t)
+    local keys = {}
+    for key in pairs(t) do table.insert(keys, key) end
+    table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+    return keys
 end
 
--- `|` joins groups that must all hold; ` or ` joins the terms of one group,
--- any of which will do. Inside a group the negated terms are AND-ed, so
--- "not Tauren or Orc" is an Orc who is not a Tauren.
-local function parseGroup(text)
-    local positives, negatives = {}, {}
-    for piece in (text .. " or "):gmatch("(.-) or ") do
-        piece = piece:gsub("^%s+", ""):gsub("%s+$", "")
-        local predicate, negated = parsePiece(piece)
-        table.insert(negated and negatives or positives, predicate)
-    end
-    local parts = {}
-    if #positives == 1 then table.insert(parts, positives[1]) elseif #positives > 1 then table.insert(parts, { type = "any", children = positives }) end
-    for _, negative in ipairs(negatives) do table.insert(parts, negative) end
-    return parts
+local function copyTable(value)
+    if type(value) ~= "table" then return value end
+    local copy = {}
+    for key, child in pairs(value) do copy[key] = copyTable(child) end
+    return copy
 end
 
-local function parseCondition(text)
-    if type(text) == "table" then return text end
-    if type(text) ~= "string" then return nil end
-    local parts = {}
-    for group in text:gmatch("[^|]+") do
-        group = group:gsub("^%s+", ""):gsub("%s+$", "")
-        for _, part in ipairs(parseGroup(group)) do table.insert(parts, part) end
+local function slug(text)
+    return (tostring(text):lower():gsub("[^%w]+", "-"):gsub("^%-+", ""):gsub("%-+$", ""))
+end
+
+local function positive(value)
+    return type(value) == "number" and value >= 1 and value % 1 == 0
+end
+
+-- Points are hundredths of a map percent in a guide: { 5226, 3193 } is
+-- 52.26, 31.93. `map` stands in for a point that names none, where the
+-- format says whose map it is on.
+local function point(value, path, map)
+    if type(value) ~= "table" or type(value[1]) ~= "number" or type(value[2]) ~= "number" then
+        fail(path, "a point is { x, y }")
     end
+    return { value[1] / 100, value[2] / 100, map = value.map or map }
+end
+
+local function points(value, path, map)
+    if type(value) ~= "table" or #value == 0 then fail(path, "must be a list of points") end
+    local out = {}
+    for index, entry in ipairs(value) do out[index] = point(entry, path .. "[" .. index .. "]", map) end
+    return out
+end
+
+-- Names for the IDs the client cannot be asked about by ID.
+local function idName(kind, id, path)
+    local names = ns.idNames and ns.idNames[kind]
+    local name = names and names[id]
+    if not name then fail(path, "no name for " .. kind .. " " .. tostring(id) .. " (Tools/IDNames.py)") end
+    return name
+end
+
+local function areaName(id, path)
+    if type(id) ~= "number" then fail(path, "an area is an AreaTable ID") end
+    local Client = ns.modules and ns.modules.Client
+    local live = Client and Client.GetAreaName and Client:GetAreaName(id)
+    return live or idName("areas", id, path)
+end
+
+local function skillName(id, path)
+    if type(id) ~= "number" then fail(path, "a skill is a SkillLine ID") end
+    return idName("skills", id, path)
+end
+
+-- CONDITIONS
+
+local function combine(kind, parts)
     if #parts == 0 then return nil end
     if #parts == 1 then return parts[1] end
-    return { type = "all", children = parts }
+    return { type = kind, children = parts }
 end
 
--- `only` and `when` are AND-ed: the keywords say what they can, the expression
--- says the rest. `when` is a Lua expression stored as a string and evaluated in
--- the client's sandbox; see the Lua fallback in API/Client.lua.
-local function conditionOf(source)
-    local condition = parseCondition(source.only)
-    if source.when == nil then return condition end
-    if type(source.when) ~= "string" or source.when == "" then
-        error("NuuRoad: `when` is a Lua expression written as a string")
+local function tokens(value, path)
+    if type(value) == "string" then return { value } end
+    if type(value) == "table" and #value > 0 then return value end
+    fail(path, "must be a token or a list of them")
+end
+
+-- A condition table -> a predicate, and whether it asks anything `show` asks
+-- (a profession, a realm answer), which makes it a `now` term.
+local predicate
+local function predicates(entries, conds, path, seen)
+    if type(entries) ~= "table" or #entries == 0 then fail(path, "must be a list of conditions") end
+    local out, show = {}, false
+    for index, entry in ipairs(entries) do
+        local child, childShow = predicate(entry, conds, path .. "[" .. index .. "]", seen)
+        table.insert(out, child)
+        show = show or childShow
     end
-    local expression = { type = "lua", body = source.when }
-    if not condition then return expression end
-    return { type = "all", children = { condition, expression } }
+    return out, show
 end
 
--- Renders a predicate back into the `only` text that produced it, so the
--- editor can show and re-parse a condition instead of dropping it. A `lua`
--- predicate is not `only` text and comes back separately.
-function Steps:DescribeCondition(predicate)
-    if type(predicate) ~= "table" then return nil end
+predicate = function(condition, conds, path, seen)
+    if type(condition) ~= "table" then fail(path, "a condition is a table") end
+    local parts, show = {}, false
+    for _, key in ipairs(sortedKeys(condition)) do
+        local value, at = condition[key], path .. "." .. tostring(key)
+        if key == "class" or key == "race" or key == "faction" then
+            table.insert(parts, { type = key, values = tokens(value, at) })
+        elseif key == "season" then
+            table.insert(parts, value == true and { type = "season" } or { type = "season", id = value })
+        elseif key == "hardcore" then
+            table.insert(parts, { type = "hardcore" })
+        elseif key == "skill" then
+            local each = {}
+            for index, id in ipairs(type(value) == "table" and value or { value }) do
+                table.insert(each, { type = "profession", name = skillName(id, at .. "[" .. index .. "]") })
+            end
+            table.insert(parts, combine("any", each))
+            show = true
+        elseif key == "ah" then
+            table.insert(parts, { type = "auctionHouse" })
+            show = true
+        elseif key == "selffound" then
+            table.insert(parts, { type = "selfFound" })
+            show = true
+        elseif key == "any" or key == "all" then
+            local children, childShow = predicates(value, conds, at, seen)
+            table.insert(parts, combine(key, children))
+            show = show or childShow
+        elseif key == "none" then
+            local children, childShow = predicates(value, conds, at, seen)
+            table.insert(parts, { type = "not", child = combine("any", children) })
+            show = show or childShow
+        elseif key == "is" then
+            local named = conds and conds[value]
+            if named == nil then fail(at, "no condition named '" .. tostring(value) .. "' in data.conds") end
+            if seen[value] then fail(at, "condition '" .. value .. "' names itself") end
+            seen[value] = true
+            local child, childShow = predicate(named, conds, "data.conds." .. value, seen)
+            seen[value] = nil
+            table.insert(parts, child)
+            show = show or childShow
+        else
+            fail(at, "is not a condition")
+        end
+    end
+    if #parts == 0 then fail(path, "an empty condition") end
+    return combine("all", parts), show
+end
+
+-- The predicates a guide's, section's, group's or step's `cond` and `show`
+-- put on everything inside it. `show` (and a `cond` that asks what `show`
+-- asks) is wrapped in `now`: read when the guide reaches the step, which is
+-- passed over if it does not hold.
+local function conditions(source, conds, path)
+    local out = {}
+    for _, field in ipairs({ "cond", "show" }) do
+        if source[field] ~= nil then
+            local tree, show = predicate(source[field], conds, path .. "." .. field, {})
+            if show or field == "show" then tree = { type = "now", child = tree } end
+            table.insert(out, tree)
+        end
+    end
+    return out
+end
+
+local function append(target, source)
+    local out = {}
+    for _, entry in ipairs(target) do table.insert(out, entry) end
+    for _, entry in ipairs(source) do table.insert(out, entry) end
+    return out
+end
+
+-- A condition table, as a guide writes one, as the predicate a node carries.
+function Steps:Condition(condition, conds)
+    if condition == nil then return nil end
+    local tree, show = predicate(condition, conds, "cond", {})
+    return show and { type = "now", child = tree } or tree
+end
+
+-- THE EDITOR'S CONDITIONS
+--
+-- The editor takes a condition as text that says what a guide's `cond` and
+-- `show` can: "Warrior or Shaman", "not Tauren", "Horde", "season 2",
+-- "hardcore", "skill Mining" (or "skill 186"), "ah", "selffound". ` or `
+-- joins terms any of which will do, `not` in front of a term turns that term
+-- alone around, and `|` joins groups that must all hold: "Horde | not Tauren
+-- | Warrior or skill Mining". Every condition a guide can write has such a
+-- text (DescribeCondition finds it), so the editor reads back what it shows.
+
+local classTokens = {
+    warrior = "WARRIOR", paladin = "PALADIN", hunter = "HUNTER", rogue = "ROGUE", priest = "PRIEST",
+    shaman = "SHAMAN", mage = "MAGE", warlock = "WARLOCK", druid = "DRUID",
+}
+local factionTokens = { horde = "Horde", alliance = "Alliance" }
+local raceTokens = {
+    orc = "orc", troll = "troll", tauren = "tauren", undead = "scourge", scourge = "scourge",
+    ["blood elf"] = "bloodelf", bloodelf = "bloodelf", human = "human", dwarf = "dwarf",
+    ["night elf"] = "nightelf", nightelf = "nightelf", gnome = "gnome", draenei = "draenei",
+    -- Forever's own race, either faction. Matches the client's
+    -- UnitRace token "Skyborne"; unverified here, see docs/api-compatibility.md.
+    skyborne = "skyborne",
+}
+
+local function skillID(text)
+    if tonumber(text) then return tonumber(text) end
+    for id, name in pairs(ns.idNames and ns.idNames.skills or {}) do
+        if name:lower() == text:lower() then return id end
+    end
+    error("NuuRoad: no skill called '" .. text .. "'", 0)
+end
+
+local function termCondition(piece)
+    local body = piece:lower()
+    if factionTokens[body] then return { faction = factionTokens[body] } end
+    if classTokens[body] then return { class = classTokens[body] } end
+    if raceTokens[body] then return { race = raceTokens[body] } end
+    if body == "season" then return { season = true } end
+    local season = body:match("^season%s+(%d+)$")
+    if season then return { season = tonumber(season) } end
+    if body == "hardcore" then return { hardcore = true } end
+    if body == "ah" then return { ah = true } end
+    if body == "selffound" then return { selffound = true } end
+    local skill = piece:match("^[Ss][Kk][Ii][Ll][Ll]%s+(.+)$")
+    if skill then return { skill = skillID(skill) } end
+    error("NuuRoad: unknown condition term '" .. piece .. "'", 0)
+end
+
+local function trim(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end
+
+-- Text -> the condition table a guide would write, or nil for none.
+local function conditionFromText(text)
+    local groups = {}
+    for group in text:gmatch("[^|]+") do
+        local terms = {}
+        for piece in (trim(group) .. " or "):gmatch("(.-) or ") do
+            piece = trim(piece)
+            local negated = piece:match("^[Nn][Oo][Tt]%s+(.+)$")
+            local term = termCondition(negated or piece)
+            table.insert(terms, negated and { none = { term } } or term)
+        end
+        table.insert(groups, #terms == 1 and terms[1] or { any = terms })
+    end
+    if #groups == 0 then return nil end
+    if #groups == 1 then return groups[1] end
+    return { all = groups }
+end
+
+-- The editor's write-back. Raises on a term it does not know; the caller
+-- reports that.
+function Steps:ParseCondition(text)
+    if type(text) ~= "string" or not text:match("%S") then return nil end
+    return self:Condition(conditionFromText(text))
+end
+
+-- A step's condition split into what was written (`cond`, `show`) and the
+-- terms Expand worked out from the step's own fields (`derived`), which the
+-- editor keeps as they are.
+function Steps:SplitCondition(condition)
+    if type(condition) ~= "table" then return nil, {} end
+    if condition.derived then return nil, { condition } end
+    if condition.type ~= "all" then return condition, {} end
+    local written, derived = {}, {}
+    for _, child in ipairs(condition.children or {}) do
+        table.insert(child.derived and derived or written, child)
+    end
+    return combine("all", written), derived
+end
+
+-- The two halves back together.
+function Steps:JoinCondition(written, derived)
+    local parts = {}
+    if written then table.insert(parts, written) end
+    for _, term in ipairs(derived or {}) do table.insert(parts, term) end
+    return combine("all", parts)
+end
+
+-- One leaf's words, or nil for a kind the text has none for.
+local function leafWords(predicate, value)
     local kind = predicate.type
-    if kind == "not" then
-        local child = self:DescribeCondition(predicate.child)
-        return child and ("not " .. child) or nil
-    end
-    if kind == "now" then
-        local child = self:DescribeCondition(predicate.child)
-        return child and ("now " .. child) or nil
-    end
-    if kind == "any" or kind == "all" then
-        local parts = {}
-        for _, child in ipairs(predicate.children or {}) do
-            local text = self:DescribeCondition(child)
-            if text then table.insert(parts, text) end
-        end
-        if #parts == 0 then return nil end
-        return table.concat(parts, kind == "any" and " or " or " | ")
-    end
-    if kind == "lua" then return nil end
     if kind == "class" or kind == "race" or kind == "faction" then
-        local names = {}
-        for _, value in ipairs(predicate.values or {}) do
-            table.insert(names, tostring(value):sub(1, 1):upper() .. tostring(value):sub(2):lower())
-        end
-        return table.concat(names, " or ")
-    end
-    if kind == "quest" then
-        return "quest " .. tostring(predicate.id) .. (predicate.state and (" " .. predicate.state) or "")
+        return tostring(value):sub(1, 1):upper() .. tostring(value):sub(2):lower()
     end
     if kind == "season" then return predicate.id and ("season " .. predicate.id) or "season" end
     if kind == "hardcore" then return "hardcore" end
-    if kind == "instance" then return "instance" end
-    if kind == "level" then return "level " .. tostring(predicate.atLeast) end
-    if kind == "experience" then return "experience " .. tostring(predicate.atLeast) end
-    if kind == "gold" then return "gold " .. tostring(predicate.atLeast) end
-    if kind == "item" then
-        return "item " .. tostring(predicate.id) .. (predicate.count and predicate.count > 1 and (" x" .. predicate.count) or "")
-    end
-    if kind == "equippedItem" then return "equipped " .. tostring(predicate.id) end
-    if kind == "spell" then return "spell " .. tostring(predicate.id) end
-    if kind == "zone" then return "zone " .. tostring(predicate.mapID) end
-    if kind == "skill" then
-        return "skill " .. tostring(predicate.name) .. (predicate.atLeast and (" " .. predicate.atLeast) or "")
-    end
-    if kind == "profession" then return "profession " .. tostring(predicate.name) end
-    if kind == "hearth" then return "hearth " .. tostring(predicate.name) end
-    if kind == "subzone" then return "subzone " .. tostring(predicate.name) end
-    if kind == "aura" then return "aura " .. tostring(predicate.id) end
-    if kind == "cooldown" then
-        return "cooldown " .. (predicate.kind == "item" and "item " or "") .. tostring(predicate.id)
-    end
-    if kind == "xprate" then
-        return "xprate " .. (predicate.below and ("< " .. predicate.below) or (">= " .. tostring(predicate.atLeast)))
-    end
-    if kind == "auctionHouse" then return "auctionhouse" end
+    if kind == "profession" then return "skill " .. tostring(predicate.name) end
+    if kind == "auctionHouse" then return "ah" end
     if kind == "selfFound" then return "selffound" end
-    if kind == "slot" then
-        return "slot " .. tostring(predicate.slot) .. " " .. tostring(predicate.stat) .. " "
-            .. (predicate.below and ("< " .. predicate.below) or (">= " .. tostring(predicate.atLeast)))
+    if kind == "quest" then
+        return "quest " .. tostring(predicate.id) .. (predicate.state and (" " .. predicate.state) or "")
     end
-    if kind == "reputation" then
-        local standing = ns.modules.Names and ns.modules.Names:DescribeStanding(predicate.standing) or predicate.standing
-        return "reputation " .. tostring(predicate.factionID) .. " " .. tostring(standing)
-    end
+    if kind == "item" then return "item " .. tostring(predicate.id) end
     return nil
 end
 
+-- A predicate as clauses that must all hold, each a list of terms any of
+-- which will do: `not` is pushed down to the terms, and an `all` inside an
+-- `any` is spread over it. `now` is said only on the terms a step works out
+-- for itself (quest, item); a `show` key is read that way already.
+local function clauses(predicate, negated, now)
+    if type(predicate) ~= "table" then return {} end
+    local kind = predicate.type
+    if kind == "now" then return clauses(predicate.child, negated, true) end
+    if kind == "not" then return clauses(predicate.child, not negated, now) end
+    if kind == "all" or kind == "any" then
+        local joined = (kind == "all") ~= negated
+        if joined then
+            local out = {}
+            for _, child in ipairs(predicate.children or {}) do
+                for _, clause in ipairs(clauses(child, negated, now)) do table.insert(out, clause) end
+            end
+            return out
+        end
+        local out = { {} }
+        for _, child in ipairs(predicate.children or {}) do
+            local spread = {}
+            for _, left in ipairs(out) do
+                for _, right in ipairs(clauses(child, negated, now)) do
+                    local clause = {}
+                    for _, term in ipairs(left) do table.insert(clause, term) end
+                    for _, term in ipairs(right) do table.insert(clause, term) end
+                    table.insert(spread, clause)
+                end
+            end
+            out = spread
+        end
+        return out
+    end
+    local values = (kind == "class" or kind == "race" or kind == "faction") and (predicate.values or {}) or { false }
+    local terms = {}
+    for _, value in ipairs(values) do
+        local words = leafWords(predicate, value)
+        if words then
+            if now and (kind == "quest" or kind == "item") then words = "now " .. words end
+            table.insert(terms, negated and ("not " .. words) or words)
+        end
+    end
+    if #terms == 0 then return {} end
+    -- "not Warrior or Druid" read as one term each: a class that is neither.
+    if negated then
+        local out = {}
+        for _, term in ipairs(terms) do table.insert(out, { term }) end
+        return out
+    end
+    return { terms }
+end
+
+-- A predicate as the text the editor reads (see "The editor's conditions"),
+-- for the editor, the tracker and reports.
+function Steps:DescribeCondition(predicate)
+    if type(predicate) ~= "table" then return nil end
+    local parts = {}
+    for _, clause in ipairs(clauses(predicate, false, false)) do
+        local seen, terms = {}, {}
+        for _, term in ipairs(clause) do
+            if not seen[term] then seen[term] = true; table.insert(terms, term) end
+        end
+        if #terms > 0 then table.insert(parts, table.concat(terms, " or ")) end
+    end
+    if #parts == 0 then return nil end
+    return table.concat(parts, " | ")
+end
+
 -- Keeps a carried step's completion in step with the step it rides along
--- with. The import builds this once; the editor needs it again whenever an
+-- with. Expand builds this once; the editor needs it again whenever an
 -- author changes which step carries this one.
 function Steps:ApplyCarried(node)
     local observed = node.completion and node.completion.type == "observed" and node.completion.observed
@@ -1213,64 +1135,182 @@ function Steps:ApplyCarried(node)
         and { type = "any", children = { own, carried } } or carried }
 end
 
--- The editor's write-back: the same two fields an author writes, parsed the
--- same way, so what the editor saves and what a packaged guide ships are one
--- format. Raises on a term it does not know; the caller reports that.
-function Steps:ParseCondition(onlyText, whenText)
-    local source = {}
-    if type(onlyText) == "string" and onlyText:match("%S") then source.only = onlyText end
-    if type(whenText) == "string" and whenText:match("%S") then source.when = whenText end
-    if source.only == nil and source.when == nil then return nil end
-    return conditionOf(source)
+-- STEPS
+
+-- `needs = { { item = 2840, count = 10, source = "ah" } }` -> the node's
+-- material list. Counts are the whole step's, not per item made, so what a
+-- guide writes is what the list asks for.
+local function materials(step, path)
+    if step.needs == nil then return nil end
+    if type(step.needs) ~= "table" then fail(path .. ".needs", "is { { item, count, source }, ... }") end
+    local out = {}
+    for index, need in ipairs(step.needs) do
+        local at = path .. ".needs[" .. index .. "]"
+        if type(need) ~= "table" or type(need.item) ~= "number" then fail(at, "is { item, count, source }") end
+        local source = need.source or "gather"
+        if not Steps.materialSources[source] then fail(at .. ".source", "unknown material source '" .. tostring(source) .. "'") end
+        table.insert(out, { itemID = need.item, count = need.count or 1, source = source })
+    end
+    if #out == 0 then return nil end
+    return out
 end
 
--- The `when` expression behind a condition, wherever it sits in the tree.
-function Steps:LuaCondition(predicate)
-    if type(predicate) ~= "table" then return nil end
-    if predicate.type == "lua" then return predicate.body end
-    if predicate.type == "not" or predicate.type == "now" then return self:LuaCondition(predicate.child) end
-    for _, child in ipairs(predicate.children or {}) do
-        local body = self:LuaCondition(child)
-        if body then return body end
+-- The profession rank that makes the step moot. A materials step in a
+-- profession guide is only ever a means to a rank, so reaching the rank
+-- finishes it however few were gathered, bought, or made.
+local function uptoRank(step, path)
+    if step.upto == nil then return nil end
+    if type(step.upto) ~= "table" or type(step.upto.rank) ~= "number" then fail(path .. ".upto", "is { skill, rank }") end
+    return { skill = skillName(step.upto.skill, path .. ".upto.skill"), rank = step.upto.rank }
+end
+
+local function questPair(quest)
+    return type(quest) == "table" and type(quest[1]) == "number" and type(quest[2]) == "number"
+end
+
+local function questCompletion(state, ids, match)
+    return { type = "observed", observed = { type = "quests", state = state, match = match, ids = ids } }
+end
+
+-- The guide's places and NPCs and its map while Expand runs, so a step's
+-- `stand = "cave.chamber"` can be looked up and a visit with no `at` of its
+-- own goes where the NPC stands.
+local expandingPlaces, expandingNPCs, expandingMap
+
+-- { "Tonga Runetotem", at = { 52.26, 31.93 }, note = "..." } for an NPC the
+-- guide visits; a monster is its name alone.
+local function npcEntry(id)
+    local entry = expandingNPCs and expandingNPCs[id]
+    return type(entry) == "table" and entry or nil
+end
+
+-- "cave.chamber" (or "cave.3") -> the place and its point, or nil.
+function Steps.FindPlacePoint(places, reference)
+    if type(reference) ~= "string" then return nil end
+    local placeID, pointRef = reference:match("^([^%.]+)%.(.+)$")
+    if not placeID then return nil end
+    for _, place in ipairs(type(places) == "table" and places or {}) do
+        if type(place) == "table" and place.place == placeID and type(place.points) == "table" then
+            local index = tonumber(pointRef)
+            if not index then
+                for candidate, entry in ipairs(place.points) do
+                    if type(entry) == "table" and entry.id == pointRef then index = candidate end
+                end
+            end
+            local found = index and place.points[index]
+            if type(found) == "table" then return place, found, index end
+        end
     end
     return nil
 end
 
-local function build(step, verb, defaultMap)
+local function placeLocation(at, radius, verb, defaultMap)
+    local place, entry = Steps.FindPlacePoint(expandingPlaces, at)
+    if not place then error("NuuRoad: no place point '" .. at .. "'", 0) end
+    local x, y = normalize(entry.at and entry.at[1], entry.at and entry.at[2])
+    if not x then error("NuuRoad: place point '" .. at .. "' has no position", 0) end
+    return { mapID = entry.map or place.map or defaultMap, x = x, y = y,
+        arrivalRadiusNormalized = radius or radiusByVerb[verb], point = at }
+end
+
+-- `at` is a place point ("cave.chamber"), one point, or a list of them: the
+-- first is the arrow's target and the rest are map pins; the arrow takes
+-- whichever is nearest. `near` says which part of a guide place the spot
+-- belongs to, so the planner joins it to that point's passages rather than
+-- guessing by distance (two levels of a cave can lie over each other).
+local function location(where, verb, defaultMap)
+    local at = where.at
+    if type(at) == "string" then return placeLocation(at, where.radius, verb, defaultMap) end
+    if type(at) ~= "table" then return nil end
+    local list, mapID = at, at.map or defaultMap
+    if type(at[1]) ~= "table" then list = { at } end
+    local x, y = normalize(list[1] and list[1][1], list[1] and list[1][2])
+    if not x then return nil end
+    mapID = list[1].map or mapID
+    local spots
+    for index = 2, #list do
+        local sx, sy = normalize(list[index][1], list[index][2])
+        if sx and sy then
+            spots = spots or {}
+            table.insert(spots, { x = sx, y = sy })
+        end
+    end
+    local near = where.near
+    if near ~= nil and not Steps.FindPlacePoint(expandingPlaces, near) then
+        error("NuuRoad: no place point '" .. tostring(near) .. "'", 0)
+    end
+    return { mapID = mapID, x = x, y = y, arrivalRadiusNormalized = where.radius or radiusByVerb[verb],
+        spots = spots, loop = where.loop and true or nil, near = near }
+end
+
+local vendorActions = { [1] = "sell", [2] = "repair", [3] = "sell and repair" }
+
+-- A quest objective's step: kill, collect, interact, or a talk, by the
+-- objective's number in the quest log, or the whole quest.
+local function objectiveNode(node, step, verbHint)
+    local quest = step.quest
+    local quests = { questPair(quest) and quest[1] or quest }
+    if questPair(quest) then
+        node.kind = (step.type == "collect" and step.item) and "collect" or (step.kill and "kill")
+            or (step.object and "interact") or "questObjective"
+        node.completion = { type = "observed", observed = { type = "objective", questID = quest[1], index = quest[2] } }
+        -- The NPC is carried so an objective that is really a conversation can
+        -- say so when the client has no objective line to give.
+        node.auto = { verb = "objective", quests = quests, part = quest[2], npc = step.npc and list(step.npc) or nil }
+    else
+        node.kind = "questObjective"
+        node.completion = questCompletion("readyToTurnIn", quests, "all")
+        node.auto = { verb = "objective", quests = quests }
+    end
+    if verbHint == "collect" then node.auto.collect = { step.item } end
+    return quests
+end
+
+-- One step -> its node, and the quests it is about.
+local function build(step, path, defaultMap)
+    local kind = step.type
     local node = { kind = "action", completion = { type = "manual" } }
-    local quests
-    if verb == "note" then
-        node.kind, node.title, node.body = "note", "Note", step.note
-    elseif verb == "finish" then
-        node.kind, node.title, node.body = "end", "Guide complete", step.finish
-    elseif verb == "travel" then
+    local quests, verb = nil, kind
+    if step.quest ~= nil and type(step.quest) == "table" and not questPair(step.quest) then
+        fail(path .. ".quest", "must be { quest, objective }")
+    end
+    if step.quest ~= nil and type(step.quest) ~= "table" and type(step.quest) ~= "number" then
+        fail(path .. ".quest", "is a quest ID or { quest, objective }")
+    end
+    local objective = false
+    if kind == "note" then
+        node.kind, node.title, node.body = "note", "Note", step.note or ""
+    elseif kind == "finish" then
+        node.kind, node.title, node.body = "end", "Guide complete", step.note or ""
+    elseif kind == "travel" then
         node.kind = "travel"
-        node.auto = { verb = verb, label = type(step.travel) == "string" and step.travel or fmtCoord(step.at) }
-        -- Arrival is normally a coordinate, but a zone or a subzone is what
-        -- the player actually crosses into, and the client names those. A
+        local first = type(step.at) == "table" and step.at[1]
+        node.auto = { verb = verb, label = type(step.to) == "string" and step.to
+            or (type(first) == "table" and fmtCoord({ first[1] / 100, first[2] / 100 })) or "there" }
+        -- Arrival is normally a coordinate, but a zone or an area is what the
+        -- player actually crosses into, and the client names those. A
         -- dungeon has no map the client reports, only its instance ID.
         if type(step.instance) == "number" then
             node.completion = { type = "observed", observed = { type = "instance", instanceID = step.instance } }
-        elseif type(step.subzone) == "string" then
-            node.completion = { type = "observed", observed = { type = "subzone", name = step.subzone } }
+        elseif step.area ~= nil then
+            node.completion = { type = "observed", observed = { type = "subzone", name = areaName(step.area, path .. ".area") } }
         elseif type(step.zone) == "number" then
             node.completion = { type = "observed", observed = { type = "zone", mapID = step.zone } }
-        elseif type(step.zone) == "string" then
-            node.completion = { type = "observed", observed = { type = "zone", name = step.zone } }
         else
             node.completion = { type = "observed", observed = { type = "location" } }
         end
-    elseif verb == "accept" then
-        quests = list(step.accept)
+    elseif kind == "accept" then
+        quests = list(step.quests)
         node.kind, node.completion = "acceptQuest", questCompletion("acceptedOrFinished", quests, "all")
-    elseif verb == "turnin" then
-        quests = list(step.turnin)
+        node.auto = { verb = verb, quests = quests, kill = step.kill and list(step.kill) or nil }
+    elseif kind == "turnin" then
+        quests = list(step.quests)
         node.kind, node.completion = "turnInQuest", questCompletion("finished", quests, "all")
-    elseif verb == "talk" then
+    elseif kind == "talk" then
         local turnin, accept = list(step.turnin), list(step.accept)
-        node.kind = "talk"
-        node.auto = { verb = verb, turnin = turnin, accept = accept }
         if #turnin + #accept > 0 then
+            node.kind = "talk"
+            node.auto = { verb = verb, turnin = turnin, accept = accept }
             quests = {}
             for _, id in ipairs(turnin) do table.insert(quests, id) end
             for _, id in ipairs(accept) do table.insert(quests, id) end
@@ -1278,175 +1318,206 @@ local function build(step, verb, defaultMap)
                 { type = "quests", state = "finished", match = "all", ids = turnin },
                 { type = "quests", state = "acceptedOrFinished", match = "all", ids = accept },
             } } }
+        elseif questPair(step.quest) then
+            quests, objective, verb = objectiveNode(node, step), true, "objective"
+        elseif step.quest ~= nil then
+            fail(path .. ".quest", "must be { quest, objective }")
         elseif step.npc == nil then
-            error("NuuRoad: a talk step with no quests names its NPC")
+            fail(path .. ".npc", "a talk step with no quests names its NPC")
+        else
+            node.kind = "talk"
+            node.auto = { verb = verb, turnin = turnin, accept = accept }
         end
-    elseif verb == "objective" and step.part then
-        quests = list(step.objective)
-        node.kind = step.collect and "collect" or (step.kill and "kill") or (step.object and "interact") or "questObjective"
-        node.completion = { type = "observed", observed = { type = "objective", questID = quests[1], index = step.part } }
-        -- The NPC is carried so an objective that is really a conversation can
-        -- say so when the client has no objective line to give.
-        node.auto = { verb = verb, quests = quests, part = step.part,
-            npc = step.npc and list(step.npc) or nil }
-    elseif verb == "objective" or verb == "objectives" then
-        quests = list(step[verb])
-        node.kind = verb == "objective" and "questObjective" or "objectiveGroup"
-        node.completion = questCompletion("readyToTurnIn", quests, step.any and "any" or "all")
-        if step.any then for _, id in ipairs(list(step.any)) do table.insert(quests, id) end end
-    elseif verb == "escort" then
+    elseif kind == "escort" then
         -- Follow and guard an NPC to `at`. Done the way an objective is, once
         -- the quest is ready to hand in; the NPC is named, since "Escort" is
         -- the whole instruction, and followed like any step's NPC.
-        if type(step.escort) ~= "number" then error("NuuRoad: escort names one quest by ID") end
-        if step.npc == nil then error("NuuRoad: an escort step names the NPC escorted in `npc`") end
-        quests = { step.escort }
+        if step.npc == nil then fail(path .. ".npc", "an escort names the NPC escorted") end
+        local id = questPair(step.quest) and step.quest[1] or step.quest
+        if type(id) ~= "number" then fail(path .. ".quest", "an escort names its quest") end
+        quests = { id }
         node.kind = "escort"
         node.completion = questCompletion("readyToTurnIn", quests, "all")
         node.auto = { verb = verb, quests = quests, npc = list(step.npc) }
-    elseif verb == "collect" then
-        node.kind = "collect"
-        node.auto = { verb = verb, collect = list(step.collect), count = step.count, starts = step.starts, quest = step.quest }
-        -- An item that begins a quest is also done once that quest was ever
-        -- accepted; a quest item is done once its quest is finished, and moot
-        -- when the player has no such quest. Both tie the step to the quest
-        -- log, so the resume scan can judge it instead of passing it over.
-        node.completion = { type = "observed", observed = {
-            type = "item", itemID = list(step.collect)[1], count = step.count or 1,
-            startsQuestID = step.starts, questID = step.quest,
-        } }
-        if step.starts or step.quest then node.refs = { quests = { step.starts or step.quest } } end
-    elseif verb == "kill" then
-        node.kind = "kill"
-        node.auto = { verb = verb, kill = list(step.kill), count = step.count }
-        node.completion = { type = "observed", observed = { type = "kills", npcs = list(step.kill), count = step.count or 1 } }
-    elseif verb == "train" then
+    elseif kind == "collect" then
+        if questPair(step.quest) then
+            quests, objective, verb = objectiveNode(node, step, step.item and "collect"), true, "objective"
+        elseif step.item == nil and type(step.quest) == "number" then
+            -- The item is not known yet: the whole quest is the work.
+            quests, objective, verb = objectiveNode(node, step), true, "objective"
+        else
+            if type(step.item) ~= "number" then fail(path .. ".item", "a collect step names its item") end
+            node.kind = "collect"
+            node.auto = { verb = verb, collect = { step.item }, count = step.count, starts = step.starts, quest = step.quest }
+            -- An item that begins a quest is also done once that quest was
+            -- ever accepted; a quest item is done once its quest is finished,
+            -- and moot when the player has no such quest. Both tie the step
+            -- to the quest log, so the resume scan can judge it instead of
+            -- passing it over.
+            node.completion = { type = "observed", observed = {
+                type = "item", itemID = step.item, count = step.count or 1,
+                startsQuestID = step.starts, questID = step.quest,
+            } }
+            if step.starts or step.quest then node.refs = { quests = { step.starts or step.quest } } end
+        end
+    elseif kind == "kill" then
+        if step.quest ~= nil then
+            quests, objective, verb = objectiveNode(node, step), true, "objective"
+        else
+            if step.kill == nil then fail(path .. ".kill", "a kill step names its creatures") end
+            node.kind = "kill"
+            node.auto = { verb = verb, kill = list(step.kill), count = step.count }
+            node.completion = { type = "observed", observed = { type = "kills", npcs = list(step.kill), count = step.count or 1 } }
+        end
+    elseif kind == "interact" then
+        if step.quest ~= nil then
+            quests, objective, verb = objectiveNode(node, step), true, "objective"
+        else
+            if step.object == nil then fail(path .. ".object", "an interact step names its object") end
+            node.kind = "interact"
+            node.auto = { verb = verb }
+        end
+    elseif kind == "train" then
         -- No rank given means "learn it at all": rank 1 is the first point in
         -- a skill the player does not have yet.
+        local skill = skillName(step.skill, path .. ".skill")
         node.kind = "train"
-        node.auto = { verb = verb, skill = step.train, rank = step.rank }
-        node.completion = { type = "observed", observed = { type = "skill", name = step.train, atLeast = step.rank or 1 } }
-    elseif verb == "learn" then
+        node.auto = { verb = verb, skill = skill, rank = step.rank }
+        node.completion = { type = "observed", observed = { type = "skill", name = skill, atLeast = step.rank or 1 } }
+    elseif kind == "learn" then
         -- A class spell (or its next rank) from a trainer: done once the
-        -- client knows every spell named. Professions are `train`, by name.
-        local spells = list(step.learn)
-        for _, id in ipairs(spells) do
-            if type(id) ~= "number" then error("NuuRoad: learn names spells by ID") end
+        -- client knows every spell named. Professions are `train`.
+        local spells = list(step.spells)
+        if #spells == 0 then fail(path .. ".spells", "a learn step names its spells") end
+        for index, id in ipairs(spells) do
+            if type(id) ~= "number" then fail(path .. ".spells[" .. index .. "]", "a spell is named by ID") end
         end
         node.kind = "train"
         node.auto = { verb = verb, spells = spells, trainer = step.npc and list(step.npc)[1] or nil }
         node.completion = { type = "observed", observed = { type = "spell", ids = spells } }
-    elseif verb == "cast" then
+    elseif kind == "cast" then
         -- A spell to cast here, such as Skysight beside a convergence: counted
         -- from the casts made while the guide is on the step.
-        if type(step.cast) ~= "number" then error("NuuRoad: cast names one spell by ID") end
-        if step.count ~= nil and (type(step.count) ~= "number" or step.count < 1) then error("NuuRoad: a cast count must be a positive number") end
+        if type(step.spell) ~= "number" then fail(path .. ".spell", "a cast step names one spell by ID") end
+        if step.count ~= nil and not positive(step.count) then fail(path .. ".count", "must be a positive number") end
         node.kind = "cast"
-        node.auto = { verb = verb, spell = step.cast, count = step.count }
-        node.completion = { type = "observed", observed = { type = "cast", spellID = step.cast, count = step.count or 1 } }
-    elseif verb == "skill" then
-        if type(step.rank) ~= "number" then error("NuuRoad: a skill step needs a rank") end
+        node.auto = { verb = verb, spell = step.spell, count = step.count }
+        node.completion = { type = "observed", observed = { type = "cast", spellID = step.spell, count = step.count or 1 } }
+    elseif kind == "skill" then
+        if type(step.rank) ~= "number" then fail(path .. ".rank", "a skill step needs a rank") end
+        local skill = skillName(step.skill, path .. ".skill")
         node.kind = "skillTarget"
-        node.auto = { verb = verb, skill = step.skill, rank = step.rank }
-        node.completion = { type = "observed", observed = { type = "skill", name = step.skill, atLeast = step.rank } }
-    elseif verb == "craft" then
+        node.auto = { verb = verb, skill = skill, rank = step.rank }
+        node.completion = { type = "observed", observed = { type = "skill", name = skill, atLeast = step.rank } }
+    elseif kind == "craft" then
         node.kind = "craft"
-        node.auto = { verb = verb, item = step.craft, count = step.count, skill = step.skill }
-        node.completion = { type = "observed", observed = { type = "crafted", itemID = step.craft, count = step.count or 1 } }
-        node.refs = { items = { step.craft } }
-    elseif verb == "skillup" then
+        node.auto = { verb = verb, item = step.item, count = step.count,
+            skill = step.skill and skillName(step.skill, path .. ".skill") or nil }
+        node.completion = { type = "observed", observed = { type = "crafted", itemID = step.item, count = step.count or 1 } }
+        node.refs = { items = { step.item } }
+    elseif kind == "skillup" then
         -- Crafting for the rank, the way a profession guide really reads:
         -- keep making them until the skill lands, however many that turns out
         -- to be. Use `craft` with a count when the output is the point.
-        if type(step.skill) ~= "string" or type(step.rank) ~= "number" then
-            error("NuuRoad: a skillup step needs a skill and a rank")
-        end
+        if type(step.rank) ~= "number" then fail(path .. ".rank", "a skillup step needs a rank") end
+        local skill = skillName(step.skill, path .. ".skill")
         node.kind = "skillUp"
-        node.auto = { verb = verb, item = step.skillup, skill = step.skill, rank = step.rank }
-        node.completion = { type = "observed", observed = { type = "skill", name = step.skill, atLeast = step.rank } }
-        node.refs = { items = { step.skillup } }
-    elseif verb == "gather" then
+        node.auto = { verb = verb, item = step.item, skill = skill, rank = step.rank }
+        node.completion = { type = "observed", observed = { type = "skill", name = skill, atLeast = step.rank } }
+        node.refs = { items = { step.item } }
+    elseif kind == "gather" then
         -- Picking it is the usual way; the auction house is the other one, so
         -- the step says both and completes on the item either way.
         node.kind = "gather"
-        node.auto = { verb = verb, item = step.gather, count = step.count, skill = step.skill }
-        node.completion = { type = "observed", observed = { type = "item", itemID = step.gather, count = step.count or 1 } }
-        node.refs = { items = { step.gather } }
-    elseif verb == "buy" then
-        node.kind = "buy"
+        node.auto = { verb = verb, item = step.item, count = step.count,
+            skill = step.skill and skillName(step.skill, path .. ".skill") or nil }
+        node.completion = { type = "observed", observed = { type = "item", itemID = step.item, count = step.count or 1 } }
+        node.refs = { items = { step.item } }
+    elseif kind == "buy" then
         -- One named vendor, since stock differs from one to the next.
-        local vendor = list(step.npc)[1]
-        node.auto = { verb = verb, item = step.buy, count = step.count, vendor = vendor }
-        node.completion = { type = "observed", observed = { type = "item", itemID = step.buy, count = step.count or 1 } }
-        node.refs = { items = { step.buy } }
-    elseif verb == "vendor" then
+        node.kind = "buy"
+        node.auto = { verb = verb, item = step.item, count = step.count, vendor = list(step.npc)[1] }
+        node.completion = { type = "observed", observed = { type = "item", itemID = step.item, count = step.count or 1 } }
+        node.refs = { items = { step.item } }
+    elseif kind == "vendor" then
         -- Selling and repairing are the player's business; the step only says
         -- where, so it is theirs to tick off.
+        local action = vendorActions[(step.sell and 1 or 0) + (step.repair and 2 or 0)]
+        if not action then fail(path, "a vendor step sells, repairs, or both") end
         node.kind = "vendor"
-        node.auto = { verb = verb, vendor = list(step.npc)[1], action = step.vendor }
-    elseif verb == "equip" then
+        node.auto = { verb = verb, vendor = list(step.npc)[1], action = action }
+    elseif kind == "equip" then
         node.kind = "equip"
-        node.auto = { verb = verb, item = step.equip }
-        node.completion = { type = "observed", observed = { type = "equipped", itemID = step.equip } }
-        node.refs = { items = { step.equip } }
-    elseif verb == "reputation" then
+        node.auto = { verb = verb, item = step.item }
+        node.completion = { type = "observed", observed = { type = "equipped", itemID = step.item } }
+        node.refs = { items = { step.item } }
+    elseif kind == "reputation" then
         local standing = ns.modules.Names:StandingValue(step.standing)
-        if not standing then error("NuuRoad: a reputation step needs a standing such as 'Honored'") end
+        if not standing then fail(path .. ".standing", "a standing from 1 (Hated) to 8 (Exalted)") end
         node.kind = "reputationTarget"
-        node.auto = { verb = verb, faction = step.reputation, standing = standing }
-        node.completion = { type = "observed", observed = { type = "reputation", factionID = step.reputation, standing = standing } }
-    elseif verb == "hearth" then
+        node.auto = { verb = verb, faction = step.faction, standing = standing }
+        node.completion = { type = "observed", observed = { type = "reputation", factionID = step.faction, standing = standing } }
+    elseif kind == "hearth" then
+        local name = areaName(step.area, path .. ".area")
         node.kind = "hearth"
-        node.auto = { verb = verb, name = step.hearth }
-        node.completion = { type = "observed", observed = { type = "hearth", name = step.hearth } }
-    elseif verb == "flight" then
+        node.auto = { verb = verb, name = name }
+        node.completion = { type = "observed", observed = { type = "hearth", name = name } }
+    elseif kind == "flight" then
+        if type(step.node) ~= "number" then fail(path .. ".node", "a flight step names its TaxiNodes ID") end
+        local name = idName("taxiNodes", step.node, path .. ".node")
         node.kind = "flight"
-        node.auto = { verb = verb, name = step.flight }
-        node.completion = { type = "observed", observed = { type = "flightpath", name = step.flight } }
-    elseif verb == "track" or verb == "untrack" then
-        node.kind = "reminder"
-        node.auto = { verb = verb, track = step.track, untrack = step.untrack }
-        node.completion = { type = "observed", observed = { type = "always" } }
-        node.refs = { quests = { step.track or step.untrack } }
-    elseif verb == "interact" then
-        node.kind = "interact"
-        node.auto = { verb = verb }
-    elseif verb == "level" then
+        node.auto = { verb = verb, name = name }
+        node.completion = { type = "observed", observed = { type = "flightpath", name = name } }
+    elseif kind == "level" then
+        if not positive(step.level) then fail(path .. ".level", "must be a positive level") end
         node.kind = "levelTarget"
         node.auto = { verb = verb, level = step.level, xp = step.xp }
         node.completion = { type = "observed", observed = { type = "level", atLeast = step.level, xp = step.xp } }
         if step.by ~= nil then
-            if type(step.by) ~= "string" or step.by == "" then error("NuuRoad: `by` names the step the level is needed by") end
-            if step.xp ~= nil then error("NuuRoad: with `by`, the level is the one needed at that step; leave out `xp`") end
+            if type(step.by) ~= "string" or step.by == "" then fail(path .. ".by", "names the step the level is needed by") end
+            if step.xp ~= nil then fail(path .. ".by", "with `by`, the level is the one needed at that step; leave out `xp`") end
             -- Resolved to a position once every label is known.
             node.auto.by, node.completion.observed.by = step.by, step.by
         end
-    elseif verb == "choice" then
-        node.kind, node.title, node.choices = "choice", step.choice, {}
-        for _, option in ipairs(step.options or {}) do
-            table.insert(node.choices, { title = option[1] or option.title, ["next"] = option.goto })
+    elseif kind == "choice" then
+        node.kind, node.title, node.choices = "choice", step.text, {}
+        for index, option in ipairs(step.options or {}) do
+            if type(option) ~= "table" then fail(path .. ".options[" .. index .. "]", "is { text, go }") end
+            if type(option.go) ~= "string" then fail(path .. ".options[" .. index .. "].go", "a choice goes to a label") end
+            table.insert(node.choices, { title = option.text, ["next"] = option.go })
         end
+    else
+        fail(path .. ".type", "unknown step type '" .. tostring(kind) .. "'")
     end
     if quests then
         node.auto = node.auto or { verb = verb, quests = quests }
         node.refs = { quests = quests }
     end
-    -- The quest a travel, buy, or escort step's work is for (the objective
-    -- verb and a collect step read `quest` themselves). `{ id, n }` is one
-    -- objective: the step is done when the client says it is, and a travel
-    -- step only then, since the arrival starts a scene the objective ends.
-    -- A whole quest finishes the step once it is ready to hand in.
-    if step.quest ~= nil and verb ~= "objective" and verb ~= "collect" then
+    -- The level a pickup's quests are taken from. It gates nothing: the
+    -- client will not give them any sooner, so the accept waits as it is.
+    if step.level ~= nil and kind ~= "level" then
+        if kind ~= "accept" and kind ~= "talk" then fail(path .. ".level", "is for level, accept and talk steps") end
+        if kind == "talk" and #(node.auto and node.auto.accept or {}) == 0 then
+            fail(path .. ".level", "is for a talk that accepts quests")
+        end
+        if not positive(step.level) then fail(path .. ".level", "must be a positive level") end
+        node.auto.level = step.level
+    end
+    -- The quest a travel, buy, escort, or any other step's work is for (an
+    -- objective step and a collect read `quest` themselves). `{ id, n }` is
+    -- one objective: the step is done when the client says it is, and a
+    -- travel step only then, since the arrival starts a scene the objective
+    -- ends. A whole quest finishes the step once it is ready to hand in.
+    -- An escort's whole quest is its own rule already.
+    if step.quest ~= nil and not objective and kind ~= "collect" and not (kind == "escort" and not questPair(step.quest)) then
         local finishes
-        if type(step.quest) == "table" and type(step.quest[1]) == "number" and type(step.quest[2]) == "number" then
+        if questPair(step.quest) then
             finishes = { type = "objective", questID = step.quest[1], index = step.quest[2] }
-        elseif type(step.quest) == "number" then
-            finishes = { type = "quests", state = "readyToTurnIn", match = "all", ids = { step.quest } }
         else
-            error("NuuRoad: quest is a quest ID or { quest, objective }")
+            finishes = { type = "quests", state = "readyToTurnIn", match = "all", ids = { step.quest } }
         end
         local own = node.completion.type == "observed" and node.completion.observed
-        if verb == "travel" and finishes.type == "objective" or not own then
+        if kind == "travel" and finishes.type == "objective" or not own then
             node.completion = { type = "observed", observed = finishes }
         else
             node.completion = { type = "observed", observed = { type = "any", children = { own, finishes } } }
@@ -1459,44 +1530,52 @@ local function build(step, verb, defaultMap)
         node.auto.object = step.object
         node.auto.count = node.auto.count or step.count
         if step.kill then node.auto.kill = list(step.kill) end
-        if step.collect and verb ~= "collect" then node.auto.collect = list(step.collect) end
     end
     if step.kill then
         node.refs = node.refs or {}
         node.refs.npcs = list(step.kill)
     end
-    if step.collect and verb ~= "collect" then
+    if objective and node.auto.collect then
         node.refs = node.refs or {}
-        node.refs.items = list(step.collect)
+        node.refs.items = list(node.auto.collect)
     end
     if step.npc then
         node.refs = node.refs or {}
         node.refs.npcs = list(step.npc)
     end
-    if step.item then
+    -- The item the step is about: the one that starts an accept's quest, or
+    -- any step's `item = { ... }`, which the item panel offers.
+    local about = (kind == "accept" and type(step.item) == "number") and { step.item }
+        or (type(step.item) == "table" and step.item) or nil
+    if about then
         node.refs = node.refs or {}
-        node.refs.items = list(step.item)
+        node.refs.items = list(about)
     end
-    local escape = uptoRank(step)
+    local escape = uptoRank(step, path)
     if escape then
         local observed = node.completion and node.completion.type == "observed" and node.completion.observed
-        if not observed then error("NuuRoad: upto needs a step the client can judge on its own") end
+        if not observed then fail(path .. ".upto", "needs a step the client can judge on its own") end
         node.completion = { type = "observed", observed = { type = "any", children = {
             observed,
             { type = "skill", name = escape.skill, atLeast = escape.rank },
         } } }
         if node.auto then node.auto.upto = escape end
     end
-    node.needs = materials(step)
-    if node.needs then
+    node.needs = materials(step, path)
+    local function addItems(ids)
         node.refs = node.refs or {}
         local items = node.refs.items or {}
         local seen = {}
         for _, id in ipairs(items) do seen[id] = true end
-        for _, material in ipairs(node.needs) do
-            if not seen[material.itemID] then seen[material.itemID] = true; table.insert(items, material.itemID) end
+        for _, id in ipairs(ids) do
+            if not seen[id] then seen[id] = true; table.insert(items, id) end
         end
         node.refs.items = items
+    end
+    if node.needs then
+        local ids = {}
+        for _, material in ipairs(node.needs) do table.insert(ids, material.itemID) end
+        addItems(ids)
     end
     -- The item the step asks the player to press, which is not always the
     -- item the step is counting. Smashing looted Prospector's Picks at a
@@ -1507,23 +1586,16 @@ local function build(step, verb, defaultMap)
     -- reach it, and NuuRoad never presses it for them.
     if step.use ~= nil then
         node.use = list(step.use)
-        for _, itemID in ipairs(node.use) do
-            if type(itemID) ~= "number" then error("NuuRoad: `use` names items by ID") end
+        for index, itemID in ipairs(node.use) do
+            if type(itemID) ~= "number" then fail(path .. ".use[" .. index .. "]", "an item is named by ID") end
         end
-        node.refs = node.refs or {}
-        local items = node.refs.items or {}
-        local seen = {}
-        for _, id in ipairs(items) do seen[id] = true end
-        for _, id in ipairs(node.use) do
-            if not seen[id] then seen[id] = true; table.insert(items, id) end
-        end
-        node.refs.items = items
+        addItems(node.use)
     end
     -- How long the step keeps the player waiting: a scene playing out, or a
     -- timed quest starting. Shown, never enforced.
     if step.wait ~= nil then
         node.wait = tonumber(step.wait)
-        if not node.wait then error("NuuRoad: wait is a number of seconds") end
+        if not node.wait then fail(path .. ".wait", "is a number of seconds") end
     end
     -- A step that stays on screen alongside the ones after it until it is done.
     if step.sticky then node.sticky = true end
@@ -1531,186 +1603,265 @@ local function build(step, verb, defaultMap)
     -- anything: the mobs of a grind spot, a creature an item is used on.
     if step.mark ~= nil then
         node.mark = list(step.mark)
-        for _, id in ipairs(node.mark) do
-            if type(id) ~= "number" then error("NuuRoad: `mark` names creatures by ID") end
+        for index, id in ipairs(node.mark) do
+            if type(id) ~= "number" then fail(path .. ".mark[" .. index .. "]", "a creature is named by ID") end
         end
     end
     -- The dialog options to pick on a talk step, by gossip option ID, one per
     -- page. Kept on the step; nothing picks them yet.
     if step.say ~= nil then
         node.say = list(step.say)
-        for _, id in ipairs(node.say) do
-            if type(id) ~= "number" then error("NuuRoad: `say` names gossip options by ID") end
+        for index, id in ipairs(node.say) do
+            if type(id) ~= "number" then fail(path .. ".say[" .. index .. "]", "a gossip option is named by ID") end
         end
     end
-    node.location = location(step, verb, defaultMap)
+    if step.at ~= nil and step.stand ~= nil then fail(path, "a step has `at` or `stand`, not both") end
+    local where = { radius = step.radius and step.radius / 10000 or nil, near = step.near, loop = step.loop }
+    if step.at ~= nil then where.at = points(step.at, path .. ".at") end
+    if step.stand ~= nil then where.at = step.stand end
+    node.location = location(where, verb, defaultMap)
     -- A visit with no point of its own goes where the guide says the NPC
     -- stands, on the guide's map unless the point names another, and carries
     -- what the guide says about the NPC above the step's own note.
     local visited = type(step.npc) == "table" and step.npc[1] or step.npc
     local stands = npcEntry(visited)
-    if stands and stands.at ~= nil and step.at == nil then
-        node.location = location({ at = stands.at, radius = step.radius, near = step.near }, verb, expandingMap)
+    if stands and stands.at ~= nil and where.at == nil then
+        node.location = location({ at = stands.at, radius = where.radius, near = step.near }, verb, expandingMap)
         if node.location then node.location.npc = visited end
     end
-    node.condition = conditionOf(step)
-    if verb ~= "note" and verb ~= "finish" and type(step.note) == "string" then node.body = step.note end
-    if stands and type(stands.note) == "string" and verb ~= "note" and verb ~= "finish" then
+    if kind ~= "note" and kind ~= "finish" and type(step.note) == "string" then node.body = step.note end
+    if stands and type(stands.note) == "string" and kind ~= "note" and kind ~= "finish" then
         node.body = node.body and (stands.note .. "\n" .. node.body) or stands.note
     end
     if node.auto then node.title = Steps:Title(node, true) end
-    return node, quests
+    return node
 end
 
-local function copyTable(value)
-    if type(value) ~= "table" then return value end
-    local copy = {}
-    for key, child in pairs(value) do copy[key] = copyTable(child) end
-    return copy
+-- The terms a step gets from its own fields rather than from `cond`: an
+-- `optional` turn-in passes unless one of its quests is ready, and an accept
+-- from an item the player never looted passes (the rare that drops it was
+-- never met). Carried, an item accept waits like any carried step.
+local function derivedTerms(step, path)
+    local terms = {}
+    if step.optional then
+        if step.type ~= "turnin" and step.type ~= "talk" then fail(path .. ".optional", "is for turn-ins") end
+        local ready = {}
+        for _, id in ipairs(step.type == "turnin" and list(step.quests) or list(step.turnin)) do
+            table.insert(ready, { type = "quest", id = id, state = "readyToTurnIn" })
+        end
+        if #ready == 0 then fail(path .. ".optional", "the step turns in no quest") end
+        table.insert(terms, { type = "now", child = combine("any", ready) })
+    end
+    if step.type == "accept" and type(step.item) == "number" and step.npc == nil
+        and not (step.sticky or step.with or step.from) then
+        table.insert(terms, { type = "now", child = { type = "item", id = step.item } })
+    end
+    return terms
 end
 
-local function slug(text)
-    return (tostring(text):lower():gsub("[^%w]+", "-"):gsub("^%-+", ""):gsub("%-+$", ""))
+-- Steps.derived: true on a predicate Expand works out from a step's own
+-- fields, which the editor keeps as it is rather than showing as the step's
+-- condition.
+local function markDerived(terms)
+    for _, term in ipairs(terms) do term.derived = true end
+    return terms
 end
+
+-- PLACES AND NPCS
+
+local function convertPlace(place, path)
+    if type(place) ~= "table" then fail(path, "a place is a table") end
+    local out = { place = place.id, name = place.name, width = place.width, map = place.map, points = {}, connections = {} }
+    for index, entry in ipairs(place.points or {}) do
+        local at = point(entry.at, path .. ".points[" .. index .. "].at")
+        out.points[index] = { at = { at[1], at[2] }, map = at.map, kind = entry.kind, label = entry.label, id = entry.id }
+    end
+    for index, link in ipairs(place.links or {}) do
+        out.connections[index] = { link.from, link.to, link.oneway and true or nil }
+    end
+    return out
+end
+
+-- "cave" (any point of the place) -> every point of it, for the arrow to take
+-- the nearest; "cave.chamber" stays a reference.
+local function placeSpots(places, reference, path)
+    for _, place in ipairs(places or {}) do
+        if place.place == reference then
+            local spots = {}
+            for _, entry in ipairs(place.points) do
+                table.insert(spots, { entry.at[1], entry.at[2], map = entry.map or place.map })
+            end
+            return spots
+        end
+    end
+    fail(path, "no place '" .. reference .. "'")
+end
+
+-- { [map] = { [id] = npc } } -> { [id] = "Name" or { "Name", at, note, instance } },
+-- with the map the NPC is listed under put on each of its points.
+local function convertNPCs(npcs, places, guideMap)
+    local out = {}
+    if npcs == nil then return out end
+    for _, map in ipairs(sortedKeys(npcs)) do
+        local path = "data.npcs[" .. tostring(map) .. "]"
+        if type(npcs[map]) ~= "table" then fail(path, "is { [id] = npc }") end
+        for _, id in ipairs(sortedKeys(npcs[map])) do
+            local entry, at = npcs[map][id], path .. "[" .. tostring(id) .. "]"
+            local converted
+            if type(entry) == "string" then
+                converted = entry
+            elseif type(entry) == "table" then
+                converted = { entry.name, note = entry.note, instance = entry.instance }
+                local where = entry.at
+                local stamp = map ~= guideMap and map or nil
+                if type(where) == "string" then
+                    converted.at = where:find(".", 1, true) and where or placeSpots(places, where, at .. ".at")
+                elseif type(where) == "table" and type(where[1]) == "table" then
+                    converted.at = points(where, at .. ".at", stamp)
+                elseif where ~= nil then
+                    converted.at = point(where, at .. ".at", stamp)
+                end
+            else
+                fail(at, "is a name or { name, at, note, instance }")
+            end
+            -- An NPC listed twice keeps the entry that says where it stands.
+            if out[id] == nil or type(out[id]) == "string" then out[id] = converted end
+        end
+    end
+    return out
+end
+
+-- THE GUIDE
+
+local function onlyKeys(value, allowed, path, what)
+    for key in pairs(value) do
+        if not allowed[key] then fail(path .. "." .. tostring(key), "is not a field of " .. what) end
+    end
+end
+
+local sectionKeys = { title = true, map = true, label = true, cond = true, show = true, steps = true }
+local groupKeys = { label = true, cond = true, show = true, group = true }
 
 -- Sections and groups are wrappers: neither adds a step of its own, and each
 -- records a span over the flattened node list. That list is the only place a
--- step position is ever written down -- authors name labels, and the labels
+-- step position is ever written down -- guides name labels, and the labels
 -- are resolved to positions here.
-function Steps:Expand(guide)
-    if type(guide) ~= "table" then return guide end
-    if type(guide.steps) ~= "table" then return ns.modules.Schema:IndexNodes(guide) end
-    if guide.schema ~= 2 then error("NuuRoad: a guide must declare schema = 2") end
-    if guide.names ~= nil then
-        if type(guide.names) ~= "table" then error("NuuRoad: names must be a table of names by kind") end
-        -- Before any title is written, since titles carry the names.
-        ns.modules.Names:Add(guide.names)
+--
+-- A runtime guide (one the editor saved) is passed through with its nodes
+-- indexed.
+function Steps:Expand(value)
+    if type(value) ~= "table" then return value end
+    if value.kind ~= "guide" and type(value.nodes) == "table" then return ns.modules.Schema:IndexNodes(value) end
+    if value.kind ~= "guide" then fail("guide", "is not a guide") end
+    if value.schema ~= 1 then fail("guide.schema", "must be 1") end
+    local data = value.data
+    if type(data) ~= "table" or type(data.sections) ~= "table" then fail("guide.data", "has no sections") end
+    local conds = data.conds
+    local levels = value.levels
+    if levels ~= nil and (type(levels) ~= "table" or type(levels.from) ~= "number" or type(levels.to) ~= "number") then
+        fail("guide.levels", "is { from, to }")
     end
-    local expanded = {}
-    for key, value in pairs(guide) do
-        if key ~= "steps" and key ~= "map" then expanded[key] = value end
-    end
-    expanded.sections, expanded.nodes, expanded.groups = {}, {}, {}
-    expanded.condition = conditionOf(guide)
-    -- Guide places keep their authored shape (it is also what the editor
-    -- edits and what SavedVariables stores); each is copied and handed the
-    -- guide's map when it names none, since the guide's own map key does not
-    -- survive the expansion.
-    if guide.places ~= nil then
-        if type(guide.places) ~= "table" then error("NuuRoad: places must be a list of places") end
+    local expanded = {
+        schema = ns.modules.Schema.currentVersion, id = value.id, updated = value.updated,
+        meta = {
+            title = value.title, author = value.author, category = value.category, tags = value.tags,
+            levels = levels and { levels.from, levels.to } or nil,
+            source = value.source, materials = value.materials,
+        },
+        sections = {}, nodes = {}, groups = {},
+    }
+    if value.cond ~= nil then expanded.condition = combine("all", conditions({ cond = value.cond }, conds, "guide")) end
+    if data.places ~= nil then
+        if type(data.places) ~= "table" then fail("data.places", "must be a list of places") end
         expanded.places = {}
-        for index, place in ipairs(guide.places) do
-            if type(place) ~= "table" then error("NuuRoad: each place must be a table") end
-            local copy = copyTable(place)
-            if copy.map == nil then copy.map = guide.map end
-            expanded.places[index] = copy
+        for index, place in ipairs(data.places) do
+            local converted = convertPlace(place, "data.places[" .. index .. "]")
+            if converted.map == nil then converted.map = data.map end
+            expanded.places[index] = converted
         end
     end
-    expandingPlaces = expanded.places
-    expandingNPCs, expandingMap = type(guide.names) == "table" and guide.names.npcs or nil, guide.map
+    expanded.names = { npcs = convertNPCs(data.npcs, expanded.places, data.map) }
+    -- Before any title is written, since titles carry the names.
+    ns.modules.Names:Add(expanded.names)
+    expandingPlaces, expandingNPCs, expandingMap = expanded.places, expanded.names.npcs, data.map
 
     -- label -> the step it stands in front of, and the choice options waiting
     -- for it. Both are resolved once every step has a position.
     local labels, pending = {}, {}
-    -- Steps carried alongside a later one. Resolved with the labels, since
-    -- "next" and a label both name a position that is only known once every
-    -- step has one.
-    local companions = {}
-    -- Steps carried from an earlier label until they are done or reached.
-    local carriedFrom = {}
+    -- Steps carried alongside a later one, and steps carried from an earlier
+    -- label until they are done or reached. Resolved with the labels.
+    local companions, carriedFrom = {}, {}
     local section
 
-    local function claim(name, index)
+    local function claim(name, index, path)
         if name == nil then return end
-        if type(name) ~= "string" or name == "" then error("NuuRoad: a label is a name") end
-        if labels[name] then error("NuuRoad: two things are labelled '" .. name .. "'") end
+        if type(name) ~= "string" or name == "" then fail(path .. ".label", "a label is a name") end
+        if labels[name] then fail(path .. ".label", "two things are labelled '" .. name .. "'") end
         labels[name] = index
     end
 
-    local function append(step, inGroup, sectionMap)
-        if type(step) ~= "table" then error("NuuRoad: each step must be a table") end
-        if step.id ~= nil then error("NuuRoad: steps are named by label, not by ID") end
-        if step.next ~= nil or step.goto ~= nil then error("NuuRoad: steps run in order; branch with a choice") end
-        local verb = verbOf(step)
-        if not verb then error("NuuRoad: step has no supported verb") end
-        local node = build(step, verb, sectionMap)
+    local function addStep(step, path, inGroup, sectionMap, inherited)
+        if type(step) ~= "table" then fail(path, "a step is a table") end
+        local node = build(step, path, sectionMap)
         if inGroup and not ns.modules.Schema:IsGroupMember(node) then
-            error("NuuRoad: group members must be quest visits or quest objectives")
+            fail(path, "group members are quest visits or quest objectives")
         end
+        local terms = append(append(inherited, conditions(step, conds, path)), markDerived(derivedTerms(step, path)))
+        node.condition = combine("all", terms)
         node.index = #expanded.nodes + 1
         node.label = step.label
-        claim(step.label, node.index)
+        claim(step.label, node.index, path)
         if step.with ~= nil then
-            if type(step.with) ~= "string" or step.with == "" then
-                error("NuuRoad: `with` names the step this one is carried alongside")
-            end
-            table.insert(companions, { node = node, target = step.with })
+            if type(step.with) ~= "string" or step.with == "" then fail(path .. ".with", "names the step this one is carried alongside") end
+            table.insert(companions, { node = node, target = step.with, path = path })
         end
         if step.from ~= nil then
-            if type(step.from) ~= "string" or step.from == "" then
-                error("NuuRoad: `from` names the earlier step this one is carried from")
-            end
-            table.insert(carriedFrom, { node = node, target = step.from })
+            if type(step.from) ~= "string" or step.from == "" then fail(path .. ".from", "names the earlier step this one is carried from") end
+            table.insert(carriedFrom, { node = node, target = step.from, path = path })
         end
-        for _, choice in ipairs(node.choices or {}) do
-            if type(choice["next"]) ~= "string" then error("NuuRoad: a choice goes to a label") end
-            table.insert(pending, choice)
-        end
+        for _, choice in ipairs(node.choices or {}) do table.insert(pending, { choice = choice, path = path }) end
         table.insert(expanded.nodes, node)
         table.insert(section.nodeIndexes, node.index)
     end
 
-    local function appendGroup(wrapper, sectionMap)
-        for key in pairs(wrapper) do
-            if key ~= "group" and key ~= "label" then error("NuuRoad: a group wrapper only supports group and label") end
+    for sectionIndex, wrapper in ipairs(data.sections) do
+        local path = "data.sections[" .. sectionIndex .. "]"
+        if type(wrapper) ~= "table" or type(wrapper.title) ~= "string" or type(wrapper.steps) ~= "table" then
+            fail(path, "is { title, steps }")
         end
-        if type(wrapper.group) ~= "table" then error("NuuRoad: group must be an array of steps") end
-        local count = 0
-        for key in pairs(wrapper.group) do
-            if type(key) ~= "number" or key % 1 ~= 0 or key < 1 then error("NuuRoad: group must be an array") end
-            count = count + 1
-        end
-        if count ~= #wrapper.group or count < 2 then error("NuuRoad: a group needs at least two steps") end
-        local first = #expanded.nodes + 1
-        for _, member in ipairs(wrapper.group) do
-            if type(member) == "table" and (member.group ~= nil or member.section ~= nil) then
-                error("NuuRoad: groups hold only steps")
-            end
-            append(member, true, sectionMap)
-        end
-        claim(wrapper.label, first)
-        table.insert(expanded.groups, { first = first, last = #expanded.nodes })
-    end
-
-    for _, wrapper in ipairs(guide.steps) do
-        if type(wrapper) ~= "table" or type(wrapper.section) ~= "string" or type(wrapper.steps) ~= "table" then
-            error("NuuRoad: a guide is a list of sections, each with section and steps")
-        end
-        for key in pairs(wrapper) do
-            if key ~= "section" and key ~= "steps" and key ~= "map" and key ~= "label" then
-                error("NuuRoad: a section only supports section, steps, map, and label")
-            end
-        end
-        section = { id = slug(wrapper.section), title = wrapper.section, nodeIndexes = {} }
+        onlyKeys(wrapper, sectionKeys, path, "a section")
+        section = { id = slug(wrapper.title), title = wrapper.title, nodeIndexes = {} }
         table.insert(expanded.sections, section)
-        local sectionMap = wrapper.map or guide.map
+        local sectionMap = wrapper.map or data.map
+        local inherited = conditions(wrapper, conds, path)
         local first = #expanded.nodes + 1
-        for _, step in ipairs(wrapper.steps) do
-            if type(step) == "table" and step.group ~= nil then
-                appendGroup(step, sectionMap)
+        for stepIndex, entry in ipairs(wrapper.steps) do
+            local at = path .. ".steps[" .. stepIndex .. "]"
+            if type(entry) == "table" and entry.group ~= nil then
+                onlyKeys(entry, groupKeys, at, "a group")
+                if type(entry.group) ~= "table" or #entry.group < 2 then fail(at .. ".group", "a group holds two or more steps") end
+                local groupTerms = append(inherited, conditions(entry, conds, at))
+                local groupFirst = #expanded.nodes + 1
+                for memberIndex, member in ipairs(entry.group) do
+                    local memberPath = at .. ".group[" .. memberIndex .. "]"
+                    if type(member) == "table" and member.group ~= nil then fail(memberPath, "groups do not nest") end
+                    addStep(member, memberPath, true, sectionMap, groupTerms)
+                end
+                claim(entry.label, groupFirst, at)
+                table.insert(expanded.groups, { first = groupFirst, last = #expanded.nodes })
             else
-                append(step, false, sectionMap)
+                addStep(entry, at, false, sectionMap, inherited)
             end
         end
-        if #section.nodeIndexes == 0 then error("NuuRoad: section '" .. wrapper.section .. "' has no steps") end
-        claim(wrapper.label, first)
+        if #section.nodeIndexes == 0 then fail(path, "has no steps") end
+        claim(wrapper.label, first, path)
     end
-
     expandingPlaces, expandingNPCs, expandingMap = nil, nil, nil
-    for _, choice in ipairs(pending) do
-        local target = labels[choice["next"]]
-        if not target then error("NuuRoad: no step is labelled '" .. tostring(choice["next"]) .. "'") end
-        choice["next"] = target
+
+    for _, entry in ipairs(pending) do
+        local target = labels[entry.choice["next"]]
+        if not target then fail(entry.path, "no step is labelled '" .. tostring(entry.choice["next"]) .. "'") end
+        entry.choice["next"] = target
     end
     -- A level step's `by`: the turn-ins between it and that step count
     -- towards the level (Domain/Experience.lua).
@@ -1718,24 +1869,17 @@ function Steps:Expand(guide)
         local observed = node.auto and node.auto.verb == "level" and node.completion and node.completion.observed
         if observed and type(observed.by) == "string" then
             local target = labels[observed.by]
-            if not target then error("NuuRoad: no step is labelled '" .. observed.by .. "'") end
-            if target <= node.index then error("NuuRoad: `by` names a later step") end
+            if not target then fail("by", "no step is labelled '" .. observed.by .. "'") end
+            if target <= node.index then fail("by", "`by` names a later step") end
             node.auto.by, observed.by = target, target
             node.title = Steps:Title(node, true)
         end
     end
     for _, companion in ipairs(companions) do
         local node = companion.node
-        local target = companion.target == "next" and (node.index + 1) or labels[companion.target]
-        if not target then
-            error("NuuRoad: no step is labelled '" .. tostring(companion.target) .. "'")
-        end
-        if target <= node.index then
-            error("NuuRoad: a step is carried alongside a later step, not an earlier one")
-        end
-        if not expanded.nodes[target] then
-            error("NuuRoad: `with` names a step past the end of the guide")
-        end
+        local target = labels[companion.target]
+        if not target then fail(companion.path .. ".with", "no step is labelled '" .. tostring(companion.target) .. "'") end
+        if target <= node.index then fail(companion.path .. ".with", "a step is carried alongside a later step, not an earlier one") end
         node.companionOf = target
         -- Its own rule still counts: whichever lands first finishes it.
         local own = node.completion and node.completion.type == "observed" and node.completion.observed
@@ -1747,8 +1891,8 @@ function Steps:Expand(guide)
     -- creatures fought for other reasons, shown from the labelled step on.
     for _, entry in ipairs(carriedFrom) do
         local target = labels[entry.target]
-        if not target then error("NuuRoad: no step is labelled '" .. tostring(entry.target) .. "'") end
-        if target >= entry.node.index then error("NuuRoad: `from` names an earlier step") end
+        if not target then fail(entry.path .. ".from", "no step is labelled '" .. tostring(entry.target) .. "'") end
+        if target >= entry.node.index then fail(entry.path .. ".from", "`from` names an earlier step") end
         entry.node.carriedFrom = target
     end
     return expanded
@@ -1776,28 +1920,6 @@ function Steps:NPCs(node)
         if type(id) == "number" and not isKill[id] then table.insert(talk, id) end
     end
     return kill, talk
-end
-
--- Sticky objectives: every `track` before `node` in guide order that no
--- `untrack` has closed. The caller decides whether the quest still matters.
-function Steps:ActiveTracks(guide, node)
-    local active, order = {}, {}
-    for _, candidate in ipairs(guide.nodes or {}) do
-        if candidate == node then break end
-        local auto = candidate.auto
-        if auto and auto.verb == "track" then
-            if not active[auto.track] then table.insert(order, auto.track) end
-            active[auto.track] = true
-        elseif auto and auto.verb == "untrack" then
-            active[auto.untrack] = nil
-        end
-    end
-    -- A quest tracked again after an untrack is in `order` twice; it is one line.
-    local result, seen = {}, {}
-    for _, questID in ipairs(order) do
-        if active[questID] and not seen[questID] then seen[questID] = true; table.insert(result, questID) end
-    end
-    return result
 end
 
 ns:RegisterModule("Steps", Steps)

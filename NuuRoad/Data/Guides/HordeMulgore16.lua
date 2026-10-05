@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeMulgore16.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 1-6 leveling route through Camp Narache. Step order, quest IDs, NPC IDs,
 -- item IDs, coordinates, and grind loops are NuuRoad's own.
@@ -11,54 +9,12 @@
 --     second pass, not a line-for-line addition to this one.
 --
 -- Map: 1412 Mulgore. Coordinates are hundredths of a map percent.
---
--- Conversion notes:
---   * `only` terms became `cond`: "Horde" -> wrapper cond { faction = "Horde" };
---     "not Tauren" -> { none = { { race = "tauren" } } }; "Warrior or Shaman" ->
---     { class = { "WARRIOR", "SHAMAN" } }; "not Shaman" -> { none = { { class =
---     "SHAMAN" } } }; single classes -> { class = "..." }. No quest-state or
---     `now` terms and no condition-only gates were in the source.
---   * track / untrack pairs became `from`:
---       - track 747: label "hunt" on the next step (turn in 752, take 753);
---         both 747 objective steps carry from = "hunt".
---       - track 750: label "cougars" on the next step (turn in 755, take 757);
---         the 750 objective step carries from = "cougars".
---       - track 780: the track sat right before the 780 objective steps, so the
---         label "boars" is on the first of them (part 2) and part 1 carries
---         from = "boars", riding on the card while part 2 is current.
---     The untrack steps are dropped.
---   * Objective numbers are the source's `part` values; none were inferred.
---     Their `count` (7, 7, 10, 8, 8, 12, 2) is dropped: the objective counts.
---   * The opening plainstrider kill (Warrior or Shaman) had `count = 4` and no
---     quest. A kill step carries no count in this format, so it is a kill step
---     without one (done on the first kill); its note still asks for about 10
---     copper of trash. A note with `mark` would be the alternative.
---   * NPC-only steps with a note (no verb in v2, so they were note steps):
---       - "Sell the trash to Kawnie Softbreeze" -> type "vendor", sell = true.
---       - Hunter Light Shot visit (npc 3072, item 2516) -> type "vendor",
---         sell = true, item = { 2516 }; not a buy step, since the source gives
---         no count.
---       - Trainer visits (Battle Shout, Rockbiter Weapon, Healing Wave, Arcane
---         Shot, Wrath, Parry, ...) stay type "note" with `npc`: a learn step
---         needs spell IDs the source does not have.
---   * Accept 781 from the Dirt-stained Map gets item = 4851 (no npc).
---   * The buy of the Short Staff drops its count (default 1).
---   * Location sentences moved from step notes to the NPC's note: Greatmother
---     Hawkwind (whole note), Seer Graytongue ("south of the camp"), Antur
---     Fallow ("on the road west out of the camp"); the rest of those notes
---     stays on the step.
---   * Radii: 0.06 -> 600, 0.03 -> 300.
---   * The travel to Camp Narache has no `area`: no AreaTable ID for it in the
---     repo, so it finishes on arrival at its point.
---   * Every visited NPC has a position from the source's `names`. Quest and
---     item names are dropped (the client names them).
---   * No section needed a map of its own: every point is on Mulgore (1412).
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-mulgore-1-6",
     updated = 1789862400,

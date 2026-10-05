@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeTirisfal612.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 6-12 leveling route through Brill, Tirisfal Glades and the Undercity,
 -- ported from RestedXP's Forever "6-12 Tirisfal Glades". Step order follows the
@@ -33,107 +31,12 @@
 --
 -- Maps: 1420 Tirisfal Glades (guide default), 1458 Undercity, 1421 Silverpine
 -- Forest (the last travel's zone).
---
--- Conversion notes (judgement calls made converting from format v2):
---   * IDs looked up in the repo: SkillLine IDs from Client.professionSkillLines
---     in API/Client.lua (Tailoring 197, Cooking 185, Enchanting 333, First Aid
---     129, Mining 186); AreaTable IDs from db/sources/wago/forever/AreaTable.csv
---     (Brill 159, Agamand Mills 157, Balnir Farmstead 165, Undercity 1497, the
---     last for the Undercity hearth); map IDs from db/horde/maps.json (Tirisfal
---     1420, Silverpine 1421, Undercity 1458). Travel `subzone` became `area`,
---     `zone` names became map IDs, `hearth` names became areas.
---   * Dropped `now` gates (the condition-only terms): "now level 6/7/8/10/12"
---     on the trainer notes and the early A New Plague and The Chill of Death
---     accepts, every "now gold N", every "now slot N dps < X", "not now spell
---     6307" (Blood Pact grimoire). The steps stay, with only their class part
---     as `cond`; a player without the gold, the level, or a worse weapon
---     skips. Weapon buy steps repeated in several Brill and Undercity visits
---     are all kept, so after the first purchase the repeats are for the player
---     to skip.
---   * Quest-state `only` terms, which `cond`/`show` cannot carry:
---       - "not quest 361" / "quest 361" on the two Agamand Mills level steps
---         (3840 xp without A Letter Undelivered, 3360 with it): one level step
---         at 3840 xp; its note says a player holding the letter may stop at
---         3360 and skip. One step fewer than the source.
---       - "now quest 361" on the letter's turn-in, "now quest 95328" on the
---         Whispering Horror Residue turn-in: dropped; a turn-in with nothing to
---         hand in passes on its own.
---       - "now quest 374 readyToTurnIn" and "now quest 1886 readyToTurnIn":
---         `optional = true` on those turn-ins.
---       - "now quest 1886 finished" on the rest of the Deathstalkers chain:
---         dropped; the steps keep their rogue/undead `cond`, and the chain's
---         accepts cannot be taken until 1886 is done.
---       - "quest 99152 or quest 95314 or quest 99153" on the Shadowvale Crypt
---         travel: dropped; everyone takes 99152 and 99153 at Bandarion Keep.
---       - "now item 208185" on the mage primer turn-in: dropped; class kept.
---   * `only` rewritten: classes -> cond.class (a list for "or"), "Undead" ->
---     race "scourge" ("Undead or Troll" -> race list), "not Undead" / "not
---     Paladin" -> `none`, "auctionhouse" -> show = { ah = true }, the guide's
---     "Horde" -> wrapper cond. Every step of "Warlocks: the Magic Quarter",
---     "Duskbats south of Brill" and "Paladins: A Lesson in Divinity" was for
---     the same classes, so `cond` moved to those sections; the duskbat group's
---     shared class `cond` sits on the section too.
---   * track/untrack turned into `from` (the label on the step or section where
---     the tracking began; the track's note joined the objective step's note):
---       - 5481 Gloom Weed, 367 Darkhound Blood, 97558 part 2 (Darkhound Hide):
---         from "west" (section "The fields west of Brill").
---       - 427 Scarlet Warriors: from "solliden" (section).
---       - 97558 part 3 (Vile Fin skins) and 5482 Doom Weed: from "gnolls"
---         (section "The gnoll camps north of Brill").
---       - 358 (tracked after the graverobber kills): from "graverobbers" on
---         both 358 part 2 (mongrels) and part 3 (Embalming Ichor), since the
---         track covered the whole quest.
---       - 426 Notched Ribs and Blackened Skulls: from "agamand" (the travel
---         into the mills); its note split between the two steps.
---       - 374 Scarlet Insignia Rings: from "perrine" (the Captain Perrine group
---         the track followed).
---       - 99142 Tomb Weed: from "balnirarrive" (the travel into Balnir).
---   * A carried step written twice in the source (an early `with = "next"` or
---     `sticky` copy, then the real step) became the later step with `from`:
---     the Dry Branches (from "branches", the Sticks and Bones accept), the
---     Executor's Motivator (sticky; from "zygand", the talk that gives
---     Discipline), and Egalin's Grimoire (from "scarletcamp", its section).
---     Three steps fewer than the source; their notes were merged.
---   * `with = "next"` before a group (Thurman's Letter) became `with = "mills"`,
---     a label on that group. The two Astor Hadren steps keep `with` on the
---     existing labels "balnir" (a section) and "uc2".
---   * Objective numbers are the source's `part`s; none were inferred. Steps
---     with a whole quest and no part (`objective = N`) keep `quest = N`: The
---     Great Outdoors (an interact at the campfire; the quest finishes it, the
---     player sits rather than clicks), and Murlocs at the Gates and The
---     Tarnished (kill steps with no target IDs: the creatures are Forever's
---     own and have none, so the note names them).
---   * Objective steps with no collect/kill target: Patience's reports and
---     Touring the Grounds' conversations are `talk` with `quest = { id, n }`;
---     the Coarse Thread for The Chill of Death is a `buy` with its objective;
---     Executor's Motivator and Deathguard Kel (spells cast on him) are
---     `interact` with the objective (object "Deathguard" for the first).
---   * NPC-only steps with a note (Holy Strike, "Train your new ranks") are
---     `note` steps with `npc`.
---   * The Whispering Horror Residue accept gained `item = 268812`, the item of
---     the collect step before it that starts 95328.
---   * NPCs lacking a position in the source's `names`: Gordo (10666) and
---     Junior Apothecary Holland (10665) walk; their `at` is the list of points
---     the steps that visit them gave, and the steps lose theirs (keeping their
---     radius). NPCs lacking an ID: Ephram Barbaro, Ander Solliden, Jorin Croge
---     and Owen Thadd; their steps keep their own `at` and name them in notes.
---   * Notes that only say where an NPC stands ("second floor of the inn",
---     "in the Magic Quarter", "walks around the graveyard") moved to that
---     NPC's `note`, shown on every visit.
---   * Sections given a `map`: none beyond the source's (the Undercity ones,
---     1458); points off a section's map carry their own map as before.
---   * Section and step labels were added for `from` and `with`: branches,
---     zygand, west, solliden, gnolls, graverobbers, agamand, mills,
---     scarletcamp, perrine, balnir (the source's), balnirarrive, uc2 (the
---     source's).
---   * The wrapper's `source` is from the header; the source guide had none.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-tirisfal-6-12",
     updated = 1790640000,

@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeShadowfangKeep.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Every Horde quest of Shadowfang Keep, from Keeper Bel'dugur in the Undercity to the
 -- last turn-in. Quest, NPC and item IDs, coordinates, the pickup order (the Undercity,
@@ -29,38 +27,12 @@
 -- still alive to take 1098 on the Forever client.
 --
 -- Maps: 1421 Silverpine Forest (guide default), 1458 Undercity, 1413 The Barrens.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }.
---   * `only = "Warlock"` and "Warlock | quest 1740 [readyToTurnIn]" -> cond = { class =
---     "WARLOCK" }; the quest-state terms go (a quest whose accept is out of the guide
---     takes its steps with it; a turn-in waits for its quest by its nature).
---   * `only = "quest 1098"`, "quest 1013", "quest 1014" and the "readyToTurnIn" gates on
---     the turn-ins dropped: quest-state predicates no longer exist. The old guide hid a
---     dungeon step when its quest was not in the log; the new one stops on it and the
---     player skips.
---   * Objective numbers are the source's `part` values (1740 #2, 1013 #1, 1014 #1);
---     none inferred. No track/untrack pairs in the source; the 1740 fragment step stays
---     sticky.
---   * The entrance travel's `zone = "Shadowfang Keep"` (a zone name) has no ID in the
---     repo: `instance` is left out, so the step finishes on arriving at the portal point.
---     The exit's `zone = "Silverpine Forest"` -> zone = 1421.
---   * Deathstalker Vincent (4444) is visited but has neither `at` nor `instance` (no
---     instance ID in the repo); his entry carries the source's where-to note.
---   * NPC location notes moved from the steps to `npcs`: Keeper Bel'dugur (Apothecarium),
---     Dalar Dawnweaver (Sepulcher; the flight-path advice too), High Executor Hadrec
---     (crypt and its way in), Deathstalker Vincent (courtyard). The way-in and flight
---     master coordinates stay as text in the notes, as in the source.
---   * Deathstalker Adamant has no ID in the source; he stays in the Rethilgore note.
---   * Quest and item names (`names.quests`, `names.items`) dropped: the client names them.
---   * No section needed its own map; all points carry their map or are on Silverpine.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-shadowfang-keep-quests",
     updated = 1790208000,

@@ -54,10 +54,11 @@ local Config = {
         -- Whether the place recorder's walk (a developer tool) keeps outdoor
         -- samples too.
         placeRecorder = { outdoors = false },
-        -- Three things nothing in the client can answer, which ported
-        -- guides branch on: how fast the realm gives experience
-        -- (`xpRate`), whether the player will use the auction house
-        -- (`auctionHouse`), and whether they play self found (`selfFound`).
+        -- Three things nothing in the client can answer: how fast the
+        -- realm gives experience (`xpRate`, which the level line's kill
+        -- estimate scales by), and, which guides branch on, whether the
+        -- player will use the auction house (`auctionHouse`) and whether
+        -- they play self found (`selfFound`).
         -- They have no default: unanswered, a predicate reads nil, which is
         -- unknown, so an unanswered question hides nothing.
         realm = {},

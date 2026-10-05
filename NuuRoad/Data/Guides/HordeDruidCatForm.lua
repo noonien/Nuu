@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeDruidCatForm.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- The Horde Druid Cat Form quests, new in WoW: Forever. Classic taught Cat Form at the
 -- trainer at level 20; Forever sends the Druid to the Great Cat Spirit in Moonglade, the
@@ -26,35 +24,12 @@
 --   * which of the Great Cat Spirit's two spots it actually stands at.
 --
 -- Maps: 1456 Thunder Bluff, 1450 Moonglade.
---
--- Conversion notes:
---   * Guide `only = "Druid | not Alliance"` -> wrapper cond { class = "DRUID",
---     none = { { faction = "Alliance" } } }. No `now` terms or condition-only gates in the source.
---   * Travel `zone` names became map IDs: "Moonglade" -> 1450, "Thunder Bluff" -> 1456
---     (from the guide's own map comment).
---   * The Thunder Bluff travel point 44.29, 45.87 is the Moonglade flight master, on the
---     Moonglade map (HordeBarrens and HordeMulgore612 give it map = 1450), so it has no map of
---     its own and falls to the guide's map 1450.
---   * The Moonglade travel keeps its `at` (Dendrite's spot) as the arrival point.
---   * turnin + accept on one NPC became `talk` steps.
---   * NPC notes moved onto the NPCs: Turak "He is on the Elder Rise.", Dendrite "stands by the
---     road in Nighthaven", the Great Cat Spirit "on the hill over the bridge in southern
---     Moonglade"; the steps keep only the rest of their notes. The two Great Cat Spirit steps
---     each gave the same two spots in their `at`; those became the NPC's `at` list and the steps
---     drop their `at`.
---   * Objective numbers for 98342 come from the source's `part` (1-3), not inferred; their order
---     is still to check in the client (see above).
---   * The relic collect steps have no `at` (none in the source); their shared note stays on the
---     third.
---   * The quest and item names in `names` are dropped: the client names them.
---   * No track/untrack, places, or sticky steps in the source.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:class:horde-druid-cat-form",
     updated = 1790208000,

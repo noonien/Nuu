@@ -5,6 +5,7 @@ function ns:Log() end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
+Load(ns, "Data/IDNames.lua")
 Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
@@ -35,23 +36,22 @@ ns.modules.Client = {
 }
 
 local guide = Steps:Expand({
-    schema = 2, id = "test:scan", updated = 1789862400, map = 1413,
-    meta = { title = "Scan", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 870, npc = 3448, at = { 52, 31 } },   -- 1 accepted long ago, quest turned in
-        { travel = "Ratchet", at = { 63, 37 } },         -- 2 nothing durable to read
-        { objective = 870, part = 1, kill = 3267, count = 8 }, -- 3 quest turned in
-        { turnin = 870, npc = 3448, at = { 52, 31 } },   -- 4 turned in
-        { accept = 871, npc = 3448, at = { 52, 31 } },   -- 5 in the log now
-        { objective = 871, part = 1, at = { 55, 25 } },  -- 6 objective line finished, quest not turned in
-        { objective = 871, part = 2, at = { 55, 25 } },  -- 7 still outstanding
-        { objectives = { 871 }, at = { 55, 25 } },       -- 8 outstanding
-        { kill = 3267, count = 5, at = { 55, 25 } },     -- 9
-        { level = 17 },                                  -- 10
-        { finish = "The end." },
+    kind = "guide", schema = 1, id = "test:scan", updated = 1789862400, title = "Scan", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "accept", quests = { 870 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 1 accepted long ago, quest turned in
+        { type = "travel", to = "Ratchet", at = { { 6300, 3700 } } },                   -- 2 nothing durable to read
+        { type = "kill", kill = { 3267 }, quest = { 870, 1 }, count = 8 },              -- 3 quest turned in
+        { type = "turnin", quests = { 870 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 4 turned in
+        { type = "accept", quests = { 871 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 5 in the log now
+        { type = "kill", quest = { 871, 1 }, at = { { 5500, 2500 } } },                 -- 6 objective line finished, quest not turned in
+        { type = "kill", quest = { 871, 2 }, at = { { 5500, 2500 } } },                 -- 7 still outstanding
+        { type = "kill", quest = 871, at = { { 5500, 2500 } } },                        -- 8 the whole quest, outstanding
+        { type = "kill", kill = { 3267 }, count = 5, at = { { 5500, 2500 } } },         -- 9
+        { type = "level", level = 17 },                                                 -- 10
+        { type = "finish", note = "The end." },
     } },
-},
+} },
 })
 assert(select(1, ns.modules.Schema:Validate(guide)), "fixture guide must validate")
 local byIndex = guide.nodes
@@ -97,7 +97,7 @@ assert(GuideScan:IsStepDone(guide, byIndex[8], state), "an upcoming step the gam
 
 -- A second scan moves on to what has since been proved, and no further.
 game.completed[871] = true
-assert(GuideScan:Apply(guide) == 2, "the last objective and the objective group, and nothing past the kill step")
+assert(GuideScan:Apply(guide) == 2, "the last objective and the whole quest, and nothing past the kill step")
 assert((Progress:GetCurrentNode(guide)).index == byIndex[10].index,
     "the kill step the client keeps no record of does not hold the resume point, the level target does")
 assert(state.statuses[byIndex[9].index] == "skipped", "the step passed over is recorded as skipped, not as done")
@@ -114,17 +114,16 @@ assert(GuideScan:NodeCompleted(byIndex[10]), "a level target the player has pass
 -- An outstanding step stops the resume even when finished steps lie past it:
 -- the guide opens on the first step still to do, never on the last one done.
 local outOfOrder = Steps:Expand({
-    schema = 2, id = "test:scan-order", updated = 1789862400, map = 1413,
-    meta = { title = "Out of order", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 900, npc = 3448, at = { 52, 31 } },  -- 1 done
-        { travel = "Ratchet", at = { 63, 37 } },        -- 2 no record either way
-        { accept = 901, npc = 3448, at = { 52, 31 } },  -- 3 never accepted: outstanding
-        { turnin = 900, npc = 3448, at = { 52, 31 } },  -- 4 done out of order
-        { level = 17 },                                 -- 5
+    kind = "guide", schema = 1, id = "test:scan-order", updated = 1789862400, title = "Out of order", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "accept", quests = { 900 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 1 done
+        { type = "travel", to = "Ratchet", at = { { 6300, 3700 } } },                   -- 2 no record either way
+        { type = "accept", quests = { 901 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 3 never accepted: outstanding
+        { type = "turnin", quests = { 900 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 4 done out of order
+        { type = "level", level = 17 },                                                 -- 5
     } },
-},
+} },
 })
 ns.modules.GuideRepository = { Get = function(_, id)
     if id == guide.id then return guide end
@@ -145,17 +144,16 @@ assert(GuideScan:BlocksResume(outOfOrder.nodes[3]) and not GuideScan:BlocksResum
 -- and a quest item is moot when the player has no such quest - which holds
 -- the resume point too, since the player may still pick the quest up.
 local items = Steps:Expand({
-    schema = 2, id = "test:scan-items", updated = 1789862400, map = 1413,
-    meta = { title = "Items", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { turnin = 905, npc = 3448, at = { 52, 31 } },                             -- 1 done
-        { collect = 4926, starts = 819, object = "Chen's Empty Keg", at = { 55, 20 } }, -- 2 keg not found, quest never taken
-        { accept = 819 },                                                          -- 3 outstanding
-        { collect = 4986, quest = 924, at = { 62, 20 } },                          -- 4 quest item, no such quest
-        { accept = 906, npc = 3448, at = { 52, 31 } },                             -- 5 outstanding
+    kind = "guide", schema = 1, id = "test:scan-items", updated = 1789862400, title = "Items", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "turnin", quests = { 905 }, npc = { 3448 }, at = { { 5200, 3100 } } },                        -- 1 done
+        { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg", at = { { 5500, 2000 } } }, -- 2 keg not found, quest never taken
+        { type = "accept", quests = { 819 } },                                                                 -- 3 outstanding
+        { type = "collect", item = 4986, quest = 924, at = { { 6200, 2000 } } },                               -- 4 quest item, no such quest
+        { type = "accept", quests = { 906 }, npc = { 3448 }, at = { { 5200, 3100 } } },                        -- 5 outstanding
     } },
-},
+} },
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == items.id and items or nil end }
 Progress.store, Progress.session = {}, {}
@@ -184,16 +182,15 @@ game.questLogRead = nil
 -- travel step skipped onto, with the quest at its destination already in the
 -- log, is passed over to the first step still to do. Plain SKIP holds instead.
 local settle = Steps:Expand({
-    schema = 2, id = "test:scan-settle", updated = 1789862400, map = 1413,
-    meta = { title = "Settle", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 910, npc = 3448, at = { 52, 31 } },  -- 1 never accepted: outstanding
-        { travel = "Orgrimmar", at = { 63, 37 } },      -- 2 no record either way
-        { accept = 911, npc = 3448, at = { 52, 31 } },  -- 3 in the log
-        { objective = 911, part = 1, at = { 55, 25 } }, -- 4 outstanding
+    kind = "guide", schema = 1, id = "test:scan-settle", updated = 1789862400, title = "Settle", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "accept", quests = { 910 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 1 never accepted: outstanding
+        { type = "travel", to = "Orgrimmar", at = { { 6300, 3700 } } },                 -- 2 no record either way
+        { type = "accept", quests = { 911 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 3 in the log
+        { type = "kill", quest = { 911, 1 }, at = { { 5500, 2500 } } },                 -- 4 outstanding
     } },
-},
+} },
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == settle.id and settle or nil end }
 Progress.store, Progress.session = {}, {}
@@ -213,19 +210,18 @@ assert(settleState.statuses[settle.nodes[2].index] == "skipped" and settleState.
 -- hearth steps are passed over as superseded, and a later matching step is
 -- contained by the first outstanding quest step before it.
 local hearths = Steps:Expand({
-    schema = 2, id = "test:scan-hearth", updated = 1789862400, map = 1413,
-    meta = { title = "Hearths", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { hearth = "The Crossroads", npc = 3934, at = { 52, 30 } }, -- 1
-        { accept = 920, npc = 3448, at = { 52, 31 } },              -- 2 done
-        { hearth = "Camp Taurajo", npc = 7714, at = { 45, 59 } },   -- 3
-        { accept = 921, npc = 3448, at = { 52, 31 } },              -- 4 in the log
-        { objective = 921, part = 1, at = { 55, 25 } },             -- 5 outstanding
-        { hearth = "The Crossroads", npc = 3934, at = { 52, 30 } }, -- 6
-        { accept = 922, npc = 3448, at = { 52, 31 } },              -- 7
+    kind = "guide", schema = 1, id = "test:scan-hearth", updated = 1789862400, title = "Hearths", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "hearth", area = 380, npc = { 3934 }, at = { { 5200, 3000 } } },       -- 1
+        { type = "accept", quests = { 920 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 2 done
+        { type = "hearth", area = 378, npc = { 7714 }, at = { { 4500, 5900 } } },       -- 3
+        { type = "accept", quests = { 921 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 4 in the log
+        { type = "kill", quest = { 921, 1 }, at = { { 5500, 2500 } } },                 -- 5 outstanding
+        { type = "hearth", area = 380, npc = { 3934 }, at = { { 5200, 3000 } } },       -- 6
+        { type = "accept", quests = { 922 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 7
     } },
-},
+} },
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == hearths.id and hearths or nil end }
 game.completed[920], game.inLog[921] = true, true
@@ -266,19 +262,18 @@ assert(not GuideScan:Settled(outOfOrder, outOfOrder.nodes[2]),
 -- things stand. The scan refuses to guess before the client has handed over a
 -- quest log.
 local dropped = Steps:Expand({
-    schema = 2, id = "test:scan-moot", updated = 1789862400, map = 1413,
-    meta = { title = "Moot", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 930, npc = 3448, at = { 52, 31 } },                -- 1 never accepted: outstanding
-        { turnin = 931, npc = 3448, at = { 52, 31 } },                -- 2 never taken: moot
-        { objective = 931, part = 1, at = { 55, 25 } },               -- 3 moot as well
-        { turnin = 932, accept = 933, npc = 3448, at = { 52, 31 } },  -- 4 the turn-in is moot, the accept is not
-        { turnin = { 934, 935 }, npc = 3448, at = { 52, 31 } },       -- 5 one moot, one still to hand in
-        { objectives = { 936 }, any = 937, at = { 55, 25 } },         -- 6 either quest would do; both moot
-        { level = 30 },                                               -- 7 out of reach
+    kind = "guide", schema = 1, id = "test:scan-moot", updated = 1789862400, title = "Moot", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "accept", quests = { 930 }, npc = { 3448 }, at = { { 5200, 3100 } } },                 -- 1 never accepted: outstanding
+        { type = "turnin", quests = { 931 }, npc = { 3448 }, at = { { 5200, 3100 } } },                 -- 2 never taken: moot
+        { type = "kill", quest = { 931, 1 }, at = { { 5500, 2500 } } },                                 -- 3 moot as well
+        { type = "talk", turnin = { 932 }, accept = { 933 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 4 the turn-in is moot, the accept is not
+        { type = "turnin", quests = { 934, 935 }, npc = { 3448 }, at = { { 5200, 3100 } } },            -- 5 one moot, one still to hand in
+        { type = "kill", quest = 936, at = { { 5500, 2500 } } },                                        -- 6 the whole quest, moot
+        { type = "level", level = 30 },                                                                 -- 7 out of reach
     } },
-},
+} },
 })
 local d = dropped.nodes
 assert(not GuideScan:NodeIsMoot(d[2]), "nothing is moot before the quest log can be read")
@@ -294,10 +289,10 @@ assert(not GuideScan:NodeIsMoot(d[5]), "a turn-in the player can still make hold
 game.completed[935] = true
 game.inLog[935] = nil
 assert(GuideScan:NodeIsMoot(d[5]), "with the other quest handed in the step is moot")
-assert(GuideScan:NodeIsMoot(d[6]), "an either-or step is moot only when neither quest is the player's")
-game.inLog[937] = true
-assert(not GuideScan:NodeIsMoot(d[6]), "one of the two in the log is enough to keep it")
-game.inLog[937] = nil
+assert(GuideScan:NodeIsMoot(d[6]), "a whole quest the player does not have is moot")
+game.inLog[936] = true
+assert(not GuideScan:NodeIsMoot(d[6]), "in the log it is outstanding work")
+game.inLog[936] = nil
 assert(GuideScan:BlocksResume(d[2]), "a quest the player does not have holds the resume point")
 assert(GuideScan:BlocksResume(d[1]), "real outstanding work still does")
 assert(not GuideScan:NodeCompleted(d[2]), "a moot step is never claimed as done")
@@ -359,16 +354,15 @@ ns.modules.Client.MatchesObservedCompletion = matcher
 -- A turn-in with nothing to hand in is not a member of the group: it joins
 -- once its quest is accepted, here at the group's first member.
 local hub = Steps:Expand({
-    schema = 2, id = "test:moot-member", updated = 1789862400, map = 1413,
-    meta = { title = "Moot member", category = "test" },
-    steps = { { section = "Hub", steps = {
+    kind = "guide", schema = 1, id = "test:moot-member", updated = 1789862400, title = "Moot member", category = "test",
+    data = { map = 1413, sections = { { title = "Hub", steps = {
         { group = {
-            { accept = 950, npc = 3448, at = { 52, 31 } },
-            { turnin = 950, npc = 3449, at = { 53, 31 } },
-            { turnin = 870, npc = 3449, at = { 53, 31 } },
+            { type = "accept", quests = { 950 }, npc = { 3448 }, at = { { 5200, 3100 } } },
+            { type = "turnin", quests = { 950 }, npc = { 3449 }, at = { { 5300, 3100 } } },
+            { type = "turnin", quests = { 870 }, npc = { 3449 }, at = { { 5300, 3100 } } },
         } },
-        { finish = "Done." },
-    } } },
+        { type = "finish", note = "Done." },
+    } } } },
 })
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == hub.id and hub or nil end }

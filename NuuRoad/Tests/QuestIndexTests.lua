@@ -14,44 +14,39 @@ Load(ns, "Domain/GuideRepository.lua")
 Load(ns, "Domain/QuestIndex.lua")
 local Steps, Repository, QuestIndex, Names = ns.modules.Steps, ns.modules.GuideRepository, ns.modules.QuestIndex, ns.modules.Names
 
-ns.builtInGuides = {
-    ["test:barrens"] = {
-        schema = 2, id = "test:barrens", updated = 1789862400, map = 1413, meta = { title = "Barrens", category = "test" },
-        steps = {
-    { section = "Steps", steps = {
-        { accept = 869, npc = 3464 },
-        { objectives = 869 },
-        { turnin = 869, accept = 871, npc = 3464 },
-        { track = 871 },
-        { objective = 871, part = 1, kill = 3267, count = 8 },
-        { collect = 4926, starts = 819, object = "Chen's Empty Keg" },
-        { untrack = 871 },
-        { turnin = 871, npc = 3464 },
-    } },
-},
-    },
-    ["test:alpha"] = {
-        schema = 2, id = "test:alpha", updated = 1789862400, map = 1413, meta = { title = "Alpha", category = "test" },
-        steps = {
-    { section = "Steps", steps = {
-        { accept = 871, npc = 3464 }, { turnin = 871, npc = 3464 }
-    } },
-},
-    },
+ns.packagedGuides = {
+    { kind = "guide", schema = 1, id = "test:barrens", updated = 1789862400, title = "Barrens", category = "test",
+        data = { map = 1413, sections = {
+            { title = "Steps", steps = {
+                { type = "accept", quests = { 869 }, npc = { 3464 } },
+                { type = "kill", quest = 869 },
+                { type = "talk", turnin = { 869 }, accept = { 871 }, npc = { 3464 } },
+                { type = "kill", kill = { 3267 }, quest = { 871, 1 } },
+                { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg" },
+                { type = "turnin", quests = { 871 }, npc = { 3464 } },
+            } },
+        } } },
+    { kind = "guide", schema = 1, id = "test:alpha", updated = 1789862400, title = "Alpha", category = "test",
+        data = { map = 1413, sections = {
+            { title = "Steps", steps = {
+                { type = "accept", quests = { 871 }, npc = { 3464 } },
+                { type = "turnin", quests = { 871 }, npc = { 3464 } },
+            } },
+        } } },
 }
 Repository:Initialize()
 
 -- Roles come from the verb.
 local barrens = Repository:Get("test:barrens")
 local function nodeByIndex(guide, index) return guide.nodes[index] end
-local q = QuestIndex:NodeQuests(nodeByIndex(barrens, 3))
+local q = QuestIndex:NodeQuests(nodeByIndex(barrens, 2))
+assert(#q == 1 and q[1].id == 869 and q[1].role == "objective", "whole-quest objective step")
+q = QuestIndex:NodeQuests(nodeByIndex(barrens, 3))
 assert(#q == 2 and q[1].id == 869 and q[1].role == "turnin" and q[2].id == 871 and q[2].role == "accept", "talk step yields turnin then accept")
-q = QuestIndex:NodeQuests(nodeByIndex(barrens, 5))
-assert(#q == 1 and q[1].id == 871 and q[1].role == "objective", "objective part step")
-q = QuestIndex:NodeQuests(nodeByIndex(barrens, 6))
-assert(#q == 1 and q[1].id == 819 and q[1].role == "collect", "collect step with starts")
 q = QuestIndex:NodeQuests(nodeByIndex(barrens, 4))
-assert(#q == 1 and q[1].role == "track", "track step")
+assert(#q == 1 and q[1].id == 871 and q[1].role == "objective", "objective part step")
+q = QuestIndex:NodeQuests(nodeByIndex(barrens, 5))
+assert(#q == 1 and q[1].id == 819 and q[1].role == "collect", "collect step with starts")
 assert(#QuestIndex:NodeQuests(nil) == 0 and #QuestIndex:NodeQuests({ kind = "note" }) == 0, "nodes without quests")
 
 -- Hand-written nodes are read through their completion rule.
@@ -69,12 +64,12 @@ local entries = QuestIndex:GuidesFor(871)
 assert(#entries == 2, "871 is in two guides, got " .. #entries)
 assert(entries[1].guide.id == "test:alpha" and entries[2].guide.id == "test:barrens", "sorted by title")
 local steps = entries[2].steps
-assert(#steps == 5, "barrens handles 871 on five steps, got " .. #steps)
+assert(#steps == 3, "barrens handles 871 on three steps, got " .. #steps)
 assert(steps[1].index == 3 and steps[1].role == "accept", "first is the accept on step 3")
-assert(steps[2].index == 4 and steps[2].role == "track" and steps[3].index == 5 and steps[3].role == "objective", "then track and objective")
-assert(steps[4].index == 7 and steps[4].role == "track" and steps[5].index == 8 and steps[5].role == "turnin", "then untrack and turn-in")
+assert(steps[2].index == 4 and steps[2].role == "objective", "then the objective")
+assert(steps[3].index == 6 and steps[3].role == "turnin", "then the turn-in")
 assert(steps[1].index == barrens.nodes[3].index, "step carries the flattened index")
-assert(QuestIndex:DescribeSteps(entries[2]) == "accepted at step 3, kept in view at step 4, worked on at step 5, kept in view at step 7, turned in at step 8", QuestIndex:DescribeSteps(entries[2]))
+assert(QuestIndex:DescribeSteps(entries[2]) == "accepted at step 3, worked on at step 4, turned in at step 6", QuestIndex:DescribeSteps(entries[2]))
 assert(QuestIndex:FirstStep(entries[2]).index == 3, "the accept is the first step")
 assert(QuestIndex:FirstStep({ steps = {
     { index = 9, role = "turnin" }, { index = 4, role = "objective" }
@@ -95,12 +90,10 @@ assert(QuestIndex:SearchText({ id = "nope" }) == "" and QuestIndex:SearchText(ni
 
 -- The index follows the repository: saving a personal guide is picked up.
 local personal = Steps:Expand({
-    schema = 2, id = Repository.pendingID, updated = 1789862400, map = 1413, meta = { title = "Personal", category = "custom" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 264, npc = 3464 }
+    kind = "guide", schema = 1, id = Repository.pendingID, updated = 1789862400, title = "Personal", category = "custom",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = { { type = "accept", quests = { 264 }, npc = { 3464 } } } },
     } },
-},
 })
 assert(#QuestIndex:GuidesFor(264) == 0, "not yet")
 local saved, errors = Repository:SaveUserGuide(personal)

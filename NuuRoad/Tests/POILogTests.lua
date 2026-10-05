@@ -25,14 +25,14 @@ Load(ns, "Domain/POILog.lua")
 local Steps, POILog = ns.modules.Steps, ns.modules.POILog
 
 local guide = Steps:Expand({
-    schema = 2, id = "test:poi", updated = 1789862400, map = 1413, meta = { title = "POI", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 869, npc = 3464, at = { 44, 59 } },
-        { objectives = 869, at = { 46, 62 } },
-        { travel = "South road", at = { 50, 70 } },
+    kind = "guide", schema = 1, id = "test:poi", updated = 1789862400, title = "POI", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "accept", quests = { 869 }, npc = { 3464 }, at = { { 4400, 5900 } } },
+            { type = "kill", quest = 869, at = { { 4600, 6200 } } },
+            { type = "travel", to = "South road", at = { { 5000, 7000 } } },
+        } },
     } },
-},
 })
 local nodes = guide.nodes
 
@@ -353,13 +353,13 @@ ns.modules.QuestIndex:Invalidate()
 -- has to read as a pin on the other cluster rather than as a bad pin.
 POILog:Clear()
 local clusterGuide = Steps:Expand({
-    schema = 2, id = "test:clusters", updated = 1789862400, map = 1413, meta = { title = "Clusters", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { objectives = 890, at = { 40, 30 } },   -- north side of the zone
-        { objectives = 890, at = { 60, 70 } },   -- south side, ~450 yd away
+    kind = "guide", schema = 1, id = "test:clusters", updated = 1789862400, title = "Clusters", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "kill", quest = 890, at = { { 4000, 3000 } } },   -- north side of the zone
+            { type = "kill", quest = 890, at = { { 6000, 7000 } } },   -- south side, ~450 yd away
+        } },
     } },
-},
 })
 repositoryGuides = { clusterGuide }
 ns.modules.GuideRepository = { version = 2, List = function() return repositoryGuides end }
@@ -421,14 +421,14 @@ assert(ns.db.poi.session ~= nil, "and the session is stamped")
 -- is actually pinning.
 POILog:Clear()
 local handInGuide = Steps:Expand({
-    schema = 2, id = "test:handin", updated = 1789862400, map = 1413, meta = { title = "Hand in", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 891, npc = 3464, at = { 48, 28 } },
-        { objectives = 891, at = { 62, 44 } },
-        { turnin = 891, npc = 3464, at = { 48, 28 } },
+    kind = "guide", schema = 1, id = "test:handin", updated = 1789862400, title = "Hand in", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "accept", quests = { 891 }, npc = { 3464 }, at = { { 4800, 2800 } } },
+            { type = "kill", quest = 891, at = { { 6200, 4400 } } },
+            { type = "turnin", quests = { 891 }, npc = { 3464 }, at = { { 4800, 2800 } } },
+        } },
     } },
-},
 })
 repositoryGuides = { handInGuide }
 ns.modules.GuideRepository = { version = 3, List = function() return repositoryGuides end }
@@ -460,14 +460,14 @@ mapQuests[1413] = { { questID = 869, x = 0.46, y = 0.62 } }
 -- shape, measured rather than eyeballed.
 POILog:Clear()
 local spreadGuide = Steps:Expand({
-    schema = 2, id = "test:centre", updated = 1789862400, map = 1413, meta = { title = "Centre", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { objectives = 892, at = { 20, 20 } },
-        { objectives = 892, at = { 60, 50 } },
-        { objectives = 892, at = { 40, 80 } },
+    kind = "guide", schema = 1, id = "test:centre", updated = 1789862400, title = "Centre", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "kill", quest = 892, at = { { 2000, 2000 } } },
+            { type = "kill", quest = 892, at = { { 6000, 5000 } } },
+            { type = "kill", quest = 892, at = { { 4000, 8000 } } },
+        } },
     } },
-},
 })
 repositoryGuides = { spreadGuide }
 ns.modules.GuideRepository = { version = 4, List = function() return repositoryGuides end }
@@ -497,12 +497,12 @@ mapQuests[1413] = { { questID = 869, x = 0.46, y = 0.62 } }
 -- said things happened - the player's own position at the moment it did.
 POILog:Clear()
 local portedGuide = Steps:Expand({
-    schema = 2, id = "test:ported", updated = 1789862400, map = 1413, meta = { title = "Ported", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { objectives = 893, at = { 20, 20 } }, -- a wrong coordinate, as a bad port gives
+    kind = "guide", schema = 1, id = "test:ported", updated = 1789862400, title = "Ported", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "kill", quest = 893, at = { { 2000, 2000 } } }, -- a wrong coordinate, as a bad port gives
+        } },
     } },
-},
 })
 repositoryGuides = { portedGuide }
 ns.modules.GuideRepository = { version = 5, List = function() return repositoryGuides end }

@@ -3,7 +3,7 @@
 --
 --   lua Tools/CheckGroups.lua [Data/Guides/<Guide>.lua ...] [--near 3] [--near-npc 1]
 --
--- With no files it reads every guide in Data/Guides, through the import.
+-- With no files it reads every guide in Data/Guides.
 --
 -- Two kinds of stop are checked, each against its own kind only:
 --
@@ -29,8 +29,8 @@ _G = _G or _ENV
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
 Load(ns, "Data/Schema.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
-Load(ns, "Data/IDNames.lua"); Load(ns, "Data/Import.lua")
-ns.builtInGuides = {}
+Load(ns, "Data/IDNames.lua")
+ns.packagedGuides, ns.builtInGuides = {}, {}
 local Names, Steps = ns.modules.Names, ns.modules.Steps
 
 local files, near, nearNPC = {}, 3, 1
@@ -53,7 +53,7 @@ if #files == 0 then
     listing:close()
 end
 for _, path in ipairs(files) do Load(ns, path) end
-ns.modules.GuideImport:RegisterPackaged()
+for _, guide in ipairs(ns.packagedGuides) do ns.builtInGuides[guide.id] = guide end
 
 local sorts = { kill = "work", collect = "work", interact = "work", questObjective = "work",
     acceptQuest = "visit", turnInQuest = "visit", talk = "visit" }

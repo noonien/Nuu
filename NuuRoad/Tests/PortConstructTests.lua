@@ -7,6 +7,7 @@ Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
 Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
+Load(ns, "Data/IDNames.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
 Load(ns, "Domain/Navigation.lua")
@@ -18,12 +19,13 @@ local stubbed = { "C_Item", "C_QuestLog", "C_Map", "GetItemCount", "UnitLevel", 
 local function clearStubs() for _, name in ipairs(stubbed) do _G[name] = nil end end
 clearStubs()
 
-local function expand(steps, extra)
-    local guide = { schema = 2, id = "nuuroad:test:port", updated = 1, map = 1412,
-        meta = { title = "Port constructs", category = "test" },
-        steps = { { section = "S", steps = steps } } }
-    for key, value in pairs(extra or {}) do guide[key] = value end
-    local expanded = Steps:Expand(guide)
+local function v1(steps)
+    return { kind = "guide", schema = 1, id = "nuuroad:test:port", updated = 1,
+        title = "Port constructs", category = "test",
+        data = { map = 1412, sections = { { title = "S", steps = steps } } } }
+end
+local function expand(steps)
+    local expanded = Steps:Expand(v1(steps))
     local ok, problems = Schema:Validate(expanded)
     assert(ok, table.concat(problems or {}, "; "))
     return expanded
@@ -31,13 +33,13 @@ end
 
 -- #completewith: a step carried alongside a later one ------------------------
 local guide = expand({
-    { travel = "Through the cave", with = "next", at = { 59.67, 83.33 } },
-    { objective = 757, part = 1, collect = 4770, count = 12, at = { 63.93, 78.34 } },
-    { travel = "The belts camp", with = "belts", at = { 60.00, 80.00 } },
-    { turnin = 757, npc = 2981, label = "belts", at = { 44.18, 76.07 } },
-    { finish = "Done." },
+    { type = "travel", to = "Through the cave", with = "cave", at = { { 5967, 8333 } } },
+    { type = "collect", item = 4770, quest = { 757, 1 }, label = "cave", at = { { 6393, 7834 } } },
+    { type = "travel", to = "The belts camp", with = "belts", at = { { 6000, 8000 } } },
+    { type = "turnin", quests = { 757 }, npc = { 2981 }, label = "belts", at = { { 4418, 7607 } } },
+    { type = "finish", note = "Done." },
 })
-assert(guide.nodes[1].companionOf == 2, "`with = \"next\"` names the following step")
+assert(guide.nodes[1].companionOf == 2, "a label on the next step names it")
 assert(guide.nodes[3].companionOf == 4, "a label names any later step")
 assert(guide.nodes[2].companionOf == nil and guide.nodes[4].companionOf == nil)
 -- The carried step keeps its own rule; either finishes it.
@@ -45,18 +47,19 @@ local carriedCompletion = guide.nodes[1].completion.observed
 assert(carriedCompletion.type == "any" and #carriedCompletion.children == 2)
 assert(carriedCompletion.children[2].type == "step" and carriedCompletion.children[2].index == 2)
 
-local badForward = pcall(Steps.Expand, Steps, { schema = 2, id = "x", updated = 1, map = 1412,
-    meta = { title = "x", category = "test" },
-    steps = { { section = "S", steps = {
-        { note = "target", label = "earlier" },
-        { note = "carried", with = "earlier" },
-    } } } })
-assert(not badForward, "a step cannot be carried alongside an earlier one")
+local badForward, message = pcall(Steps.Expand, Steps, v1({
+    { type = "note", note = "target", label = "earlier" },
+    { type = "note", note = "carried", with = "earlier" },
+}))
+assert(not badForward and message:find("steps[2].with: a step is carried alongside a later step", 1, true),
+    "a step cannot be carried alongside an earlier one")
 
-local badLabel = pcall(Steps.Expand, Steps, { schema = 2, id = "x", updated = 1, map = 1412,
-    meta = { title = "x", category = "test" },
-    steps = { { section = "S", steps = { { note = "carried", with = "nowhere" }, { note = "other" } } } } })
-assert(not badLabel, "`with` naming no label is refused at load")
+local badLabel
+badLabel, message = pcall(Steps.Expand, Steps, v1({ { type = "note", note = "carried", with = "nowhere" }, { type = "note", note = "other" } }))
+assert(not badLabel and message:find("no step is labelled 'nowhere'", 1, true), "`with` naming no label is refused at load")
+-- `with = "next"` is gone: it names a label like any other.
+badLabel, message = pcall(Steps.Expand, Steps, v1({ { type = "note", note = "carried", with = "next" }, { type = "note", note = "other" } }))
+assert(not badLabel and message:find("no step is labelled 'next'", 1, true))
 
 -- The flow never stops on a carried step, and the step that carries it
 -- finishes it.
@@ -76,10 +79,10 @@ assert(state.statuses[3] == "skipped", "a skip carries its companions with it")
 
 -- #sticky: stays up alongside the steps after it until it is done ------------
 local sticky = expand({
-    { note = "Keep an eye out for Ghost Howl.", sticky = true },
-    { note = "One" },
-    { note = "Two" },
-    { finish = "Done." },
+    { type = "note", note = "Keep an eye out for Ghost Howl.", sticky = true },
+    { type = "note", note = "One" },
+    { type = "note", note = "Two" },
+    { type = "finish", note = "Done." },
 })
 assert(sticky.nodes[1].sticky == true)
 Progress.store, Progress.session = {}, {}
@@ -95,11 +98,11 @@ assert(#Progress:Carried(sticky, sticky.nodes[3]) == 0, "until it is done")
 -- A sticky objective leaves the card once the game shows it finished, though
 -- the flow, never stopping on it, records nothing.
 local stickyKills = expand({
-    { accept = 1487, npc = 5768 },
-    { objective = 1487, part = 2, kill = 5755, count = 7, sticky = true },
-    { objective = 1487, part = 3, kill = 5761, count = 7, sticky = true },
-    { note = "One" },
-    { finish = "Done." },
+    { type = "accept", quests = { 1487 }, npc = { 5768 } },
+    { type = "kill", kill = { 5755 }, quest = { 1487, 2 }, sticky = true },
+    { type = "kill", kill = { 5761 }, quest = { 1487, 3 }, sticky = true },
+    { type = "note", note = "One" },
+    { type = "finish", note = "Done." },
 })
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == stickyKills.id and stickyKills or nil end }
@@ -119,9 +122,9 @@ ns.modules.GuideScan = nil
 
 -- #loop, and any step with several points: the arrow takes the nearest -----
 local loop = expand({
-    { objective = 745, part = 1, kill = 2949, count = 10, loop = true,
-        at = { { 53.50, 73.00 }, { 48.30, 72.00 } } },
-    { finish = "Done." },
+    { type = "kill", kill = { 2949 }, quest = { 745, 1 }, loop = true,
+        at = { { 5350, 7300 }, { 4830, 7200 } } },
+    { type = "finish", note = "Done." },
 })
 local location = loop.nodes[1].location
 assert(location.loop == true and #location.spots == 1)
@@ -129,80 +132,83 @@ local x, y = Navigation.NearestPoint(location, 0.49, 0.72)
 assert(math.abs(x - 0.483) < 0.001 and math.abs(y - 0.72) < 0.001, "the nearer point wins")
 x, y = Navigation.NearestPoint(location, 0.54, 0.73)
 assert(math.abs(x - 0.535) < 0.001, "and so does the other one, from the other side")
-local plain = expand({ { travel = "A", at = { { 53.50, 73.00 }, { 48.30, 72.00 } } }, { finish = "." } })
+local plain = expand({ { type = "travel", to = "A", at = { { 5350, 7300 }, { 4830, 7200 } } }, { type = "finish", note = "." } })
 x = Navigation.NearestPoint(plain.nodes[1].location, 0.49, 0.72)
 assert(math.abs(x - 0.483) < 0.001, "without loop the nearest point wins too")
 
 -- .vendor, .timer ------------------------------------------------------------
 local misc = expand({
-    { vendor = "sell", npc = 3072, at = { 45.30, 76.52 } },
-    { vendor = "repair", npc = 3080, at = { 45.90, 58.73 } },
-    { turnin = 748, npc = 2948, wait = 8, at = { 48.53, 60.40 } },
-    { finish = "Done." },
+    { type = "vendor", sell = true, npc = { 3072 }, at = { { 4530, 7652 } } },
+    { type = "vendor", repair = true, npc = { 3080 }, at = { { 4590, 5873 } } },
+    { type = "turnin", quests = { 748 }, npc = { 2948 }, wait = 8, at = { { 4853, 6040 } } },
+    { type = "vendor", sell = true, repair = true, npc = { 3080 } },
+    { type = "finish", note = "Done." },
 })
 assert(misc.nodes[1].kind == "vendor")
 assert(Steps:Title(misc.nodes[1]):find("Sell your junk"), Steps:Title(misc.nodes[1]))
 assert(Steps:Title(misc.nodes[2]):find("^Repair at "), Steps:Title(misc.nodes[2]))
 assert(misc.nodes[3].wait == 8)
+assert(Steps:Title(misc.nodes[4]):find("^Sell and repair at "), Steps:Title(misc.nodes[4]))
+assert(not pcall(Steps.Expand, Steps, v1({ { type = "vendor", npc = { 3080 } } })), "a vendor step sells, repairs, or both")
 
--- .zone / .subzone: arrival by name -----------------------------------------
+-- Arrival by zone (a map ID) or by area (an AreaTable ID, named) ----------
 local byName = expand({
-    { travel = "The Barrens", zone = "The Barrens", at = { 69.60, 60.40 } },
-    { travel = "Bloodhoof Village", subzone = "Bloodhoof Village", at = { 47.35, 60.70 } },
-    { finish = "Done." },
+    { type = "travel", to = "The Barrens", zone = 1413, at = { { 6960, 6040 } } },
+    { type = "travel", to = "Bloodhoof Village", area = 222, at = { { 4735, 6070 } } },
+    { type = "finish", note = "Done." },
 })
-assert(byName.nodes[1].completion.observed.type == "zone")
-assert(byName.nodes[2].completion.observed.type == "subzone")
-GetRealZoneText = function() return "Mulgore" end
+assert(byName.nodes[1].completion.observed.type == "zone" and byName.nodes[1].completion.observed.mapID == 1413)
+assert(byName.nodes[2].completion.observed.type == "subzone" and byName.nodes[2].completion.observed.name == "Bloodhoof Village")
+local here = 1412
+C_Map = { GetBestMapForUnit = function() return here end }
 GetSubZoneText = function() return "Bloodhoof Village" end
 assert(not Client:MatchesObservedCompletion(byName.nodes[1].completion.observed))
 assert(Client:MatchesObservedCompletion(byName.nodes[2].completion.observed))
-GetRealZoneText = function() return "The Barrens" end
+here = 1413
 assert(Client:MatchesObservedCompletion(byName.nodes[1].completion.observed))
+C_Map = nil
+local badArea, areaMessage = pcall(Steps.Expand, Steps, v1({ { type = "travel", to = "Nowhere", area = 999999 } }))
+assert(not badArea and areaMessage:find("steps[1].area: no name for areas 999999", 1, true), tostring(areaMessage))
+badArea, areaMessage = pcall(Steps.Expand, Steps, v1({ { type = "travel", to = "Bloodhoof", area = "Bloodhoof Village" } }))
+assert(not badArea and areaMessage:find("an area is an AreaTable ID", 1, true), "areas are IDs, not names")
 
--- The predicates behind .bindlocation, .itemStat, #xprate, #ah and #ssf ------
+-- The realm answers behind #ah and #ssf: `show` keys, read as they stand -----
 local gated = expand({
-    { note = "bound", only = "hearth Bloodhoof Village" },
-    { note = "here", only = "subzone Camp Narache" },
-    { note = "worse weapon", only = "slot 16 dps < 4.2" },
-    { note = "poor weapon", only = "slot 16 quality < 7" },
-    { note = "slow realm", only = "xprate < 1.5" },
-    { note = "fast realm", only = "xprate >= 1.5" },
-    { note = "buyer", only = "auctionhouse" },
-    { note = "self found", only = "selffound" },
-    { note = "buffed", only = "aura 408828" },
-    { note = "ready", only = "cooldown item 6948" },
-    { finish = "Done." },
+    { type = "note", note = "buyer", show = { ah = true } },
+    { type = "note", note = "self found", show = { selffound = true } },
+    { type = "finish", note = "Done." },
 })
-assert(gated.nodes[3].condition.slot == 16 and gated.nodes[3].condition.stat == "dps")
-assert(gated.nodes[3].condition.below == 4.2)
-assert(gated.nodes[5].condition.below == 1.5 and gated.nodes[6].condition.atLeast == 1.5)
-for index = 1, 10 do
-    assert(Client:HasPredicate(gated.nodes[index].condition.type),
-        "unregistered: " .. gated.nodes[index].condition.type)
-    assert(Steps:DescribeCondition(gated.nodes[index].condition), "must render back as text")
+for index = 1, 2 do
+    local condition = gated.nodes[index].condition
+    assert(condition.type == "now" and Client:HasPredicate(condition.child.type), "a show key is a `now` term")
 end
+assert(Steps:DescribeCondition(gated.nodes[1].condition) == "ah")
+assert(Steps:DescribeCondition(gated.nodes[2].condition) == "selffound")
 
 -- The realm answers are unknown until the player gives them, and unknown
 -- never hides a step.
 ns.db = { settings = {} }
-assert(Client:EvaluateCondition(gated.nodes[5].condition) == nil)
-assert(Client:MatchesCondition(gated.nodes[5].condition), "an unanswered question hides nothing")
+assert(Client:EvaluateCondition(gated.nodes[1].condition) == nil)
+assert(Client:MatchesCondition(gated.nodes[1].condition), "an unanswered question hides nothing")
 ns.db.settings.realm = { xpRate = 1, auctionHouse = false, selfFound = true }
-assert(Client:EvaluateCondition(gated.nodes[5].condition) == true, "1x is below 1.5")
-assert(Client:EvaluateCondition(gated.nodes[6].condition) == false)
-assert(Client:EvaluateCondition(gated.nodes[7].condition) == false, "the player said no auction house")
-assert(Client:EvaluateCondition(gated.nodes[8].condition) == true)
+assert(Client:EvaluateCondition(gated.nodes[1].condition) == false, "the player said no auction house")
+assert(Client:EvaluateCondition(gated.nodes[2].condition) == true)
 
--- An empty slot is worse than anything, which is what those steps are for.
-assert(Client:EvaluateCondition(gated.nodes[3].condition) == true, "nothing worn is worse than anything")
-GetInventoryItemLink = function() return "|cff9d9d9d|Hitem:2495::::::::1:::::|h[Walking Stick]|h|r" end
-GetInventoryItemQuality = function() return 1 end
-assert(Client:EvaluateCondition(gated.nodes[4].condition) == true, "quality 1 is below 7")
-GetInventoryItemQuality = function() return 7 end
-assert(Client:EvaluateCondition(gated.nodes[4].condition) == false)
-assert(Client:EvaluateCondition(gated.nodes[3].condition) == nil,
-    "damage per second is only on the tooltip, so it is unknown with no client")
+-- The shipped fixture: what its header says to look for.
+ns.packagedGuides = {}
+Load(ns, "Dev/Fixtures/PortConstructFixture.lua")
+local fixture = Steps:Expand(ns.packagedGuides[1])
+ns.packagedGuides = nil
+local valid, fixtureProblems = Schema:Validate(fixture)
+assert(valid, table.concat(fixtureProblems or {}, "; "))
+local fn = fixture.nodes
+assert(fn[1].companionOf == 2 and fn[4].companionOf == 7, "steps 1 and 4 are carried")
+assert(fn[2].location.loop and #fn[2].location.spots == 3 and math.abs(fn[2].location.arrivalRadiusNormalized - 0.06) < 1e-9)
+assert(fn[3].sticky)
+assert(fn[5].auto.action == "sell" and fn[6].auto.action == "repair" and fn[7].wait == 8)
+assert(fn[8].completion.observed.name == "Bloodhoof Village" and fn[9].completion.observed.mapID == 1413)
+assert(fn[10].condition.child.type == "auctionHouse" and fn[11].condition.child.type == "selfFound")
+assert(#fn == 12 and fn[12].kind == "end")
 
 clearStubs()
 ns.db = nil

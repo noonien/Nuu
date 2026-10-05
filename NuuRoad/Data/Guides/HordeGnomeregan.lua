@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeGnomeregan.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Every Horde quest of Gnomeregan, from Nogg and Sovik in Orgrimmar to the last turn-in
 -- with Nogg. Quest, NPC and item IDs, quest levels, prerequisites, the drops of the quest
@@ -48,48 +46,12 @@
 --   * Sovik's gossip option IDs, to turn "talk him through his dialogue" into `say`.
 --
 -- Maps: 1454 Orgrimmar (guide default), 1434 Stranglethorn Vale, 1426 Dun Morogh.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }; meta levels
---     { 29, 35 } -> levels = { from = 29, to = 35 }.
---   * Ring accept: `only = "now item 9326 | now level 28"` dropped (now-gates and level
---     gates go). It is an accept from an item with no npc (item = 9326), so it passes
---     when the ring is not in the bags, as the source intended.
---   * Sparklematic group: "now quest 2945" on the 2945/2949 talk and "now quest 2951" on
---     the 2951 turn-in dropped; a turn-in of a quest not in the log passes by itself.
---     The 2951 accept's "now item 9308 | now level 25" dropped: the quest is taken at the
---     machine, not from the item, so it cannot be an item accept; it now stops on the
---     step and a player without a Grime-Encrusted Object skips it. Its note says so.
---   * `only = "quest 2904"` on the escort and "quest 2841" on the two Thermaplugg steps
---     dropped (quest-state predicates go); a step whose quest is finished passes, and an
---     escort/collect with no quest in the log stops for the player to skip.
---   * "quest 2904 readyToTurnIn" and "quest 2841 readyToTurnIn" on the turn-ins dropped
---     (a turn-in waits by its nature); "now quest 2949" on the 2949/2950 talk dropped;
---     "now quest 2950 readyToTurnIn" on the last turn-in -> optional = true.
---   * Objective numbers are the source's `part` values (2841 #2 combination, #1
---     blueprints); none inferred. No track/untrack pairs in the source.
---   * The entrance travel's `zone = "Gnomeregan"` (a zone name) has no instance ID in the
---     repo: `instance` left out, so the step finishes on arriving at the pad point. The
---     exit's `zone = "Dun Morogh"` -> zone = 1426.
---   * Kernobee (7850) is visited (accept and escort) but has neither `at` nor `instance`
---     (no instance ID in the repo); listed under Dun Morogh (1426, the entrance's map)
---     with the source's where-to note. The escort has no end point (`at`) in the source.
---   * NPC location notes moved from the steps to `npcs`: Nogg (Valley of Honor), Sovik
---     (next to Nogg), Scooty (in Booty Bay), Kernobee (the Dormitory).
---   * Mekgineer Thermaplugg (7800) listed by name under 1426 (inside the dungeon, kill
---     target only).
---   * Sovik's "talk him through his dialogue" stays a note: no gossip option IDs in the
---     repo for `say`.
---   * Quest and item names (`names.quests`, `names.items`) dropped: the client names them.
---   * No section needed its own map beyond the source's (Booty Bay keeps 1434); the two
---     pad points carry map = 1426.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-gnomeregan-quests",
     updated = 1790985600,

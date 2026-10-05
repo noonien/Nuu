@@ -1,15 +1,15 @@
--- Guide export format 1, worked example. NOT LOADED: this file is not in
--- NuuRoad.toc, does not touch `ns`, and registers nothing. It returns the
--- value an export would produce, so it can be read, diffed, or required by a
--- scratch script.
+-- Guide format v1, worked example. NOT LOADED: this file is not in
+-- NuuRoad.toc, does not touch `ns`, and registers nothing. It returns a guide
+-- value, so it can be read, diffed, or required by a scratch script.
 --
--- An export is a Lua value, not text: how that value is turned into something
--- a player can share is a later step. It is built from the runtime guide
--- (every guide is one once loaded, packaged or the player's own). The packaged
--- guides in Data/Guides are written in it, and Data/Import.lua reads them.
--- It holds what the author decided and nothing the import can work out again:
--- no titles, no completion rules, no refs, no indexes. The import rebuilds
--- those from the step's type and its facts, then runs Schema:Validate.
+-- v1 is the one format NuuRoad's guides are written in: the packaged guides
+-- in Data/Guides, the development fixtures in Dev/Fixtures, and, once there
+-- is an export, a guide a player shares. A guide is a Lua value, not text:
+-- how that value is turned into something a player can share is a later
+-- step. It holds what the author decided and nothing that can be worked out
+-- again: no titles, no completion rules, no refs, no indexes. Steps:Expand
+-- builds those from each step's type and its facts, then Schema:Validate
+-- checks the result. docs/guide-schema.md says how each part behaves.
 --
 -- The guide below is made up to use every feature once; its IDs are
 -- illustrative and its route makes no sense on the map.
@@ -60,7 +60,7 @@
 --
 -- WRAPPER
 --
---   kind = "guide", format = 1, then the preview (id, updated, title,
+--   kind = "guide", schema = 1, then the preview (id, updated, title,
 --   category, author, tags, levels, cond, source, materials), then `data`.
 --   An import can show the guide, check `cond` against the character, and
 --   compare `updated` with the copy it has without reading `data`.
@@ -81,7 +81,8 @@
 --                 instance ID, GetInstanceInfo) to finish on entering it
 --                 instead of on arriving. With `quest = { id, n }`, the
 --                 objective finishes it, not the arrival (an event)
---   accept        quests. From an item rather than a person: item, the item
+--   accept        quests; level, the level they are taken from (see below).
+--                 From an item rather than a person: item, the item
 --                 that starts the quest, and no npc. Add kill (the creatures
 --                 it drops from) to make one step of kill, loot, and accept:
 --                 it reads as the kill until the item is in the bags, then as
@@ -90,10 +91,10 @@
 --                 as its own step
 --   turnin        quests; optional = true: passed on arrival unless a quest is
 --                 ready to turn in, never waited on (also on talk)
---   talk          turnin, accept (lists of quests); say, the dialog options to
---                 pick, in order, by gossip option ID (one per page of the
---                 conversation). Option IDs are the same in every language;
---                 the option's text is never matched
+--   talk          turnin, accept (lists of quests); level, as on accept; say,
+--                 the dialog options to pick, in order, by gossip option ID
+--                 (one per page of the conversation). Option IDs are the
+--                 same in every language; the option's text is never matched
 --   escort        quest, npc (required); `at` is where it ends
 --   collect       item, count, kill (npcs it drops from), starts (a quest)
 --                 count defaults to 1 with no quest or a whole quest
@@ -112,8 +113,17 @@
 --   reputation    faction, standing (1 Hated to 8 Exalted)
 --   hearth        area (where the hearthstone is bound)
 --   flight        node (the flight point learned)
---   level         level, and xp or by (a label), not both
+--   level         level, and xp or by (a label), not both. The guide goes no
+--                 further until the player is there. `at` is where to grind;
+--                 without it the step waits wherever the player is
 --   choice        text, options = { { text, go = label }, ... }
+--
+-- `level` on an accept or a talk that accepts is the level its quests are
+-- taken from: the step shows "Reach level 15", with the experience still
+-- needed, on the line before the accepts and after any turn-ins, which may be
+-- what brings it. It gates nothing: the client will not give the quests any
+-- sooner, so the step waits on the accept as always. To stop the guide
+-- itself until a level, write a level step.
 --
 -- Fields any step may carry:
 --
@@ -278,10 +288,10 @@
 --
 -- HOW THE ADDON READS IT
 --
--- Data/Import.lua turns an export into a v2 guide (docs/guide-schema.md),
--- which Steps:Expand and Schema:Validate take on as before; the packaged
--- guides in Data/Guides register their values in ns.packagedGuides and are
--- read at login. What the import does beyond the plain mapping:
+-- Steps:Expand (Data/Steps.lua) reads a guide into the runtime guide, and
+-- Schema:Validate checks it; the packaged guides in Data/Guides put their
+-- values in ns.packagedGuides as they load, and GuideRepository expands them
+-- at login. What Expand does beyond the plain mapping:
 --
 --   * `cond` becomes a predicate on each step (a section's and a group's on
 --     each of theirs). `show` becomes a `now` term: read when the guide
@@ -302,6 +312,8 @@
 --     (Progress:Carried); `mark` adds targets that count for nothing; `say`
 --     is kept on the step.
 --   * `npcs` becomes the runtime's NPC table, its map put on each point.
+--   * `level` on an accept or talk is said by Steps:Goals as a "Reach
+--     level" line before the accepts.
 --
 -- STILL TO DO
 --
@@ -323,16 +335,13 @@
 --     names in Data/IDNames.lua.
 --   * Markings derived from a step's own fields: quest failed, item needed
 --     first, on cooldown.
---   * The v2 constructs this format left behind (`objective`, `objectives`,
---     `track`, `untrack`, the `now`/`when` predicates, `xprate`) are still in
---     Data/Steps.lua for the fixtures and the editor, which writes v2.
 --   * `/nuuroad audit` and a guide checker in Tools/ for missing targets,
 --     unplaced NPCs, unresolved labels and objective numbers whose type or
 --     target does not match the quest.
 
 return {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:example:every-feature",
     updated = 1790985600,                -- 2026-10-03
@@ -342,7 +351,7 @@ return {
     tags = { "example" },
     levels = { from = 13, to = 16 },
     cond = { faction = "Horde" },
-    source = "Hand-written example of the export format.",
+    source = "Hand-written example of guide format v1.",
     materials = "section",
 
     data = {
@@ -467,8 +476,9 @@ return {
                 { type = "interact", object = "Altar of Fire", quest = { 1824, 1 }, at = { { 4650, 6000 } }, wait = 8,
                   note = "The flame takes a few seconds to answer." },
                 -- Hand in Samophlange and take the manual at the Control Console. Arrival is 2% of the map
-                -- instead of the usual radius for a visit.
-                { type = "talk", turnin = { 894 }, accept = { 900 }, object = "Control Console",
+                -- instead of the usual radius for a visit. 900 is taken from level 15, so the step reads:
+                -- turn in 894, reach level 15, accept 900.
+                { type = "talk", turnin = { 894 }, accept = { 900 }, level = 15, object = "Control Console",
                   at = { { 5060, 5480 } }, radius = 200 },
                 -- Kill the guardian the hand-in wakes, no quest behind it. Done when it dies to the player or
                 -- their party.
@@ -510,6 +520,8 @@ return {
                 -- Hand in Raptor Horns and Wharfmaster Dizzywig. Optional: a quest not ready to hand in when
                 -- the guide gets here is passed over, not waited on.
                 { type = "turnin", quests = { 865, 1492 }, npc = { 3453 }, optional = true },
+                -- Go no further before level 16. No `at`: the guide waits wherever the player is.
+                { type = "level", level = 16, note = "The rest of Ratchet's quests want 16." },
                 -- Ask Gazlowe about the stolen goods: two pages of dialog, one option picked on each. The
                 -- conversation is 896's first objective, so the step is done when the client says so.
                 { type = "talk", npc = { 3391 }, quest = { 896, 1 }, say = { 41231, 41232 },

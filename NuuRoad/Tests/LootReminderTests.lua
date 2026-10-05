@@ -16,16 +16,16 @@ local Steps, Progress, LootReminder = ns.modules.Steps, ns.modules.Progress, ns.
 -- Two Fanglords the way the Wailing Caverns guide has them, a step counting
 -- turtle shells, and a boss whose drop begins a quest.
 local guide = Steps:Expand({
-    schema = 2, id = "test:loot", updated = 1789862400, map = 1413, meta = { title = "Loot", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { objective = 914, part = 2, collect = 9739, kill = 3671 },
-        { objective = 914, part = 1, collect = 9738, kill = 3669 },
-        { objective = 880, part = 1, collect = 5098, count = 8, kill = 3461 },
-        { collect = 10441, starts = 6981, kill = 3654 },
-        { finish = "End" },
+    kind = "guide", schema = 1, id = "test:loot", updated = 1789862400, title = "Loot", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "collect", item = 9739, kill = { 3671 }, quest = { 914, 2 } },
+        { type = "collect", item = 9738, kill = { 3669 }, quest = { 914, 1 } },
+        { type = "collect", item = 5098, count = 8, kill = { 3461 }, quest = { 880, 1 } },
+        { type = "collect", item = 10441, starts = 6981, kill = { 3654 } },
+        { type = "finish", note = "End" },
     } },
-},
+} },
 })
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == guide.id and guide or nil end }

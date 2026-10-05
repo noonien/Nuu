@@ -429,20 +429,12 @@ end
 function Editor:BuildConditionTab(page)
     local area = page:ScrollArea{ grow = true, gap = 10, padding = 2 }
     area:Text{ "Who sees this step", style = "label" }
-    note(area, "Leave this empty and every character sees the step. Otherwise name the conditions: a class, race, or"
-        .. " faction (Warrior, Tauren, Horde), or a keyword - quest 858, season 2, level 10, skill Mining 75, item 2495"
-        .. " x3, equipped 2495, spell 8017, gold 5000, zone 1412, profession Skinning, reputation 576 Honored, hardcore."
-        .. " Write 'not' in front to turn one around. Terms joined by 'or' pass if any of them does; a bar between them"
-        .. " means every part must pass, so 'not Warrior | not Druid' is neither of the two. 'now item 2495' is read as"
-        .. " the guide arrives: without it the step is passed over, not waited on.")
+    note(area, "Leave this empty and every character sees the step. Otherwise say who it is for, the way a guide's"
+        .. " cond and show do: a class, race, or faction (Warrior, Tauren, Horde), season or season 2, hardcore, a"
+        .. " profession the character knows (skill Mining), or an answer from Options (ah, selffound). Write 'not' in"
+        .. " front to turn one around. Terms joined by 'or' pass if any of them does; a bar between them means every"
+        .. " part must pass, so 'not Warrior | not Druid' is neither of the two.")
     self.conditionText = area:Input{ placeholder = "Warrior or Shaman" }
-    self.conditionLua = area:Input{ label = "Or a Lua expression, for what the keywords cannot say",
-        placeholder = "level() >= 10 and itemCount(2495) == 0" }
-    note(area, "One expression, not a script: no loops, no assignments, no globals. It reads the game through level(),"
-        .. " class(), race(), faction(), questInLog(id), questFinished(id), questReady(id), itemCount(id), equipped(id),"
-        .. " skill(name), standing(factionID), money(), zone(), season(), and api(name, ...) for a read this list has"
-        .. " no helper for. Both fields apply together when both are filled. Prefer the keywords above: they show by"
-        .. " name in the tracker and the audit, and this does not.")
     self.conditionNote = note(area)
     return area
 end
@@ -695,10 +687,12 @@ function Editor:ApplyFields()
     Steps():ApplyCarried(node)
     -- A condition that will not parse leaves the step with the one it had,
     -- rather than quietly dropping the gating and showing it to everyone.
-    local readCondition, condition = pcall(Steps().ParseCondition, Steps(),
-        self.conditionText:GetText(), self.conditionLua:GetText())
+    -- What the step works out for itself (an optional turn-in, an item
+    -- accept) is not on the form, and is kept.
+    local readCondition, condition = pcall(Steps().ParseCondition, Steps(), self.conditionText:GetText())
     if readCondition then
-        node.condition = condition
+        local _, derived = Steps():SplitCondition(node.condition)
+        node.condition = Steps():JoinCondition(condition, derived)
     else
         self:SetStatus("Could not read that condition: " .. (tostring(condition):gsub("^.*NuuRoad: ", ""))
             .. ". The step keeps the condition it had.", true)
@@ -822,8 +816,7 @@ function Editor:Render()
         and ("Carried with step " .. node.companionOf .. ". The guide does not stop here; this step is done when that one is.")
         or (node.sticky and "Carried alongside the steps after it until it is done."
             or "A step of its own: the guide stops here."))
-    self.conditionText:SetText(Steps():DescribeCondition(node.condition) or "")
-    self.conditionLua:SetText(Steps():LuaCondition(node.condition) or "")
+    self.conditionText:SetText(Steps():DescribeCondition((Steps():SplitCondition(node.condition))) or "")
     self.conditionNote:SetText(node.condition
         and "This step is passed over for a character who does not meet it. A condition this client cannot judge counts as met, so a step is never hidden by a check that could not run."
         or "Every character sees this step.")

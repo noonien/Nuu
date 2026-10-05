@@ -29,7 +29,7 @@ local suites = {
     { "bug report", "Tests/BugReportTests.lua" },
     { "guide corrections", "Tests/GuideCorrectionsTests.lua" },
     { "built-in guide", "Tests/BuiltInGuideTests.lua" },
-    { "import", "Tests/ImportTests.lua" },
+    { "guide format", "Tests/GuideFormatTests.lua" },
     { "guide audit", "Tests/GuideAuditTests.lua" },
     { "guide scan", "Tests/GuideScanTests.lua" },
     { "observed progress", "Tests/ObservedProgressTests.lua" },

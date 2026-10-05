@@ -10,7 +10,7 @@ local Schema = ns.modules.Schema
 
 local function validGuide()
     return {
-        schema = 2, id = "test:guide", updated = 1789862400,
+        schema = 1, id = "test:guide", updated = 1789862400,
         meta = { title = "Test", category = "test" },
         sections = { { id = "one", title = "One", nodeIndexes = { 1, 2 } } },
         nodes = {
@@ -46,9 +46,22 @@ ok = Schema:Validate(guide)
 assert(not ok, "authored node IDs must be rejected")
 
 guide = validGuide()
-guide.nodes[1].condition = { type = "all", children = { { type = "not", child = { type = "level" } } } }
+guide.nodes[1].condition = { type = "all", children = { { type = "not", child = { type = "race", values = { "tauren" } } } } }
 ok, errors = Schema:Validate(guide)
 assert(ok, table.concat(errors, "; "))
+
+-- The predicates guides no longer write are refused, not read as "yes".
+for _, kind in ipairs({ "level", "lua", "xprate", "zone" }) do
+    local refused = validGuide()
+    refused.nodes[1].condition = { type = kind }
+    ok, errors = Schema:Validate(refused)
+    assert(not ok and errors[1]:find("is not a supported predicate", 1, true), kind .. " must be refused")
+end
+
+-- A guide of any other schema is refused.
+local old = validGuide()
+old.schema = 2
+assert(not Schema:Validate(old), "schema 2 is gone")
 
 guide.nodes[1].completion = { type = "observed", observed = { type = "quests", state = "finished", match = "all", ids = { 1 } } }
 ok, errors = Schema:Validate(guide)

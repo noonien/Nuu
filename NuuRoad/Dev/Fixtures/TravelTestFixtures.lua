@@ -6,62 +6,61 @@ local _, ns = ...
 -- steps, so they also check that a real guide step is routed the way a typed-in
 -- waypoint is. Coordinates are the ones the planner's data and the packaged
 -- guides already use; see Data/Travel.lua.
-ns.builtInGuides = ns.builtInGuides or {}
+ns.packagedGuides = ns.packagedGuides or {}
 
-local function fixture(id, title, map, sections, names)
-    ns.builtInGuides[id] = {
-        schema = 2, id = id, updated = 1790208000, map = map,
-        meta = { title = title, author = "NuuRoad", category = "Fixtures/Travel tests", tags = { "fixture", "travel" } },
-        steps = sections,
-        names = names,
-    }
+local function fixture(id, title, map, sections, npcs)
+    table.insert(ns.packagedGuides, {
+        kind = "guide", schema = 1, id = id, updated = 1790208000,
+        title = title, category = "Fixtures/Travel tests", author = "NuuRoad", tags = { "fixture", "travel" },
+        data = { map = map, sections = sections, npcs = npcs },
+    })
 end
 
 fixture("nuuroad:fixture:travel-flight", "Fixture: Travel test, flight", 1454, {
-    { section = "Fly to the Crossroads", steps = {
-        { travel = "the Crossroads", label = "crossroads", at = { 51.5, 30.3, map = 1413 }, radius = 0.01,
-            note = "Start at the Orgrimmar flight master. The route should be the flight, with walking on offer." },
-        { finish = "Flight test complete." },
+    { title = "Fly to the Crossroads", steps = {
+        { type = "travel", to = "the Crossroads", label = "crossroads", at = { { 5150, 3030, map = 1413 } }, radius = 100,
+          note = "Start at the Orgrimmar flight master. The route should be the flight, with walking on offer." },
+        { type = "finish", note = "Flight test complete." },
     } },
 })
 
 fixture("nuuroad:fixture:travel-zeppelin", "Fixture: Travel test, zeppelin", 1411, {
-    { section = "To Brill and back", steps = {
-        { travel = "Brill", label = "brill", at = { 61, 52, map = 1420 }, radius = 0.01,
-            note = "Start outside Orgrimmar's front gate. Take the zeppelin to the Undercity." },
-        { travel = "the Orgrimmar flight master", label = "back", at = { 45.1, 63.9, map = 1454 }, radius = 0.01,
-            note = "Take the zeppelin back to Orgrimmar and walk in by the front gate." },
-        { finish = "Zeppelin test complete." },
+    { title = "To Brill and back", steps = {
+        { type = "travel", to = "Brill", label = "brill", at = { { 6100, 5200, map = 1420 } }, radius = 100,
+          note = "Start outside Orgrimmar's front gate. Take the zeppelin to the Undercity." },
+        { type = "travel", to = "the Orgrimmar flight master", label = "back", at = { { 4510, 6390, map = 1454 } }, radius = 100,
+          note = "Take the zeppelin back to Orgrimmar and walk in by the front gate." },
+        { type = "finish", note = "Zeppelin test complete." },
     } },
 })
 
 fixture("nuuroad:fixture:travel-hearth", "Fixture: Travel test, hearthstone", 1413, {
-    { section = "Hearth", steps = {
-        { hearth = "The Crossroads", label = "bind", npc = 3934 },
-        { travel = "Orgrimmar", label = "away", at = { 45.1, 63.9, map = 1454 }, radius = 0.01,
-            note = "Fly to Orgrimmar from the Crossroads flight master." },
-        { travel = "the Crossroads", label = "home", at = { 52, 31 }, radius = 0.01,
-            note = "The route should be the flight, with the hearth on offer." },
-        { travel = "the Thunder Bluff inn", label = "far", at = { 45.81, 64.71, map = 1456 }, radius = 0.01,
-            note = "With the hearth on cooldown, nothing should offer it." },
-        { finish = "Hearthstone test complete." },
+    { title = "Hearth", steps = {
+        { type = "hearth", area = 380, label = "bind", npc = { 3934 } },
+        { type = "travel", to = "Orgrimmar", label = "away", at = { { 4510, 6390, map = 1454 } }, radius = 100,
+          note = "Fly to Orgrimmar from the Crossroads flight master." },
+        { type = "travel", to = "the Crossroads", label = "home", at = { { 5200, 3100 } }, radius = 100,
+          note = "The route should be the flight, with the hearth on offer." },
+        { type = "travel", to = "the Thunder Bluff inn", label = "far", at = { { 4581, 6471, map = 1456 } }, radius = 100,
+          note = "With the hearth on cooldown, nothing should offer it." },
+        { type = "finish", note = "Hearthstone test complete." },
     } },
-}, { npcs = { [3934] = { "Innkeeper Boorand Plainswind", at = { 51.99, 29.90 } } } })
+}, { [1413] = { [3934] = { name = "Innkeeper Boorand Plainswind", at = { 5199, 2990 } } } })
 
 fixture("nuuroad:fixture:travel-other-flight", "Fixture: Travel test, another flight", 1413, {
-    { section = "Fly somewhere else", steps = {
-        { travel = "Camp Taurajo", label = "taurajo", at = { 44.45, 59.15 }, radius = 0.01,
-            note = "At the Crossroads flight master, fly to Thunder Bluff instead of Camp Taurajo." },
-        { finish = "Test complete." },
+    { title = "Fly somewhere else", steps = {
+        { type = "travel", to = "Camp Taurajo", label = "taurajo", at = { { 4445, 5915 } }, radius = 100,
+          note = "At the Crossroads flight master, fly to Thunder Bluff instead of Camp Taurajo." },
+        { type = "finish", note = "Test complete." },
     } },
 })
 
 fixture("nuuroad:fixture:travel-lifts", "Fixture: Travel test, Thunder Bluff lifts", 1456, {
-    { section = "Down and up", steps = {
-        { travel = "Bloodhoof Village", label = "down", at = { 46.6, 61.1, map = 1412 }, radius = 0.01,
-            note = "Start inside Thunder Bluff. Take a lift down." },
-        { travel = "the Thunder Bluff inn", label = "up", at = { 45.81, 64.71 }, radius = 0.01,
-            note = "From Mulgore, take a lift back up." },
-        { finish = "Lift test complete." },
+    { title = "Down and up", steps = {
+        { type = "travel", to = "Bloodhoof Village", label = "down", at = { { 4660, 6110, map = 1412 } }, radius = 100,
+          note = "Start inside Thunder Bluff. Take a lift down." },
+        { type = "travel", to = "the Thunder Bluff inn", label = "up", at = { { 4581, 6471 } }, radius = 100,
+          note = "From Mulgore, take a lift back up." },
+        { type = "finish", note = "Lift test complete." },
     } },
 })

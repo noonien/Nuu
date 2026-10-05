@@ -15,22 +15,22 @@ Load(ns, "Domain/QuestDialog.lua")
 local Steps, Progress, QuestDialog = ns.modules.Steps, ns.modules.Progress, ns.modules.QuestDialog
 
 local guide = Steps:Expand({
-    schema = 2, id = "test:dialog", updated = 1789862400, map = 1413, meta = { title = "Dialog", category = "test" },
+    kind = "guide", schema = 1, id = "test:dialog", updated = 1789862400, title = "Dialog", category = "test",
     -- Objective steps between the quest steps keep each one its own group.
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 869, npc = 3464 },
-        { objectives = 869 },
-        { turnin = 869, accept = 871, npc = 3464 },
-        { objectives = 871 },
-        { accept = 870, npc = 3448 },
-        { objectives = 870 },
-        { turnin = 870, accept = 877, npc = 3448 },
-        { objectives = 877 },
-        { accept = 1502, npc = 5810, only = "Warrior" },
-        { turnin = 877, npc = 3448 },
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "accept", quests = { 869 }, npc = { 3464 } },
+            { type = "kill", quest = 869 },
+            { type = "talk", turnin = { 869 }, accept = { 871 }, npc = { 3464 } },
+            { type = "kill", quest = 871 },
+            { type = "accept", quests = { 870 }, npc = { 3448 } },
+            { type = "kill", quest = 870 },
+            { type = "talk", turnin = { 870 }, accept = { 877 }, npc = { 3448 } },
+            { type = "kill", quest = 877 },
+            { type = "accept", quests = { 1502 }, npc = { 5810 }, cond = { class = "WARRIOR" } },
+            { type = "turnin", quests = { 877 }, npc = { 3448 } },
+        } },
     } },
-},
 })
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == guide.id and guide or nil end }
@@ -172,20 +172,20 @@ assert(QuestDialog:OnComplete() == nil and QuestDialog:OnProgress() == nil, "the
 -- once, so a hub can be worked in any order, while a member already recorded
 -- done drops out.
 local hub = Steps:Expand({
-    schema = 2, id = "test:hub", updated = 1789862400, map = 1413, meta = { title = "Hub", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { group = {
-        { accept = 870, npc = 3448 },
-        { accept = 869, npc = 3464 },
-        { turnin = 842, accept = 844, npc = 3338 },
-        { accept = 1502, npc = 5810, only = "Warrior" },
-        { accept = 871, npc = 3429 },
+    kind = "guide", schema = 1, id = "test:hub", updated = 1789862400, title = "Hub", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { group = {
+                { type = "accept", quests = { 870 }, npc = { 3448 } },
+                { type = "accept", quests = { 869 }, npc = { 3464 } },
+                { type = "talk", turnin = { 842 }, accept = { 844 }, npc = { 3338 } },
+                { type = "accept", quests = { 1502 }, npc = { 5810 }, cond = { class = "WARRIOR" } },
+                { type = "accept", quests = { 871 }, npc = { 3429 } },
+            } },
+            { type = "kill", quest = 870 },
+            { type = "turnin", quests = { 870 }, npc = { 3448 } },
         } },
-        { objectives = 870 },
-        { turnin = 870, npc = 3448 },
     } },
-},
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == hub.id and hub or nil end }
 ns.db.settings.automation.turnInQuests = true

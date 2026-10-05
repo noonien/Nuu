@@ -8,12 +8,12 @@ local _, ns = ...
 --
 -- Pure logic: no frames, no Blizzard API. A quest's role on a step is one of
 -- accept, turnin, objective, collect (a quest item or an item that begins the
--- quest), track (a sticky reminder), or step for a hand-written node whose
--- completion names the quest without saying how.
+-- quest), or step for a hand-written node whose completion names the quest
+-- without saying how.
 local QuestIndex = {}
 
-local roleWords = { accept = "accepted", turnin = "turned in", objective = "worked on", collect = "item picked up", track = "kept in view", step = "named" }
-local roleOrder = { accept = 1, objective = 2, collect = 3, track = 4, turnin = 5, step = 6 }
+local roleWords = { accept = "accepted", turnin = "turned in", objective = "worked on", collect = "item picked up", step = "named" }
+local roleOrder = { accept = 1, objective = 2, collect = 3, turnin = 4, step = 5 }
 
 local function add(found, id, role)
     if type(id) ~= "number" then return end
@@ -55,13 +55,11 @@ function QuestIndex:NodeQuests(node)
         elseif verb == "talk" then
             for _, id in ipairs(auto.turnin or {}) do add(found, id, "turnin") end
             for _, id in ipairs(auto.accept or {}) do add(found, id, "accept") end
-        elseif verb == "objective" or verb == "objectives" or verb == "escort" then
+        elseif verb == "objective" or verb == "escort" then
             for _, id in ipairs(auto.quests or {}) do add(found, id, "objective") end
         elseif verb == "collect" then
             add(found, auto.starts, "collect")
             add(found, auto.quest, "collect")
-        elseif verb == "track" or verb == "untrack" then
-            add(found, auto.track or auto.untrack, "track")
         end
     end
     if node.completion and node.completion.type == "observed" then walkObserved(node.completion.observed, found) end

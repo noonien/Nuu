@@ -17,7 +17,6 @@ Data/Names.lua
 Data/Steps.lua
 Data/Travel.lua
 Data/IDNames.lua
-Data/Import.lua
 Data/Guides/HordeBarrens.lua
 Data/Guides/HordeMulgore16.lua
 Data/Guides/HordeMulgore612.lua

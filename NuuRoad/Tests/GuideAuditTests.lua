@@ -7,6 +7,7 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
+Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
@@ -71,15 +72,11 @@ GuideAudit:ScanBags()
 assert(count() == before + 1 and last():find("guide expects item 5086 for 'Zhevra Hooves', but the item in your bags 'Zhevra Hooves' is item 66666", 1, true), last())
 
 -- Node IDs are gathered from completion rules, refs, and auto titles, and audited against live names.
-local guide = Steps:Expand({
-    schema = 2, id = "test:audit", updated = 1789862400, map = 1413, meta = { title = "Audit", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { turnin = 871, accept = { 872, 5041 }, npc = 3429, at = { 51.5, 30.87 } },
-        { objective = 844, part = 1, collect = 5087, count = 7, kill = { 3244, 3246 }, at = { 53, 22.4 } },
-    } },
-},
-})
+local guide = Steps:Expand({ kind = "guide", schema = 1, id = "test:audit", updated = 1789862400, title = "Audit", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "talk", turnin = { 871 }, accept = { 872, 5041 }, npc = { 3429 }, at = { { 5150, 3087 } } },
+        { type = "collect", item = 5087, count = 7, kill = { 3244, 3246 }, quest = { 844, 1 }, at = { { 5300, 2240 } } },
+    } } } } })
 local ids = GuideAudit:NodeIDs(guide.nodes[1])
 assert(#ids.quests == 3 and ids.quests[1] == 871 and ids.quests[3] == 5041 and ids.npcs[1] == 3429 and #ids.items == 0)
 ids = GuideAudit:NodeIDs(guide.nodes[2])
@@ -151,23 +148,19 @@ end
 assert(GuideAudit:CheckObjective(objectiveNode))
 assert(last():find("objective 1 of quest 844 'Plainstrider Menace' reads 'Zhevra Hooves: 0/4', but step 'Collect 7 Plainstrider Beak from Greater Plainstrider and Fleeting Plainstrider' is about 'Greater Plainstrider', 'Fleeting Plainstrider', 'Plainstrider Beak' (that is objective 2)", 1, true), last())
 C_QuestLog.GetQuestObjectives = function(id) return id == 844 and { { text = "Plainstrider Beak: 0/7", finished = false } } or nil end
-local partThree = Steps:Expand({ schema = 2, id = "test:part", updated = 1789862400, map = 1413, meta = { title = "Part", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { objective = 844, part = 3, kill = 3244, at = { 53, 22.4 } }
-    } },
-} }).nodes[1]
+local partThree = Steps:Expand({ kind = "guide", schema = 1, id = "test:part", updated = 1789862400, title = "Part", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "kill", kill = { 3244 }, quest = { 844, 3 }, at = { { 5300, 2240 } } },
+    } } } } }).nodes[1]
 assert(GuideAudit:CheckObjective(partThree))
 assert(last():find("is about objective 3 of quest 844 'Plainstrider Menace', which has only 1 objectives", 1, true), last())
 
 -- A line the client calls an item, on a step that only names kills. The
 -- step names no count, so its title takes the objective's 7.
-local killOnly = Steps:Expand({ schema = 2, id = "test:loot", updated = 1789862400, map = 1413, meta = { title = "Loot", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { objective = 844, part = 1, kill = 3244, at = { 53, 22.4 } }
-    } },
-} }).nodes[1]
+local killOnly = Steps:Expand({ kind = "guide", schema = 1, id = "test:loot", updated = 1789862400, title = "Loot", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "kill", kill = { 3244 }, quest = { 844, 1 }, at = { { 5300, 2240 } } },
+    } } } } }).nodes[1]
 C_QuestLog.GetQuestObjectives = function(id)
     return id == 844 and { { text = "Plainstrider Beak: 0/7", finished = false, type = "item" } } or nil
 end
@@ -179,12 +172,10 @@ assert(count() == before)
 C_QuestLog.GetQuestObjectives = function(id) return id == 844 and { { text = "Plainstrider Beak: 0/7", finished = false } } or nil end
 
 -- A world object is named for itself, not for the objective it serves.
-local objectNode = Steps:Expand({ schema = 2, id = "test:object", updated = 1789862400, map = 1413, meta = { title = "Object", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { object = "The Altar of Fire", objective = 924, part = 1, at = { 47.96, 19.07 } }
-    } },
-} }).nodes[1]
+local objectNode = Steps:Expand({ kind = "guide", schema = 1, id = "test:object", updated = 1789862400, title = "Object", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "interact", object = "The Altar of Fire", quest = { 924, 1 }, at = { { 4796, 1907 } } },
+    } } } } }).nodes[1]
 C_QuestLog.GetQuestObjectives = function(id) return id == 924 and { { text = "0/1 Destroy the Demon Seed", finished = false } } or nil end
 before = count()
 assert(not GuideAudit:CheckObjective(objectNode), "an object whose name the objective does not use is silent")
@@ -219,12 +210,11 @@ GuideAudit:CheckProgressPosition(objectiveNode)
 assert(last():find("progress 'Plainstrider Beak: 1/7' at 80.0, 60.0, but step 'Collect 7 Plainstrider Beak from Greater Plainstrider and Fleeting Plainstrider' points to 53.0, 22.4", 1, true), last())
 
 -- Hearth and flight path names.
-local hearthGuide = Steps:Expand({ schema = 2, id = "test:hearth", updated = 1789862400, map = 1413, meta = { title = "Hearth", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { hearth = "The Crossroads", npc = 3934, at = { 51.99, 29.90 } }, { flight = "Ratchet", npc = 16227, at = { 63.09, 37.16 } }
-    } },
-} })
+local hearthGuide = Steps:Expand({ kind = "guide", schema = 1, id = "test:hearth", updated = 1789862400, title = "Hearth", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "hearth", area = 380, npc = { 3934 }, at = { { 5199, 2990 } } },
+        { type = "flight", node = 80, npc = { 16227 }, at = { { 6309, 3716 } } },
+    } } } } })
 local current = hearthGuide.nodes[1]
 function Progress:GetActiveGuide() return hearthGuide end
 function Progress:GetCurrentNode() return current end
@@ -245,7 +235,7 @@ GuideAudit:CheckFlightMaster()
 assert(count() == before, "the expected flight master is silent")
 TaxiNodeName = function(index) return index == 1 and "The Crossroads, The Barrens" or "Orgrimmar, Durotar" end
 GuideAudit:CheckFlightMaster()
-assert(last():find("the flight master here is 'The Crossroads, The Barrens', but step 'Learn the Ratchet flight path' says 'Ratchet'", 1, true), last())
+assert(last():find("the flight master here is 'The Crossroads, The Barrens', but step 'Learn the Ratchet, The Barrens flight path' says 'Ratchet, The Barrens'", 1, true), last())
 function Progress:GetActiveGuide() return guide end
 function Progress:GetCurrentNode() return guide.nodes[1] end
 

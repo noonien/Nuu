@@ -243,7 +243,6 @@ assert(Client:GetSkillRank("mining") == 73, "skill names are matched without cas
 assert(Client:GetSkillRank("Herbalism") == nil, "a skill the player does not have has no rank")
 assert(Client:EvaluateCondition({ type = "profession", name = "Herbalism" }) == false,
     "a profession missing from a skill list the client handed over is a no, not unknown")
-assert(Client:EvaluateCondition({ type = "skill", name = "Herbalism", atLeast = 1 }) == false)
 assert(Client:EvaluateCondition({ type = "profession", name = "Mining" }) == true)
 assert(Client:MatchesObservedCompletion({ type = "skill", name = "Mining", atLeast = 73 }))
 assert(not Client:MatchesObservedCompletion({ type = "skill", name = "Mining", atLeast = 150 }))

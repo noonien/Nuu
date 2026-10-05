@@ -28,14 +28,15 @@ local Steps, POILog, Corrections = ns.modules.Steps, ns.modules.POILog, ns.modul
 -- A ported guide with a turn-in coordinate a long way from the truth, and an
 -- objective coordinate that is also out - only the first is correctable.
 local guide = Steps:Expand({
-    schema = 2, id = "nuuroad:test:ported", updated = 1789862400, map = 1413, meta = { title = "Ported", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 900, npc = 3464, at = { 50, 50 } },
-        { objectives = 900, at = { 20, 20 } },
-        { turnin = 900, npc = 3464, at = { 30, 30 } },  -- wrong: the NPC is at 50, 50
+    kind = "guide", schema = 1, id = "nuuroad:test:ported", updated = 1789862400, title = "Ported", category = "test",
+    data = { map = 1413, sections = {
+        { title = "Steps", steps = {
+            { type = "accept", quests = { 900 }, npc = { 3464 }, at = { { 5000, 5000 } } },
+            { type = "kill", quest = 900, at = { { 2000, 2000 } } },
+            -- Wrong: the NPC is at 50, 50.
+            { type = "turnin", quests = { 900 }, npc = { 3464 }, at = { { 3000, 3000 } } },
+        } },
     } },
-},
 })
 local nodes = guide.nodes
 
@@ -121,8 +122,10 @@ assert(nodes[2].location.x == 0.20)
 -- A user guide is left alone: the editor copies it wholesale into
 -- SavedVariables, so a correction could outlive the session.
 local userGuide = Steps:Expand({
-    schema = 2, id = "user:guide-1", updated = 1789862400, map = 1413, meta = { title = "Mine", category = "test" },
-    steps = { { section = "Steps", steps = { { turnin = 900, npc = 3464, at = { 30, 30 } } } } },
+    kind = "guide", schema = 1, id = "user:guide-1", updated = 1789862400, title = "Mine", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "turnin", quests = { 900 }, npc = { 3464 }, at = { { 3000, 3000 } } },
+    } } } },
 })
 repositoryGuides = { guide, userGuide }
 ns.modules.QuestIndex:Invalidate()
@@ -132,8 +135,10 @@ assert(userGuide.nodes[1].location.x == 0.30)
 
 -- A coordinate that agrees with the game is not a finding at all.
 local goodGuide = Steps:Expand({
-    schema = 2, id = "nuuroad:test:good", updated = 1789862400, map = 1413, meta = { title = "Good", category = "test" },
-    steps = { { section = "Steps", steps = { { turnin = 900, npc = 3464, at = { 50.2, 50.1 } } } } },
+    kind = "guide", schema = 1, id = "nuuroad:test:good", updated = 1789862400, title = "Good", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "turnin", quests = { 900 }, npc = { 3464 }, at = { { 5020, 5010 } } },
+    } } } },
 })
 assert(Corrections:Consider(goodGuide, goodGuide.nodes[1], 900, "turnin") == nil, "2 yd out is nobody's problem")
 
@@ -227,11 +232,11 @@ targetNPC, targetNPCName = nil, nil
 -- A step that names no NPC and no spot is not corrected, but what the game
 -- showed goes on the discover channel so the guide can be filled in later.
 local thin = Steps:Expand({
-    schema = 2, id = "nuuroad:test:thin", updated = 1789862400, map = 1413, meta = { title = "Thin", category = "test" },
-    steps = { { section = "Steps", steps = {
-        { accept = 900, note = "Somebody in town. Not recorded yet." },
-        { turnin = 900, npc = 3464, at = { 60, 60 } },
-    } } },
+    kind = "guide", schema = 1, id = "nuuroad:test:thin", updated = 1789862400, title = "Thin", category = "test",
+    data = { map = 1413, sections = { { title = "Steps", steps = {
+        { type = "accept", quests = { 900 }, note = "Somebody in town. Not recorded yet." },
+        { type = "turnin", quests = { 900 }, npc = { 3464 }, at = { { 6000, 6000 } } },
+    } } } },
 })
 Corrections:Initialize()
 ns.recorded = {}

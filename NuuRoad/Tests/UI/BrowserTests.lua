@@ -240,11 +240,16 @@ ctx.noErrors("reopen")
 
 -- A quest from the quest log ------------------------------------------------------------
 
+-- Guides name only their NPCs; the client names quests. The stand-in client
+-- knows none, so the quest picked is named here as the client would.
+local clientNames = dofile("Tests/Support/ClientNames.lua").quests
 local questID, entries
 for id, list in pairs(QuestIndex:Build()) do
-    if ns.modules.Names:Quest(id) and #list > 0 then questID, entries = id, list; break end
+    if clientNames[id] and #list > 0 then questID, entries = id, list; break end
 end
-check(questID, "a quest a guide names")
+check(questID, "a quest a guide takes")
+ns.modules.Names:Add({ quests = { [questID] = clientNames[questID] } })
+check(ns.modules.Names:Quest(questID), "the quest has a name")
 
 -- The quest log's button, on a stand-in quest log page.
 local page = CreateFrame("Frame", nil, UIParent)

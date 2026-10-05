@@ -69,27 +69,28 @@ stored in SavedVariables. Keep guide data independent of UI and Blizzard API ret
 
 ```lua
 Guide = {
-  schema = 2,
+  kind = "guide", schema = 1,
   id = "nuuroad:leveling:human-1-10",
   updated = 1789862400,                     -- seconds since the epoch
-  map = 1429,
-  only = "Alliance",
-  meta = {
-    title = "Human 1-10", author = "NuuRoad", category = "leveling",
-    tags = { "alliance", "human" }, levels = { 1, 10 },
-    source = "...",
-  },
-  steps = {
-    { section = "Northshire", steps = {
-      { accept = { 12345, 12346 }, npc = 67890, at = { 50.0, 50.0 },
-        note = "Group if the area is busy." },
-    } },
+  title = "Human 1-10", author = "NuuRoad", category = "leveling",
+  tags = { "alliance", "human" }, levels = { from = 1, to = 10 },
+  source = "...",
+  cond = { faction = "Alliance" },
+  data = {
+    map = 1429,
+    sections = {
+      { title = "Northshire", steps = {
+        { type = "accept", quests = { 12345, 12346 }, npc = { 67890 },
+          note = "Group if the area is busy." },
+      } },
+    },
+    npcs = { [1429] = { [67890] = { name = "...", at = { 5000, 5000 } } } },
   },
 }
 ```
 
-This is the authored format, not the runtime one. An import converts it once
-and builds everything derived - titles, step positions, section and group
+This is guide format v1 (`docs/examples/guide-v1.lua`), not the runtime
+shape. `Steps:Expand` reads it once and builds everything derived - titles, step positions, section and group
 spans, references, completion rules - so the runtime is free to hold whatever
 serves the tracker. Steps run in order; a branch is a `choice` whose options
 name labels, never positions, so nothing authored has to be renumbered when a
@@ -116,11 +117,11 @@ stored in guide data.
   support achievements, standing, currencies, collections, and inventory goals.
 - **Time and availability:** `waitFor`, `dailyReset`, `weeklyReset`, `cooldownReady`, and `eventWindow` represent
   time-gated work without blocking the guide.
-- **Parallel work:** `objectiveGroup` and `reminder` keep concurrent objectives visible until completion.
+- **Parallel work:** a step carried alongside a later one (`with`), from an earlier one (`from`), or `sticky` stays
+  on the card until done.
 
 Use `action` as the flexible text-first escape hatch for uncommon behavior, rather than creating a special node for
-every verb. `objectiveGroup` replaces the familiar "sticky" objective: it contains child nodes, can run alongside a
-named range of nodes, and displays until its own `all`/`any` completion rule is met.
+every verb.
 
 ### Route model
 

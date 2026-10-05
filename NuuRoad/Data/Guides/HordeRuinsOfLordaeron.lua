@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeRuinsOfLordaeron.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- The Horde quests of Ruins of Lordaeron, a dungeon new in WoW: Forever, from the
 -- pickups in Brill, the Sepulcher, and the Undercity to the last turn-in. Everything
@@ -48,45 +46,12 @@
 -- The discover channel logs it if the game hands a turn-in to someone else.
 --
 -- Maps: 1458 Undercity (guide default), 1420 Tirisfal Glades, 1421 Silverpine Forest.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper `cond = { faction = "Horde" }`.
---   * The four `objective` steps became quest work with no target, since no creature or
---     item ID is known (the format allows `quest = { id, n }` alone; checkers will warn):
---       - 92422 part 1 -> kill, quest { 92422, 1 } (objective text "slain", db/horde/quests.json);
---       - 95216 part 1 -> collect, quest { 95216, 1 } (Witherfang "carries it");
---       - 92421 part 1 -> collect, quest { 92421, 1 } (25 Intact Limbs; the count is the
---         objective's, so none is written);
---       - 92401 part 1 -> travel to "The graveyard in the ruins", quest { 92401, 1 }: the
---         objective is "Investigate the disappearance of Edward Heartweaver" (type other),
---         treated as an event set off by arriving. It has no `at`: no spot is recorded.
---     Each objective number is the source's `part = 1`; none inferred.
---   * The travel step's `subzone = "Ruins of Lordaeron"` has no AreaTable ID anywhere in
---     the repo, so `area` is left out: the step finishes on arriving at its point.
---   * `only = "quest X readyToTurnIn"` on four turn-ins (95216, 92421, 92422, 92401) is a
---     quest-state predicate the format drops; those turn-ins carry `optional = true`
---     instead, which keeps the old meaning (passed unless ready, never waited on).
---   * `only = "quest 97289"` (in the log) on the Othmar turn-in: dropped likewise, with
---     `optional = true`. The guide has no accept for 97289 (its start is unknown), so a
---     player without the quest has nothing to hand in and the step passes.
---   * NPC notes: where a step note only said where the NPC stands, that part moved to the
---     NPC's `note` (Kristof in Brill, Tabitha in the Sepulcher, Morbin in the Royal
---     Quarter, Theodore in the Apothecarium); the rest of each note stays on its step.
---     The steps that visit an NPC carry no `at`; the Othmar turn-in keeps its `at`, which
---     is an object's.
---   * NPC positions: all four visited NPCs have one. Theodore Griffs uses the names
---     table's 46.50, 71.90 (the accept spot), not the quest marker's 46.3, 71.9.
---   * Sections keep their maps (Brill 1420, The Sepulcher 1421); the others are on the
---     guide's map, 1458. No section needed a new map.
---   * No track/untrack, now, or condition-only gates in the source.
---   * Quest names drop (the client names quests); NPC names stay in `npcs`.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-ruins-of-lordaeron-quests",
     updated = 1790467200,

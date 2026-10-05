@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeStonetalon2526.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 25-26 leveling route through the Stonetalon Mountains: Sun Rock
 -- Retreat, the Venture Co. sky port at Windshear Crag, Mirkfallon Lake, the
@@ -51,55 +49,12 @@
 --     every class).
 --
 -- Maps: 1442 Stonetalon Mountains (guide default). Every point is on it.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }.
---   * First travel: subzone "Sun Rock Retreat" -> area = 460 (AreaTable,
---     db/sources/wago/forever/AreaTable.csv). Flight step: node = 29
---     (TaxiNodes "Sun Rock Retreat, Stonetalon Mountains", same CSV set).
---   * Dropped quest-state gates, which the format cannot carry:
---       - accept 1096 `now quest 1095 finished`: the gate is gone; the note
---         now tells the player to skip it without Further Instructions done.
---       - Toxic Fogger step `now quest 1086`: gate gone; the note says to skip
---         it without the quest. Written as a travel to the sky port with
---         use = { 5638 } and quest = { 1086, 1 } (the fogger has no object).
---       - Mirkweed step `now quest 97538`: gate gone; the note says to skip it
---         without the quest (the format stops on a step whose quest the player
---         lacks; see ADDON CHANGES).
---       - turnin 1096 `now quest 1096`: dropped; a turn-in with nothing to
---         hand in passes by itself.
---       - turnin 6283 `now quest 6283 readyToTurnIn` -> optional = true.
---   * Objectives: `objective`/`part` -> quest = { id, n } on kill/collect/
---     interact/travel steps; every part number is the source's own, none
---     inferred. Counts on objective steps dropped (10 Gaea Seeds, 30 Mirkweed,
---     4 of each Cenarion kill, 7 of each harpy, 15 Sunstones, 10 Incendrites):
---     the objective counts.
---   * track/untrack pairs -> `from`: track 6393 (first step of "The Charred
---     Vale") -> label "elemental-war" on that section, from = on the 6393
---     Incendrites collect; track 6381 (first step of "The Charred Vale again")
---     -> label "new-life" on the Tammra talk step that accepts 6381 (the step
---     just before that section; a label on the section holding the `from`
---     step would not be an earlier one), from = on the 6381 mound interact.
---     The track notes are merged into the notes of those steps.
---   * Nizzik's step (npc and note only, a note step in v2) -> type "note"
---     with npc = { 4085 }.
---   * `names` -> npcs[1442]; quest and item names dropped (the client names
---     them). Visited NPCs carry their `at`; kill targets are names only.
---     Gerenzo Wrenchwhistle and Bloodfury Ripper have no position of their
---     own: their steps keep the source's `at` as the fight spot.
---   * Step notes that describe where an NPC stands moved to the NPC:
---     Tsunaman ("on the lower ledge, south of the camp", from his accept) and
---     Mor'rogal ("on the ledge beside Tsunaman", from her turn-in).
---   * Radii: 0.04 -> 400, 0.03 -> 300, 0.05 -> 500, 0.06 -> 600.
---   * The two Glittering Sunstones collect steps (one per Charred Vale visit)
---     are both kept, as in the source.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-stonetalon-25-26",
     updated = 1790985600,

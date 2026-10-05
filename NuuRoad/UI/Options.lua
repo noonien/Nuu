@@ -169,7 +169,7 @@ local SECTIONS = {
     -- question treats it as unknown, so nothing is hidden by silence.
     { title = "About your realm", hint = "some guides branch on these", rows = {
         { path = "realm.xpRate", kind = "rate", label = "Experience rate",
-            help = "Times experience: 1 for a normal realm. Leave it empty and the steps that depend on it are all shown." },
+            help = "Times experience: 1 for a normal realm. A level step's kill estimate is scaled by it until your first kill." },
         { path = "realm.auctionHouse", kind = "toggle", label = "Auction house", caption = "I use the auction house",
             help = "Some steps buy a component rather than farm it. Off leaves those steps out." },
         { path = "realm.selfFound", kind = "toggle", label = "Self found", caption = "I am playing self found",

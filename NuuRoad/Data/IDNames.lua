@@ -2,7 +2,7 @@ local _, ns = ...
 
 -- Written by Tools/IDNames.py; run it again rather than editing this file.
 -- English names for the area, flight node, and skill line IDs the packaged
--- guides use, where the client cannot name them by ID (Data/Import.lua).
+-- guides use, where the client cannot name them by ID (Steps:Expand).
 ns.idNames = {
     areas = {
         [35] = "Booty Bay",

@@ -5,7 +5,7 @@ skill IDs the packaged guides use.
 A guide names a place by AreaTable ID, a flight path by TaxiNodes ID, and a
 profession or weapon skill by SkillLine ID. The client gives a name for an area
 (C_Map.GetAreaInfo) but not for a flight node or a skill line asked by ID, and
-the hearth, flight path and skill checks compare names. Data/Import.lua uses
+the hearth, flight path and skill checks compare names. Steps:Expand uses
 this table where the client cannot answer.
 
 Areas and nodes come from db/sources/wago/forever, only the IDs some guide in
@@ -78,7 +78,7 @@ def main():
         "",
         "-- Written by Tools/IDNames.py; run it again rather than editing this file.",
         "-- English names for the area, flight node, and skill line IDs the packaged",
-        "-- guides use, where the client cannot name them by ID (Data/Import.lua).",
+        "-- guides use, where the client cannot name them by ID (Steps:Expand).",
         "ns.idNames = {",
     ]
     lines += table("areas", wanted_areas)

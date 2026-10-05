@@ -3,10 +3,10 @@
 Practical advice for writing NuuRoad guides, by hand in `NuuRoad/Data/Guides/` or in the in-game editor.
 This is not the reference. For what every field means, see:
 
-- [`NuuRoad/docs/examples/guide-export.lua`](../NuuRoad/docs/examples/guide-export.lua): the guide format the packaged
-  guides are written in (export format 1), every step type, condition and field, with one worked example of each.
-- [`NuuRoad/docs/guide-schema.md`](../NuuRoad/docs/guide-schema.md): format v2, which the import turns a guide into
-  and the editor still writes, and the runtime shapes under it.
+- [`NuuRoad/docs/examples/guide-v1.lua`](../NuuRoad/docs/examples/guide-v1.lua): guide format v1, the one format
+  guides are written in: every step type, condition and field, with one worked example of each.
+- [`NuuRoad/docs/guide-schema.md`](../NuuRoad/docs/guide-schema.md): how each part of the format behaves once the
+  addon reads it, and the runtime shapes under it.
 - [`NuuRoad/docs/authoring.md`](../NuuRoad/docs/authoring.md): the editor, the tracker, and how a step behaves in play.
 - [`NuuRoad/GUIDE_PORTING_PLAN.md`](../NuuRoad/GUIDE_PORTING_PLAN.md): the rules for porting from RestedXP and Zygor.
 
@@ -41,7 +41,7 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-tirisfal-6-12",
     updated = 1790640000,
@@ -69,9 +69,8 @@ table.insert(ns.packagedGuides, {
 - **`map`** in `data` is the default. Give a section its own `map` when the whole section is in a city, and a
   single point `map = ...` for the odd point elsewhere. Forgetting a map sends the arrow to the right numbers in the
   wrong zone.
-- **Register the file** in `NuuRoad.toc` with the other `Data/Guides` files, after `Data/Import.lua`.
-  `Data/Import.lua` reads each one at login; `Tests/BuiltInGuideTests.lua` and `Tests/ImportTests.lua` read every
-  guide listed there.
+- **Register the file** in `NuuRoad.toc` with the other `Data/Guides` files. `Steps:Expand` reads each one at
+  login; `Tests/BuiltInGuideTests.lua` and `Tests/GuideFormatTests.lua` read every guide listed there.
 - **The header comment** is where deviations from the source live. Reviewers and tools (`CompareGuideOrder`,
   `CheckGroups`) report candidates, not verdicts, and the header is how the next author knows a report was
   considered and kept on purpose.
@@ -259,7 +258,7 @@ the right `cond` and `map`, every step has a title with no raw NPC IDs, and the 
 
 | Symptom | Likely cause |
 | --- | --- |
-| A guide is missing at login, "could not be read" | A field the import refuses; the message names its path in the guide. |
+| A guide is missing at login, "was rejected" | A field `Steps:Expand` refuses; the message names its path in the guide. |
 | Title reads `NPC 5678` | NPC missing from the guide's `npcs`. |
 | Title reads `quest 1234` outside the client | Normal: the client names quests. In the client it means a wrong ID. |
 | Title reads "<quest>, objective 1" | Step with `quest = { id, n }` and no `item`, `kill`, `object`, `npc`, `use` or `mark`. |

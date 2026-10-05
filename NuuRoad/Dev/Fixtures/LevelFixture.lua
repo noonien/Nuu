@@ -6,35 +6,36 @@ local _, ns = ...
 -- could not price yet. Take the three quests first so the client can price
 -- them from the log; a quest's offer or turn-in teaches its experience for
 -- every character on the account.
-ns.builtInGuides = ns.builtInGuides or {}
-ns.builtInGuides["nuuroad:fixture:level-by"] = {
-    schema = 2, id = "nuuroad:fixture:level-by", updated = 1790380800, map = 1413, only = "Horde",
-    meta = { title = "Fixture: Level By Step", author = "NuuRoad", category = "Fixtures/Levels", tags = { "fixture", "level", "horde" } },
-    steps = {
-        { section = "Crossroads", steps = {
-            { group = {
-                { accept = 870, npc = 3448 },
-                { accept = 869, npc = 3464 },
-                { accept = 871, npc = 3429 },
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide", schema = 1,
+    id = "nuuroad:fixture:level-by", updated = 1790380800,
+    title = "Fixture: Level By Step", category = "Fixtures/Levels", author = "NuuRoad",
+    tags = { "fixture", "level", "horde" },
+    cond = { faction = "Horde" },
+    data = {
+        map = 1413,
+        sections = {
+            { title = "Crossroads", steps = {
+                { group = {
+                    { type = "accept", quests = { 870 }, npc = { 3448 } },
+                    { type = "accept", quests = { 869 }, npc = { 3464 } },
+                    { type = "accept", quests = { 871 }, npc = { 3429 } },
+                } },
+                { type = "level", level = 14, by = "done", at = { { 4800, 1320 } }, radius = 600,
+                  note = "The line counts the three turn-ins below as experience on the way, so it asks only for what they will not bring. Hand one in early and the figure grows by what it gave." },
+                { type = "turnin", quests = { 870 }, npc = { 3448 } },
+                { type = "turnin", quests = { 869 }, npc = { 3464 } },
+                { type = "turnin", quests = { 871 }, npc = { 3429 } },
+                { type = "finish", note = "Level fixture complete.", label = "done" },
             } },
-            { level = 14, by = "done", at = { 48.0, 13.2 }, radius = 0.06,
-                note = "The line counts the three turn-ins below as experience on the way, so it asks only for what they will not bring. Hand one in early and the figure grows by what it gave." },
-            { turnin = 870, npc = 3448 },
-            { turnin = 869, npc = 3464 },
-            { turnin = 871, npc = 3429 },
-            { finish = "Level fixture complete.", label = "done" },
-        } },
-    },
-    names = {
+        },
         npcs = {
-            [3429] = { "Thork", at = { 51.50, 30.87 } },
-            [3448] = { "Tonga Runetotem", at = { 52.26, 31.93 } },
-            [3464] = { "Gazrog", at = { 51.93, 30.32 } },
-        },
-        quests = {
-            [869] = "Raptor Thieves",
-            [870] = "The Forgotten Pools",
-            [871] = "Disrupt the Attacks",
+            [1413] = {
+                [3429] = { name = "Thork", at = { 5150, 3087 } },
+                [3448] = { name = "Tonga Runetotem", at = { 5226, 3193 } },
+                [3464] = { name = "Gazrog", at = { 5193, 3032 } },
+            },
         },
     },
-}
+})

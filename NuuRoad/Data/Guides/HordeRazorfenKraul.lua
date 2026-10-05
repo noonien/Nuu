@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeRazorfenKraul.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Every Horde quest of Razorfen Kraul a character at the level 30 cap can take, from
 -- Master Apothecary Faranell in the Undercity to the last turn-in. The quest list, quest
@@ -49,47 +47,12 @@
 -- Stonespire's spot in Thunder Bluff; that the Small Scroll starts 6522 when used.
 --
 -- Maps: 1413 The Barrens (guide default), 1456 Thunder Bluff, 1458 Undercity.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }; meta levels { 28, 30 }
---     -> levels = { from = 28, to = 30 }. Same id and updated.
---   * Dropped `now level` gates: "now level 30" (1109 accept), "now level 29" (1102
---     accept), "now level 28" (Small Scroll collect) and "now level 28 | now item 17008"
---     (6522 accept). The format has no level predicate. The opening note said a quest
---     the player is too low for is passed over; it now says to skip it. The 6522 accept
---     became an accept from an item (item = 17008, no npc), which passes when the scroll
---     is not in the bags, covering the "now item" half.
---   * Dropped quest-state gates "quest 1109", "quest 1221", "quest 1144", "quest 1102" on
---     the dungeon steps: the format cannot carry them.
---   * Turn-ins gated on "quest N readyToTurnIn" (1144, 1221, 1102, 1109) and on "quest
---     6522" became `optional = true`: passed on arrival unless ready, never waited on.
---   * `objective`/`part` -> quest = { id, 1 } on collect steps (1109, 1221, 1102), as the
---     source has them. The Blueleaf Tubers objective number (1) was assumed in the source
---     too. Count dropped: the tubers' count = 6 is the objective's business.
---   * The escort became type "escort" with quest = 1144 and npc = { 4508 }; it has no `at`
---     (the source gives no end point).
---   * Travel `zone = "Razorfen Kraul"` (a name): the dungeon's instance ID is not in the
---     repo, so `instance` is left out and the step finishes on arrival at the portal
---     point (4290, 9020). Add instance = 47 (Razorfen Kraul's usual GetInstanceInfo ID)
---     once confirmed on the Forever client. Travel `zone = "The Barrens"` -> zone = 1413.
---   * NPCs inside the dungeon (Willix 4508, Charlga 4421, the bats 4538, 4539 and the
---     Blind Hunter 4425) are listed under 1413, the entrance's map, without `instance`
---     (ID not in the repo) and without a position. Willix and Charlga get notes saying
---     where they are; the bats and the Blind Hunter are kill targets, names only.
---   * Where-notes moved from steps to the NPC they place: Faranell in the Apothecarium,
---     Varimathras in the Royal Quarter with the tunnel (kept as text, 51.93, 64.78; no
---     place made for it), Willix a prisoner inside, Charlga at the far end. Route notes
---     (zeppelin, flights, sharing) and "He waits where the escort ends" stay on the steps.
---   * `names.quests` and `names.items` dropped: the client names them.
---   * No track/untrack pairs, no places, no section maps needed (every off-map point is an
---     NPC listed under its own map).
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-razorfen-kraul-quests",
     updated = 1790985600,
@@ -99,7 +62,7 @@ table.insert(ns.packagedGuides, {
     tags = { "horde", "dungeon", "razorfen kraul", "rfk", "barrens", "thunder bluff", "undercity" },
     levels = { from = 28, to = 30 },
     cond = { faction = "Horde" },
-    source = "Converted from NuuRoad's earlier Razorfen Kraul guide (format v2).",
+    source = "NuuRoad's own route through Razorfen Kraul.",
 
     data = {
         map = 1413,

@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeSouthernBarrens2425.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 24-25 leveling route through the southern Barrens: Thunder Bluff's
 -- trainers, Camp Taurajo, the Razormane at Blackthorn Ridge, the Bael'dun
@@ -48,52 +46,12 @@
 --     and the Explosive Stick of Gann (5021) is the item to press.
 --   * Return to Thunder Bluff (1067) and The Flying Machine Airport (1086)
 --     still start and end with Apothecary Zamah.
---
--- Conversion notes:
---   * `now` gates dropped (the format has no waiting conditions): "now quest
---     1067" on the Zamah turn-in and accept, "now quest 1536" on Brine's
---     visit (its "Shaman" term is kept as cond), "now item 5102" and "now
---     item 5103" on the item accepts (an item accept now passes by itself
---     when the item is not in the bags), "now quest 893/885/884/883" on the
---     Camp Taurajo turn-ins (a turn-in with nothing to hand in passes), and
---     "now level 25 | now quest 893 finished" on A New Ore Sample (left to
---     the player; its note still says it needs level 25).
---   * "xprate < 1.1" on The Flying Machine Airport is dropped (the format has
---     no experience rate); the step note loses "Only worth taking at the
---     normal experience rate."
---   * Class trainer visits (`npc` and a note, no action) become `talk` steps
---     with `cond = { class = ... }`: the source names no spell IDs, so they
---     cannot be `learn` steps.
---   * Where a step note said where an NPC stands (inside the building, in
---     the cage, by the forge, on the Elder Rise / Hunter Rise, in the Pools
---     of Vision, the cave entrance at 29.84, 29.88), that text moved to the
---     NPC's `note`; the step keeps the rest.
---   * Gann Stonespire's five path points (written on each of his steps,
---     sometimes in reverse order) became his `at` list; his steps keep only
---     their radius (400). The order does not matter: the arrow takes the
---     nearest.
---   * Objectives: every `objective`/`part` became `quest = { id, n }` with
---     the source's part numbers; none inferred. Kill and collect `count`s
---     (15, 5, 5, 6, 6, 6) were dropped: the objective counts.
---   * No track/untrack pairs. The two rare pickups keep `with` on the step
---     they ride along with ("gann", "gann-done").
---   * Travel ends: Thunder Bluff gets zone = 1456. The Crossroads gets
---     area = 380 (the AreaTable ID used in docs/examples/guide-export.lua).
---     No AreaTable ID for Camp Taurajo was found in the repo, so that travel
---     step has no `area` and finishes on arrival at its point.
---   * Sections: "Thunder Bluff" keeps map = 1456 from the source; its last
---     step's point carries map = 1413. Other sections use the guide's 1413.
---   * Every NPC has a position except kill targets and the two rares, which
---     are named only; their steps carry the spawn points.
---   * No `materials`. The source's `names.quests` and `names.items`
---     are dropped (the client names them).
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-southern-barrens-24-25",
     updated = 1791025067,

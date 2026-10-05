@@ -1,6 +1,6 @@
 local _, ns = ...
 
-local Schema = { currentVersion = 2 }
+local Schema = { currentVersion = 1 }
 
 local nodeKinds = {
     section = true, action = true, note = true, choice = true, checkpoint = true, ["end"] = true,
@@ -12,8 +12,7 @@ local nodeKinds = {
     xpTarget = true, train = true, talent = true, skillTarget = true, professionRecipe = true,
     craft = true, skillUp = true, gather = true, achievement = true, reputationTarget = true, currencyTarget = true,
     collectionTarget = true, itemCountTarget = true, waitFor = true, dailyReset = true,
-    weeklyReset = true, cooldownReady = true, eventWindow = true, objectiveGroup = true,
-    reminder = true,
+    weeklyReset = true, cooldownReady = true, eventWindow = true,
     -- Sell and repair at a named vendor. `sell` already existed for the
     -- kind; `vendor` is the step an author writes.
     vendor = true,
@@ -45,14 +44,11 @@ local observedCompletionTypes = {
 -- there, its predicate registry is what a condition is checked against, and
 -- PredicateTests asserts every name below is registered.
 local predicateKinds = {
-    faction = true, race = true, class = true, level = true, quest = true,
-    experience = true, skill = true, profession = true, item = true, equippedItem = true,
-    gold = true, spell = true, reputation = true, zone = true, instance = true,
-    season = true, hardcore = true, lua = true,
-    -- Where the player is bound, where they are standing, what they are
-    -- wearing, and the three things only they can tell us about their realm.
-    hearth = true, subzone = true, slot = true, aura = true, cooldown = true,
-    xprate = true, auctionHouse = true, selfFound = true,
+    faction = true, race = true, class = true, season = true, hardcore = true,
+    profession = true, auctionHouse = true, selfFound = true,
+    -- What a step works out from its own fields: an optional turn-in's
+    -- quests, an item accept's item.
+    quest = true, item = true,
 }
 
 -- Exposed so PredicateTests can hold this list and the client's registry to
@@ -121,19 +117,6 @@ local function validatePredicate(predicate, path, errors, depth)
         if not isArray(predicate.values) or #predicate.values == 0 then addError(errors, path .. ".values", "must be a non-empty array") end
     elseif predicate.type == "quest" and type(predicate.id) ~= "number" then
         addError(errors, path .. ".id", "must be a quest ID")
-    elseif predicate.type == "lua" then
-        -- The body is refused here, at load, rather than evaluating to nil
-        -- somewhere in the middle of a run. Without the client loaded only the
-        -- shape is checked; the client adds the compile and the name rules.
-        if type(predicate.body) ~= "string" or predicate.body == "" then
-            addError(errors, path .. ".body", "must be a Lua expression")
-        else
-            local Client = ns.modules and ns.modules.Client
-            if Client and Client.InspectLuaPredicate then
-                local _, problem = Client:InspectLuaPredicate(predicate.body)
-                if problem then addError(errors, path .. ".body", problem) end
-            end
-        end
     end
 end
 

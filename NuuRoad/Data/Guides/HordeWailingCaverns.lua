@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeWailingCaverns.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Every Horde quest of Wailing Caverns, from the Barrens chains that unlock them to the
 -- last turn-in at Thunder Bluff. Quest, NPC and item IDs, coordinates, the waypoints up
@@ -23,46 +21,12 @@
 --     their `npcs` entries, with `instance`); the instance map is not in the travel data.
 --
 -- Maps: 1413 The Barrens (guide default), 1456 Thunder Bluff.
---
--- Conversion notes:
---   * `only = "Horde"` became the wrapper's `cond = { faction = "Horde" }`.
---   * Dropped quest-state gates, which the format cannot carry (a step whose quest is
---     finished passes on its own): "not quest 1489" on Tonga's accept and turn-ins
---     (870, 870/877, 877/880, 880/1489), "not quest 853" on Helbrim's (848, 848, 853),
---     "not quest 1491" on Mebok's 865 accept, and "not quest N finished" on the
---     objective steps for 870, 848, 877, 880 and 865.
---   * Turn-ins gated on "quest N readyToTurnIn" (1491, 959, 1486, 1487, 914, 962) and
---     on "quest N" in the log (the 6981/3369 talk with Falla, 3369 to Hamuul) became
---     `optional = true`: passed on arrival unless ready, never waited on.
---   * "only = quest 6981" on the Sputtervalve talk step and on the travel up the hill
---     cannot be expressed; dropped. Without the shard, the player skips them (the talk
---     step's note and the next travel's note say so).
---   * Objective counts dropped (4 spores, 8 shells, 5 horns, 6 essences, 10 blooms, 20
---     hides, 7 of each Deviate): the objective says how many. No objective numbers were
---     inferred; every `quest = { id, n }` is the source's objective/part.
---   * The Glowing Shard accept (6981) gained `item = 10441`, the item the step before
---     collects with `starts = 6981`; the source accept named no item.
---   * The Disciple of Naralex step (npc only, no quest) stays a `note` step with `npc`.
---   * Sputtervalve's objective step (6981 part 1, with npc) became a `talk` step with
---     `quest = { 6981, 1 }`.
---   * Travel `zone = "Wailing Caverns"` became `instance = 43` (the instance ID the
---     format's example uses for Wailing Caverns); the source's `at` on that step is kept
---     as the portal point. `zone = "The Barrens"` became `zone = 1413`.
---   * Location notes moved from steps to NPCs: Hamuul (Elder Rise), Zamah (Pools of
---     Vision and the way in), Falla (the building on the hill), the four Fanglords,
---     Mutanus and the Disciple (inside the dungeon, `instance = 43`, listed under 1413).
---     Lady Anacondra's step-specific wording "The first boss" is kept on her step.
---   * NPCs with no position: the kill targets (Sunscale Scytheclaw, Oasis Snapjaw, the
---     Deviates, Mad Magglish) and the dungeon NPCs, which carry `instance` instead.
---   * Quest and item names from `names` are dropped: the client names them.
---   * The Thunder Bluff section keeps `map = 1456`; no other section needed a map.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-wailing-caverns-quests",
     updated = 1790208000,

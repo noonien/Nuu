@@ -53,19 +53,18 @@ function Load(ns, path)
 end
 
 -- Every packaged guide NuuRoad.toc lists (fixtures included), in its order,
--- as authored guides in ns.builtInGuides: the packaged ones are read through
--- Data/Import.lua, as GuideRepository does at login.
+-- in ns.builtInGuides by ID, as the guide (format v1) the file holds: what
+-- GuideRepository expands at login.
 function LoadBuiltIns(ns)
-    if not ns.modules.GuideImport then
-        Load(ns, "Data/IDNames.lua")
-        Load(ns, "Data/Import.lua")
-    end
+    if not ns.idNames then Load(ns, "Data/IDNames.lua") end
+    ns.builtInGuides = ns.builtInGuides or {}
+    ns.packagedGuides = {}
     for line in io.lines("NuuRoad.toc") do
         local file = line:match("^%s*(Data/Guides/[^%s]*%.lua)%s*$") or line:match("^%s*(Dev/Fixtures/[^%s]*%.lua)%s*$")
         if file then Load(ns, file) end
     end
-    local problems = ns.modules.GuideImport:RegisterPackaged()
-    assert(#problems == 0, problems[1])
+    for _, guide in ipairs(ns.packagedGuides) do ns.builtInGuides[guide.id] = guide end
+    ns.packagedGuides = nil
 end
 
 -- The names a player would see once every guide has loaded: the NPCs the
@@ -76,7 +75,13 @@ function AddBuiltInNames(ns)
     local guides = ns.builtInGuides
     ns.builtInGuides = {}
     LoadBuiltIns(ns)
-    for _, guide in pairs(ns.builtInGuides) do ns.modules.Names:Add(guide.names) end
+    for _, guide in pairs(ns.builtInGuides) do
+        local npcs = {}
+        for _, byID in pairs(guide.data and guide.data.npcs or {}) do
+            for id, npc in pairs(byID) do npcs[id] = type(npc) == "table" and npc.name or npc end
+        end
+        ns.modules.Names:Add({ npcs = npcs })
+    end
     ns.modules.Names:Add(dofile("Tests/Support/ClientNames.lua"))
     ns.builtInGuides = guides
 end

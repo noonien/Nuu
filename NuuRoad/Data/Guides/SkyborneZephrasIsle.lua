@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/SkyborneZephrasIsle.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- The Skyborne 1-14 Zephras Isle leveling route, the Skyborne starting zone new in
 -- WoW: Forever. Step order, quest IDs, item IDs, coordinates and grind loops are
@@ -76,89 +74,12 @@
 -- Maps: 2521 Zephras Isle (guide default), 1416 Alterac Mountains (Dalaran),
 -- 1453 Stormwind City, 1412 Mulgore, 1456 Thunder Bluff, 1454 Orgrimmar.
 -- Coordinates are hundredths of a map percent.
---
--- Conversion notes:
---   * Wrapper: `only = "Skyborne"` -> cond = { race = "skyborne" } (the race token
---     NuuRoad's Steps.lua uses; unverified on the client). levels { 1, 14 } ->
---     { from = 1, to = 14 }. Quest, item and spell names are dropped (the client names
---     them); NPCs moved to `npcs` by map (2521 for every NPC without a map in `names`).
---   * `only` class and faction terms -> `cond` ("Shaman or Druid" -> a class list,
---     "not Shaman" -> { none = { { class = "SHAMAN" } } }). "now profession X" ->
---     show = { skill = id } where the SkillLine ID is in the repo (NuuProfessions:
---     Mining 186, First Aid 129, Alchemy 171, Blacksmithing 164, Tailoring 197,
---     Enchanting 333, Leatherworking 165, Cooking 185).
---   * Herbalism is SkillLine 182, Skinning 393 and Fishing 356: the Herb Pouch,
---     Skinning Knife and Skinning Satchel buys, the Find Herbs and Skinning notes on
---     the Ursera claws, and the Camping 101 Skinning, Herbalism and Fishing accepts
---     carry `show` like the other professions'. The Herbalism and Skinning book steps
---     are `train` steps with the book in `use`.
---   * "now item" gates dropped: the three starter-book steps (each note gets "Skip this
---     if you took another book."), the gathering bag note, and the two Herb Baked Egg
---     crafts. "not item 4471" on the Flint and Tinder buy dropped.
---   * Every `now gold`, `now level`, `now cooldown`, `slot ... dps` and aura term is
---     dropped: trainer visits, food and arrow buys, weapon buys, the Skysight / Read Ley
---     Line casts, the Walk on Air glides, and the Mark of Akir visits now wait by their
---     own nature and the player skips them.
---   * Quest-state predicates: "now quest X readyToTurnIn" on a turn-in -> optional = true
---     (Camping 101 set, Vulgara, The Skybreaker Bulwark, Restocking the Larders, Prideclaw
---     pelts). On every other step ("accepted", "not readyToTurnIn") they are dropped: the
---     Mild Spices and Flint and Tinder / Simple Wood buys, the glide travels, the ley line
---     and convergence casts, the Boosted Rest note (kept as a note step with its `at`),
---     the "You skipped Vulgara" note, and the Mark of Akir visits.
---   * track / untrack pairs -> `from` (untrack steps dropped; each track note moved onto
---     the objective step):
---       - 93552 windstones: label "windstones" on the Cirrusfly Queen kill; the Windstone
---         Cluster step has from = "windstones".
---       - 92553 larders and 92515 pelts: the "Shen'dar Highlands" section gets label
---         "highlands"; both 92553 collect steps and both 92515 collect steps (hippogryph
---         cliffs and Havoc) have from = "highlands".
---       - 93949 Bugged: the Talaanis turn-in group (which accepts it) gets label "bugged";
---         the Alliance and Horde Skyhopper kills have from = "bugged".
---       - 93317 Crab Season: label "crabs" on the Aamelia talk in Finding Aamelia; the
---         crawler meat collect has from = "crabs".
---       - 92741 talons: label "talons" on the Strange Hermit accept; the talon collect has
---         from = "talons".
---   * `with = "next"` on the Falaath wardrobe -> with = "scene", label "scene" on the
---     travel after it.
---   * Objective numbers are the source's `part` values; none inferred. Every objective
---     `count` is dropped (the objective counts).
---   * Objective steps with only an npc -> `talk` with quest = { id, n } (Halaan's pylon,
---     the High Order and Windshapers talks, Coriella, the campfire sit, the Dead Cultist,
---     Resaan, Jorel, the injured druids, Belathaan, Ayessa, Elaadrin's walk). Fillion's
---     carry (92849 part 2) -> `escort`, its `at` the cave mouth where it ends.
---   * Objective steps with only `use`: the three Hunter taming rods -> `interact` with
---     object text (Windsong Crawler, Ornery Galestrider, Vuldren) and the rod in `use`;
---     the crawler (254588) and galestrider (251707) are also in `mark`. No Vuldren ID is
---     in the guide, so that step has no mark. The Index Esoteria step -> `interact` with
---     object = "Crystals". Standing Our Ground part 2 (follow Aamelia, campfire kit) ->
---     `travel` to = "Follow Aamelia" with its objective.
---   * NPC positions moved off steps: Aamelia Windfield gets both spots from her steps
---     (and the note that she walks between them); Malfunctioning Cyclone Construct and
---     the Peacekeeper get the points from their steps; Fillion Flamebreeze gets the cave
---     mouth as a second spot. The Mage training step at Shen'dar names Dorii Brightwhisper
---     (251379) at 45.10, 45.87, where Shenaan Spellwind (254086) stands; kept as Dorii,
---     with that point added as a second spot. Check whether the step meant Shenaan.
---   * Steps that keep both `npc` and `at`: Elaadrin's walk (the loop to walk), Fillion's
---     carry (its end), the Lorthuna plateau fight (where the scene is), and the injured
---     druids (seven NPCs with no positions of their own).
---   * NPC-only steps with a note (Shaman trainer visits, Mark of Akir) -> `note` with `npc`.
---   * Hearth steps: Shen'dar Village is area 16624 and Valanaar area 16638
---     (db/sources/wago/forever/AreaTable.csv). Travel `zone = "Mulgore"` -> zone = 1412. The travel to
---     Orgrimmar names Tal (npc 2995) as in the source, with no zone.
---   * Craft steps get count = 1 (the source had none): the Runed Copper Rod, the
---     Novice's Practice Wand, and the Herb Baked Eggs ("as many as" stays in the note).
---   * `vendor = "sell"` -> sell = true. Radii: 0.02 -> 200, 0.03 -> 300, 0.04 -> 400,
---     0.05 -> 500.
---   * No section needed a map: the only off-island points (the Dalaran portal) carry
---     their own map, and the Stormwind, Mulgore, Thunder Bluff and Orgrimmar NPCs are
---     listed under their maps.
---   * Every visited NPC has a position.
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:skyborne-zephras-isle",
     updated = 1790467200,

@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeAshenvale2630.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 26-30 leveling route through Ashenvale: class training in Orgrimmar,
 -- the walk west to Splintertree Post, the hunt for Sharptalon, Shadumbra and
@@ -72,79 +70,12 @@
 --   * The Splintertree bind location: area 431 (Splintertree Post).
 --
 -- Maps: 1440 Ashenvale (guide default), 1454 Orgrimmar, 1450 Moonglade.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }; meta
---     levels { 26, 30 } -> levels = { from = 26, to = 30 }. The wrapper's
---     `source` is taken from the header (meta had none).
---   * IDs looked up in db/sources/wago/forever: AreaTable 431 Splintertree
---     Post, 2897 Zoram'gar Outpost, 2301 Thistlefur Village (each travel
---     `subzone` -> `area`); TaxiNodes 61 Splintertree Post, 58 Zoram'gar
---     Outpost. zone "Orgrimmar" -> 1454, "Moonglade" ->
---     1450 (db/horde/maps.json). The hearth step's name -> area = 431.
---   * Class trainer visits (npc + note, no verb) -> talk steps with cond
---     class; no spells listed, since the source names none. The "where"
---     half of each note (Valley of Wisdom, Cleft of Shadow, ...) moved to the
---     NPC's note; the step keeps "Train your new ranks." Likewise "Kuray'bin
---     stands south of the post", "Mitsuwa is in the hut", "Yama Snowhoof is in
---     the inn" and "Innkeeper Kaylisk is in the inn" became NPC notes.
---   * `with = "next"` -> with = a label added to the next step ("ramp",
---     "horns").
---   * Dropped `now` / quest-state gates (no quest predicates in the format):
---       - turnin 235/742/6382 `now quest ... accepted` -> optional = true.
---       - turnin 6544 and 6482 `now quest ... readyToTurnIn`, turnin 6641
---         `Rogue | now quest 6641 readyToTurnIn` -> optional = true (6641
---         also covered by its section's cond ROGUE).
---       - turnin 6562 `Rogue | now quest 6562 accepted` -> cond ROGUE (from
---         the section) and optional = true.
---       - Ordanus collect `now quest 1088 accepted`: dropped. 1088 comes from
---         the Stonetalon guide; a character without it would stop on the
---         step (the addon's to handle, see ADDON CHANGES).
---       - Etched Phial collect `now quest 1195 accepted`: dropped; written as
---         quest = 1195 (the whole quest), count 1 by default, so the step is
---         tied to The Sacred Flame.
---       - Moonwell collect `now quest 1195 accepted`, Call of Water `Shaman |
---         now quest 1534 accepted` (-> cond SHAMAN): quest part dropped; both
---         are objective steps of quests accepted in earlier guides.
---       - escort 6641 `Rogue | now quest 6641 accepted` -> cond ROGUE.
---       - Every `now quest 216 accepted` (Thistlefur Village section, accept
---         824, the "Zoram'gar again" section) and `now quest 6462/6482/824
---         accepted` -> cond = { class = "ROGUE" } on the step or section,
---         since 216 (and 6462, 6482) are only taken by rogues in this guide;
---         a non-rogue carrying 216 from elsewhere no longer gets them.
---   * Sections given cond = { class = "ROGUE" }: "Zoram'gar Outpost",
---     "Thistlefur Village", "Zoram'gar again" (every step there was rogue-
---     only or gated on 216).
---   * track 216 / untrack 216 -> label "thistlefur" on the Thistlefur Village
---     travel (the first step after the track), from = "thistlefur" on both
---     216 kill steps in the closing group.
---   * Objectives: objective/part -> quest = { id, n }; counts on objective
---     steps dropped (9 Outrunners, 16 Satyr Horns, 8 Troll Charms, 8 each
---     Thistlefur, 12 elementals, 20 sapphires). Inferred: the gazebo travel
---     gets quest = { 25, 2 } (Questie lists the explore objective after the
---     kill, which the source numbers 1).
---   * Tideress: `collect 16408 starts 1918, sticky` -> accept quests 1918
---     with item 16408, kill 12759, sticky (the format's one-step kill, loot,
---     accept), since the guide has no other accept for 1918.
---   * "Skip this if you could not find/kill him/her" dropped from the three
---     accept-from-item notes: such an accept passes when the item is not in
---     the bags.
---   * Multi-point `at` lists: the source's first point was the arrow target
---     and the rest pins; here the arrow takes the nearest (the ramp walk and
---     the Splintertree approach in particular).
---   * Only explicit radii are kept; the old per-verb defaults are not
---     written.
---   * NPCs grouped by map: Orgrimmar trainers under 1454, Loganaar under
---     1450, the rest under 1440. Every visited NPC has a position.
---   * The trailing `travel "Blackfathom Deeps"` stays a plain travel to the
---     entrance (the player is not sent inside), no instance.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-ashenvale-26-30",
     updated = 1790985600,

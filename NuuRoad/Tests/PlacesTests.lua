@@ -17,23 +17,29 @@ local function copy(value)
 end
 
 local base = {
-    schema = 2, id = "test:places", updated = 1790121600, map = 1412,
-    meta = { title = "Places", category = "test" },
-    places = {
-        { place = "cave", name = "The cave", width = 15, points = {
-            { at = { 40, 20 }, kind = "entrance", label = "the mouth" },
-            { at = { 41, 21 }, label = "the fork" },
-            { at = { 42, 22 }, id = "den" },
-            { at = { 42, 24 }, kind = "exit", label = "the hole" },
-            { at = { 41, 23 }, map = 1413 },
-        }, connections = { { 1, 2 }, { 2, "den" }, { "den", 4 }, { 2, 5 }, { 5, 3, true } } },
-    },
-    steps = {
-        { section = "Cave", steps = {
-            { travel = "the den", at = "cave.den" },
-            { travel = "the fork", at = "cave.2" },
-            { kill = 2952, count = 3, at = { 42.1, 22.2 }, near = "cave.den" },
-        } },
+    kind = "guide", schema = 1, id = "test:places", updated = 1790121600,
+    title = "Places", category = "test",
+    data = {
+        map = 1412,
+        places = {
+            { id = "cave", name = "The cave", width = 15, points = {
+                { id = "mouth", at = { 4000, 2000 }, kind = "entrance", label = "the mouth" },
+                { id = "fork", at = { 4100, 2100 }, label = "the fork" },
+                { id = "den", at = { 4200, 2200 } },
+                { id = "hole", at = { 4200, 2400 }, kind = "exit", label = "the hole" },
+                { id = "low", at = { 4100, 2300, map = 1413 } },
+            }, links = {
+                { from = "mouth", to = "fork" }, { from = "fork", to = "den" }, { from = "den", to = "hole" },
+                { from = "fork", to = "low" }, { from = "low", to = "den", oneway = true },
+            } },
+        },
+        sections = {
+            { title = "Cave", steps = {
+                { type = "travel", to = "the den", stand = "cave.den" },
+                { type = "travel", to = "the fork", stand = "cave.2" },
+                { type = "kill", kill = { 2952 }, count = 3, at = { { 4210, 2220 } }, near = "cave.den" },
+            } },
+        },
     },
 }
 
@@ -48,7 +54,7 @@ end
 local guide, errors = expand(copy(base))
 assert(guide, table.concat(errors or {}, "; "))
 assert(guide.places[1].map == 1412, "a place takes the guide's map")
-assert(base.places[1].map == nil, "the authored place is not changed")
+assert(base.data.places[1].map == nil, "the authored place is not changed")
 local den = guide.nodes[1].location
 assert(den.mapID == 1412 and math.abs(den.x - 0.42) < 1e-9 and den.point == "cave.den", "a step can stand on a named point")
 assert(guide.nodes[2].location.point == "cave.2", "or on a point by its position")
@@ -63,38 +69,38 @@ local function fails(mutate, pattern)
     assert(text:match(pattern), "expected '" .. pattern .. "' in: " .. text)
 end
 
-fails(function(g) g.steps[1].steps[1].at = "cave.nowhere" end, "no place point 'cave.nowhere'")
-fails(function(g) g.steps[1].steps[3].near = "cellar.den" end, "no place point 'cellar.den'")
-fails(function(g) g.places[1].points[1].kind = nil end, "needs at least one entrance")
-fails(function(g) table.insert(g.places[1].points, { at = { 50, 50 } }) end, "cannot be reached from an entrance")
-fails(function(g) g.places[1].connections = { { 1, 2 }, { 2, "den", true }, { 2, 4 }, { 2, 5 } } end,
+fails(function(g) g.data.sections[1].steps[1].stand = "cave.nowhere" end, "no place point 'cave.nowhere'")
+fails(function(g) g.data.sections[1].steps[3].near = "cellar.den" end, "no place point 'cellar.den'")
+fails(function(g) g.data.places[1].points[1].kind = nil end, "needs at least one entrance")
+fails(function(g) table.insert(g.data.places[1].points, { id = "far", at = { 5000, 5000 } }) end, "cannot be reached from an entrance")
+fails(function(g) g.data.places[1].links = { { from = "mouth", to = "fork" }, { from = "fork", to = "den", oneway = true },
+    { from = "fork", to = "hole" }, { from = "fork", to = "low" } } end,
     "has no way to an entrance or exit")
-fails(function(g) table.insert(g.places[1].connections, { 2, "attic" }) end, "names a point the place does not have")
-fails(function(g) table.insert(g.places[1].connections, { 2, 2 }) end, "joins a point to itself")
-fails(function(g) table.insert(g.places[1].connections, { 1, 2, "yes" }) end, "third value must be true")
-fails(function(g) table.insert(g.places[1].connections, { 3, 5 }) end, "one way and both ways")
-fails(function(g) g.places[1].points[2].id = "den" end, "repeats another point's ID")
-fails(function(g) g.places[1].points[2].id = "a.b" end, "without a dot")
-fails(function(g) table.insert(g.places, copy(g.places[1])) end, "repeats the ID of another place")
-fails(function(g) g.places[1].width = 90 end, "5 to 60 yards")
-fails(function(g) g.places[1].points[1].kind = "window" end, "must be entrance or exit")
+fails(function(g) table.insert(g.data.places[1].links, { from = "fork", to = "attic" }) end, "names a point the place does not have")
+fails(function(g) table.insert(g.data.places[1].links, { from = "fork", to = "fork" }) end, "joins a point to itself")
+fails(function(g) table.insert(g.data.places[1].links, { from = "den", to = "low" }) end, "one way and both ways")
+fails(function(g) g.data.places[1].points[2].id = "den" end, "repeats another point's ID")
+fails(function(g) g.data.places[1].points[2].id = "a.b" end, "without a dot")
+fails(function(g) table.insert(g.data.places, copy(g.data.places[1])) end, "repeats the ID of another place")
+fails(function(g) g.data.places[1].width = 90 end, "5 to 60 yards")
+fails(function(g) g.data.places[1].points[1].kind = "window" end, "must be entrance or exit")
 
 -- A plain duplicate merges and is reported for the editor, not refused.
 local duplicate = copy(base)
-table.insert(duplicate.places[1].connections, { 2, 1 })
-assert(expand(duplicate), "a repeated connection is not an error")
-local _, _, duplicates = Schema:PlaceConnections(duplicate.places[1])
+table.insert(duplicate.data.places[1].links, { from = "fork", to = "mouth" })
+local merged = expand(duplicate)
+assert(merged, "a repeated connection is not an error")
+local _, _, duplicates = Schema:PlaceConnections(merged.places[1])
 assert(#duplicates == 1 and duplicates[1] == 6, "and is listed as a duplicate")
 -- Fields the schema does not know are kept.
-local extra = copy(base)
-extra.places[1].points[1].note = "kept"
-local kept = expand(extra)
-assert(kept and kept.places[1].points[1].note == "kept")
+local kept = expand(copy(base))
+kept.places[1].points[1].note = "kept"
+assert(Schema:Validate(kept) and kept.places[1].points[1].note == "kept")
 
 -- The packaged cave fixture validates and every step resolves.
-ns.builtInGuides = {}
+ns.packagedGuides = {}
 Load(ns, "Dev/Fixtures/CavePlaceFixture.lua")
-local fixture = expand(ns.builtInGuides["nuuroad:fixture:cave-place"])
+local fixture = expand(ns.packagedGuides[1])
 assert(fixture and fixture.nodes[1].location.point == "bristleback.den")
 
 -- Editing: what the Places panel does to a guide in its runtime shape.
@@ -108,7 +114,8 @@ assert(not Editing.DeletePoint(working, place, 3), "a point a step stands on is 
 assert(Editing.DeletePoint(working, place, 4))
 assert(#place.points == 4 and working.nodes[2].location.point == "cave.4", "the step follows its point")
 for _, connection in ipairs(place.connections) do
-    assert(connection[1] ~= 4 or connection[2] ~= 4)
+    assert(Editing.PointIndex(place, connection[1]) and Editing.PointIndex(place, connection[2]),
+        "every connection left names a point still there")
 end
 -- Connect replaces, never duplicates; one-way goes from the first to the second.
 assert(Editing.Connect(place, 1, 2, true))

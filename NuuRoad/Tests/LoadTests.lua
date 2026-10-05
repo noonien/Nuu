@@ -30,13 +30,18 @@ assert(ns.recorder and ns.recorder.Records, "the session log is the kit's record
 for _, name in ipairs({ "Config", "Client", "Schema", "Names", "Steps", "Travel", "GuideRepository", "GuideEditing",
     "PlaceEditing", "Progress", "Experience", "ObservedProgress", "Materials", "GuideScan", "QuestIndex", "GuideCatalog",
     "GuideAudit", "NPCTracking", "TargetMarking", "QuestDialog", "QuestSelection", "JunkSelling", "LootReminder", "POILog", "Recording",
-    "GuideCorrections", "Navigation", "BugReport", "StepState", "GuideImport" }) do
+    "GuideCorrections", "Navigation", "BugReport", "StepState" }) do
     assert(ns.modules[name], name .. " is registered")
 end
 assert(ns.moduleOrder[1] == "Config", "Config loads first")
 assert(ns.modules.Recorder == nil and ns.modules.Prices == nil and ns.modules.ProfessionPlanner == nil
     and ns.modules.Crafting == nil, "what moved to the kit or to NuuProfessions is not here")
-assert(ns.packagedGuides and #ns.packagedGuides == 22, "the packaged guides, in the export format")
+local shipped = 0
+for _, guide in ipairs(ns.packagedGuides or {}) do
+    assert(guide.kind == "guide" and guide.schema == 1, tostring(guide.id) .. " is in guide format v1")
+    if not guide.id:find("^nuuroad:fixture:") then shipped = shipped + 1 end
+end
+assert(shipped == 22, "the packaged guides, in guide format v1")
 assert(ns.API and ns.API.apiVersion == 1, "the optional API")
 
 dofile("../NuuKit/Tests/Support/Frames.lua")

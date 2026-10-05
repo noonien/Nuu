@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeTirisfal16.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 1-6 leveling route through Deathknell, ported from RestedXP's Forever
 -- "1-6 Tirisfal Glades". Step order follows the source; quest IDs, NPC IDs,
@@ -18,47 +16,12 @@
 --     IDs, so their steps name them in `object` or the note.
 --
 -- Map: 1420 Tirisfal Glades. Every point is on it.
---
--- Conversion notes:
---   * `only = "Horde"` on the guide became the wrapper's cond = { faction = "Horde" }.
---     "Undead" is the race token "scourge"; "X | Undead" is { class = X, race = "scourge" };
---     "not Warrior | not Rogue | not Paladin" is none of the three classes.
---   * Dropped `now` gates: "now level 2" on the first accept of The Damned (376; its note
---     already says to come back), and "now gold 50", "now gold 150", "now gold 75" on the
---     water-buying steps (their class terms kept as cond). Nothing else waited on a condition.
---   * Steps with only `at` and a note (the vendor-trash loops at the start) became note
---     steps keeping their `at` and radius.
---   * Kill and collect objectives lose their `count`; the objective counts. Every
---     `objective` with a `part` kept that part as quest = { id, n }.
---   * Whole-quest objectives (90902, 91208, 98389) got their objective number 1 from
---     db/horde/quests.json, which lists one "other" objective for each ("Injured
---     Deathguard healed", "Offer aid to the Frightened Paladin", "Webbed Forsaken freed").
---     They are interact steps naming the creature as `object`, since the creatures have no
---     IDs. Holy Light has no spell ID in the repo, so the Deathguard steps are not casts.
---   * The 90902 sticky step and its later "finish healing" step are kept as two steps
---     (sticky, then the step itself); the 98389 `with = "next"` step is kept with
---     with = "spiders", the label added to the Night Web Spider kill step that followed it.
---     Neither was a track/untrack pair, so no `from`.
---   * Samuel's Remains: the authored collect named quest = 6395 (the whole quest); kept as
---     quest = 6395, with the default count of 1.
---   * train = "Mining" became skill = 186 (Blacksmithing 164 / Mining 186, API/Client.lua).
---     Walter Mason has no NPC ID, so the step keeps its own `at` (the trainer upstairs).
---   * NPC positions moved from `names` to npcs[1420]. Joshua Kien's "inside the building"
---     and Calvin Montague's "by the house outside Deathknell" moved to their NPC notes.
---     Kill targets (zombies, scavengers, bats, skeletons, spiders, Scarlets, Meven
---     Korgal, Samuel Fipps) are names only; their steps keep their own `at`.
---   * The travel steps "Out of the crypt" and "Deathknell" stand on Undertaker Mordo's
---     and Deathguard Saltain's spots; they are travel steps, so they keep `at`.
---   * No area IDs were found for Deathknell or Night Web's Hollow, so the travel steps
---     finish on arrival at their points. No section needed a map of its own.
---   * Quest, item and spell names are left to the client, as the format asks.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-tirisfal-1-6",
     updated = 1790640000,

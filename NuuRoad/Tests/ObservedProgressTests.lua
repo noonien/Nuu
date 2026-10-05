@@ -5,6 +5,7 @@ function ns:Log(message) table.insert(self.logs, message) end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
+Load(ns, "Data/IDNames.lua")
 Load(ns, "Data/Schema.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
@@ -16,17 +17,17 @@ local Steps, Progress, ObservedProgress = ns.modules.Steps, ns.modules.Progress,
 -- Members of a quest group the game reports done are credited where they
 -- stand; the pointer moves only through the leading steps.
 local guide = Steps:Expand({
-    schema = 2, id = "test:observed", updated = 1789862400, map = 1413, meta = { title = "Observed", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
+    kind = "guide", schema = 1, id = "test:observed", updated = 1789862400, title = "Observed", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
         { group = {
-        { accept = 870, npc = 3448 },
-        { accept = 869, npc = 3464 },
-        { accept = 871, npc = 3429 },
+        { type = "accept", quests = { 870 }, npc = { 3448 } },
+        { type = "accept", quests = { 869 }, npc = { 3464 } },
+        { type = "accept", quests = { 871 }, npc = { 3429 } },
         } },
-        { objectives = 870 },
+        { type = "kill", quest = 870 },
     } },
-},
+} },
 })
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == guide.id and guide or nil end }
@@ -102,19 +103,19 @@ assert(Progress:Back(guide) and Progress:IsHeld(guide))
 ObservedProgress:LapseHold()
 assert(Progress:IsHeld(guide), "landing on a done step keeps it")
 
--- A step jumped to whose condition no longer holds (bought water gated on
--- "now gold 150", jumped back to after training) keeps its hold: the flow
--- would pass it over and walk on through every done step after it.
+-- A step jumped to whose condition no longer holds (bought water gated on a
+-- `now` term, jumped back to after training) keeps its hold: the flow would
+-- pass it over and walk on through every done step after it.
 local gated = Steps:Expand({
-    schema = 2, id = "test:gated", updated = 1789862400, map = 1413, meta = { title = "Gated", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { buy = 159, count = 20, npc = 2115, only = "now gold 150" },
-        { accept = 870, npc = 3448 },
-        { accept = 869, npc = 3464 },
-        { accept = 872, npc = 3429 },
+    kind = "guide", schema = 1, id = "test:gated", updated = 1789862400, title = "Gated", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "buy", item = 159, count = 20, npc = { 2115 }, show = { ah = true } },
+        { type = "accept", quests = { 870 }, npc = { 3448 } },
+        { type = "accept", quests = { 869 }, npc = { 3464 } },
+        { type = "accept", quests = { 872 }, npc = { 3429 } },
     } },
-},
+} },
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == gated.id and gated or nil end }
 local client = ns.modules.Client
@@ -132,19 +133,19 @@ client.CouldOpen, client.MatchesCondition = nil, nil
 -- A quest accepted or handed in at a step further down the guide is called
 -- out in chat: the step card cannot show work that far ahead.
 local ahead = Steps:Expand({
-    schema = 2, id = "test:ahead", updated = 1789862400, map = 1413, meta = { title = "Ahead", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
+    kind = "guide", schema = 1, id = "test:ahead", updated = 1789862400, title = "Ahead", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
         { group = {
-        { accept = 870, npc = 3448 },
-        { accept = 869, npc = 3464 },
+        { type = "accept", quests = { 870 }, npc = { 3448 } },
+        { type = "accept", quests = { 869 }, npc = { 3464 } },
         } },
-        { objectives = 870 },
-        { turnin = 870, npc = 3448 },
-        { accept = 913, npc = 3441 },
-        { turnin = 913, npc = 3441 },
+        { type = "kill", quest = 870 },
+        { type = "turnin", quests = { 870 }, npc = { 3448 } },
+        { type = "accept", quests = { 913 }, npc = { 3441 } },
+        { type = "turnin", quests = { 913 }, npc = { 3441 } },
     } },
-},
+} },
 })
 ns.modules.GuideRepository = { version = 1, List = function() return { ahead } end, Get = function(_, id) return id == ahead.id and ahead or nil end }
 ns.modules.QuestIndex:Invalidate()
@@ -165,11 +166,11 @@ assert(not message(nil, "QUEST_ACCEPTED", 913), "a finished guide has nothing ah
 -- and runs the full refresh once the player is there.
 do
     local travel = Steps:Expand({
-        schema = 2, id = "test:arrival", updated = 1789862400, map = 1413, meta = { title = "Arrival", category = "test" },
-        steps = { { section = "Steps", steps = {
-            { travel = "Ratchet", at = { 63, 37.2 } },
-            { note = "There." },
-        } } },
+        kind = "guide", schema = 1, id = "test:arrival", updated = 1789862400, title = "Arrival", category = "test",
+        data = { map = 1413, sections = { { title = "Steps", steps = {
+            { type = "travel", to = "Ratchet", at = { { 6300, 3720 } } },
+            { type = "note", note = "There." },
+        } } } },
     })
     ns.modules.GuideRepository = { Get = function(_, id) return id == travel.id and travel or nil end }
     Progress:Select(travel)
@@ -188,17 +189,17 @@ end
 -- Travel and notes are passed over once the quest step they lead to is done.
 do
     local passing = Steps:Expand({
-        schema = 2, id = "test:passing", updated = 1789862400, map = 1413, meta = { title = "Passing", category = "test" },
-        steps = { { section = "Steps", steps = {
-            { travel = "The Crossroads", at = { 51.99, 29.89 } },
-            { note = "Hearth if it is up." },
-            { accept = 870, npc = 3448, at = { 52.26, 31.93 } },
-            { travel = "Camp Taurajo", at = { 44.45, 59.15 } },
-            { hearth = "Camp Taurajo", npc = 10378, at = { 44.45, 59.15 } },
-            { travel = "Ratchet", at = { 63, 37.2 } },
-            { turnin = 887, npc = 3464, at = { 62.5, 37.4 } },
-            { note = "Done." },
-        } } },
+        kind = "guide", schema = 1, id = "test:passing", updated = 1789862400, title = "Passing", category = "test",
+        data = { map = 1413, sections = { { title = "Steps", steps = {
+            { type = "travel", to = "The Crossroads", at = { { 5199, 2989 } } },
+            { type = "note", note = "Hearth if it is up." },
+            { type = "accept", quests = { 870 }, npc = { 3448 }, at = { { 5226, 3193 } } },
+            { type = "travel", to = "Camp Taurajo", at = { { 4445, 5915 } } },
+            { type = "hearth", area = 378, npc = { 10378 }, at = { { 4445, 5915 } } },
+            { type = "travel", to = "Ratchet", at = { { 6300, 3720 } } },
+            { type = "turnin", quests = { 887 }, npc = { 3464 }, at = { { 6250, 3740 } } },
+            { type = "note", note = "Done." },
+        } } } },
     })
     ns.modules.GuideRepository = { Get = function(_, id) return id == passing.id and passing or nil end }
     Progress:Select(passing)
@@ -267,23 +268,31 @@ do
         IsComplete = function(id) return ready[id] == true end,
     }
     local order = Steps:Expand({
-        schema = 2, id = "test:order", updated = 1789862400, map = 1413, meta = { title = "Order", category = "test" },
-        steps = { { section = "Turning in", steps = {
-            { travel = "the path up the hill", at = { 50.32, 35.44 }, only = "quest 6981" },
-            { turnin = 6981, accept = 3369, npc = 8418, only = "quest 6981", at = { 48.18, 32.78 } },
-            { travel = "the path down the far side", at = { 47.28, 33.56 } },
-            { travel = "the ledge", at = { 45.86, 35.86 } },
+        kind = "guide", schema = 1, id = "test:order", updated = 1789862400, title = "Order", category = "test",
+        data = { map = 1413, sections = { { title = "Turning in", steps = {
+            { type = "travel", to = "the path up the hill", at = { { 5032, 3544 } } },
+            { type = "talk", turnin = { 6981 }, accept = { 3369 }, npc = { 8418 }, at = { { 4818, 3278 } } },
+            { type = "travel", to = "the path down the far side", at = { { 4728, 3356 } } },
+            { type = "travel", to = "the ledge", at = { { 4586, 3586 } } },
             { group = {
-                { turnin = 1486, npc = 5767, only = "quest 1486 readyToTurnIn", at = { 45.98, 35.66 } },
-                { turnin = 1487, npc = 5768, only = "quest 1487 readyToTurnIn", at = { 46.01, 35.74 } },
+                { type = "turnin", quests = { 1486 }, npc = { 5767 }, at = { { 4598, 3566 } } },
+                { type = "turnin", quests = { 1487 }, npc = { 5768 }, at = { { 4601, 3574 } } },
             } },
             { group = {
-                { turnin = 914, npc = 5770, only = "quest 914 readyToTurnIn", at = { 75.65, 31.60, map = 1456 } },
-                { turnin = 3369, npc = 5769, only = "quest 3369", at = { 78.59, 28.56, map = 1456 } },
+                { type = "turnin", quests = { 914 }, npc = { 5770 }, at = { { 7565, 3160, map = 1456 } } },
+                { type = "turnin", quests = { 3369 }, npc = { 5769 }, at = { { 7859, 2856, map = 1456 } } },
             } },
-            { finish = "Done." },
-        } } },
+            { type = "finish", note = "Done." },
+        } } } },
     })
+    -- Quest gates no guide can write any more, as the runtime predicates the
+    -- scan still reads.
+    local gates = {
+        [1] = { type = "quest", id = 6981 }, [2] = { type = "quest", id = 6981 },
+        [5] = { type = "quest", id = 1486, state = "readyToTurnIn" }, [6] = { type = "quest", id = 1487, state = "readyToTurnIn" },
+        [7] = { type = "quest", id = 914, state = "readyToTurnIn" }, [8] = { type = "quest", id = 3369 },
+    }
+    for index, gate in pairs(gates) do order.nodes[index].condition = gate end
     ns.modules.GuideRepository = { Get = function(_, id) return id == order.id and order or nil end }
     local function at() return (Progress:GetCurrentNode(order)).index end
     for _, lagging in ipairs({ false, true }) do
@@ -314,8 +323,10 @@ end
 -- A cast of the step's own spell counts on that step; any other cast, or one
 -- by another unit, does not, and says so so the event costs no refresh.
 local casting = Steps:Expand({
-    schema = 2, id = "test:cast", updated = 1789862400, map = 2521, meta = { title = "Cast", category = "test" },
-    steps = { { section = "Steps", steps = { { cast = 1259686, at = { 35.91, 33.61 } }, { note = "After." } } } },
+    kind = "guide", schema = 1, id = "test:cast", updated = 1789862400, title = "Cast", category = "test",
+    data = { map = 2521, sections = { { title = "Steps", steps = {
+        { type = "cast", spell = 1259686, at = { { 3591, 3361 } } }, { type = "note", note = "After." },
+    } } } },
 })
 ns.modules.GuideRepository = { Get = function(_, id) return id == casting.id and casting or nil end }
 Progress:Select(casting)

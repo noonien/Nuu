@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeThousandNeedles2830.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 28-30 leveling route through Thousand Needles, from Thunder Bluff to the
 -- Shimmering Flats, with a run to Feralas and Tanaris for their flight paths and
@@ -81,75 +79,12 @@
 --
 -- Maps: 1441 Thousand Needles (guide default), 1456 Thunder Bluff, 1413 The
 -- Barrens, 1444 Feralas, 1446 Tanaris, 1434 Stranglethorn Vale, 1454 Orgrimmar.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }; meta
---     levels { 28, 30 } -> levels = { from = 28, to = 30 }. The wrapper's
---     `source` is taken from the header (meta had none). No places, no conds.
---   * IDs looked up in db/sources/wago/forever/AreaTable.csv: Camp Taurajo 378,
---     The Crossroads 380, Freewind Post 484, Camp Mojache 1099, Gadgetzan 976,
---     Ratchet 392, Booty Bay 35. TaxiNodes from db/horde/flightpaths.json:
---     Freewind Post 30, Camp Mojache 42, Gadgetzan 40, Booty Bay 18. Travel
---     `subzone` -> `area`, `zone` names -> map IDs (1456, 1454); hearth and
---     flight names -> area and node.
---   * Dropped `now` / quest-state gates, which the format has no predicate
---     for: "now quest X" on turn-ins 1195, 1086, 5881, 1196, 1197 (twice),
---     4966, 1153 (twice), 874, 873, 1718, 1719, 2996, 220 (turn-ins with
---     nothing to hand in pass by themselves), on the objective steps for 1197,
---     1153 (both ore steps), 4966, 873, 1719, and on the travels to Galak
---     Hold, Roguefeather Den, Highperch, Darkcloud Pinnacle and Camp Taurajo
---     ("now quest 1153 readyToTurnIn"). Those travels are now always in the
---     guide; the player skips one whose quest they lack. The "Skip it if you do
---     not have the quest" wording was dropped from the notes.
---   * Dropped level gates: "now level 30" on accepts 1718, 1531, 2996; the
---     class part stays as cond.
---   * Class `only` -> cond: "Shaman | ..." -> { class = "SHAMAN" }; "not
---     Warrior" -> { none = { { class = "WARRIOR" } } }; "not Shaman | not
---     Warrior" -> { none = { { class = { "SHAMAN", "WARRIOR" } } } }; "Warlock
---     or Shaman" -> { class = { "WARLOCK", "SHAMAN" } }.
---   * track/untrack -> `from`: track 4767 (eggs) sat just before accept 4770,
---     which gets label "eggs"; the egg collect gets from = "eggs" and the
---     track note joins its note. Track 1131 (Steelsnap) sat before the grind
---     level step, which gets label "steelsnap"; the Steelsnap collect gets
---     from = "steelsnap" and the track note joins its note. The untrack steps
---     go.
---   * `with = "next"` on the travel to Dorn's cave -> with = "dorn", the label
---     put on the accept of Test of Faith that follows it.
---   * Objective counts dropped from kill/collect steps with an objective
---     (4841 x3, 4767, 5062, 4966, 1110, 1104, 1176, 1105, 1175 x3). Objectives
---     without a `part` (1149, 5088, 5151, 1719) become the whole quest
---     (`quest = id`). Test of Faith's ritual (objective 1149, no verb) is a
---     travel to "Dorn's ritual" with quest = 1149; the arrival does not finish
---     it, the quest being ready does.
---   * The Galak Messenger: the source's sticky collect (starts 4881) and its
---     later placed collect are both kept as written; the accept from the
---     Assassination Note gets item = 12564 and no npc.
---   * Trainer visits (npc + note, no verb) -> note steps with npc and cond on
---     class. The paladin trainer has no NPC: a note with the source's `at`.
---   * `train = "Thrown"` (Hanashi, warriors): no SkillLine ID for Thrown was
---     found in the repo, so it is a note step with npc = { 2704 } and
---     cond = { class = "WARRIOR" }, not a train step.
---   * The accept of Wanted - Arnak Grimtotem is from a poster: object and the
---     poster's `at`, no npc.
---   * Where-to-find-them text moved from steps to the NPC's note: Apothecary
---     Zamah, Grish Longrunner, Brine, Magatha Grimtotem, Gazlowe, Mahren
---     Skyseer, Klannoc Macleod, Baron Revilgaz, Ian Strom, Keldran, Islen
---     Waterseer, Kanati Greycloud.
---   * NPCs grouped by map from their `at` (no map -> 1441). Kill targets with
---     no position go under the map they are fought on (Isha Awak and Big Will
---     under 1413, the rest under 1441). Quest and item names are dropped (the
---     client names them).
---   * The section "Thunder Bluff" carries map = 1456 as in the source; points
---     off a section's map keep their own map (Camp Taurajo, 1413; Freewind
---     Post, 1441; Camp Mojache, 1444; Gadgetzan, 1446; Ratchet dock, 1413).
---   * Coordinates and radii are whole hundredths of a percent.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-thousand-needles-28-30",
     updated = 1790974800,

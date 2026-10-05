@@ -1,5 +1,5 @@
 -- The versioned mapping table: what every RestedXP construct becomes in the
--- NuuRoad v2 format. This file is the definition of "fully ported".
+-- NuuRoad guide format v1. This file is the definition of "fully ported".
 --
 -- Each entry carries a status:
 --   mapped     the converter can emit it today
@@ -15,7 +15,7 @@
 -- The coverage gate in Tests/GuidePortTests.lua fails on any construct found
 -- in the approved sources that has no entry here. A port is complete for a
 -- source when nothing it uses is still `todo`.
-local Mapping = { version = 4 }
+local Mapping = { version = 5 }
 
 local function entry(status, becomes, note)
     return { status = status, becomes = becomes, note = note }
@@ -26,7 +26,7 @@ Mapping.commands = {
     ["goto"] = entry("mapped", "at", "one point, or a list whose first is the arrow target"),
     accept = entry("mapped", "accept"),
     turnin = entry("mapped", "turnin"),
-    complete = entry("mapped", "objective + part"),
+    complete = entry("mapped", "a kill, collect, interact or talk step with quest = { id, n }"),
     collect = entry("mapped", "collect, with starts/quest where the item begins or serves a quest"),
     mob = entry("mapped", "kill"),
     target = entry("mapped", "npc"),
@@ -38,26 +38,26 @@ Mapping.commands = {
     skill = entry("mapped", "skill"),
     train = entry("mapped", "train for a profession; a class rank is a note naming the trainer"),
     trainer = entry("mapped", "note naming the trainer"),
-    isQuestComplete = entry("mapped", 'only = "quest N readyToTurnIn"'),
-    isQuestAvailable = entry("mapped", 'only = "not quest N"'),
-    isOnQuest = entry("mapped", 'only = "quest N accepted"'),
-    isQuestTurnedIn = entry("mapped", 'only = "quest N finished"'),
-    isQuestNotComplete = entry("mapped", 'only = "not quest N readyToTurnIn"'),
-    isNotOnQuest = entry("mapped", 'only = "not quest N accepted"'),
-    money = entry("mapped", 'only = "gold N"'),
-    itemcount = entry("mapped", 'only = "item N xC"'),
-    aura = entry("mapped", 'only = "aura N"', "needs the aura predicate registered"),
-    cooldown = entry("mapped", 'only = "cooldown ..."', "needs the cooldown predicate registered"),
+    isQuestComplete = entry("mapped", "optional = true on a turn-in: passed unless the quest is ready"),
+    isQuestAvailable = entry("todo", "a condition on a quest not taken", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isOnQuest = entry("todo", "a condition on a quest in the log", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isQuestTurnedIn = entry("todo", "a condition on a finished quest", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isQuestNotComplete = entry("todo", "a condition on a quest not ready", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isNotOnQuest = entry("todo", "a condition on a quest not in the log", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    money = entry("todo", "a condition on gold", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    itemcount = entry("todo", "a condition on an item count",
+        "only an accept from an item reads the bags (passed when the item is not there); otherwise the step is written for everyone"),
+    aura = entry("todo", "a condition on an aura", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    cooldown = entry("todo", "a condition on a cooldown", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
 
     -- Still to build.
-    itemStat = entry("mapped", 'only = "slot 16 dps < 4.2"',
-        "quality reads directly; damage per second is read off the tooltip and is unknown where that fails"),
-    vendor = entry("mapped", "a vendor step: { vendor = \"sell\", npc = N }"),
-    bindlocation = entry("mapped", 'only = "hearth <name>"'),
-    zoneskip = entry("mapped", 'only = "not zone <mapID>"'),
-    subzoneskip = entry("mapped", 'only = "not subzone <name>"'),
-    zone = entry("mapped", '{ travel = "...", zone = "The Barrens" }', nil),
-    subzone = entry("mapped", '{ travel = "...", subzone = "Bloodhoof Village" }'),
+    itemStat = entry("todo", "a condition on worn gear", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    vendor = entry("mapped", "a vendor step: { type = \"vendor\", sell = true, npc = { N } }"),
+    bindlocation = entry("todo", "a condition on where the hearthstone is bound", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    zoneskip = entry("todo", "a condition on the zone the player is in", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    subzoneskip = entry("todo", "a condition on the subzone the player is in", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    zone = entry("mapped", '{ type = "travel", to = "...", zone = 1413 }', nil),
+    subzone = entry("mapped", '{ type = "travel", to = "...", area = 222 }'),
     line = entry("todo", "a drawn route on the world map",
         "its points already carry as map pins; the polyline between them needs a map canvas overlay, and it is decoration on 7 steps"),
     timer = entry("mapped", "wait = N seconds"),
@@ -93,13 +93,13 @@ Mapping.commands = {
 Mapping.directives = {
     label = entry("mapped", "label"),
     optional = entry("mapped", "a note, or a condition where the source gated it"),
-    season = entry("mapped", 'only = "season N"'),
-    hardcore = entry("mapped", 'only = "hardcore"'),
-    softcore = entry("mapped", 'only = "not hardcore"'),
-    sofcore = entry("mapped", 'only = "not hardcore"', "a typo in the source for softcore"),
+    season = entry("mapped", "cond = { season = N }"),
+    hardcore = entry("mapped", "cond = { hardcore = true }"),
+    softcore = entry("mapped", "cond = { none = { { hardcore = true } } }"),
+    sofcore = entry("mapped", "cond = { none = { { hardcore = true } } }", "a typo in the source for softcore"),
     requires = entry("mapped", "step order", "the required step already runs earlier"),
 
-    completewith = entry("mapped", 'with = "next" or with = "<label>"',
+    completewith = entry("mapped", 'with = "<label>"',
         nil),
     loop = entry("mapped", "loop = true on the step's at list",
         "the arrow already takes the nearest point of any list"),
@@ -107,20 +107,19 @@ Mapping.directives = {
     include = entry("mapped", "the included registration's steps, written in place"),
     hidewindow = entry("ignored", "nothing", "hides the source's step frame while the step runs"),
     arrowtext = entry("ignored", "nothing", "the source's arrow caption; NuuRoad's arrow shows the step title"),
-    xprate = entry("mapped", 'only = "xprate < 1.5"',
-        "reads the rate the player states in Options; unknown until they do"),
-    ah = entry("mapped", 'only = "auctionhouse"',
+    xprate = entry("todo", "a condition on the realm's experience rate", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    ah = entry("mapped", "show = { ah = true }",
         "reads the answer the player gives in Options; unknown until they do"),
-    ssf = entry("mapped", 'only = "selffound"',
+    ssf = entry("mapped", "show = { selffound = true }",
         "reads the answer the player gives in Options; unknown until they do"),
 
-    name = entry("meta", "meta.title"),
-    group = entry("meta", "meta.tags"),
-    subgroup = entry("meta", "meta.tags"),
-    groupid = entry("meta", "meta.tags"),
+    name = entry("meta", "title"),
+    group = entry("meta", "tags"),
+    subgroup = entry("meta", "tags"),
+    groupid = entry("meta", "tags"),
     version = entry("meta", "updated"),
     next = entry("meta", "the closing step's text"),
-    defaultfor = entry("meta", "meta.tags"),
+    defaultfor = entry("meta", "tags"),
     classic = entry("meta", "content flavour"),
     tbc = entry("meta", "content flavour"),
     era = entry("meta", "content flavour"),

@@ -9,28 +9,39 @@ AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
 local Steps, Schema, Names = ns.modules.Steps, ns.modules.Schema, ns.modules.Names
 
-local guide = Steps:Expand({
-    schema = 2, id = "test:compact", updated = 1789862400, map = 1413,
-    meta = { title = "Compact", category = "test" },
-    steps = {
-        { section = "First Part", steps = {
-            { travel = "Ratchet", at = { 0.63, 0.37 } },
-            { note = "Only notes carry text." },
-            { accept = 870, npc = 3448, at = { 0.52, 0.31 } },
-            { accept = 870, npc = 3448, at = { 0.52, 0.31 } },
-            { objectives = { 871, 844 }, at = { 0.55, 0.25 }, radius = 0.06 },
-            { objective = 870, any = 848, at = { 0.45, 0.22 } },
-            { turnin = { 870, 845 }, at = { 0.52, 0.31, map = 1414 } },
-            { choice = "Which way?", options = { { "Camp", goto = "camp" }, { "Level", goto = "level" } } },
-            { objectives = { 887 }, at = { 0.63, 0.45 }, label = "camp" },
-            { level = 17, label = "level" },
-            { finish = "The end." },
-        } },
-    },
-})
+-- A guide in format v1 around the given sections ({ title, steps }), or
+-- around one section's steps. `npcs` is the guide's data.npcs.
+local function v1(id, map, sections, npcs)
+    if sections[1] and sections[1].type ~= nil or sections[1] and sections[1].group ~= nil then
+        sections = { { title = "Steps", steps = sections } }
+    end
+    return { kind = "guide", schema = 1, id = id, updated = 1789862400, title = id, category = "test",
+        data = { map = map, sections = sections, npcs = npcs } }
+end
+-- Expand's refusal of one section's steps, with the message it gives.
+local function refused(steps)
+    local fine, message = pcall(Steps.Expand, Steps, v1("test:bad", 1413, steps))
+    return not fine, tostring(message)
+end
+
+local guide = Steps:Expand(v1("test:compact", 1413, {
+    { title = "First Part", steps = {
+        { type = "travel", to = "Ratchet", at = { { 6300, 3700 } } },
+        { type = "note", note = "Only notes carry text." },
+        { type = "accept", quests = { 870 }, npc = { 3448 }, at = { { 5200, 3100 } } },
+        { type = "accept", quests = { 870 }, npc = { 3448 }, at = { { 5200, 3100 } } },
+        { type = "kill", quest = 871, at = { { 5500, 2500 } }, radius = 600 },
+        { type = "collect", quest = 870, at = { { 4500, 2200 } } },
+        { type = "turnin", quests = { 870, 845 }, at = { { 5200, 3100, map = 1414 } } },
+        { type = "choice", text = "Which way?", options = { { text = "Camp", go = "camp" }, { text = "Level", go = "level" } } },
+        { type = "kill", quest = 887, at = { { 6300, 4500 } }, label = "camp" },
+        { type = "level", level = 17, label = "level" },
+        { type = "finish", note = "The end." },
+    } },
+}))
 local ok, errors = Schema:Validate(guide)
 assert(ok, table.concat(errors, "; "))
-assert(guide.steps == nil and guide.map == nil, "compact keys are consumed")
+assert(guide.data == nil and guide.kind == nil and guide.schema == 1, "the v1 wrapper is consumed")
 assert(#guide.sections == 1 and guide.sections[1].id == "first-part" and #guide.sections[1].nodeIndexes == 11)
 
 local n = guide.nodes
@@ -42,9 +53,11 @@ assert(n[3].index == 3 and n[4].index == 4, "repeated steps have distinct positi
 assert(n[3].kind == "acceptQuest" and n[3].completion.observed.state == "acceptedOrFinished")
 assert(n[3].refs.npcs[1] == 3448 and n[3].location.arrivalRadiusNormalized == 0.02)
 assert(Steps:Title(n[3]) == "Accept The Forgotten Pools", Steps:Title(n[3]))
-assert(n[5].kind == "objectiveGroup" and n[5].completion.observed.state == "readyToTurnIn" and n[5].completion.observed.match == "all")
-assert(n[5].location.arrivalRadiusNormalized == 0.06 and Steps:Title(n[5]) == "Complete Disrupt the Attacks and Plainstrider Menace")
-assert(n[6].kind == "questObjective" and n[6].completion.observed.match == "any" and #n[6].completion.observed.ids == 2)
+-- A step for a whole quest, with no target of its own: done once the quest
+-- is ready to turn in.
+assert(n[5].kind == "questObjective" and n[5].completion.observed.state == "readyToTurnIn" and n[5].completion.observed.match == "all")
+assert(n[5].location.arrivalRadiusNormalized == 0.06 and Steps:Title(n[5]) == "Complete Disrupt the Attacks", Steps:Title(n[5]))
+assert(n[6].kind == "questObjective" and n[6].completion.observed.ids[1] == 870 and #n[6].completion.observed.ids == 1)
 assert(n[7].index == 7 and n[7].location.mapID == 1414 and Steps:Title(n[7]) == "Turn in The Forgotten Pools and The Zhevra")
 assert(n[8].kind == "choice" and n[8].choices[1].title == "Camp" and n[8].choices[1]["next"] == 9 and n[8].choices[2]["next"] == 10)
 assert(n[9].index == 9, "branch targets are step indexes")
@@ -53,20 +66,15 @@ assert(n[11].kind == "end" and n[11].body == "The end." and n[11].completion.typ
 for _, node in ipairs(n) do assert(node["next"] == nil, "ordered flow needs no edges") end
 
 -- Bundled talk steps, objective parts, XP levels, and conditions.
-local extra = Steps:Expand({
-    schema = 2, id = "test:extra", updated = 1789862400, map = 1413, meta = { title = "Extra", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { turnin = 871, accept = { 872, 5041 }, npc = 3429, at = { 51.50, 30.87 } },
-        { objective = 821, part = 2, at = { 48, 13.2 } },
-        { level = 13, xp = 9200 },
-        { note = "Warriors and Shamans only.", only = "Warrior or Shaman" },
-        { turnin = 809, npc = 3521, at = { 62.34, 20.07 }, only = "not Tauren" },
-        { objective = 858, at = { 56.2, 8.25 }, only = "quest 858" },
-        { note = "mixed", only = "not Tauren or Orc" },
-    } },
-},
-})
+local extra = Steps:Expand(v1("test:extra", 1413, {
+    { type = "talk", turnin = { 871 }, accept = { 872, 5041 }, npc = { 3429 }, at = { { 5150, 3087 } } },
+    { type = "kill", quest = { 821, 2 }, at = { { 4800, 1320 } } },
+    { type = "level", level = 13, xp = 9200 },
+    { type = "note", note = "Warriors and Shamans only.", cond = { class = { "WARRIOR", "SHAMAN" } } },
+    { type = "turnin", quests = { 809 }, npc = { 3521 }, at = { { 6234, 2007 } }, cond = { none = { { race = "tauren" } } } },
+    { type = "kill", quest = 858, at = { { 5620, 825 } }, show = { skill = 186 } },
+    { type = "note", note = "mixed", cond = { race = "orc", none = { { race = "tauren" } } } },
+}))
 ok, errors = Schema:Validate(extra)
 assert(ok, table.concat(errors, "; "))
 local e = extra.nodes
@@ -78,33 +86,25 @@ assert(e[1].location.x == 0.515 and e[1].location.arrivalRadiusNormalized == 0.0
 assert(e[2].index == 2 and e[2].completion.observed.type == "objective" and e[2].completion.observed.questID == 821 and e[2].completion.observed.index == 2)
 assert(Steps:Title(e[2]) == "Chen's Empty Keg, objective 2", Steps:Title(e[2]))
 assert(e[3].completion.observed.xp == 9200 and Steps:Title(e[3]) == "Reach level 13 with 9200 XP")
-assert(e[4].condition.type == "any" and e[4].condition.children[1].values[1] == "WARRIOR" and e[4].condition.children[2].values[1] == "SHAMAN")
+assert(e[4].condition.type == "class" and e[4].condition.values[1] == "WARRIOR" and e[4].condition.values[2] == "SHAMAN")
 assert(e[5].condition.type == "not" and e[5].condition.child.type == "race" and e[5].condition.child.values[1] == "tauren")
-assert(e[6].condition.type == "quest" and e[6].condition.id == 858)
-assert(e[7].condition.type == "all" and e[7].condition.children[1].type == "race" and e[7].condition.children[2].type == "not")
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { note = "x", only = "Gnome Warrior" }
-} }), "unknown condition terms are rejected")
+assert(e[6].condition.type == "now" and e[6].condition.child.type == "profession" and e[6].condition.child.name == "Mining")
+assert(e[7].condition.type == "all" and e[7].condition.children[1].type == "not" and e[7].condition.children[2].type == "race")
+local bad, message = refused({ { type = "note", note = "x", cond = { gnome = true } } })
+assert(bad and message == "NuuRoad: data.sections[1].steps[1].cond.gnome: is not a condition", message)
 
 -- Items, hearth, flight paths, sticky tracks, objects, map pins, kill and collect counts.
 Names.items[4926] = "Chen's Empty Keg"; Names.items[5087] = "Plainstrider Beak"; Names.npcs[3267] = "Razormane Water Seeker"
-local more = Steps:Expand({
-    schema = 2, id = "test:more", updated = 1789862400, map = 1413, meta = { title = "More", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { collect = 4926, object = "Chen's Empty Keg", at = { 55.78, 20.01 } },
-        { hearth = "The Crossroads", npc = 3934, at = { 51.99, 29.90 } },
-        { flight = "Ratchet", npc = 16227, at = { 63.09, 37.16 } },
-        { track = 869 },
-        { objective = 871, part = 1, kill = 3267, count = 8, at = { { 55.6, 25.4 }, { 53, 25.2 }, { 54.4, 27.2 } } },
-        { objective = 844, part = 1, collect = 5087, count = 7, at = { 53, 22.4 } },
-        { object = "Fuel Control Valve", objective = 900, part = 2, at = { 52.4, 11.41 } },
-        { object = "Control Console", turnin = 894, accept = 900, at = { 52.41, 11.64 } },
-        { untrack = 869 },
-        { object = "Altar of Fire", at = { 47.96, 19.07 } },
-    } },
-},
-})
+local more = Steps:Expand(v1("test:more", 1413, {
+    { type = "collect", item = 4926, object = "Chen's Empty Keg", at = { { 5578, 2001 } } },
+    { type = "hearth", area = 380, npc = { 3934 }, at = { { 5199, 2990 } } },
+    { type = "flight", node = 80, npc = { 16227 }, at = { { 6309, 3716 } } },
+    { type = "kill", kill = { 3267 }, quest = { 871, 1 }, count = 8, at = { { 5560, 2540 }, { 5300, 2520 }, { 5440, 2720 } } },
+    { type = "collect", item = 5087, quest = { 844, 1 }, count = 7, at = { { 5300, 2240 } } },
+    { type = "interact", object = "Fuel Control Valve", quest = { 900, 2 }, at = { { 5240, 1141 } } },
+    { type = "talk", object = "Control Console", turnin = { 894 }, accept = { 900 }, at = { { 5241, 1164 } } },
+    { type = "interact", object = "Altar of Fire", at = { { 4796, 1907 } } },
+}))
 ok, errors = Schema:Validate(more)
 assert(ok, table.concat(errors, "; "))
 local m = more.nodes
@@ -112,26 +112,23 @@ assert(m[1].index == 1 and m[1].kind == "collect" and m[1].completion.observed.t
 assert(Steps:Title(m[1]) == "Collect Chen's Empty Keg at Chen's Empty Keg", Steps:Title(m[1]))
 assert(m[2].index == 2 and m[2].kind == "hearth" and m[2].completion.observed.type == "hearth" and m[2].completion.observed.name == "The Crossroads")
 assert(Steps:Title(m[2]) == "Set your hearthstone at The Crossroads")
-assert(m[3].kind == "flight" and m[3].completion.observed.type == "flightpath" and Steps:Title(m[3]) == "Learn the Ratchet flight path")
-assert(m[4].index == 4 and m[4].kind == "reminder" and m[4].completion.observed.type == "always" and Steps:Title(m[4]) == "Meanwhile: Raptor Thieves")
-assert(m[5].kind == "kill" and m[5].refs.npcs[1] == 3267 and Steps:Title(m[5]) == "Kill 8 Razormane Water Seeker", Steps:Title(m[5]))
-assert(#m[5].location.spots == 2 and m[5].location.spots[1].x == 0.53 and m[5].location.spots[2].y == 0.272, "the points after the first are map pins")
-assert(m[6].kind == "collect" and m[6].refs.items[1] == 5087 and m[6].completion.observed.type == "objective" and Steps:Title(m[6]) == "Collect 7 Plainstrider Beak")
-assert(m[7].kind == "interact" and m[7].completion.observed.questID == 900 and Steps:Title(m[7]) == "Click Fuel Control Valve")
-assert(m[8].kind == "talk" and Steps:Title(m[8]) == "Turn in Samophlange, accept Samophlange at Control Console", Steps:Title(m[8]))
-assert(m[9].index == 9 and m[9].kind == "reminder")
-assert(m[10].kind == "interact" and m[10].completion.type == "manual" and Steps:Title(m[10]) == "Click Altar of Fire")
+assert(m[3].kind == "flight" and m[3].completion.observed.type == "flightpath" and Steps:Title(m[3]) == "Learn the Ratchet, The Barrens flight path", Steps:Title(m[3]))
+assert(m[4].kind == "kill" and m[4].refs.npcs[1] == 3267 and Steps:Title(m[4]) == "Kill 8 Razormane Water Seeker", Steps:Title(m[4]))
+assert(#m[4].location.spots == 2 and m[4].location.spots[1].x == 0.53 and m[4].location.spots[2].y == 0.272, "the points after the first are map pins")
+assert(m[5].kind == "collect" and m[5].refs.items[1] == 5087 and m[5].completion.observed.type == "objective" and Steps:Title(m[5]) == "Collect 7 Plainstrider Beak")
+assert(m[6].kind == "interact" and m[6].completion.observed.questID == 900 and Steps:Title(m[6]) == "Click Fuel Control Valve")
+assert(m[7].kind == "talk" and Steps:Title(m[7]) == "Turn in Samophlange, accept Samophlange at Control Console", Steps:Title(m[7]))
+assert(m[8].kind == "interact" and m[8].completion.type == "manual" and Steps:Title(m[8]) == "Click Altar of Fire")
+bad, message = refused({ { type = "flight", node = 999999 } })
+assert(bad and message:find("steps[1].node: no name for taxiNodes 999999", 1, true), message)
+bad, message = refused({ { type = "hearth", area = "The Crossroads" } })
+assert(bad and message:find("steps[1].area: an area is an AreaTable ID", 1, true), message)
 
 -- A collect step tied to a quest: the item that begins it, or a quest item.
-local tied = Steps:Expand({
-    schema = 2, id = "test:tied", updated = 1789862400, map = 1413, meta = { title = "Tied", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { collect = 4926, starts = 819, object = "Chen's Empty Keg", at = { 55.78, 20.01 } },
-        { collect = 4986, quest = 924, at = { 62.34, 20.03 } },
-    } },
-},
-})
+local tied = Steps:Expand(v1("test:tied", 1413, {
+    { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg", at = { { 5578, 2001 } } },
+    { type = "collect", item = 4986, quest = 924, at = { { 6234, 2003 } } },
+}))
 ok, errors = Schema:Validate(tied)
 assert(ok, table.concat(errors, "; "))
 assert(tied.nodes[1].completion.observed.startsQuestID == 819 and tied.nodes[1].completion.observed.questID == nil and tied.nodes[1].refs.quests[1] == 819)
@@ -167,13 +164,9 @@ end
 -- Escorts: done when the quest is ready, titled by the NPC, and a failed
 -- quest says so instead of waiting as if under way.
 do
-    local escorts = Steps:Expand({
-        schema = 2, id = "test:escort", updated = 1789862400, map = 1413,
-        meta = { title = "Escort", category = "test" },
-        steps = { { section = "Drill site", steps = {
-            { escort = 863, npc = 3439, at = { 55.35, 7.70 } },
-        } } },
-    })
+    local escorts = Steps:Expand(v1("test:escort", 1413, { { title = "Drill site", steps = {
+        { type = "escort", quest = 863, npc = { 3439 }, at = { { 5535, 770 } } },
+    } } }))
     ok, errors = Schema:Validate(escorts)
     assert(ok, table.concat(errors, "; "))
     local node = escorts.nodes[1]
@@ -198,38 +191,29 @@ do
     failed[863], ready[863] = nil, true
     assert(Steps:GoalStatus(goals[1], node) == "done")
     ns.modules.Client = nil
-    assert(not pcall(Steps.Expand, Steps, { schema = 2, id = "test:bad", updated = 1, map = 1413, meta = { title = "x", category = "test" },
-        steps = { { section = "s", steps = { { escort = 863, at = { 1, 1 } } } } } }), "an escort names its NPC")
-end
-local tracks = Steps:ActiveTracks(more, m[6])
-assert(#tracks == 1 and tracks[1] == 869, "a track is active between track and untrack")
-assert(#Steps:ActiveTracks(more, m[10]) == 0, "untrack closes it")
-assert(#Steps:ActiveTracks(more, m[4]) == 0, "the track step itself is not yet active")
-do
-    local again = Steps:Expand({ schema = 2, id = "test:retrack", updated = 1789862400, map = 1413,
-        meta = { title = "R", category = "test" }, steps = { { section = "S", steps = {
-            { track = 869 }, { untrack = 869 }, { track = 869 }, { note = "Here." },
-        } } } })
-    local open = Steps:ActiveTracks(again, again.nodes[4])
-    assert(#open == 1 and open[1] == 869, "a quest tracked again is one line, not two")
+    local badEscort, escortMessage = refused({ { type = "escort", quest = 863, at = { { 100, 100 } } } })
+    assert(badEscort and escortMessage:find("steps[1].npc: an escort names the NPC escorted", 1, true), escortMessage)
+    badEscort, escortMessage = refused({ { type = "escort", npc = { 3439 } } })
+    assert(badEscort and escortMessage:find("steps[1].quest: an escort names its quest", 1, true), escortMessage)
 end
 
 -- A note on a step is that step's body; a bare note is still its own step.
-local noted = Steps:Expand({ schema = 2, id = "test:noted", updated = 1789862400, map = 1413, meta = { title = "N", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 870, npc = 3448, at = { 52.26, 31.93 }, note = "Inside the inn." }, { note = "Alone." }, { finish = "End", note = "ignored" }
-    } },
-} })
+local noted = Steps:Expand(v1("test:noted", 1413, {
+    { type = "accept", quests = { 870 }, npc = { 3448 }, at = { { 5226, 3193 } }, note = "Inside the inn." },
+    { type = "note", note = "Alone." }, { type = "finish", note = "End" },
+}))
 assert(noted.nodes[1].kind == "acceptQuest" and noted.nodes[1].body == "Inside the inn." and Steps:Title(noted.nodes[1]) == "Accept The Forgotten Pools")
 assert(noted.nodes[2].kind == "note" and noted.nodes[2].body == "Alone.")
 assert(noted.nodes[3].kind == "end" and noted.nodes[3].body == "End")
 
--- Unknown ids fall back to a readable placeholder, and a v1 guide passes through untouched.
+-- Unknown ids fall back to a readable placeholder, and a runtime guide passes through untouched.
 assert(Steps:Title({ auto = { verb = "accept", quests = { 424242 } } }) == "Accept quest 424242")
 assert(Names:DescribeNPC(3429) == "Thork" and Names:DescribeNPC(1) == "NPC 1")
-local plain = { nodes = {}, sections = {} }
-assert(Steps:Expand(plain) == plain)
+local plain = { nodes = { { kind = "note" } }, sections = {} }
+assert(Steps:Expand(plain) == plain and plain.nodes[1].index == 1, "a runtime guide is only indexed")
+bad, message = pcall(Steps.Expand, Steps, v1("test:empty", 1413, { { title = "Empty", steps = {} } }))
+assert(not bad and tostring(message) == "NuuRoad: data.sections[1]: has no steps", tostring(message))
+assert(not pcall(Steps.Expand, Steps, { schema = 1, data = { sections = {} } }), "a value with no kind is not a guide")
 
 
 -- Goal lines: one per thing to do, with roles for colouring and status hooks.
@@ -244,8 +228,8 @@ assert(Steps:GoalText(g[2], function(role, text) return role == "quest" and ("<"
 g = Steps:Goals(n[7]) -- turnin 870 and 845, no npc
 assert(#g == 2 and g[1].verb == "turnin" and g[1].quest == 870 and g[1].state == "finished" and g[2].quest == 845, plain(g[1]))
 
-g = Steps:Goals(n[5]) -- objectives 871 and 844
-assert(#g == 2 and g[1].verb == "objective" and plain(g[1]) == "Complete Disrupt the Attacks" and g[1].state == "readyToTurnIn")
+g = Steps:Goals(n[5]) -- the whole of 871
+assert(#g == 1 and g[1].verb == "objective" and plain(g[1]) == "Complete Disrupt the Attacks" and g[1].state == "readyToTurnIn")
 
 g = Steps:Goals(n[1]) -- travel
 assert(#g == 1 and g[1].verb == "travel" and plain(g[1]) == "Travel to Ratchet" and roles(g[1]) == "location" and g[1].observed.type == "location")
@@ -256,10 +240,10 @@ assert(#g == 1 and g[1].verb == "level" and plain(g[1]) == "Reach level 17" and 
 g = Steps:Goals(n[2]) -- note
 assert(#g == 1 and g[1].verb == "note" and plain(g[1]) == "Note")
 
-g = Steps:Goals(m[5]) -- objective with part and kill
+g = Steps:Goals(m[4]) -- objective with part and kill
 assert(#g == 1 and g[1].verb == "kill" and plain(g[1]) == "Kill 8 Razormane Water Seeker" and roles(g[1]) == "count,monster" and g[1].objective.quest == 871 and g[1].objective.index == 1, plain(g[1]))
 
-g = Steps:Goals(m[6]) -- objective with part and collect
+g = Steps:Goals(m[5]) -- objective with part and collect
 assert(g[1].verb == "collect" and plain(g[1]) == "Collect 7 Plainstrider Beak" and roles(g[1]) == "count,item")
 -- The item part carries the item it names, which is what lets the tracker
 -- turn it into the game's own link instead of a coloured string.
@@ -273,23 +257,22 @@ ns.modules.Client = {
     end,
     GetItemCount = function() return 0 end,
 }
-assert(Steps:Have(m[6]) == 4 and Steps:CountText(m[6]) == "3 ", Steps:CountText(m[6]))
-assert(Steps:Title(m[6]) == "Collect 3 Plainstrider Beak", Steps:Title(m[6]))
+assert(Steps:Have(m[5]) == 4 and Steps:CountText(m[5]) == "3 ", Steps:CountText(m[5]))
+assert(Steps:Title(m[5]) == "Collect 3 Plainstrider Beak", Steps:Title(m[5]))
 -- A report about the guide itself wants the step as authored.
-assert(Steps:Title(m[6], true) == "Collect 7 Plainstrider Beak", Steps:Title(m[6], true))
+assert(Steps:Title(m[5], true) == "Collect 7 Plainstrider Beak", Steps:Title(m[5], true))
 ns.modules.Client = nil
-assert(Steps:Title(m[6]) == "Collect 7 Plainstrider Beak", "without a client the authored count stands")
+assert(Steps:Title(m[5]) == "Collect 7 Plainstrider Beak", "without a client the authored count stands")
 
 g = Steps:Goals(m[1]) -- collect item at object
 assert(g[1].verb == "collect" and plain(g[1]) == "Collect Chen's Empty Keg at Chen's Empty Keg" and g[1].item == 4926 and g[1].count == 1 and roles(g[1]) == "count,item,location")
 
-g = Steps:Goals(m[8]) -- talk at object: Control Console
+g = Steps:Goals(m[7]) -- talk at object: Control Console
 assert(#g == 3 and g[1].verb == "interact" and plain(g[1]) == "Click Control Console" and g[2].verb == "turnin" and g[3].verb == "accept", plain(g[1]))
 
 g = Steps:Goals(m[2]); assert(g[1].verb == "hearth" and plain(g[1]) == "Set your hearthstone at The Crossroads" and g[1].observed.type == "hearth")
-g = Steps:Goals(m[3]); assert(g[1].verb == "flight" and plain(g[1]) == "Learn the Ratchet flight path")
-g = Steps:Goals(m[4]); assert(g[1].verb == "reminder" and plain(g[1]) == "Meanwhile: Raptor Thieves" and g[1].quest == 869)
-g = Steps:Goals(m[10]); assert(g[1].verb == "interact" and plain(g[1]) == "Click Altar of Fire")
+g = Steps:Goals(m[3]); assert(g[1].verb == "flight" and plain(g[1]) == "Learn the Ratchet, The Barrens flight path")
+g = Steps:Goals(m[8]); assert(g[1].verb == "interact" and plain(g[1]) == "Click Altar of Fire")
 
 -- Without a client there is no status; with one, statuses follow the quest log.
 assert(Steps:GoalStatus(Steps:Goals(n[3])[2], n[3]) == nil)
@@ -316,7 +299,7 @@ assert(Steps:GoalStatus(g[1], n[7]) == "active", "ready to turn in is in progres
 assert(Steps:GoalStatus(g[2], n[7]) == "done", "a flagged quest is done")
 g = Steps:Goals(n[5])
 assert(Steps:GoalStatus(g[1], n[5]) == "todo", "a quest not in the log is to do")
-local status, progress = Steps:GoalStatus(Steps:Goals(m[5])[1], m[5])
+local status, progress = Steps:GoalStatus(Steps:Goals(m[4])[1], m[4])
 assert(status == "todo" and progress == "3/8", tostring(status) .. " " .. tostring(progress))
 status, progress = Steps:GoalStatus(Steps:Goals(m[1])[1], m[1])
 assert(status == "done" and progress == nil)
@@ -334,23 +317,18 @@ assert(Steps:GoalStatus(g[2], e[1]) == "moot", "a turn-in for a quest never take
 assert(Steps:GoalStatus(g[3], e[1]) == "todo" and Steps:GoalStatus(g[4], e[1]) == "todo", "accepting is never moot")
 assert(Steps:GoalStatus(Steps:Goals(n[5])[1], n[5]) == "moot", "so is completing one")
 assert(Steps:GoalStatus(Steps:Goals(n[7])[1], n[7]) == "active", "a quest in the log is untouched")
-status, progress = Steps:GoalStatus(Steps:Goals(m[5])[1], m[5])
+status, progress = Steps:GoalStatus(Steps:Goals(m[4])[1], m[4])
 assert(status == "moot" and progress == "3/8", "an objective line of a quest never taken is moot")
 ns.modules.Client = nil
 
 -- Standalone kill steps: counted from the combat log, no quest involved.
-local killed = Steps:Expand({
-    schema = 2, id = "test:kill", updated = 1789862400, map = 1413, meta = { title = "Kill", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { kill = { 3244, 3245 }, count = 3, at = { 48, 13.2 } },
-        { kill = 3267, note = "One is enough." },
-        { collect = 4926, kill = 3267, at = { 55, 20 } },
-        { objective = 871, part = 1, kill = 3267, count = 8, npc = 3448 },
-        { accept = 870, npc = 3448 },
-    } },
-},
-})
+local killed = Steps:Expand(v1("test:kill", 1413, {
+    { type = "kill", kill = { 3244, 3245 }, count = 3, at = { { 4800, 1320 } } },
+    { type = "kill", kill = { 3267 }, note = "One is enough." },
+    { type = "collect", item = 4926, kill = { 3267 }, at = { { 5500, 2000 } } },
+    { type = "kill", kill = { 3267 }, quest = { 871, 1 }, count = 8, npc = { 3448 } },
+    { type = "accept", quests = { 870 }, npc = { 3448 } },
+}))
 ok, errors = Schema:Validate(killed)
 assert(ok, table.concat(errors, "; "))
 local k = killed.nodes
@@ -358,7 +336,9 @@ assert(k[1].index == 1 and k[1].kind == "kill" and k[1].completion.observed.type
 assert(k[1].refs.npcs[2] == 3245 and k[1].location.arrivalRadiusNormalized == 0.05)
 assert(Steps:Title(k[1]) == "Kill 3 Greater Plainstrider and Ornery Plainstrider", Steps:Title(k[1]))
 assert(k[2].index == 2 and k[2].completion.observed.count == 1 and k[2].body == "One is enough." and Steps:Title(k[2]) == "Kill Razormane Water Seeker")
-assert(k[3].kind == "collect" and k[3].auto.verb == "collect" and k[3].auto.kill[1] == 3267, "collect wins over kill")
+assert(k[3].kind == "collect" and k[3].auto.verb == "collect" and k[3].auto.kill[1] == 3267, "a collect names its killers")
+bad, message = refused({ { type = "kill", count = 3 } })
+assert(bad and message:find("steps[1].kill: a kill step names its creatures", 1, true), message)
 local kill, talk = Steps:NPCs(k[1])
 assert(#kill == 2 and kill[1] == 3244 and #talk == 0)
 kill, talk = Steps:NPCs(k[4])
@@ -406,23 +386,18 @@ Names.items[2862] = "Rough Sharpening Stone"
 Names.items[2901] = "Mining Pick"
 Names.items[2770] = "Copper Ore"
 Names.npcs[3357] = "Mining Trainer"
-local trades = Steps:Expand({
-    schema = 2, id = "test:trades", updated = 1789862400, map = 1413,
-    meta = { title = "Trades", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { train = "Mining", npc = 3357, at = { 48.5, 59.3 } },
-        { train = "Mining", rank = 75 },
-        { skill = "Mining", rank = 150 },
-        { craft = 2862, count = 5, skill = "Blacksmithing" },
-        { skillup = 2862, skill = "Blacksmithing", rank = 100 },
-        { gather = 2770, count = 20, skill = "Mining" },
-        { buy = 2901, count = 2, npc = 3357 },
-        { equip = 2901 },
-        { reputation = 76, standing = "Honored" },
-    } },
-},
-})
+Names:Add({ factions = { [76] = "Orgrimmar" } })
+local trades = Steps:Expand(v1("test:trades", 1413, {
+    { type = "train", skill = 186, npc = { 3357 }, at = { { 4850, 5930 } } },
+    { type = "train", skill = 186, rank = 75 },
+    { type = "skill", skill = 186, rank = 150 },
+    { type = "craft", item = 2862, count = 5, skill = 164 },
+    { type = "skillup", item = 2862, skill = 164, rank = 100 },
+    { type = "gather", item = 2770, count = 20, skill = 186 },
+    { type = "buy", item = 2901, count = 2, npc = { 3357 } },
+    { type = "equip", item = 2901 },
+    { type = "reputation", faction = 76, standing = 6 },
+}))
 ok, errors = Schema:Validate(trades)
 assert(ok, table.concat(errors, "; "))
 local t = trades.nodes
@@ -437,12 +412,12 @@ assert(Steps:Title(t[4]) == "Craft 5 Rough Sharpening Stone using Blacksmithing"
 -- Crafting to a rank: the skill is the goal, the item only the means.
 assert(t[5].kind == "skillUp" and t[5].completion.observed.type == "skill" and t[5].completion.observed.atLeast == 100)
 assert(t[5].refs.items[1] == 2862 and Steps:Title(t[5]) == "Craft Rough Sharpening Stone until Blacksmithing 100", Steps:Title(t[5]))
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { skillup = 2862, rank = 100 }
-} }), "skillup needs a profession")
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { skillup = 2862, skill = "Blacksmithing" }
-} }), "skillup needs a rank")
+bad, message = refused({ { type = "skillup", item = 2862, rank = 100 } })
+assert(bad and message:find("steps[1].skill: a skill is a SkillLine ID", 1, true), "skillup needs a profession: " .. message)
+bad, message = refused({ { type = "skillup", item = 2862, skill = 164 } })
+assert(bad and message:find("steps[1].rank: a skillup step needs a rank", 1, true), message)
+bad, message = refused({ { type = "train", skill = "Mining" } })
+assert(bad and message:find("a skill is a SkillLine ID", 1, true), "professions are named by SkillLine ID")
 -- Gathering is its own verb: the same detector as a purchase, its own word.
 assert(t[6].kind == "gather" and t[6].completion.observed.type == "item" and t[6].completion.observed.count == 20)
 assert(Steps:Title(t[6]) == "Gather 20 Copper Ore with Mining", Steps:Title(t[6]))
@@ -451,19 +426,10 @@ assert(Steps:Title(t[7]) == "Buy 2 Mining Pick from Mining Trainer", Steps:Title
 assert(t[8].kind == "equip" and t[8].completion.observed.type == "equipped" and Steps:Title(t[8]) == "Equip Mining Pick")
 assert(t[9].kind == "reputationTarget" and t[9].completion.observed.standing == 6, "Honored is standing 6")
 assert(Steps:Title(t[9]) == "Reach Honored with Orgrimmar", Steps:Title(t[9]))
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { skill = "Mining" }
-} }), "a skill step needs a rank")
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { reputation = 76, standing = "Chummy" }
-} }), "an unknown standing is refused")
--- `craft` wins over `skill` when a step names both.
-local both = Steps:Expand({ schema = 2, id = "t", updated = 1789862400, meta = { title = "t", category = "test" }, steps = {
-    { section = "Steps", steps = {
-        { craft = 2862, skill = "Blacksmithing", count = 1 }
-    } },
-} })
-assert(both.nodes[1].kind == "craft", both.nodes[1].kind)
+bad, message = refused({ { type = "skill", skill = 186 } })
+assert(bad and message:find("steps[1].rank: a skill step needs a rank", 1, true), message)
+bad, message = refused({ { type = "reputation", faction = 76, standing = "Chummy" } })
+assert(bad and message:find("steps[1].standing:", 1, true), "an unknown standing is refused: " .. message)
 
 -- Goal lines read the live client.
 local rank, standing, equipped, crafted, bags = nil, nil, false, 0, {}
@@ -519,15 +485,10 @@ assert(Steps:GoalStatus(repGoal, t[9]) == "done", "past the target standing coun
 ns.modules.Progress, ns.modules.Client = nil, nil
 
 -- Materials ride on any step, and the source defaults to gathering.
-local withNeeds = Steps:Expand({
-    schema = 2, id = "test:needs", updated = 1789862400, map = 1413,
-    meta = { title = "Needs", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { craft = 2862, count = 5, needs = { { 2835, 5 }, { 2589, 2, "ah" } } }, { travel = "Ratchet", at = { 63, 37 } }
-    } },
-},
-})
+local withNeeds = Steps:Expand(v1("test:needs", 1413, {
+    { type = "craft", item = 2862, count = 5, needs = { { item = 2835, count = 5 }, { item = 2589, count = 2, source = "ah" } } },
+    { type = "travel", to = "Ratchet", at = { { 6300, 3700 } } },
+}))
 ok, errors = Schema:Validate(withNeeds)
 assert(ok, table.concat(errors, "; "))
 local needy = withNeeds.nodes[1]
@@ -535,40 +496,33 @@ assert(#needy.needs == 2 and needy.needs[1].source == "gather" and needy.needs[2
 assert(needy.needs[1].itemID == 2835 and needy.needs[1].count == 5)
 assert(#needy.refs.items == 3, "the materials join the step's item references")
 assert(withNeeds.nodes[2].needs == nil)
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { travel = "x", needs = "Rough Stone" }
-} }), "needs is a list")
+bad, message = refused({ { type = "travel", to = "x", needs = "Rough Stone" } })
+assert(bad and message:find("steps[1].needs:", 1, true), "needs is a list: " .. message)
+bad, message = refused({ { type = "craft", item = 2862, needs = { { item = 2835, source = "mailbox" } } } })
+assert(bad and message:find("steps[1].needs[1].source: unknown material source 'mailbox'", 1, true), message)
 
 -- `upto`: the profession rank that makes a materials step moot.
 Names.items[2835] = "Rough Stone"
-local escapes = Steps:Expand({
-    schema = 2, id = "test:upto", updated = 1789862400, map = 1413,
-    meta = { title = "Upto", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { gather = 2770, count = 20, skill = "Mining", upto = 150 },
-        { gather = 2835, count = 40, upto = { "Blacksmithing", 100 } },
-        { buy = 2320, count = 10, skill = "Tailoring", upto = 60 },
-    } },
-},
-})
+local escapes = Steps:Expand(v1("test:upto", 1413, {
+    { type = "gather", item = 2770, count = 20, skill = 186, upto = { skill = 186, rank = 150 } },
+    { type = "gather", item = 2835, count = 40, upto = { skill = 164, rank = 100 } },
+    { type = "buy", item = 2320, count = 10, upto = { skill = 197, rank = 60 } },
+}))
 ok, errors = Schema:Validate(escapes)
 assert(ok, table.concat(errors, "; "))
 local e = escapes.nodes
 assert(e[1].completion.observed.type == "any", "the escape is an any-of completion")
 assert(e[1].completion.observed.children[1].type == "item" and e[1].completion.observed.children[2].type == "skill")
-assert(e[1].auto.upto.skill == "Mining" and e[1].auto.upto.rank == 150, "a bare rank means the step's own profession")
-assert(e[2].auto.upto.skill == "Blacksmithing" and e[2].auto.upto.rank == 100, "a pair names another profession")
+assert(e[1].auto.upto.skill == "Mining" and e[1].auto.upto.rank == 150, "the step's own profession")
+assert(e[2].auto.upto.skill == "Blacksmithing" and e[2].auto.upto.rank == 100, "or another one")
 assert(e[3].auto.upto.skill == "Tailoring" and e[3].auto.upto.rank == 60)
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { gather = 2770, upto = 100 }
-} }), "no profession to fall back on")
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { gather = 2770, skill = "Mining", upto = { "Mining" } }
-} }), "a pair still needs its rank")
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { note = "text", upto = { "Mining", 10 } }
-} }), "a manual step has nothing to escape from")
+bad, message = refused({ { type = "gather", item = 2770, count = 20, skill = 186, upto = 100 } })
+assert(bad and message:find("steps[1].upto: is { skill, rank }", 1, true), "upto always names its profession: " .. message)
+bad, message = refused({ { type = "gather", item = 2770, count = 20, skill = 186, upto = { skill = 186 } } })
+assert(bad and message:find("steps[1].upto: is { skill, rank }", 1, true), "upto needs its rank: " .. message)
+bad, message = refused({ { type = "note", note = "text", upto = { skill = 186, rank = 10 } } })
+assert(bad and message:find("steps[1].upto: needs a step the client can judge on its own", 1, true),
+    "a manual step has nothing to escape from: " .. message)
 
 rank, bags = nil, {}
 ns.modules.Client = {
@@ -589,15 +543,11 @@ ns.modules.Client = nil
 -- `use`: the item the step asks the player to press, which is not always the
 -- item the step counts. The Bael'dun step counts Broken Tools and presses
 -- Prospector's Picks.
-local used = Steps:Expand({
-    schema = 2, id = "test:use", updated = 1789862400, map = 1412,
-    meta = { title = "Use", category = "test" },
-    steps = { { section = "Digsite", steps = {
-        { objective = 746, part = 1, collect = 4703, count = 5, kill = { 2989, 2990 }, use = 4702 },
-        { note = "Smash them.", use = { 4702, 4851 } },
-        { travel = "Camp", at = { 30, 40 } },
-    } } },
-})
+local used = Steps:Expand(v1("test:use", 1412, { { title = "Digsite", steps = {
+    { type = "collect", item = 4703, quest = { 746, 1 }, count = 5, kill = { 2989, 2990 }, use = { 4702 } },
+    { type = "note", note = "Smash them.", use = { 4702, 4851 } },
+    { type = "travel", to = "Camp", at = { { 3000, 4000 } } },
+} } }))
 assert(Schema:Validate(used))
 assert(#used.nodes[1].use == 1 and used.nodes[1].use[1] == 4702, "the pressed item is kept apart from the counted one")
 -- It joins the step's item references, so the audit and the names table see
@@ -617,15 +567,11 @@ assert(#Steps:Goals(used.nodes[1]) == 1, "the press stays on the count's own lin
 -- The same for an item that comes out of something on the ground, and for an
 -- objective that is really a conversation: both are authored on the step, and
 -- both used to be dropped from the line.
-local sourced2 = Steps:Expand({
-    schema = 2, id = "test:sources", updated = 1789862400, map = 1413,
-    meta = { title = "Sources", category = "test" },
-    steps = { { section = "Pools", steps = {
-        { objective = 848, part = 1, collect = 5012, count = 4, object = "Laden Mushroom", at = { 44, 23 } },
-        { objective = 5930, part = 1, npc = 11956, at = { 39, 27 } },
-        { collect = 4926, starts = 819, object = "Chen's Empty Keg", at = { 55, 20 } },
-    } } },
-})
+local sourced2 = Steps:Expand(v1("test:sources", 1413, { { title = "Pools", steps = {
+    { type = "collect", item = 5012, quest = { 848, 1 }, count = 4, object = "Laden Mushroom", at = { { 4400, 2300 } } },
+    { type = "talk", npc = { 11956 }, quest = { 5930, 1 }, at = { { 3900, 2700 } } },
+    { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg", at = { { 5500, 2000 } } },
+} } }))
 assert(Schema:Validate(sourced2))
 local fromObject = Steps:Goals(sourced2.nodes[1])[1]
 assert(Steps:GoalText(fromObject) == "Collect 4 Fungal Spores from Laden Mushroom", Steps:GoalText(fromObject))
@@ -645,9 +591,9 @@ assert(Steps:GoalText(Steps:Goals(sourced2.nodes[3])[1]) == "Collect Chen's Empt
 -- the picks, and the tools only come off the forge.
 assert(Steps:Title(used.nodes[1], true) == "Use Prospector's Pick from Bael'dun Digger and Bael'dun Appraiser, and Collect 5 Broken Tools", Steps:Title(used.nodes[1], true))
 assert(used.nodes[1].completion.observed.type == "objective")
-assert(not pcall(Steps.Expand, Steps, { schema = 2, id = "x", updated = 1, meta = { title = "x", category = "t" },
-    steps = { { section = "s", steps = { { note = "n", use = "Prospector's Pick" } } } } }), "use names items by ID")
-local badUse = { schema = 2, id = "x", updated = 1, meta = { title = "x", category = "t" },
+bad, message = refused({ { type = "note", note = "n", use = "Prospector's Pick" } })
+assert(bad and message:find("steps[1].use[1]: an item is named by ID", 1, true), "use names items by ID: " .. message)
+local badUse = { schema = 1, id = "x", updated = 1, meta = { title = "x", category = "t" },
     sections = { { id = "s", title = "s", nodeIndexes = { 1 } } },
     nodes = { { index = 1, kind = "note", title = "n", completion = { type = "manual" }, use = { 0 } } } }
 local okUse, useErrors = Schema:Validate(badUse)
@@ -658,14 +604,10 @@ assert(not okUse and table.concat(useErrors, ";"):find("use[1]", 1, true), table
 -- nothing to count and nothing to kill, the item the author named to press is
 -- the instruction, ahead of the client's own line and of the quest's name and
 -- an index. A step that counts something keeps its count.
-local pressed = Steps:Expand({
-    schema = 2, id = "test:press", updated = 1789862400, map = 1412,
-    meta = { title = "Press", category = "test" },
-    steps = { { section = "Well", steps = {
-        { objective = 758, part = 1, item = 5415, use = 5415, at = { 44.49, 45.36 } },
-        { objective = 759, part = 1, at = { 44.49, 45.36 } },
-    } } },
-})
+local pressed = Steps:Expand(v1("test:press", 1412, { { title = "Well", steps = {
+    { type = "interact", quest = { 758, 1 }, item = { 5415 }, use = { 5415 }, at = { { 4449, 4536 } } },
+    { type = "interact", quest = { 759, 1 }, at = { { 4449, 4536 } } },
+} } }))
 assert(Steps:Title(pressed.nodes[1], true) == "Use Thunderhorn Cleansing Totem", Steps:Title(pressed.nodes[1], true))
 local pressedGoal = Steps:Goals(pressed.nodes[1])[1]
 assert(pressedGoal.verb == "use", pressedGoal.verb)
@@ -673,29 +615,24 @@ assert(pressedGoal.useItem == 5415, "the line carries the item so the tracker ca
 assert(pressedGoal.objective.quest == 758 and pressedGoal.objective.index == 1, "it is still the quest objective that finishes the step")
 -- The item is a part of its own, so the tracker can paint it as a link.
 assert(pressedGoal.parts[2].role == "item" and pressedGoal.parts[2].id == 5415)
+assert(pressed.nodes[1].refs.items[1] == 5415, "the item the step is about is the step's")
 -- A step with nothing to press keeps the old fallback.
 assert(Steps:Title(pressed.nodes[2], true):find(", objective 1", 1, true), Steps:Title(pressed.nodes[2], true))
 
 -- One creature under two IDs (a copy per phase) is named once.
 Names.npcs[251314] = "Skyhopper"; Names.npcs[251727] = "Skyhopper"
-local twins = Steps:Expand({
-    schema = 2, id = "test:twins", updated = 1789862400, map = 2521, meta = { title = "Twins", category = "test" },
-    steps = { { section = "Steps", steps = { { kill = { 251314, 251727 }, count = 8, at = { 60, 75 } } } } },
-})
+local twins = Steps:Expand(v1("test:twins", 2521, { { type = "kill", kill = { 251314, 251727 }, count = 8, at = { { 6000, 7500 } } } }))
 assert(Steps:Title(twins.nodes[1], true) == "Kill 8 Skyhopper", Steps:Title(twins.nodes[1], true))
 
 -- Class spells from a trainer: done once every spell is known. A cast step
 -- counts the casts made while the guide is on it.
 Names.spells[100] = "Charge"; Names.spells[772] = "Rend"; Names.spells[1259686] = "Skysight"
 Names.npcs[251964] = "Blademaster Ren"
-local spells = Steps:Expand({
-    schema = 2, id = "test:spells", updated = 1789862400, map = 2521, meta = { title = "Spells", category = "test" },
-    steps = { { section = "Steps", steps = {
-        { learn = { 100, 772 }, npc = 251964, at = { 43.66, 24.14 } },
-        { cast = 1259686, at = { 35.91, 33.61 } },
-        { cast = 1259686, count = 3 },
-    } } },
-})
+local spells = Steps:Expand(v1("test:spells", 2521, {
+    { type = "learn", spells = { 100, 772 }, npc = { 251964 }, at = { { 4366, 2414 } } },
+    { type = "cast", spell = 1259686, at = { { 3591, 3361 } } },
+    { type = "cast", spell = 1259686, count = 3 },
+}))
 ok, errors = Schema:Validate(spells)
 assert(ok, table.concat(errors, "; "))
 local learnNode, castNode, castThrice = spells.nodes[1], spells.nodes[2], spells.nodes[3]
@@ -706,8 +643,10 @@ assert(castNode.kind == "cast" and castNode.completion.observed.type == "cast" a
 assert(castNode.completion.observed.count == 1, "one cast unless the step says more")
 assert(Steps:Title(castNode, true) == "Cast Skysight", Steps:Title(castNode, true))
 assert(Steps:Title(castThrice, true) == "Cast Skysight 3 times", Steps:Title(castThrice, true))
-assert(not pcall(Steps.Expand, Steps, { steps = { { section = "s", steps = { { learn = "Charge" } } } } }), "learn names spells by ID")
-assert(not pcall(Steps.Expand, Steps, { steps = { { section = "s", steps = { { cast = { 1, 2 } } } } } }), "cast names one spell")
+bad, message = refused({ { type = "learn", spells = "Charge" } })
+assert(bad and message:find("steps[1].spells[1]: a spell is named by ID", 1, true), "learn names spells by ID: " .. message)
+bad, message = refused({ { type = "cast", spell = { 1, 2 } } })
+assert(bad and message:find("steps[1].spell: a cast step names one spell by ID", 1, true), "cast names one spell: " .. message)
 local known, casts = {}, 0
 ns.modules.Progress = { GetActiveGuide = function() return spells end, CastCount = function() return casts end }
 ns.modules.Client = { IsSpellKnown = function(_, id) return known[id] == true end }
@@ -762,12 +701,12 @@ onlyCarried.companionOf = nil
 Steps:ApplyCarried(onlyCarried)
 assert(onlyCarried.completion.type == "manual", "nothing of its own: manual")
 
--- A guide names its own IDs, before any of its titles is written.
-local named = Steps:Expand({
-    schema = 2, id = "test:names", updated = 1789862400, map = 1413, meta = { title = "Names", category = "test" },
-    names = { npcs = { [990001] = "Test Giver" }, quests = { [990002] = "A Test Quest" } },
-    steps = { { section = "Only", steps = { { accept = 990002, npc = 990001, at = { 0.5, 0.5 } } } } },
-})
+-- A guide names its NPCs, before any of its titles is written; quests,
+-- items and spells are the client's to name.
+Names:Add({ quests = { [990002] = "A Test Quest" } })
+local named = Steps:Expand(v1("test:names", 1413, { { title = "Only", steps = {
+    { type = "accept", quests = { 990002 }, npc = { 990001 }, at = { { 5000, 5000 } } },
+} } }, { [1413] = { [990001] = "Test Giver" } }))
 assert(Steps:Title(named.nodes[1]) == "Accept A Test Quest", Steps:Title(named.nodes[1]))
 assert(Names:DescribeNPC(990001) == "Test Giver" and Names.authored.npcs[990001] == "Test Giver")
 assert(Schema:Validate(named), "a names table is valid")
@@ -782,26 +721,26 @@ assert(not namesOK and #nameProblems == 3, table.concat(nameProblems or {}, "; "
 -- there, on the guide's map unless the point names another, even inside a
 -- section on another map. A step's own `at` wins. The NPC's note shows above
 -- the step's own on every visit.
-local stands = Steps:Expand({
-    schema = 2, id = "test:stands", updated = 1789862400, map = 1413, meta = { title = "Stands", category = "test" },
-    names = { npcs = {
-        [990001] = { "Test Giver", at = { 52.26, 31.93 }, note = "Upstairs in the inn." },
-        [990003] = { "Elsewhere", at = { 40, 60, map = 1456 } },
-        [990004] = "A Monster",
+-- An NPC is listed under the map it stands on; one on another map than the
+-- guide's gets that map on its point.
+local stands = Steps:Expand(v1("test:stands", 1413, {
+    { title = "Here", steps = {
+        { type = "accept", quests = { 990002 }, npc = { 990001 } },
+        { type = "turnin", quests = { 990002 }, npc = { 990001 }, note = "Hand it in." },
+        { type = "accept", quests = { 990005 }, npc = { 990001 }, at = { { 1000, 1000 } }, radius = 500 },
+        { type = "kill", kill = { 990004 }, at = { { 7000, 7000 } } },
     } },
-    steps = {
-        { section = "Here", steps = {
-            { accept = 990002, npc = 990001 },
-            { turnin = 990002, npc = 990001, note = "Hand it in." },
-            { accept = 990005, npc = 990001, at = { 10, 10 }, radius = 0.05 },
-            { kill = 990004, at = { 70, 70 } },
-        } },
-        { section = "There", map = 1414, steps = {
-            { turnin = 990005, npc = 990001 },
-            { accept = 990006, npc = 990003 },
-        } },
+    { title = "There", map = 1414, steps = {
+        { type = "turnin", quests = { 990005 }, npc = { 990001 } },
+        { type = "accept", quests = { 990006 }, npc = { 990003 } },
+    } },
+}, {
+    [1413] = {
+        [990001] = { name = "Test Giver", at = { 5226, 3193 }, note = "Upstairs in the inn." },
+        [990004] = "A Monster",
     },
-})
+    [1456] = { [990003] = { name = "Elsewhere", at = { 4000, 6000 } } },
+}))
 local sn = stands.nodes
 assert(sn[1].location.mapID == 1413 and math.abs(sn[1].location.x - 0.5226) < 1e-9 and sn[1].location.npc == 990001)
 assert(sn[1].location.arrivalRadiusNormalized == 0.02, "the verb's radius still applies")
@@ -816,7 +755,9 @@ assert(Schema:Validate(stands))
 stands.names = { npcs = { [990001] = { at = { 1, 2 } }, [990003] = { "Elsewhere", at = { 40 }, note = "", near = "x" } } }
 local standsOK, standsProblems = Schema:Validate(stands)
 assert(not standsOK and #standsProblems == 4, table.concat(standsProblems or {}, "; "))
-assert(not pcall(Steps.Expand, Steps, { schema = 2, id = "test:bad-names", updated = 1789862400,
-    meta = { title = "Bad", category = "test" }, names = "Test Giver", steps = { { note = "x" } } }), "names must be a table")
+bad, message = pcall(Steps.Expand, Steps, v1("test:bad-names", 1413, { { type = "note", note = "x" } }, { [1413] = "Test Giver" }))
+assert(not bad and tostring(message):find("data.npcs[1413]: is { [id] = npc }", 1, true), "npcs must be tables: " .. tostring(message))
+bad, message = pcall(Steps.Expand, Steps, v1("test:bad-names", 1413, { { type = "note", note = "x" } }, { [1413] = { [990001] = 5 } }))
+assert(not bad and tostring(message):find("data.npcs[1413][990001]: is a name or { name, at, note, instance }", 1, true), tostring(message))
 
 return true

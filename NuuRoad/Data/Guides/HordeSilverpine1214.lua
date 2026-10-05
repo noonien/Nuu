@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeSilverpine1214.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 12-14 leveling route through Silverpine Forest and the Sepulcher, with the
 -- turn-ins in the Undercity and the walk to Far Watch Post, ported from RestedXP's
@@ -30,63 +28,12 @@
 --
 -- Maps: 1421 Silverpine Forest (guide default), 1458 Undercity, 1420 Tirisfal
 -- Glades, 1411 Durotar, 1413 The Barrens.
---
--- Conversion notes (judgement calls made converting from authored format v2):
---   * `only` class/race/faction terms became `cond` ("Undead" -> race
---     "scourge"; "Rogue | Undead" -> both; "not Mage | not Priest" -> none of
---     the two classes; "Mage or Priest or Warlock" -> a class list).
---   * Dropped `now` gates: gold (both mushroom and milk buys in both visits,
---     Wise Man's Belt, Agile Boots, Scimitar, Smoldering Wand), weapon slot
---     dps (Scimitar slot 16, Smoldering Wand slot 18), level 14 (the five
---     class trainer notes), and quest 1886 readyToTurnIn / finished (the
---     Undead rogue's Deathstalkers chain in the Undercity). The player skips
---     what does not apply; the chain's steps keep only their class and race.
---   * Quest-state `only` terms "quest 435" (turn in Escorting Erland, take The
---     Deathstalkers' Report, in the first Ivar Patch group) and "quest 445"
---     (Delivery to Silverpine Forest at Renferrel) cannot be a cond/show; those
---     steps are `optional = true` instead, passed on arrival unless ready. The
---     Deathstalkers turn-in of 1886 (gated on readyToTurnIn) is optional too.
---   * track/untrack pairs became `from`: Wild Hearts (429) hearts step carries
---     `from = "wildhearts"`, a label on the group at Rane Yorick that takes 429;
---     the bear hearts step (447, objective 1) carries `from = "deadfield"`, a
---     label on the section where the track started. Each track note was merged
---     into its objective step's note.
---   * `with = "next"` became a label on the following step ("spellbooks",
---     "grimson").
---   * Objective numbers are the source's own `part`s; none inferred. The Dead
---     Field step had `objective = 437` with no part, so it names the whole
---     quest (`quest = 437`). Kill/collect counts on objective steps were
---     dropped (the objective counts); the murloc-eye collect with no quest
---     keeps `count = 3`.
---   * Travel steps with `subzone` (The Sepulcher x4, Valgan's Field, Razor
---     Hill, Far Watch Post) have no AreaTable ID in the repo, so `area` is left
---     out: they finish on arrival at `at`. Travel `zone` names became map IDs
---     (Undercity 1458, Tirisfal Glades 1420, Durotar 1411).
---   * `flight = "The Sepulcher"` became node 10 (db/horde/flightpaths.json,
---     flight master 2226). `train = "First Aid"` became skill 129
---     (NuuProfessions' FirstAid skillLine).
---   * Steps that named an NPC dropped no `at` of their own (none had one); NPC
---     location notes ("down in the crypt", "second floor of the house", the
---     Undercity quarters, the fishing hut) moved to the NPC in `npcs`; notes
---     about the step itself stay on the step.
---   * The five "train your new ranks" steps had no verb, only `npc` and `note`:
---     they are `note` steps with `npc`. The two Corpse Laden Boat / Dalaran
---     Crate hand-ins are `talk` steps with `object` and `at`.
---   * v2 `at` lists put the arrow target first and map pins after; the lists are
---     kept whole and in order (the escort's end, the Sepulcher, first).
---   * Every NPC the guide visits has a position; Astor Hadren (6497, walks the
---     road) and the kill targets are names only. No section needed a map added:
---     the Undercity and Durotar sections already had theirs, and off-map points
---     carry their own.
---   * `source` on the wrapper is taken from the header comment (the v2 meta had
---     none).
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-silverpine-12-14",
     updated = 1790726400,                -- 2026-09-30

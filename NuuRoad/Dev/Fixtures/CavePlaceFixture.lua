@@ -14,33 +14,41 @@ local _, ns = ...
 -- "Bristleback cave" step). The inside is a sketch to be replaced by walking
 -- it with the editor's Places panel (Record), which is the point of the
 -- fixture as much as the arrow is.
-ns.builtInGuides = ns.builtInGuides or {}
-ns.builtInGuides["nuuroad:fixture:cave-place"] = {
-    schema = 2, id = "nuuroad:fixture:cave-place", updated = 1790121600, map = 1412,
-    meta = { title = "Fixture: Cave place", author = "NuuRoad", category = "Fixtures/Travel", tags = { "fixture", "travel", "places" } },
-    places = {
-        { place = "bristleback", name = "Bristleback cave", width = 15,
-          points = {
-              { at = { 59.67, 83.33 }, kind = "entrance", label = "the south mouth" }, -- 1
-              { at = { 61.40, 81.60 }, kind = "entrance", label = "the camp mouth" },  -- 2
-              { at = { 60.10, 82.80 }, label = "the fork" },                           -- 3
-              { at = { 60.70, 82.20 } },                                               -- 4
-              { at = { 60.30, 82.20 }, label = "the ledge" },                          -- 5
-              { at = { 60.60, 82.90 }, id = "den" },                                   -- 6
-              { at = { 60.90, 83.40 }, kind = "exit", label = "the hole" },            -- 7
-          },
-          connections = { { 1, 3 }, { 3, 4 }, { 4, 2 }, { 3, 5 }, { 5, 6, true }, { 4, 6 }, { 3, 6 }, { 6, 7 } },
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide", schema = 1,
+    id = "nuuroad:fixture:cave-place", updated = 1790121600,
+    title = "Fixture: Cave place", category = "Fixtures/Travel", author = "NuuRoad", tags = { "fixture", "travel", "places" },
+    data = {
+        map = 1412,
+        places = {
+            { id = "bristleback", name = "Bristleback cave", width = 15,
+              points = {
+                  { id = "south", at = { 5967, 8333 }, kind = "entrance", label = "the south mouth" },
+                  { id = "camp", at = { 6140, 8160 }, kind = "entrance", label = "the camp mouth" },
+                  { id = "fork", at = { 6010, 8280 }, label = "the fork" },
+                  { id = "bend", at = { 6070, 8220 } },
+                  { id = "ledge", at = { 6030, 8220 }, label = "the ledge" },
+                  { id = "den", at = { 6060, 8290 } },
+                  { id = "hole", at = { 6090, 8340 }, kind = "exit", label = "the hole" },
+              },
+              links = {
+                  { from = "south", to = "fork" }, { from = "fork", to = "bend" }, { from = "bend", to = "camp" },
+                  { from = "fork", to = "ledge" }, { from = "ledge", to = "den", oneway = true },
+                  { from = "bend", to = "den" }, { from = "fork", to = "den" }, { from = "den", to = "hole" },
+              },
+            },
+        },
+        sections = {
+            { title = "Into the cave", steps = {
+                { type = "travel", to = "the den", label = "den", stand = "bristleback.den",
+                  note = "The arrow should lead in through a mouth, never up the hole, and follow the passage you take at the fork." },
+                { type = "travel", to = "the ledge", label = "ledge", stand = "bristleback.ledge",
+                  note = "From the den the drop cannot be climbed: the arrow goes round by the fork." },
+                { type = "travel", to = "the camp", label = "camp", at = { { 6235, 8127 } },
+                  note = "Back out: through the camp mouth, or down the hole if that is shorter." },
+                { type = "finish", note = "Cave fixture complete." },
+            } },
         },
     },
-    steps = {
-        { section = "Into the cave", steps = {
-            { travel = "the den", label = "den", at = "bristleback.den",
-                note = "The arrow should lead in through a mouth, never up the hole, and follow the passage you take at the fork." },
-            { travel = "the ledge", label = "ledge", at = "bristleback.5",
-                note = "From the den the drop cannot be climbed: the arrow goes round by the fork." },
-            { travel = "the camp", label = "camp", at = { 62.35, 81.27 },
-                note = "Back out: through the camp mouth, or down the hole if that is shorter." },
-            { finish = "Cave fixture complete." },
-        } },
-    },
-}
+})

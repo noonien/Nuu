@@ -746,54 +746,6 @@ function Client:GetAreaName(areaID)
     return name
 end
 
--- What is worn in an equipment slot, for the "only buy this if what you have
--- is worse" steps. Quality the client answers directly; damage per second is
--- only ever printed on the tooltip, so it is read there and comes back nil
--- wherever that fails, which the predicate reports as unknown rather than no.
-function Client:GetEquippedQuality(slot)
-    slot = tonumber(slot)
-    if not slot then return nil end
-    local quality = self:Read(GetInventoryItemQuality, "player", slot)
-    if type(quality) == "number" then return quality end
-    local link = self:Read(GetInventoryItemLink, "player", slot)
-    if type(link) ~= "string" then return nil end
-    local _, _, linkQuality = self:Read(GetItemInfo, link)
-    return type(linkQuality) == "number" and linkQuality or nil
-end
-
--- A tooltip nobody sees, for reading what the client only prints there.
-function Client:HiddenTooltip()
-    if self.statTooltip then return self.statTooltip end
-    if type(CreateFrame) ~= "function" then return nil end
-    local ok, created = pcall(CreateFrame, "GameTooltip", "NuuRoadStatTooltip", nil, "GameTooltipTemplate")
-    if not ok or not created then return nil end
-    self.statTooltip = created
-    if created.SetOwner and UIParent then pcall(created.SetOwner, created, UIParent, "ANCHOR_NONE") end
-    return created
-end
-
-function Client:GetEquippedDPS(slot)
-    slot = tonumber(slot)
-    if not slot then return nil end
-    local link = self:Read(GetInventoryItemLink, "player", slot)
-    if type(link) ~= "string" then return nil end
-    local tooltip = self:HiddenTooltip()
-    if not tooltip or not tooltip.SetHyperlink or not tooltip.NumLines then return nil end
-    pcall(tooltip.ClearLines, tooltip)
-    local ok = pcall(tooltip.SetHyperlink, tooltip, link)
-    if not ok then return nil end
-    local lines = self:Read(tooltip.NumLines, tooltip)
-    for index = 1, (tonumber(lines) or 0) do
-        local fontString = _G["NuuRoadStatTooltipTextLeft" .. index]
-        local text = fontString and fontString.GetText and self:Read(fontString.GetText, fontString)
-        if type(text) == "string" then
-            local dps = text:match("([%d%.]+) damage per second")
-            if dps then return tonumber(dps) end
-        end
-    end
-    return nil
-end
-
 function Client:GetSkillRank(name)
     if type(name) ~= "string" then return nil end
     if GetNumSkillLines and GetSkillLineInfo then
@@ -2189,10 +2141,12 @@ end
 -- Predicates ---------------------------------------------------------------
 --
 -- A predicate is data: `{ type = "class", values = { "SHAMAN" } }`. What each
--- type means is a Lua function registered here, so a new kind of condition is
--- one `RegisterPredicate` call and one `only` keyword, and nothing executable
--- ever enters a guide table. Schema validates authored conditions against this
--- same registry, so the two can no longer drift apart.
+-- type means is a Lua function registered here, and nothing executable ever
+-- enters a guide table. A guide's `cond` and `show` keys become class, race,
+-- faction, season, hardcore, profession, auctionHouse and selfFound; quest
+-- and item are the terms a step works out from its own fields (Steps:Expand).
+-- Schema validates conditions against this same registry, so the two cannot
+-- drift apart.
 --
 -- Evaluation is three-valued. `true` and `false` are answers; `nil` means the
 -- client cannot say, which is not the same as "no" on a beta client where half
@@ -2244,20 +2198,6 @@ Client:RegisterPredicate("quest", function(predicate)
     return Client:IsQuestInLog(id) or Client:IsQuestComplete(id)
 end)
 
-Client:RegisterPredicate("level", function(predicate)
-    local level = Client:Read(UnitLevel, "player")
-    if type(level) ~= "number" or level <= 0 then return nil end
-    if predicate.atLeast and level < tonumber(predicate.atLeast) then return false end
-    if predicate.atMost and level > tonumber(predicate.atMost) then return false end
-    return true
-end)
-
-Client:RegisterPredicate("experience", function(predicate)
-    local xp = Client:Read(UnitXP, "player")
-    if type(xp) ~= "number" then return nil end
-    return xp >= (tonumber(predicate.atLeast) or 0)
-end)
-
 -- A skill missing from a skill list the client did hand over is a real no,
 -- rank 0: every character lists weapon skills and languages, so an empty or
 -- unreadable list is the only unknown. The modern profession call is an
@@ -2270,13 +2210,6 @@ local function conditionRank(name)
     if next(Client:GetSkillRanks()) ~= nil or Client:GetProfessionRanks() ~= nil then return 0 end
     return nil
 end
-
-Client:RegisterPredicate("skill", function(predicate)
-    if type(predicate.name) ~= "string" then return nil end
-    local rank = conditionRank(predicate.name)
-    if rank == nil then return nil end
-    return rank >= (tonumber(predicate.atLeast) or 1)
-end)
 
 -- A profession is a skill the player has any rank in at all.
 Client:RegisterPredicate("profession", function(predicate)
@@ -2292,50 +2225,6 @@ Client:RegisterPredicate("item", function(predicate)
     local count = Client:GetItemCount(id)
     if count == nil then return nil end
     return count >= (tonumber(predicate.count) or 1)
-end)
-
-Client:RegisterPredicate("equippedItem", function(predicate)
-    local id = tonumber(predicate.id)
-    if not id then return nil end
-    return Client:IsItemEquipped(id)
-end)
-
-Client:RegisterPredicate("gold", function(predicate)
-    local money = Client:Read(GetMoney)
-    if type(money) ~= "number" then return nil end
-    return money >= (tonumber(predicate.atLeast) or 0)
-end)
-
-Client:RegisterPredicate("reputation", function(predicate)
-    local factionID = tonumber(predicate.factionID)
-    if not factionID then return nil end
-    local standing = Client:GetFactionStanding(factionID)
-    if standing == nil then return nil end
-    return standing >= (tonumber(predicate.standing) or 1)
-end)
-
-Client:RegisterPredicate("spell", function(predicate)
-    local id = tonumber(predicate.id)
-    if not id then return nil end
-    local known = Client:Read(IsPlayerSpell, id)
-    if known == nil then known = Client:Read(IsSpellKnown, id) end
-    if known == nil then return nil end
-    return known and true or false
-end)
-
-Client:RegisterPredicate("zone", function(predicate)
-    local mapID = tonumber(predicate.mapID)
-    if not mapID then return nil end
-    local current = Client:GetCurrentMapID()
-    if not current then return nil end
-    return current == mapID
-end)
-
-Client:RegisterPredicate("instance", function(predicate)
-    local inside = Client:Read(IsInInstance)
-    if inside == nil then return nil end
-    if predicate.inside == false then return not inside end
-    return inside and true or false
 end)
 
 -- Season of Discovery and the like. Unknown on a client without the API,
@@ -2357,77 +2246,13 @@ Client:RegisterPredicate("hardcore", function(predicate)
     return active
 end)
 
--- Where the hearthstone points, for a step that assumes the player can
--- hearth back.
-Client:RegisterPredicate("hearth", function(predicate)
-    if type(predicate.name) ~= "string" then return nil end
-    local bind = Client:GetBindLocation()
-    if bind == nil then return nil end
-    return tostring(bind):lower() == predicate.name:lower()
-end)
-
-Client:RegisterPredicate("subzone", function(predicate)
-    if type(predicate.name) ~= "string" then return nil end
-    local here = Client:GetSubzone()
-    if here == nil then return nil end
-    return here:lower() == predicate.name:lower()
-end)
-
--- `{ type = "slot", slot = 16, stat = "dps", below = 4.2 }`: the step is for a
--- player whose gear in that slot is worse than what the step offers.
-Client:RegisterPredicate("slot", function(predicate)
-    local value
-    if predicate.stat == "quality" then value = Client:GetEquippedQuality(predicate.slot)
-    elseif predicate.stat == "dps" then value = Client:GetEquippedDPS(predicate.slot)
-    else return nil end
-    -- Nothing worn at all is worse than anything, which is the case these
-    -- steps are really written for.
-    if value == nil then
-        local link = Client:Read(GetInventoryItemLink, "player", tonumber(predicate.slot))
-        if link == nil then return true end
-        return nil
-    end
-    if predicate.below then return value < tonumber(predicate.below) end
-    if predicate.atLeast then return value >= tonumber(predicate.atLeast) end
-    return nil
-end)
-
-Client:RegisterPredicate("aura", function(predicate)
-    local id = tonumber(predicate.id)
-    if not id then return nil end
-    if type(C_UnitAuras) ~= "table" or type(C_UnitAuras.GetPlayerAuraBySpellID) ~= "function" then return nil end
-    local aura = Client:Read(C_UnitAuras.GetPlayerAuraBySpellID, id)
-    return aura ~= nil
-end)
-
-Client:RegisterPredicate("cooldown", function(predicate)
-    local id = tonumber(predicate.id)
-    if not id then return nil end
-    local start, duration
-    if predicate.kind == "item" then start, duration = Client:Read(GetItemCooldown, id)
-    else start, duration = Client:Read(GetSpellCooldown, id) end
-    if type(start) ~= "number" or type(duration) ~= "number" then return nil end
-    local ready = start == 0 or duration == 0
-    if predicate.ready == false then return not ready end
-    return ready
-end)
-
--- Three things nothing observable can answer: how fast the realm gives
--- experience, whether the player will use the auction house, and whether they
--- are playing self found. The player says so once in Options, and the guide
--- reads the answer. Unknown until they have, so nothing is hidden by a
+-- Two things nothing observable can answer: whether the player will use the
+-- auction house, and whether they are playing self found. The player says so
+-- once in Options, and the guide reads the answer. Unknown until they have, so nothing is hidden by a
 -- question that was never asked.
 local function playerSetting(key)
     return ns.modules.Config:Get("realm." .. key)
 end
-
-Client:RegisterPredicate("xprate", function(predicate)
-    local rate = tonumber(playerSetting("xpRate"))
-    if not rate then return nil end
-    if predicate.below then return rate < tonumber(predicate.below) end
-    if predicate.atLeast then return rate >= tonumber(predicate.atLeast) end
-    return nil
-end)
 
 Client:RegisterPredicate("auctionHouse", function(predicate)
     local value = playerSetting("auctionHouse")
@@ -2442,153 +2267,6 @@ Client:RegisterPredicate("selfFound", function(predicate)
     if predicate.active == false then return not value end
     return value and true or false
 end)
-
--- The Lua fallback ---------------------------------------------------------
---
--- `{ type = "lua", body = "level() >= 10 and skill('Mining')" }` is the escape
--- hatch for a condition no registered kind covers. It is still data: a string,
--- which serializes into SavedVariables and renders in the editor, where a
--- function would do neither.
---
--- What keeps it from being arbitrary code:
---   * it is compiled as `return (<body>)`, so a statement -- any loop, any
---     assignment, any function definition -- is a syntax error, and an
---     expression cannot spin the client;
---   * it runs under a sandbox environment with no `_G`, so a name the sandbox
---     does not define is nil rather than the real global;
---   * the client is reachable only through the helpers below and `api(name)`,
---     which resolves against an allowlist of read-only calls, so nothing a
---     guide writes can send, sell, delete, target, or move anything;
---   * errors are unknown, not false, exactly like a missing API.
--- It is a fallback, not the first choice: a predicate used twice belongs in
--- `RegisterPredicate`, where the editor and the audit can see it by name.
-local luaSourceLimit = 400
-
--- Rejected at load with a message rather than silently resolving to nil, so a
--- guide that tries to break out says so instead of quietly never matching.
-local forbiddenNames = {
-    "_G", "_ENV", "getfenv", "setfenv", "loadstring", "load", "loadfile", "dofile", "require",
-    "rawget", "rawset", "rawequal", "rawlen", "newproxy", "collectgarbage", "coroutine",
-    "debug", "os", "io", "package", "getmetatable", "setmetatable", "pcall", "xpcall",
-    "SlashCmdList", "RunScript", "CreateFrame", "hooksecurefunc", "securecall",
-}
-
-function Client:InspectLuaPredicate(body)
-    if type(body) ~= "string" or body == "" then return nil, "is empty" end
-    if #body > luaSourceLimit then return nil, "is longer than " .. luaSourceLimit .. " characters" end
-    if body:find("[^\32-\126]") then return nil, "must be ASCII" end
-    for _, name in ipairs(forbiddenNames) do
-        if body:find("%f[%w_]" .. name .. "%f[^%w_]") then return nil, "may not name '" .. name .. "'" end
-    end
-    local chunk = "return (" .. body .. ")"
-    local compiled, err
-    if type(loadstring) == "function" then
-        compiled, err = loadstring(chunk, "nuuroad-condition")
-    elseif type(load) == "function" then
-        compiled, err = load(chunk, "nuuroad-condition")
-    else
-        return nil, "cannot be compiled on this client"
-    end
-    if not compiled then
-        return nil, "is not a single expression (" .. tostring(err) .. ")"
-    end
-    return compiled
-end
-
--- Exact names only, resolved through Client:Read so a secret value or a
--- missing API comes back as nil instead of raising. Adding a call here is the
--- supported way to widen the fallback's reach.
-local readableAPIs = {
-    "UnitLevel", "UnitClass", "UnitRace", "UnitFactionGroup", "UnitName", "UnitSex",
-    "UnitHealth", "UnitHealthMax", "UnitPower", "UnitPowerMax", "UnitXP", "UnitXPMax",
-    "UnitAffectingCombat", "UnitIsDeadOrGhost", "UnitBuff", "UnitDebuff", "UnitAura",
-    "GetMoney", "GetTime", "GetXPExhaustion", "IsResting", "IsMounted", "IsStealthed",
-    "IsIndoors", "IsInInstance", "IsSpellKnown", "IsPlayerSpell", "IsUsableSpell",
-    "GetSpellInfo", "GetSpellCooldown", "GetItemCooldown", "GetItemCount",
-    "GetInventoryItemID", "GetRealZoneText", "GetSubZoneText", "GetMinimapZoneText",
-    "GetProfessions", "GetProfessionInfo", "GetNumSkillLines", "GetSkillLineInfo",
-    "IsQuestFlaggedCompleted", "GetQuestsCompleted", "GetInstanceInfo", "GetAverageItemLevel",
-    "C_QuestLog.IsOnQuest", "C_QuestLog.IsComplete", "C_QuestLog.IsQuestFlaggedCompleted",
-    "C_Map.GetBestMapForUnit", "C_Seasons.GetActiveSeason", "C_Seasons.HasActiveSeason",
-    "C_GameRules.IsHardcoreActive", "C_Container.GetContainerItemInfo",
-}
-local readable = {}
-for _, name in ipairs(readableAPIs) do readable[name] = true end
-
-local function resolveAPI(name)
-    if not readable[name] then return nil end
-    local namespace, member = name:match("^([%w_]+)%.([%w_]+)$")
-    if namespace then
-        local container = rawget(_G, namespace)
-        if type(container) ~= "table" then return nil end
-        return container[member]
-    end
-    local func = rawget(_G, name)
-    if type(func) == "function" then return func end
-    return nil
-end
-
-local sandbox
-local function buildSandbox()
-    local env = {
-        -- Plain Lua, minus everything that can build a string big enough or
-        -- reach back out of the environment.
-        tonumber = tonumber, tostring = tostring, type = type, select = select,
-        ipairs = ipairs, pairs = pairs, unpack = unpack, next = next,
-        math = { abs = math.abs, ceil = math.ceil, floor = math.floor, max = math.max,
-                 min = math.min, huge = math.huge, fmod = math.fmod },
-        string = { lower = string.lower, upper = string.upper, sub = string.sub,
-                   find = string.find, match = string.match, len = string.len, byte = string.byte },
-
-        level = function() return Client:Read(UnitLevel, "player") end,
-        class = function() return playerClass() end,
-        race = function() return playerRace() end,
-        faction = function() return Client:Read(UnitFactionGroup, "player") end,
-        questInLog = function(id) return Client:IsQuestInLog(tonumber(id) or 0) end,
-        questFinished = function(id) return Client:IsQuestComplete(tonumber(id) or 0) end,
-        questReady = function(id) return Client:IsQuestReadyToTurnIn(tonumber(id) or 0) end,
-        itemCount = function(id) return Client:GetItemCount(tonumber(id) or 0) end,
-        equipped = function(id) return Client:IsItemEquipped(tonumber(id) or 0) end,
-        skill = function(name) return Client:GetSkillRank(name) end,
-        standing = function(id) return Client:GetFactionStanding(tonumber(id) or 0) end,
-        money = function() return Client:Read(GetMoney) end,
-        zone = function() return Client:GetCurrentMapID() end,
-        season = function()
-            if type(C_Seasons) ~= "table" or type(C_Seasons.GetActiveSeason) ~= "function" then return nil end
-            return Client:Read(C_Seasons.GetActiveSeason)
-        end,
-        api = function(name, ...)
-            local func = resolveAPI(name)
-            if not func then return nil end
-            return Client:Read(func, ...)
-        end,
-    }
-    env._G = nil
-    return env
-end
-
--- Compiled bodies are cached beside the guide, never on it: a predicate table
--- is guide data and has to stay free of functions to serialize and validate.
-local compiledBodies = setmetatable({}, { __mode = "k" })
-
-function Client:EvaluateLua(predicate)
-    local cached = compiledBodies[predicate]
-    if cached == nil then
-        local compiled, problem = self:InspectLuaPredicate(predicate.body)
-        cached = { func = compiled, problem = problem }
-        compiledBodies[predicate] = cached
-    end
-    if not cached.func then return nil end
-    sandbox = sandbox or buildSandbox()
-    if type(setfenv) == "function" then setfenv(cached.func, sandbox) end
-    local ok, result = pcall(cached.func)
-    if not ok then return nil end
-    if result == nil then return nil end
-    if result == false then return false end
-    return true
-end
-
-Client:RegisterPredicate("lua", function(predicate) return Client:EvaluateLua(predicate) end)
 
 -- Kleene logic: `all` is false as soon as one child is, true only when every
 -- child is, and unknown in between. `any` is its mirror. `kinds`, when given,
@@ -2643,22 +2321,17 @@ function Client:RulesOut(predicate)
     return self:EvaluateCondition(predicate, fixedKinds) == false
 end
 
--- What the player gains by playing: a quest taken or finished, a level, gold,
--- an item, a spell, a skill, standing, a place, a buff, a cooldown come back.
--- A term asking for one of these may not hold yet and still come to.
-local gainableKinds = {
-    quest = true, level = true, experience = true, gold = true, item = true, equippedItem = true,
-    spell = true, skill = true, profession = true, reputation = true, zone = true, subzone = true,
-    instance = true, hearth = true, aura = true, cooldown = true,
-}
+-- What the player gains by playing: a quest taken or finished, an item, a
+-- profession. A term asking for one of these may not hold yet and still come
+-- to.
+local gainableKinds = { quest = true, item = true, profession = true }
 
 -- Whether a condition could still hold: every gainable term the condition
 -- asks for is taken as gained, and the rest are read as they are now. A term
 -- under `not` is read as it is, so "not quest 858" with the quest already
 -- taken can never hold again, while "quest 858 readyToTurnIn" can. The
--- fixed terms, `slot` and `xprate` comparisons, the realm settings, a `now`
--- term, and a `when` expression are always read as they are. Unknown is not
--- a no.
+-- fixed terms, the realm settings and a `now` term are always read as they
+-- are. Unknown is not a no.
 local function couldHold(client, predicate, negated)
     if type(predicate) ~= "table" then return true end
     local kind = predicate.type

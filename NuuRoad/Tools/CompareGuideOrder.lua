@@ -38,10 +38,10 @@ _G = _G or _ENV
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
 Load(ns, "Data/Schema.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
-Load(ns, "Data/IDNames.lua"); Load(ns, "Data/Import.lua")
-ns.builtInGuides = {}
+Load(ns, "Data/IDNames.lua")
+ns.packagedGuides, ns.builtInGuides = {}, {}
 Load(ns, arg[1])
-ns.modules.GuideImport:RegisterPackaged()
+for _, guide in ipairs(ns.packagedGuides) do ns.builtInGuides[guide.id] = guide end
 
 -- The line range of the registration named by arg[3], or the whole file.
 local wanted = arg[3]

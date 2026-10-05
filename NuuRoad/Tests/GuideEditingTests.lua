@@ -6,14 +6,18 @@ for _, file in ipairs({ "Data/Schema.lua", "Data/Names.lua", "Data/Steps.lua",
     "Domain/GuideRepository.lua", "Domain/GuideEditing.lua", "Domain/Progress.lua", "UI/Editor.lua" }) do Load(ns, file) end
 local Schema, Editing, Repository, Progress = ns.modules.Schema, ns.modules.GuideEditing, ns.modules.GuideRepository, ns.modules.Progress
 local function fresh()
-    return ns.modules.Steps:Expand({ schema = 2, id = "test:edit", updated = 1789862400,
-        meta = { title = "Edit", category = "test" }, steps = {
-            { section = "Edit", steps = {
-                { group = { { accept = 870, label = "start" }, { accept = 871 }, { turnin = 844 } } },
-                { choice = "Choose", options = { { "Start", goto = "start" }, { "Finish", goto = "end" } } },
-                { finish = "Done", label = "end" },
+    return ns.modules.Steps:Expand({ kind = "guide", schema = 1, id = "test:edit", updated = 1789862400,
+        title = "Edit", category = "test", data = { sections = {
+            { title = "Edit", steps = {
+                { group = {
+                    { type = "accept", quests = { 870 }, label = "start" },
+                    { type = "accept", quests = { 871 } },
+                    { type = "turnin", quests = { 844 } },
+                } },
+                { type = "choice", text = "Choose", options = { { text = "Start", go = "start" }, { text = "Finish", go = "end" } } },
+                { type = "finish", note = "Done", label = "end" },
             } },
-        } })
+        } } })
 end
 local function valid(guide)
     local ok, errors = Schema:Validate(guide)
@@ -69,8 +73,8 @@ Progress:Select(guide)
 assert(Progress:GetCurrentIndex(guide) == 1 and Progress:KillCount(guide, 3) == 0)
 
 -- Applying an unchanged quest kill objective must not turn it into a kill counter.
-local node = ns.modules.Steps:Expand({ schema = 2, id = "t", updated = 1, meta = { title = "t", category = "test" },
-    steps = { { section = "s", steps = { { objective = 871, part = 1, kill = 3267, count = 8 } } } } }).nodes[1]
+local node = ns.modules.Steps:Expand({ kind = "guide", schema = 1, id = "t", updated = 1, title = "t", category = "test",
+    data = { sections = { { title = "s", steps = { { type = "kill", kill = { 3267 }, quest = { 871, 1 }, count = 8 } } } } } }).nodes[1]
 ns.modules.Editor:ApplyNPCs(node, { 3267 }, nil)
 assert(node.auto.verb == "objective" and node.completion.observed.type == "objective")
 

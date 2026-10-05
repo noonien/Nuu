@@ -8,21 +8,21 @@ Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
 local Schema, Steps, Progress = ns.modules.Schema, ns.modules.Steps, ns.modules.Progress
 
-local function compact(steps)
-    return { schema = 2, id = "test:groups", updated = 1789862400, map = 1413,
-        meta = { title = "Groups", category = "test" }, steps = steps }
+local function compact(sections)
+    return { kind = "guide", schema = 1, id = "test:groups", updated = 1789862400,
+        title = "Groups", category = "test", data = { map = 1413, sections = sections } }
 end
 local source = compact({
-    { section = "Visit", steps = {
-        { accept = 870, npc = 3448 },
+    { title = "Visit", steps = {
+        { type = "accept", quests = { 870 }, npc = { 3448 } },
         { group = {
-            { accept = 869, npc = 3464 },
-            { turnin = 871, accept = 872, npc = 3429, only = "Warrior" },
-            { accept = 844, npc = 3338 },
+            { type = "accept", quests = { 869 }, npc = { 3464 } },
+            { type = "talk", turnin = { 871 }, accept = { 872 }, npc = { 3429 }, cond = { class = "WARRIOR" } },
+            { type = "accept", quests = { 844 }, npc = { 3338 } },
         } },
-        { group = { { accept = 867 }, { accept = 848 } } },
-        { choice = "Continue?", options = { { "Done", goto = "end" } } },
-        { finish = "Done", label = "end" },
+        { group = { { type = "accept", quests = { 867 } }, { type = "accept", quests = { 848 } } } },
+        { type = "choice", text = "Continue?", options = { { text = "Done", go = "end" } } },
+        { type = "finish", note = "Done", label = "end" },
     } },
 })
 local guide = Steps:Expand(source)
@@ -36,7 +36,7 @@ for index, node in ipairs(guide.nodes) do
     assert(node.id == nil and node.index == index)
     assert(guide.sections[1].nodeIndexes[index] == index)
 end
-assert(source.steps[1].steps[2].group[1].index == nil, "source steps are not annotated")
+assert(source.data.sections[1].steps[2].group[1].index == nil, "source steps are not annotated")
 assert(#Steps:Expand(source).nodes == 8, "expansion can repeat")
 
 Progress.store, Progress.session = {}, {}
@@ -55,50 +55,56 @@ ns.modules.Client.MatchesCondition = function() return true end
 assert(#Progress:QuestGroup(guide, guide.nodes[2]) == 3)
 
 local visits = {}
-for index = 1, 12 do visits[index] = { accept = 800 + index } end
-local function oneSection(steps) return compact({ { section = "Visit", steps = steps } }) end
+for index = 1, 12 do visits[index] = { type = "accept", quests = { 800 + index } } end
+local function oneSection(steps) return compact({ { title = "Visit", steps = steps } }) end
 local large = Steps:Expand(oneSection({ { group = visits } }))
 assert(#Progress:QuestGroup(large, large.nodes[1]) == 12, "no eight-step limit")
 
 local camp = Steps:Expand(oneSection({ { group = {
-    { kill = 3265, count = 3 },
-    { objective = 871, part = 1, kill = 3267, count = 8 },
-    { collect = 5087, count = 7, kill = 3244 },
-    { accept = 870, npc = 3448 },
+    { type = "kill", kill = { 3265 }, count = 3 },
+    { type = "kill", kill = { 3267 }, quest = { 871, 1 } },
+    { type = "collect", item = 5087, count = 7, kill = { 3244 } },
+    { type = "accept", quests = { 870 }, npc = { 3448 } },
 } } }))
 assert(Schema:Validate(camp) and #camp.groups == 1, "kills, objectives, and collects can share a group")
 assert(#Progress:QuestGroup(camp, camp.nodes[1]) == 4)
 
+local accept870 = { type = "accept", quests = { 870 } }
+local accept871 = { type = "accept", quests = { 871 } }
 local invalid = {
-    { group = { { kill = 3265 }, { travel = "Ratchet", at = { 62.0, 37.0 } } } },
-    { group = {} },
-    { group = { { accept = 870 } } },
-    { group = { { accept = 870 }, { note = "Not a visit" } } },
-    { group = { { accept = 870 }, { section = "Break", steps = {} } } },
-    { group = { { accept = 870 }, { group = visits } } },
-    { group = { { accept = 870 }, { accept = 871, ["next"] = 1 } } },
-    { group = { { accept = 870 }, { accept = 871 } }, id = "unnecessary" },
-    { group = { [1] = { accept = 870 }, [3] = { accept = 871 } } },
+    { { group = { { type = "kill", kill = { 3265 } }, { type = "travel", to = "Ratchet", at = { { 6200, 3700 } } } } },
+        "group members are quest visits or quest objectives" },
+    { { group = {} }, "a group holds two or more steps" },
+    { { group = { accept870 } }, "a group holds two or more steps" },
+    { { group = { accept870, { type = "note", note = "Not a visit" } } }, "group members are quest visits or quest objectives" },
+    { { group = { accept870, { title = "Break", steps = {} } } }, "unknown step type 'nil'" },
+    { { group = { accept870, { group = visits } } }, "groups do not nest" },
+    { { group = { accept870, accept871 }, id = "unnecessary" }, "steps[1].id: is not a field of a group" },
+    { { group = { [1] = accept870, [3] = accept871 } }, "a group holds two or more steps" },
 }
-for _, step in ipairs(invalid) do
-    assert(not pcall(Steps.Expand, Steps, oneSection({ step })), "invalid wrappers are rejected")
+for _, case in ipairs(invalid) do
+    local fine, message = pcall(Steps.Expand, Steps, oneSection({ case[1] }))
+    assert(not fine and tostring(message):find(case[2], 1, true), "invalid wrappers are rejected: " .. tostring(message))
 end
-assert(not pcall(Steps.Expand, Steps, oneSection({ { id = "old", accept = 870 } })))
--- v2 has no authored positions: a step cannot carry an edge of its own, a
--- branch goes to a label, and two things cannot share one label.
-assert(not pcall(Steps.Expand, Steps, oneSection({ { accept = 870, ["next"] = 1 } })))
-assert(not pcall(Steps.Expand, Steps, oneSection({ { choice = "?", options = { { "Go", goto = 2 } } }, { finish = "." } })))
-assert(not pcall(Steps.Expand, Steps, oneSection({ { choice = "?", options = { { "Go", goto = "nowhere" } } } })))
-assert(not pcall(Steps.Expand, Steps, oneSection({ { accept = 870, label = "one" }, { accept = 871, label = "one" } })))
-assert(not pcall(Steps.Expand, Steps, compact({ { accept = 870 } })), "steps live in sections")
-assert(not pcall(Steps.Expand, Steps, compact({ { section = "Empty", steps = {} } })), "a section needs steps")
+-- v1 has no authored positions: a step carries no edge or ID of its own (an
+-- unknown field is not read), a branch goes to a label, and two things
+-- cannot share one label.
+local plain = Steps:Expand(oneSection({ { type = "accept", quests = { 870 }, id = "old", ["next"] = 5 } }))
+assert(plain.nodes[1].id == nil and plain.nodes[1]["next"] == nil and Schema:Validate(plain))
+assert(not pcall(Steps.Expand, Steps, oneSection({
+    { type = "choice", text = "?", options = { { text = "Go", go = 2 } } }, { type = "finish", note = "." } })))
+assert(not pcall(Steps.Expand, Steps, oneSection({ { type = "choice", text = "?", options = { { text = "Go", go = "nowhere" } } } })))
+assert(not pcall(Steps.Expand, Steps, oneSection({
+    { type = "accept", quests = { 870 }, label = "one" }, { type = "accept", quests = { 871 }, label = "one" } })))
+assert(not pcall(Steps.Expand, Steps, compact({ accept870 })), "steps live in sections")
+assert(not pcall(Steps.Expand, Steps, compact({ { title = "Empty", steps = {} } })), "a section needs steps")
 -- A section may carry a map for its whole span, and a label of its own.
 local mapped = Steps:Expand(compact({
-    { section = "Barrens", steps = { { accept = 870, at = { 52.26, 31.93 }, label = "back" } } },
-    { section = "Orgrimmar", map = 1454, steps = {
-        { accept = 1061, at = { 38.93, 38.38 } },
-        { travel = "Thunder Bluff", at = { 45.81, 64.71, map = 1456 } },
-        { choice = "Back?", options = { { "Return", goto = "back" } } },
+    { title = "Barrens", steps = { { type = "accept", quests = { 870 }, at = { { 5226, 3193 } }, label = "back" } } },
+    { title = "Orgrimmar", map = 1454, steps = {
+        { type = "accept", quests = { 1061 }, at = { { 3893, 3838 } } },
+        { type = "travel", to = "Thunder Bluff", at = { { 4581, 6471, map = 1456 } } },
+        { type = "choice", text = "Back?", options = { { text = "Return", go = "back" } } },
     } },
 }))
 assert(mapped.nodes[1].location.mapID == 1413 and mapped.nodes[2].location.mapID == 1454, "a section map covers its span")

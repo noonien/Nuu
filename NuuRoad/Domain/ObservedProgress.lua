@@ -249,7 +249,8 @@ function ObservedProgress:PassedTo(guide, node)
         return provesVisit(observed) and not GuideScan:NodeIsMoot(candidate) and GuideScan:NodeCompleted(candidate)
     end
     -- The walk is the flow's, except that a step gated out because its quest
-    -- was already handed in (`only = "quest N readyToTurnIn"`) still proves
+    -- was already handed in (an optional turn-in, passed unless the quest is
+    -- ready) still proves
     -- the visit: the player did it out of order, and the travel to it has
     -- nothing left to lead to.
     local ahead, cursor = node, node

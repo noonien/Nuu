@@ -14,16 +14,16 @@ Load(ns, "Domain/QuestSelection.lua")
 local Steps, QuestSelection = ns.modules.Steps, ns.modules.QuestSelection
 
 local guide = Steps:Expand({
-    schema = 2, id = "test:selection", updated = 1789862400, map = 1413, meta = { title = "Selection", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 869, npc = 3464 },
-        { objectives = 869 },
-        { turnin = 869, accept = 871, npc = 3464 },
-        { travel = "South road", at = { 44, 59 } },
-        { collect = 4926, starts = 819, object = "Chen's Empty Keg" },
+    kind = "guide", schema = 1, id = "test:selection", updated = 1789862400, title = "Selection", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "accept", quests = { 869 }, npc = { 3464 } },
+        { type = "kill", quest = 869 },
+        { type = "talk", turnin = { 869 }, accept = { 871 }, npc = { 3464 } },
+        { type = "travel", to = "South road", at = { { 4400, 5900 } } },
+        { type = "collect", item = 4926, starts = 819, object = "Chen's Empty Keg" },
     } },
-},
+} },
 })
 local nodes = guide.nodes
 

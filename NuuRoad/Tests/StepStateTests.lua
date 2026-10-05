@@ -18,20 +18,23 @@ local Steps, Progress, ObservedProgress, StepState = ns.modules.Steps, ns.module
 
 -- Snapshots of what the flow sees, recorded only when they change.
 local guide = Steps:Expand({
-    schema = 2, id = "test:stepstate", updated = 1789862400, map = 1413, meta = { title = "Step state", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { accept = 870, npc = 3448 },
+    kind = "guide", schema = 1, id = "test:stepstate", updated = 1789862400, title = "Step state", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "accept", quests = { 870 }, npc = { 3448 } },
         { group = {
-            { objective = 870, part = 1, kill = 3267, count = 8 },
-            { objective = 870, part = 2, kill = 3268, only = "Shaman" },
-            { objective = 870, part = 3, kill = 3269 },
+            { type = "kill", kill = { 3267 }, quest = { 870, 1 }, count = 8 },
+            { type = "kill", kill = { 3268 }, quest = { 870, 2 }, cond = { class = "SHAMAN" } },
+            { type = "kill", kill = { 3269 }, quest = { 870, 3 } },
         } },
-        { note = "Only with the book.", only = "now item 4470" },
-        { turnin = 870, npc = 3448 },
+        { type = "note", note = "Only with the book." },
+        { type = "turnin", quests = { 870 }, npc = { 3448 } },
     } },
-},
+} },
 })
+-- Shown only while the book is carried: a term no guide writes any more, as
+-- the runtime predicate the flow still reads.
+guide.nodes[5].condition = { type = "now", child = { type = "item", id = 4470 } }
 Progress.store, Progress.session = {}, {}
 ns.modules.GuideRepository = { Get = function(_, id) return id == guide.id and guide or nil end }
 Progress:Select(guide)

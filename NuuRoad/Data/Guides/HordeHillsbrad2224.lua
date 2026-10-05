@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeHillsbrad2224.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 22-24 leveling route through the Sepulcher, Tarren Mill, Durnholde Keep
 -- and the Hillsbrad farms, ported from the Hillsbrad half of RestedXP's Classic
@@ -63,70 +61,12 @@
 --
 -- Maps: 1424 Hillsbrad Foothills (guide default), 1421 Silverpine Forest,
 -- 1420 Tirisfal Glades, 1411 Durotar.
---
--- Conversion notes:
---   * Wrapper: only = "Horde" -> cond = { faction = "Horde" }; levels { 22, 24 }
---     -> { from = 22, to = 24 }; `source` written from the header comment. Same
---     id and updated timestamp.
---   * `names` -> `npcs`: NPCs with a position go under the map their `at` was
---     on (1421 for Renferrel, Karos Razok and Mura Runetotem; 1424 for the
---     rest). Quest and item names are dropped (the client names them).
---   * NPC notes: step notes that only said where a visited NPC stands moved to
---     the NPC (Renferrel, Lesh, Zarise, Lydon, Umpi, Innkeeper Shay, Ott, Kris
---     Legace, Stanley). Umpi's "in the same building" is reworded "In
---     Apothecary Lydon's building." since an NPC note stands on its own. Notes
---     that only repeated the step title ("Sharp Arrows from Kayren Soothallow")
---     are dropped. No visited NPC lacks a position.
---   * Travel areas and flight nodes: the source names subzones (The Sepulcher,
---     Durnholde Keep, Hillsbrad Fields) and flight paths (The Sepulcher, Tarren
---     Mill) by name. The travel steps leave `area` out and finish on arriving
---     at their `at`. The flight nodes are TaxiNodes 10 (The Sepulcher) and 13
---     (Tarren Mill), from db/sources/wago/forever. Zones (Tirisfal Glades,
---     Hillsbrad Foothills) became zone = 1420 / 1424.
---   * Multi-point `at` on the two long travel steps keeps the source's order
---     (target first, then the road pins), though format 1 reads a list as
---     "nearest wins".
---   * Objectives: every `objective`/`part` had its number in the source; none
---     inferred. Their counts (10, 6, 15, 4, 30, 5) are dropped, as is Enraged
---     Stanley's kill count = 1. The Ball and Chain objectives are interact
---     steps; the waterskin, vials, tongues, ichor, blood, Shipment of Iron and
---     skulls are collect steps. The jailors' keys keep quest = 498 (the whole
---     quest; count defaults to 1).
---   * track/untrack (5 pairs) -> `from` on the steps the untrack handed over
---     to. Labels: 496 from the "Durnholde Keep" section ("durnholde"), 549 from
---     the travel to Durnholde ("keep"), 501 from the "Hillsbrad Fields"
---     section ("fields"), 527 from the travel to Hillsbrad Fields ("farms"),
---     546 from the "Hillsbrad" section ("hillsbrad"); each label sits where the
---     source wrote its track. The track notes moved onto those steps (split
---     between the bears and creepers for 496; whole on the Syndicate Rogue step
---     for 549, whose Shadow Mage vial step gets no `from`, as the source
---     tracked 549 only; merged with the skull step's own note for 546).
---   * `only` class terms -> cond. The food and drink class gates are named
---     conditions in data.conds ("drinks", "eats").
---   * Dropped `now` gates: every money gate (the buys), the hunters' level 25
---     gate on Sharp vs Razor Arrows (each step's note now says which level it
---     is for, so the player skips the other), and the main-hand dps gates
---     (slot 16) on the Longsword, Merciless Axe and Broad Bladed Knife.
---   * Quest-state `only` terms, which format 1 cannot express:
---       - "quest 3301", "quest 264", "quest 1065" on turn-ins/talks of quests
---         brought from earlier guides -> optional = true (passed unless ready).
---       - "quest 1066" on the 1066 -> 1067 talk -> optional = true; on the vial
---         collect step -> dropped (a player without Blood of Innocents skips it).
---       - "Shaman | quest 1536" on the Spring Well step -> cond = SHAMAN only;
---         the in-log term is dropped (a Shaman without Call of Water skips it).
---       - "now quest 546 readyToTurnIn" on Samsa's turn-in -> optional = true,
---         which passes it unless ready, as the gate did.
---   * vendor = "repair" at Ott -> sell = true, repair = true, since the step's
---     note said to sell trash and repair; the note is dropped.
---   * Section maps: "To the Sepulcher" keeps map = 1421; no section relied on
---     a first point's map, so no map was added.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-hillsbrad-22-24",
     updated = 1790985600,

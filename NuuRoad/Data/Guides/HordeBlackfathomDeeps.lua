@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeBlackfathomDeeps.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Every Horde quest of Blackfathom Deeps, from Tsunaman at Sun Rock Retreat to the last
 -- turn-ins at Zoram'gar Outpost and Thunder Bluff. The quest list and chains follow
@@ -56,50 +54,12 @@
 --
 -- Maps: 1440 Ashenvale (guide default), 1442 Stonetalon Mountains, 1456 Thunder Bluff,
 -- 1413 The Barrens.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper cond = { faction = "Horde" }; meta levels { 22, 30 }
---     -> levels = { from = 22, to = 30 }. Same id and updated.
---   * `only = "Warlock"` (accept 1740) and `"Warlock | quest 1740"` (fragments, turn-in)
---     -> cond = { class = "WARLOCK" }; the quest-state half is dropped.
---   * Dropped quest-state gates: "not quest 6563" on the 6562 accept (a breadcrumb that can
---     no longer be taken is passed by the addon); "not quest 6564" on the Damp Note collect
---     (a collect with `starts` is done once 6564 was ever taken); "quest 6563", "quest 6565",
---     "quest 6921", "quest 6561" on the objective steps (a quest never taken takes its
---     steps out); "quest 6921 or item 16782" on the Baron Aquanis collect and accept (the
---     accept from an item passes when the globe is not in the bags; the collect stays
---     unconditional).
---   * `now quest ...` and `quest ... readyToTurnIn` / `quest ...` on turn-ins (Zoram'gar
---     6562, Back to Je'neu 6564/6565 and 6563, all of Turning in) -> optional = true, which
---     keeps the old behaviour of passing a turn-in that is not ready. The 6564 turn-in plus
---     6565 accept became a talk step (turnin + accept), optional.
---   * `objective`/`part` -> quest = { id, 1 } on collect/kill steps. Counts dropped: the
---     Sapphires' count = 20 and the fragments' count = 3 are the objectives' business.
---   * The Damp Note accept and the Strange Water Globe accept had no npc: written as accepts
---     from an item (item = 16790, item = 16782).
---   * Travel `zone = "Blackfathom Deeps"` (a name): the dungeon's instance ID is not in the
---     repo, so `instance` is left out and the step finishes on arrival at the portal point
---     (1650, 1100). Add instance = 48 (Blackfathom Deeps' usual GetInstanceInfo ID) once
---     confirmed on the Forever client.
---   * Travel `zone = "Ashenvale"` -> zone = 1440.
---   * NPCs inside the dungeon (Argent Guard Thaelrid 4787, the kill targets 4809, 4832,
---     12876, 12902) are listed under 1440, the entrance's map. Thaelrid is visited, so he
---     gets a note saying where he stands; he lacks `instance` (ID not in the repo, as above)
---     and has no position. The others are kill targets: names only, their step notes say
---     where.
---   * Where-notes moved from steps to the NPC they place: Tsunaman's ledge, Je'neu's spot
---     in Zoram'gar, Bashana on the Elder Rise, Thaelrid's spot. Route notes (flight path,
---     sharing, Warlock-only) stay on the steps.
---   * `names.quests` and `names.items` dropped: the client names them.
---   * No track/untrack pairs, no places, no section maps needed (every off-map point is an
---     NPC listed under its own map).
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-blackfathom-deeps-quests",
     updated = 1790985600,
@@ -109,7 +69,7 @@ table.insert(ns.packagedGuides, {
     tags = { "horde", "dungeon", "blackfathom deeps", "bfd", "ashenvale", "zoram'gar" },
     levels = { from = 22, to = 30 },
     cond = { faction = "Horde" },
-    source = "Converted from NuuRoad's earlier Blackfathom Deeps guide (format v2).",
+    source = "NuuRoad's own route through Blackfathom Deeps.",
 
     data = {
         map = 1440,

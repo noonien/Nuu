@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeMulgore612.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 6-12 leveling route through Mulgore and Thunder Bluff. Step order, quest
 -- IDs, NPC IDs, item IDs, coordinates, and grind loops are NuuRoad's own.
@@ -14,78 +12,12 @@
 --
 -- Maps: 1412 Mulgore (guide default), 1456 Thunder Bluff, 1413 The Barrens,
 -- 1411 Durotar, 1450 Moonglade. Coordinates are hundredths of a map percent.
---
--- Conversion notes:
---   * `only` terms became `cond`: "Horde" -> wrapper cond { faction = "Horde" };
---     "Tauren" -> { race = "tauren" }; single classes -> { class = "..." };
---     "Shaman or Druid", "Warrior or Hunter" -> { class = { ..., ... } }.
---   * `only = "quest 770"` (two turn-ins of The Demon Scarred Cloak, started
---     from Ghost Howl's drop and never accepted in this guide) is a quest-state
---     predicate the format drops; both turn-ins are `optional = true` instead,
---     so they pass on arrival unless 770 is ready. No `now` terms or
---     condition-only gates were in the source.
---   * The first turn-in of Swoop Hunting (761, "skip this if you are still
---     short of quills") is `optional = true` too, matching its note.
---   * track / untrack pairs became `from`: tracks 766 and 761 opened the
---     section "The plains east of the village", which now carries label
---     "plains"; the 761 quill step (Windfury Ridge) and the 766 sweep step
---     carry from = "plains". The untrack steps are dropped. The track 766 note
---     (one of each part, keep the quest in mind) is merged into the note of
---     the 766 step, which is carried from the start of that section.
---   * Objective numbers are the source's `part` values; none were inferred.
---     The 766 step was `objective = 766` with no part, so it is quest = 766
---     (the whole quest), type "collect" without an item: the four Mazzranache
---     items have no IDs in the source. The creatures its note names are not
---     marked, for the same reason (not given as IDs on that step).
---     Objective counts (6, 4, 2, 2, 10, 8, 5, 6, 6, 5, 8, 8, 6, 6, 4, 14, 6, 5)
---     are dropped: the objective counts.
---   * The three cleansing totem objectives (754, 758, 760) are travel steps to
---     the well with `quest = { id, 1 }`, `use` and `item` = the totem: a
---     scripted event set off at a place, finished by the objective. The
---     well names in `to` are display text from the source's notes/section.
---   * The Hunter taming objectives (6061, 6087, 6088) were objective steps with
---     a `kill` target. Taming is not a kill, so they are type "interact" with
---     the creature in `mark` (the creature an item is used on) and the
---     objective in `quest`; no object text and no Taming Rod ID (not in the
---     source). The Lunaclaw objective (6002) stays a kill with `use`/`item`.
---   * The Great Bear Spirit objective (5930, 1) is a talk step with that npc.
---   * Accept 819 from Chen's Empty Keg gets item = 4926 (the keg the step
---     before collects), no npc, so it passes if the keg was never looted.
---   * Morin Cloudstalker walks the eastern road: the five route points the
---     steps carried are now his `at` in `npcs`, with the first step's note as
---     his note; the steps drop their `at` and the two later notes that only
---     repeated where he walks ("walking the eastern road again", "on the
---     eastern road"). They keep radius = 500.
---   * NPC-only steps with a note: trainer visits stay type "note" with `npc`
---     (no spell IDs in the source); Harant Ironbrace ("sells and repairs")
---     became type "vendor", sell and repair.
---   * IDs looked up in the repo: hearth areas from db/sources/wago/forever/
---     AreaTable.csv (Bloodhoof Village 222, Thunder Bluff 1638, The Crossroads
---     380); flight nodes from db/horde/flightpaths.json (Camp Taurajo 77, The
---     Crossroads 25); skills from API/Client.lua professionSkillLines (First
---     Aid 129, Skinning 393).
---   * Train Staves and Train Two-Handed Maces: SkillLine 136 (Staves) and 160
---     (Two-Handed Maces); the notes still name the skill.
---   * Travel steps keep the source's arrival points and add no `zone`/`area`:
---     the v2 travel finished on arrival, and so do these.
---   * The Gathering Leather steps (768) keep the source's "skip if no Skinning"
---     notes and gain no `show = { skill = 393 }`; that would be a new rule,
---     not a conversion. The Light Leather collect has no quest objective in
---     the source, so it keeps count = 12.
---   * Buys without a count drop it (default 1). Radii: 0.03 -> 300,
---     0.04 -> 400, 0.05 -> 500, 0.06 -> 600, 0.08 -> 800.
---   * Every visited NPC has a position from the source's `names`; NPCs are
---     grouped by the map of that position. Kill targets are listed under the
---     map they are fought on (Lightning Hide under Durotar, Lunaclaw under The
---     Barrens). Quest and item names are dropped (the client names them).
---   * No section needed a map of its own beyond the source's: points off a
---     section's map already carried their own map.
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-mulgore-6-12",
     updated = 1789862400,

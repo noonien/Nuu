@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeRagefireChasm.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Every Horde quest of Ragefire Chasm, from Rahauro in Thunder Bluff to the last
 -- Hidden Enemies turn-in with Thrall. Quest, NPC and item IDs, coordinates, the pickup
@@ -27,50 +25,12 @@
 --     placed by note; the instance map is not in the travel data.
 --
 -- Maps: 1454 Orgrimmar (guide default), 1411 Durotar, 1456 Thunder Bluff, 1458 Undercity.
---
--- Conversion notes:
---   * Guide `only = "Horde"` became the wrapper's cond = { faction = "Horde" }.
---   * Every step-level `only` was a quest-state predicate, which the format drops:
---       - "not quest 5727" / "not quest 5728" on the Hidden Enemies accepts, turn-ins
---         and Neeru's talk: dropped; a quest that can no longer be taken leaves the
---         guide, and a finished objective passes its step.
---       - "not quest 5726 finished" on the insignia collect: dropped (a finished quest
---         passes the step).
---       - "quest 5723", "quest 5725", "quest 5761", "quest 5728", "quest 5722" on the
---         dungeon steps, and "quest 5729/5730/5724" on the turn-ins: dropped. Without
---         the quest the step stops for the player to skip (the format's default); the
---         addon change for missing quests would cover it.
---       - "quest N readyToTurnIn" on the 5761, 5725 and 5723 turn-ins became
---         optional = true (passed on arrival unless ready). "quest 5728 readyToTurnIn
---         or quest 5728 finished" on Thrall's 5728 hand-in: dropped.
---   * No `now` terms, no track/untrack pairs, no `with`; no labels needed.
---   * Objective numbers are the source's `part` values; none was inferred.
---   * kill `count = 8` on the two 5723 steps dropped: the objective counts.
---   * Turn-in plus accept at one NPC became `talk` with turnin/accept lists; the
---     5727 objective at Neeru is a talk with quest = { 5727, 1 }. Its gossip option
---     ID is not in the repo, so there is no `say`; the note naming the option stays.
---   * Travel `zone = "Ragefire Chasm"` was a name; the dungeon's instance ID is not in
---     the repo, so the step has no zone/instance and finishes on arriving at the
---     portal point. Travel back: zone = 1454 (Orgrimmar).
---   * The dungeon NPCs (Maur Grimtotem, the bosses, trogg and cultist kill targets)
---     are listed under 1454, the map of the entrance, without `instance` (ID unknown)
---     and without positions. Maur Grimtotem's step note moved to his NPC note.
---   * Step notes that only placed the NPC moved to the NPC's note: Rahauro ("On the
---     Elder Rise..."), Thrall (Grommash Hold door), Neeru (the way down to the Cleft
---     of Shadow). Notes that say how to get there this time stay on the step.
---   * Burning Blade Apprentice and Fanatic listed under 1411 (Durotar, Skull Rock).
---   * Varimathras's note gives the Undercity tunnel at 51.93, 64.78 as text only; no
---     section map was needed since every point names its own map or is on 1454.
---   * Quest and item names (`names.quests`, `names.items`) dropped: the client names
---     them.
---   * The collect at Skull Rock keeps radius 0.04 as 400.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-ragefire-chasm-quests",
     updated = 1790208000,

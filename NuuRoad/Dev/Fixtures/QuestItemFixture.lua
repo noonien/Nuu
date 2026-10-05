@@ -10,41 +10,37 @@ local _, ns = ...
 -- not always the item the step counts. The Bael'dun step counts Broken Tools
 -- and presses Prospector's Picks, so the item panel must offer the pick and
 -- not the tools.
-ns.builtInGuides = ns.builtInGuides or {}
-ns.builtInGuides["nuuroad:fixture:quest-items"] = {
-    schema = 2, id = "nuuroad:fixture:quest-items", updated = 1789862400, map = 1413, only = "Horde",
-    meta = { title = "Fixture: Quest Items", author = "NuuRoad", category = "Fixtures/Quest items", tags = { "fixture", "item", "quest", "horde" } },
-    steps = {
-        { section = "Items that begin a quest", steps = {
-            { object = "Chen's Empty Keg", collect = 4926, starts = 819, at = { 55.78, 20.01 }, note = "The keg spawns on the ground here. Loading the guide with it neither in your bags nor its quest in your log lands on this step." },
-            { accept = 819, note = "Use the keg to start its quest. Both this step and the one before turn green once the quest is in your log." },
-        } },
-
-        { section = "Quest items", steps = {
-            { object = "Flawed Power Stones", collect = 4986, quest = 924, at = { 62.34, 20.03 }, note = "Reads red (not yours to do) unless The Demon Seed is in your log, done once the stone is in your bags or the quest is finished." },
-        } },
-
-        { section = "Items to press", steps = {
-            { objective = 746, part = 1, collect = 4703, count = 5, kill = { 2989, 2990 }, use = 4702, at = { 31.27, 49.87 },
-                note = "Counts Broken Tools, presses Prospector's Picks: while a pick is in your bags the item panel offers the pick, never the tools." },
-            { finish = "Quest item fixture complete." },
-        } },
-    },
-    names = {
+ns.packagedGuides = ns.packagedGuides or {}
+table.insert(ns.packagedGuides, {
+    kind = "guide", schema = 1,
+    id = "nuuroad:fixture:quest-items", updated = 1789862400,
+    title = "Fixture: Quest Items", category = "Fixtures/Quest items", author = "NuuRoad",
+    tags = { "fixture", "item", "quest", "horde" },
+    cond = { faction = "Horde" },
+    data = {
+        map = 1413,
+        sections = {
+            { title = "Items that begin a quest", steps = {
+                { type = "collect", object = "Chen's Empty Keg", item = 4926, starts = 819, at = { { 5578, 2001 } },
+                  note = "The keg spawns on the ground here. Loading the guide with it neither in your bags nor its quest in your log lands on this step." },
+                { type = "accept", quests = { 819 },
+                  note = "Use the keg to start its quest. Both this step and the one before turn green once the quest is in your log." },
+            } },
+            { title = "Quest items", steps = {
+                { type = "collect", object = "Flawed Power Stones", item = 4986, quest = 924, at = { { 6234, 2003 } },
+                  note = "Reads red (not yours to do) unless The Demon Seed is in your log, done once the stone is in your bags or the quest is finished." },
+            } },
+            { title = "Items to press", steps = {
+                { type = "collect", item = 4703, quest = { 746, 1 }, kill = { 2989, 2990 }, use = { 4702 }, at = { { 3127, 4987 } },
+                  note = "Counts Broken Tools, presses Prospector's Picks: while a pick is in your bags the item panel offers the pick, never the tools." },
+                { type = "finish", note = "Quest item fixture complete." },
+            } },
+        },
         npcs = {
-            [2989] = "Bael'dun Digger",
-            [2990] = "Bael'dun Appraiser",
-        },
-        quests = {
-            [746] = "Dwarven Digging",
-            [819] = "Chen's Empty Keg",
-            [924] = "The Demon Seed",
-        },
-        items = {
-            [4702] = "Prospector's Pick",
-            [4703] = "Broken Tools",
-            [4926] = "Chen's Empty Keg",
-            [4986] = "Flawed Power Stone",
+            [1413] = {
+                [2989] = "Bael'dun Digger",
+                [2990] = "Bael'dun Appraiser",
+            },
         },
     },
-}
+})

@@ -132,14 +132,14 @@ local goalIcons = {
 }
 local goalGlyphs = {
     accept = "!", turnin = "?", objective = "x", escort = "&", talk = "?!", kill = "x", collect = "o", interact = "*", use = "*", travel = "->",
-    hearth = "H", flight = "F", level = "L", done = "v", skipped = ">>", note = "-", choice = "Y", ["end"] = ".", reminder = "~",
+    hearth = "H", flight = "F", level = "L", done = "v", skipped = ">>", note = "-", choice = "Y", ["end"] = ".",
     train = "T", skill = "S", craft = "C", buy = "$", equip = "E", reputation = "R", gather = "g",
 }
 -- Icon for a whole step, on the single-line rows.
 local kindIcon = {
-    acceptQuest = "accept", turnInQuest = "turnin", talk = "turnin", questObjective = "objective", objectiveGroup = "objective", escort = "escort",
+    acceptQuest = "accept", turnInQuest = "turnin", talk = "turnin", questObjective = "objective", escort = "escort",
     kill = "kill", collect = "collect", loot = "collect", interact = "interact", travel = "travel", hearth = "hearth",
-    flight = "flight", levelTarget = "level", note = "note", action = "note", choice = "choice", ["end"] = "end", reminder = "reminder",
+    flight = "flight", levelTarget = "level", note = "note", action = "note", choice = "choice", ["end"] = "end",
     train = "train", cast = "use", skillTarget = "skill", craft = "craft", skillUp = "craft", gather = "gather", buy = "buy", equip = "equip", reputationTarget = "reputation",
 }
 -- A material's icon says where it comes from, the same way the step verbs do.
@@ -266,7 +266,7 @@ local function withNPCs(goal, npcs)
     copy.npcs = npcs
     return copy
 end
-local liveObjectiveKinds = { questObjective = true, objectiveGroup = true, kill = true, collect = true }
+local liveObjectiveKinds = { questObjective = true, kill = true, collect = true }
 
 -- A quest or creature ID in a tooltip is for checking a guide, so it shows
 -- only with the debug log on.
@@ -652,25 +652,6 @@ function MainWindow:StepTooltip(node, hint, noteShown)
             tip:AddLine(" "); tip:AddLine(node.body, 0.9, 0.9, 0.9, true)
         end
         if hint and hint ~= "" then tip:AddLine(" "); tip:AddLine(hint, 0.5, 0.8, 0.95, true) end
-    end
-end
-
--- Tooltip for a sticky quest line: the quest itself, and every objective of
--- it with the client's own progress, since the line shows only the one the
--- player is furthest from.
-function MainWindow:StickyTooltip(questID)
-    return function(tip)
-        local Client, Names = M("Client"), M("Names")
-        tip:SetText(Names:DescribeQuest(questID), 1, 1, 1, 1, true)
-        if idText(questID) ~= "" then tip:AddLine("Quest ID " .. questID, 0.85, 0.7, 1) end
-        for index = 1, 12 do
-            local finished, text = Client:GetQuestObjective(questID, index)
-            if finished == nil then break end
-            if text and text ~= "" then
-                if finished then tip:AddLine("v " .. text, 0.5, 0.85, 0.5, true)
-                else tip:AddLine("- " .. text, 0.9, 0.9, 0.9, true) end
-            end
-        end
     end
 end
 
@@ -1295,13 +1276,12 @@ end
 -- The steps the list shows, in flow order. Only steps this character can
 -- never do (wrong class, race, faction) are left out; one gated on a quest or
 -- a level stays, muted, since it may yet open. Carried steps are left out
--- because they are drawn with the step that carries them, and reminders
--- because they are not a stop.
+-- because they are drawn with the step that carries them.
 function MainWindow:BuildListNodes(guide, node)
     local Progress = M("Progress")
     local nodes, current = {}, nil
     for _, candidate in ipairs(guide.nodes) do
-        local show = candidate.kind ~= "reminder" and not Progress:IsRuledOut(candidate) and not Progress:IsCarried(candidate)
+        local show = not Progress:IsRuledOut(candidate) and not Progress:IsCarried(candidate)
         if show then
             table.insert(nodes, candidate)
             if candidate == node then current = #nodes end
@@ -1396,7 +1376,7 @@ function MainWindow:ListDone(node)
 end
 
 -- One row for `node`: the step's own number (the one the counter, the jump
--- box and a bug report speak; the list hides reminders, carried steps and
+-- box and a bug report speak; the list hides carried steps and
 -- other characters' steps, so the numbers skip where those sit), the icon
 -- for its verb, and its title. Done, gated and moot steps read muted; the
 -- current one is the list's selection.
@@ -1444,77 +1424,6 @@ function MainWindow:LiveObjectiveLines(node)
             for _, objective in ipairs(Client:GetQuestObjectives(questID) or {}) do
                 if not objective.finished and objective.text and objective.text ~= "" and #lines < 4 then table.insert(lines, objective.text) end
             end
-        end
-    end
-    return lines
-end
-
--- The objective step the guide later spends on a sticky quest, preferring the
--- one whose item the client's objective line names (a quest can ask for two
--- things, each with its own step).
-local function stickyStep(guide, questID, detail)
-    local Names = M("Names")
-    local first
-    local lowered = detail and string.lower(detail)
-    for _, candidate in ipairs(guide.nodes or {}) do
-        local auto = candidate.auto
-        if auto and (auto.verb == "objective" or auto.verb == "objectives") then
-            for _, id in ipairs(auto.quests or {}) do
-                if id == questID then
-                    first = first or auto
-                    local item = auto.collect and auto.collect[1]
-                    local itemName = item and Names:DescribeItem(item)
-                    if lowered and itemName and string.find(lowered, string.lower(itemName), 1, true) then
-                        return auto
-                    end
-                end
-            end
-        end
-    end
-    return first
-end
-
--- The icon for a sticky quest is that of its objective step: a bag for a
--- collect, a skull for kills, the quest marker when the guide has no such step.
-local function stickyIcon(auto)
-    if auto and auto.collect then return "collect" end
-    if auto and auto.kill then return "kill" end
-    return "objective"
-end
-
--- Tracked quests that are in the log and not yet ready to turn in, as
--- { text, icon, questID }, with the client's first unfinished objective line
--- where it has one. Loot names the creature it drops from, the first one and
--- "..." when there are more, since that is what the player hunts; the quest
--- name goes. Otherwise the quest name leads, and is dropped when the
--- objective already says it (a quest named after its item).
-function MainWindow:StickyLines(guide, node)
-    local lines = {}
-    local Client, Names = M("Client"), M("Names")
-    for _, questID in ipairs(M("Steps"):ActiveTracks(guide, node) or {}) do
-        if Client:IsQuestInLog(questID) and not Client:IsQuestReadyToTurnIn(questID) then
-            local detail
-            for index = 1, 6 do
-                local finished, text = Client:GetQuestObjective(questID, index)
-                if finished == nil then break end
-                if not finished and text and text ~= "" then detail = text break end
-            end
-            local auto = stickyStep(guide, questID, detail)
-            local name = Names:DescribeQuest(questID)
-            local text
-            if detail and auto and auto.collect and auto.kill and auto.kill[1] then
-                local item = auto.collect[1]
-                local have, need = string.match(detail, "(%d+)%s*/%s*(%d+)")
-                text = (have and (have .. "/" .. need .. " ") or "")
-                    .. paint("item", Names:DescribeItem(item), { id = item })
-                    .. " from " .. paint("monster", Names:DescribeNPC(auto.kill[1]), { id = auto.kill[1] })
-                    .. (auto.kill[2] and "..." or "")
-            elseif detail and string.find(string.lower(detail), string.lower(name), 1, true) then
-                text = detail
-            else
-                text = name .. (detail and (" - " .. detail) or "")
-            end
-            table.insert(lines, { text = text, icon = stickyIcon(auto), questID = questID })
         end
     end
     return lines
@@ -1624,17 +1533,12 @@ function MainWindow:DrawStep(guide, node, state)
         if GuideScan then return GuideScan:IsStepDone(guide, candidate, state) end
         return Progress:IsDone(state.statuses[candidate.index])
     end
-    -- Carried work sits above the step: a sticky objective and anything the
-    -- guide asked to be done alongside this step share one muted card,
-    -- because to the player they are the same thing -- work in hand while
-    -- the step below says where to go next.
-    local sticky = self:StickyLines(guide, node)
+    -- Carried work sits above the step: anything the guide asked to be done
+    -- alongside this step shares one muted card, because to the player it is
+    -- all work in hand while the step below says where to go next.
     local carried = Progress:Carried(guide, node) or {}
-    if #sticky > 0 or #carried > 0 then
+    if #carried > 0 then
         self:OpenCard(self.stickyHolder, "muted")
-        for _, entry in ipairs(sticky) do
-            self:AddLine(entry.text, { icon = entry.icon, iconColor = "muted", tooltip = self:StickyTooltip(entry.questID) })
-        end
         for _, companion in ipairs(carried) do
             local done = stepDone(companion)
             self:AddLine(Steps:Title(companion), {

@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeBarrens.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- Horde 13-21 leveling route through The Barrens and Stonetalon Mountains. Step
 -- order, quest IDs, NPC IDs, item IDs, coordinates, and map markers cover the
@@ -28,76 +26,12 @@
 --     Patriarchs and the hide's item ID are not known yet.
 --   * The Handfuls of Complicated Parts for 97253: item ID and objective
 --     number not known yet (the recorded objective has no index).
---
--- Conversion notes:
---   * `only = "Horde"` on the guide -> wrapper cond = { faction = "Horde" }.
---     "not Tauren" -> { none = { { race = "tauren" } } }; "Warrior", "Shaman",
---     "Druid" -> { class = ... }; "Warrior or Shaman" -> { class = { "WARRIOR",
---     "SHAMAN" } }; "Orc or Troll" -> { race = { "orc", "troll" } }.
---   * Quest-state `only` terms dropped (no quest predicates in the format):
---       - "quest 842", "quest 1358", "quest 863" (Sputtervalve) on turn-ins: a
---         turn-in with nothing to hand in now passes by itself.
---       - "quest 819" on Drohn's turnin 819 / accept 821 (a talk step now): left
---         to the turn-in passing; 821 cannot be taken without 819. "quest 821"
---         on the three Chen's Empty Keg objective steps and Drohn's 821 turn-in:
---         the steps of a quest the player does not have stop as the format's
---         default says (the addon's to handle), and the player skips.
---       - "quest 858" on Lugwizzle and the 858 turn-in, "quest 863" on the
---         escort: same; the shredder note already says to skip both if it is
---         missing.
---       - "not quest 819" on the Thorn Hill keg note: dropped; the note says to
---         take the keg only if it was not found earlier.
---   * No `now` terms or condition-only gates in the source.
---   * 11 track / untrack pairs -> `from` on the objective steps, with labels on
---     the earlier step, group, or section where tracking began:
---       869 and 844 (tracked at the start of Thorn Hill) -> section label
---       "thorn-hill"; 845 -> "zhevra" (Sergra's turnin 844 / accept 845); 821 ->
---       "drohn" (turnin 819 / accept 821), on all three 821 objective steps
---       since the track covered the whole quest; 855 and 848 -> "regthar"
---       (accept 855, 850); 95494 -> "vrang"; 865 -> "mebok"; 6461 -> "xenzilla",
---       on both 6461 objective steps; 1069 -> "besseleth" (the wanted poster);
---       1062 -> "deepmoss" (the eggs and venomspitters group).
---   * Kill and collect counts dropped on every objective step (the objective
---     counts). The Zhevra Charger carcass (10338, no quest behind it) keeps
---     count = 1, and the Flawed Power Stones keep count = 1 next to the whole
---     quest 924 (the source's "quest item picked up for quest 924").
---   * Objective steps with no kill or collect target became: travel for The
---     Forgotten Pools' bubbling rock (870, 1); interact for the Altar of Fire
---     (924, 1), the three Samophlange valves (900), the Bubbling Fissure
---     (877, 1) and the three raptor nests (905); talk with the Beaten Corpse
---     (npc 10668) for Lost in Battle (4921, 1); collect with no item for the
---     lion hides (95494, 1) and for Parts and Pieces, which the source names
---     as the whole quest (quest = 97253, no objective number inferred).
---   * Curing the Sick (6129, 1): the source's npc 12296 is a creature the
---     salve is used on, not a visit, so it is `mark` on an interact step with
---     use = { 15826 }.
---   * Accepts from an item got the item from the step before them: Chen's
---     Empty Keg (accept 819, item 4926) and Lakota'mani (accept 883, item 5099);
---     the hoof collect also got starts = 883. Ishamuhale (882, 1) got
---     use = { 10338 }, the carcass its note says to use.
---   * hearth: The Crossroads -> area 380, Camp Taurajo -> 378, Thunder Bluff
---     -> 1638 (db/sources/ForeverGuide ZoneDB). flight: Ratchet -> node 80, Camp
---     Taurajo -> 77, Sun Rock Retreat -> 29 (db/horde/flightpaths.json).
---   * "Stonetalon Mountains" section given map = 1442 (its points relied on
---     the first point's map); the points drop their own map.
---   * NPC location notes moved from the steps to `npcs` (Ak'Zeloth, Kranal
---     Fiss, Boorand Plainswind, Thun'grim Firegaze, Darsok Swiftdagger,
---     Gazlowe, Turak Runetotem, Dendrite Starblaze, Regthar Deathgate, Vrang
---     Wildgore, Zor Lonetree, Innkeeper Byula, Seereth Stonebreak, Makaba
---     Flathoof, Xen'Zilla, Ziz Fizziks, Innkeeper Pala, Clarice Foster, Jin'Zil,
---     Tsunaman); route directions stay on the step. Kaya Flathoof's and the
---     shredder's notes stay on their steps (escort advice).
---   * Every NPC the guide visits has a position. Trainers named in notes
---     (Kardris Dreamseeker, Grezz Ragefist, Hanashi) and the Orgrimmar wind
---     rider master have no NPC ID in the source and stay note steps with `at`.
---   * Quest and item names (names.quests, names.items) dropped: the client
---     names them. Coordinates and radii are whole hundredths of a percent.
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:leveling:horde-barrens-13-21",
     updated = 1789862400,

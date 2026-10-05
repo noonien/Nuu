@@ -21,17 +21,19 @@ ns.modules.Client = {
 }
 
 local guide = Steps:Expand({
-    schema = 2, id = "test:materials", updated = 1789862400, map = 1413,
-    meta = { title = "Materials", category = "test" },
-    steps = {
-    { section = "Steps", steps = {
-        { travel = "The Crossroads", at = { 51.5, 30.3 } },                          -- 1 no materials
-        { craft = 2862, count = 5, needs = { { 2835, 5 }, { 2320, 2, "vendor" } } }, -- 2
-        { craft = 2862, count = 5, needs = { { 2835, 5 }, { 2589, 2, "ah" } } },     -- 3
-        { craft = 2862, count = 1, needs = { { 2835, 3 } }, only = "Warrior" },      -- 4 gated out
-        { finish = "The end." },
+    kind = "guide", schema = 1, id = "test:materials", updated = 1789862400, title = "Materials", category = "test",
+    data = { map = 1413, sections = {
+    { title = "Steps", steps = {
+        { type = "travel", to = "The Crossroads", at = { { 5150, 3030 } } }, -- 1 no materials
+        { type = "craft", item = 2862, count = 5,                            -- 2
+          needs = { { item = 2835, count = 5 }, { item = 2320, count = 2, source = "vendor" } } },
+        { type = "craft", item = 2862, count = 5,                            -- 3
+          needs = { { item = 2835, count = 5 }, { item = 2589, count = 2, source = "ah" } } },
+        { type = "craft", item = 2862, count = 1,                            -- 4 gated out
+          needs = { { item = 2835, count = 3 } }, cond = { class = "WARRIOR" } },
+        { type = "finish", note = "The end." },
     } },
-},
+} },
 })
 local ok, errors = Schema:Validate(guide)
 assert(ok, table.concat(errors, "; "))
@@ -44,12 +46,13 @@ local items = guide.nodes[2].refs.items
 assert(#items == 3, "the crafted item and its materials are all referenced for naming: " .. #items)
 
 -- A bad source or a missing item ID is refused at load, not silently dropped.
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { craft = 1, needs = { { 2835, 5, "mailbox" } } }
-} }))
-assert(not pcall(Steps.Expand, Steps, { steps = {
-    { craft = 1, needs = { { "Rough Stone", 5 } } }
-} }))
+local function expands(needs)
+    return (pcall(Steps.Expand, Steps, { kind = "guide", schema = 1, id = "t", updated = 1, title = "t", category = "t",
+        data = { sections = { { title = "s", steps = { { type = "craft", item = 1, needs = needs } } } } } }))
+end
+assert(expands({ { item = 2835, count = 5 } }), "a well-formed list expands")
+assert(not expands({ { item = 2835, count = 5, source = "mailbox" } }), "an unknown source")
+assert(not expands({ { item = "Rough Stone", count = 5 } }), "an item not named by ID")
 
 -- One step's own list, against the bags.
 bags[2835] = 2
@@ -92,18 +95,18 @@ assert(total == 2 and missing == 0, "carrying everything leaves nothing missing"
 
 -- A guide listed by section asks only for the section it is in.
 local sectioned = Steps:Expand({
-    schema = 2, id = "test:materials:sections", updated = 1789862400, map = 1413,
-    meta = { title = "Materials by section", category = "test", materials = "section" },
-    steps = {
-        { section = "Stones", steps = {
-            { gather = 2835, count = 5 },                                -- 1
-            { craft = 2862, count = 5, needs = { { 2835, 5 } } },        -- 2
+    kind = "guide", schema = 1, id = "test:materials:sections", updated = 1789862400,
+    title = "Materials by section", category = "test", materials = "section",
+    data = { map = 1413, sections = {
+        { title = "Stones", steps = {
+            { type = "gather", item = 2835, count = 5 },                                     -- 1
+            { type = "craft", item = 2862, count = 5, needs = { { item = 2835, count = 5 } } }, -- 2
         } },
-        { section = "Cloth", steps = {
-            { gather = 2589, count = 4 },                                -- 3
-            { craft = 2996, count = 2, needs = { { 2589, 4 } } },        -- 4
+        { title = "Cloth", steps = {
+            { type = "gather", item = 2589, count = 4 },                                     -- 3
+            { type = "craft", item = 2996, count = 2, needs = { { item = 2589, count = 4 } } }, -- 4
         } },
-    },
+    } },
 })
 assert(Schema:Validate(sectioned))
 bags = {}

@@ -1,6 +1,4 @@
--- A packaged guide, in guide export format 1 (docs/examples/guide-export.lua):
--- Data/Import.lua reads it as the addon loads. Converted from the authored v2
--- guide that was Data/BuiltIn/HordeCityOfDalaran.lua.
+-- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
 --
 -- The Horde quests of the City of Dalaran, a five-player dungeon new in WoW: Forever, from
 -- the pickups in the Undercity, Tarren Mill and at the sewer entrance to the last turn-in.
@@ -51,45 +49,12 @@
 --     data says, or somewhere inside.
 --
 -- Maps: 1416 Alterac Mountains (guide default), 1458 Undercity, 1424 Hillsbrad Foothills.
---
--- Conversion notes:
---   * Guide `only = "Horde"` -> wrapper `cond = { faction = "Horde" }`. `levels = { 28, 33 }`
---     -> `levels = { from = 28, to = 33 }`.
---   * Travel into the dungeon: `zone = "City of Dalaran"` was a zone-text name. It became
---     `instance = 2959`, the instance ID the source header cites from QuestieDB's
---     instanceIdToAreaId (keyed by instance ID); unverified in client. The AreaTable ID of
---     the "City of Dalaran" area is not in the repo, so no `area`.
---   * Travel out: `zone = "Alterac Mountains"` -> `zone = 1416`.
---   * Rexxie Copperclutch has no NPC ID, so he is not in `npcs`: his accept and turn-in keep
---     their own `at` (15.00, 66.00 -> 1500, 6600) and the notes naming him.
---   * The three objective steps keep the source's `part = 1` (none inferred):
---       - 96988 part 1 -> collect 275997, quest { 96988, 1 }, still sticky; `count = 6`
---         dropped (the objective counts);
---       - 96986 part 1 -> kill 247126, quest { 96986, 1 };
---       - 96987 part 1 -> collect 275996, quest { 96987, 1 }.
---     Their `only = "quest X"` (in the log) terms are quest-state predicates the format
---     drops: a step whose quest was never taken is taken out with its accept, and one whose
---     quest is done passes.
---   * `only = "quest X readyToTurnIn"` on the three turn-ins dropped likewise; the turn-ins
---     carry `optional = true` instead (passed unless ready, never waited on).
---   * NPC notes: Melisara's step notes "Melisara in Tarren Mill" and "Her spot is not
---     recorded yet" moved to her `note`; the flight-path advice stays on the accept. Felben's
---     names-table note became "In the Apothecarium.". Her turn-in step loses its note, which
---     only said where she stands.
---   * Atrexis is listed under 1416 (the map the entrance is on) with `instance = 2959` and
---     a where-to note; the kill step keeps the fight note (the disarm).
---   * NPC positions: Melisara and Felben have one each (from the names table). Atrexis has
---     none (inside the dungeon).
---   * Sections: "The Undercity" (1458) and "Tarren Mill" (1424) keep their maps; the rest are
---     on the guide's 1416. No section needed a new map.
---   * No track/untrack, `now`, or condition-only gates in the source.
-
 local _, ns = ...
 
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    format = 1,
+    schema = 1,
 
     id = "nuuroad:dungeon:horde-city-of-dalaran-quests",
     updated = 1790985600,                -- 2026-10-03
