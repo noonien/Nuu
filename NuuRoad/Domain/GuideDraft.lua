@@ -88,6 +88,8 @@ GuideDraft.typeFields = {
 local COMMON = { type = true, note = true, label = true, cond = true, show = true, npc = true, at = true, stand = true,
     near = true, radius = true, loop = true, wait = true, use = true, sticky = true, with = true, from = true,
     mark = true, needs = true, upto = true, quest = true, object = true }
+-- What any step may carry, whatever its type (Schema/Guide.lua's StepCommon is checked against it).
+GuideDraft.commonFields = COMMON
 
 -- What a type needs to be a step at all, filled in when a step becomes one.
 local STARTERS = {

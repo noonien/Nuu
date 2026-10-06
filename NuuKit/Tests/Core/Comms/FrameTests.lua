@@ -1,8 +1,9 @@
--- The comms wire codec, from both ends: a Writer frame that a Reader takes
+-- The comms wire format, from both ends: a Writer frame that a Reader takes
 -- apart, and the edges around it. Signed integers, NUL placement in Bytes,
 -- COBS runs that fill or overflow a block, frames larger than one addon
 -- message, and everything a malformed frame can be. From Sonar's
--- tests/test_codec.lua.
+-- tests/test_codec.lua. The fields themselves are Core/Codec's
+-- (Tests/Core/Codec/CodecTests.lua); these are about the frame around them.
 local Kit = _G.LoadKit().Kit
 local W = dofile("Tests/Support/CommsWorld.lua")
 local suite, test, ok, eq, errors = W.suite, W.test, W.ok, W.eq, W.errors
@@ -643,33 +644,25 @@ suite("Malformed frames", function()
     end)
 
     test("stop after a rejected field instead of reading the next one", function()
-        -- A rejected but complete overflowing varint inside an active COBS
-        -- block consumes exactly its own bytes and sticks err, so later
+        -- A rejected but complete overflowing varint sticks err, so later
         -- reads return 0 and do not throw.
         local reader = Codec.Reader(string.char(V, 8, 1, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 2, 1))
-        eq(reader:U(), 1, "in-block overflow: prefix")
-        eq(reader:Ok(), true, "in-block overflow: prefix ok")
-        eq(reader:U(), 0, "in-block overflow: rejected")
-        eq(reader:Ok(), false, "in-block overflow: not ok")
-        eq(reader.pos, 9, "in-block overflow: cursor advanced")
-        eq(reader.blockLeft, 1, "in-block overflow: block cursor synchronized")
-        eq(reader:U(), 0, "in-block overflow: later reads stay 0")
-        eq(reader:More(), false, "in-block overflow: more is false once not ok")
+        eq(reader:U(), 1, "overflow: prefix")
+        eq(reader:Ok(), true, "overflow: prefix ok")
+        eq(reader:U(), 0, "overflow: rejected")
+        eq(reader:Ok(), false, "overflow: not ok")
+        eq(reader:U(), 0, "overflow: later reads stay 0")
+        eq(reader:More(), false, "overflow: more is false once not ok")
     end)
 
-    test("do not throw where a truncated field follows the overflowing one", function()
-        -- This frame used to leave blockLeft stale after the overflowing
-        -- field. The next truncated read then consumed the following COBS code
-        -- and threw.
+    test("refuse a frame whose COBS is cut short, from its first field", function()
+        -- The last code (0x80) promises 127 bytes the frame does not hold.
         local reader = Codec.Reader(string.char(V, 8, 1, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0x80, 0x80))
-        eq(reader:U(), 1, "in-block overflow/truncated: prefix")
-        eq(reader:U(), 0, "in-block overflow/truncated: overflow")
-        eq(reader:Ok(), false, "in-block overflow/truncated: not ok")
+        eq(reader:Ok(), false, "cut COBS: not ok before any read")
         local returned, value = pcall(reader.U, reader)
-        ok(returned, "in-block overflow/truncated: does not throw")
-        eq(value, 0, "in-block overflow/truncated: later read is 0")
-        eq(reader.pos, 9, "in-block overflow/truncated: cursor stable")
-        eq(reader.blockLeft, 1, "in-block overflow/truncated: block cursor stable")
+        ok(returned, "cut COBS: does not throw")
+        eq(value, 0, "cut COBS: reads are 0")
+        eq(reader:More(), false, "cut COBS: nothing to read")
     end)
 end)
 
@@ -695,11 +688,10 @@ suite("A reader that stops early or runs short", function()
         local zero = Codec.Reader(Codec.Writer():U(0):Finish())
         eq(zero:U(), 0, "empty tail: the zero")
         eq(zero:More(), false, "empty tail: trailing EOF code is not leftover")
-        -- A following block whose data would run past EOF is still leftover.
+        -- A block whose data would run past EOF makes the whole frame bad.
         local cut = Codec.Reader(string.char(V, 1, 10, 1))
-        eq(cut:U(), 0, "cut: implied zero")
-        eq(cut:Ok(), true, "cut: the zero was complete")
-        eq(cut:More(), true, "cut: truncated next block remains")
+        eq(cut:U(), 0, "cut: nothing is read")
+        eq(cut:Ok(), false, "cut: a truncated block is not ok")
     end)
 
     test("reads the fields it knows and stops", function()
@@ -729,5 +721,5 @@ suite("A reader that stops early or runs short", function()
 end)
 
 
-print("NuuKit comms codec tests passed (" .. W.count .. " tests)")
+print("NuuKit comms frame tests passed (" .. W.count .. " tests)")
 return true

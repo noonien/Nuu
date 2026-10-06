@@ -13,7 +13,12 @@ Core/BugReport.lua
 Core/SkillUp.lua
 Core/Crafting.lua
 Core/Items.lua
-Core/Comms/Codec.lua
+Core/Codec/Writer.lua
+Core/Codec/Reader.lua
+Core/Codec/Base64.lua
+Core/Codec/Adler32.lua
+Core/Codec/Text.lua
+Core/Comms/Frame.lua
 Core/Comms/Transport.lua
 Core/Comms/Comms.lua
 UI/Theme/Themes.lua

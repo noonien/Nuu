@@ -31,6 +31,7 @@ local suites = {
     { "quest marks", "Tests/QuestMarksTests.lua" },
     { "built-in guide", "Tests/BuiltInGuideTests.lua" },
     { "guide format", "Tests/GuideFormatTests.lua" },
+    { "guide wire", "Tests/GuideWireTests.lua" },
     { "guide audit", "Tests/GuideAuditTests.lua" },
     { "guide scan", "Tests/GuideScanTests.lua" },
     { "observed progress", "Tests/ObservedProgressTests.lua" },

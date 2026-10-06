@@ -51,6 +51,15 @@ line commented out).
 `python3 NuuExperiments/Tools/QuestExport.py` turns their saved data into `db/ingame/`, which
 `db/tools/build_horde.py` trusts first (`NuuExperiments/README.md`, "Quest data").
 
+## Codecs
+
+`NuuKit/Core/Codec/` holds the kit's plain byte writer and reader (Comms frames them with COBS in
+`Core/Comms/Frame.lua`), base64url, Adler-32 and the `nuu:` string a player shares (`Text.lua`). A value's codec is
+generated, never written by hand: a schema built with the helpers in `NuuKit/Tools/Codec/Types.lua`, and from the
+addon's folder `lua ../NuuKit/Tools/Codec/Gen.lua Schema/<Name>.lua Data/<Name>Codec.lua`. The generated file is
+checked in, and a test fails when it is not its schema's. NuuRoad's guide schema is `NuuRoad/Schema/Guide.lua`, with
+`Data/GuideCodec.lua` and `Data/GuideWire.lua` (v1 to the schema's values); neither is in the TOC yet.
+
 ## UI kit
 
 - The kit's UI (widgets, themes, window chrome) follows `docs/ui-kit/PLAN.md`; the mockups are linked from
