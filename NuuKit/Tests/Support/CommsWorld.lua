@@ -107,6 +107,23 @@ function World:remove()
     self._saved = {}
 end
 
+-- Runs the clock `seconds` on, firing each timer as it falls due, in the
+-- order they fall due (one made while running fires too, if it is due).
+function World:run(seconds)
+    local stop = self.clock.now + (seconds or 0)
+    while true do
+        local soonest
+        for _, entry in ipairs(self.timers.timers) do
+            if not entry.cancelled and (not soonest or entry.at < soonest.at) then soonest = entry end
+        end
+        if not soonest or soonest.at > stop then break end
+        self.clock.now = math.max(self.clock.now, soonest.at)
+        soonest.cancelled = true
+        soonest.fn()
+    end
+    self.clock.now = stop
+end
+
 -- Every frame that registered the event gets it, in the order they were made.
 function World:fire(event, ...)
     for _, frame in ipairs(self.frames) do
@@ -139,11 +156,11 @@ local function newClock()
     return clock
 end
 
-local function newTimers()
+local function newTimers(clock)
     local timers = { timers = {} }
 
     local function handle(list, delay, fn)
-        local entry = { delay = delay, fn = fn, cancelled = false }
+        local entry = { delay = delay, at = clock.now + delay, fn = fn, cancelled = false }
         function entry:Cancel() self.cancelled = true end
         list[#list + 1] = entry
         return entry
@@ -168,13 +185,14 @@ function M.new(options)
     options = options or {}
     local w = setmetatable({
         _saved = {},
-        clock = newClock(), timers = newTimers(),
         frames = {},
         sent = {},        -- SendAddonMessage calls
         cSent = {},       -- C_ChatInfo.SendAddonMessage calls
         prefixes = {},    -- C_ChatInfo.RegisterAddonMessagePrefix calls
         legacyPrefixes = {}, -- RegisterAddonMessagePrefix calls
     }, World)
+    w.clock = newClock()
+    w.timers = newTimers(w.clock)
     local clock = w.clock
 
     -- events.NAME(...) fires NAME; it is nil while no frame registered NAME.

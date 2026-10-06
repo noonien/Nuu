@@ -16,8 +16,10 @@ ns.Kit = Kit
 -- a Lua number holds exactly (U to 2^53, I to +-2^52); Codec.Writer(limits)
 -- narrows that (Comms keeps four groups of 7 bits). True/False are 0x01/0x00.
 -- U8/I8 to U64/I64 are little-endian two's-complement bytes. Bytes is a
--- length and then the bytes. Mark() and Restore(mark) drop what was written
--- after the mark; Len() is the bytes written so far.
+-- length and then the bytes; Raw is the bytes alone, for a last field the
+-- reader takes with Rest(). Mark() and Restore(...) drop what was written
+-- after the mark (local n, len = w:Mark() ... w:Restore(n, len)); Len() is
+-- the bytes written so far.
 --
 -- Pieces are kept as strings (interned 1-byte strings for single bytes) and
 -- joined once, at Finish.
@@ -73,11 +75,12 @@ function Writer:Len()
 end
 
 function Writer:Mark()
-    return { n = self.n, len = self.len }
+    return self.n, self.len
 end
 
-function Writer:Restore(mark)
-    self.n, self.len = mark.n, mark.len
+function Writer:Restore(n, len)
+    assert(type(n) == "number" and type(len) == "number", "Restore takes what Mark returned")
+    self.n, self.len = n, len
     return self
 end
 
@@ -169,6 +172,12 @@ function Writer:Bytes(s)
     local n = #s
     if n < 128 then put(self, CH[n], 1) else putVarint(self, n) end
     if n > 0 then put(self, s, n) end
+    return self
+end
+
+function Writer:Raw(s)
+    assert(type(s) == "string", "raw bytes must be a string")
+    if #s > 0 then put(self, s, #s) end
     return self
 end
 

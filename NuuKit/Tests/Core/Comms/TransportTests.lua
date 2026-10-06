@@ -190,6 +190,286 @@ transportSuite("The token bucket", function()
 end)
 
 --------------------------------------------------------------------------------
+-- What SendAddonMessage answers, for the suites below: answer(entry) gives
+-- the client's result (nil, taken, when there is no answer).
+--------------------------------------------------------------------------------
+
+local answer
+local function answering()
+    answer = nil
+    world:set("SendAddonMessage", function(prefix, payload, distribution, target)
+        local entry = { prefix = prefix, payload = payload, distribution = distribution, target = target,
+            at = world.clock.now }
+        sent[#sent + 1] = entry
+        if answer then return answer(entry) end
+    end)
+end
+
+-- Answers each send from a list in turn, then takes the rest.
+local function answers(list)
+    answer = function() return table.remove(list, 1) end
+end
+
+local ENUM = { SendAddonMessageResult = {
+    Success = 0, InvalidPrefix = 1, InvalidMessage = 2, AddonMessageThrottle = 3, InvalidChatType = 4,
+    NotInGroup = 5, TargetRequired = 6, InvalidChannel = 7, ChannelThrottle = 8, GeneralError = 9,
+} }
+
+-- Whether no window of the sends holds more than the burst and the rate allow.
+local function withinRate(list, burst, rate)
+    for i = 1, #list do
+        for j = i, #list do
+            local span = list[j].at - list[i].at
+            if j - i + 1 > burst + rate * span + 1e-9 then
+                return false, ("%d sends in %.2f s"):format(j - i + 1, span)
+            end
+        end
+    end
+    return true
+end
+
+--------------------------------------------------------------------------------
+
+transportSuite("The shared bucket", function()
+    before(answering)
+
+    test("lets the instance's burst out across destinations, no more", function()
+        for i = 1, 4 do comms:Send(frame(i), "PARTY") end
+        for i = 1, 4 do comms:Send(frame(i), "GUILD") end
+        for i = 1, 4 do comms:Send(frame(i), "RAID") end
+        eq(#sent, Kit.Comms.SEND_BURST, "the burst went out")
+        world:run(30)
+        eq(#sent, 12, "and the rest later")
+    end)
+
+    test("refills at its rate, not the lane's", function()
+        for i = 1, 4 do comms:Send(frame(i), "PARTY") end
+        for i = 1, 4 do comms:Send(frame(i), "GUILD") end
+        for i = 1, 3 do comms:Send(frame(i), "RAID") end
+        eq(#sent, 10, "the raid lane still has tokens, the instance none")
+        eq(world.timers:lastTimer().delay, 1 / Kit.Comms.SEND_RATE, "it waits for one shared token")
+        world:run(1 / Kit.Comms.SEND_RATE)
+        eq(#sent, 11, "then the raid message goes")
+    end)
+
+    test("keeps every destination together within the rate over time", function()
+        for i = 1, 10 do
+            comms:Send(frame(i), "PARTY")
+            comms:Send(frame(i), "GUILD")
+            comms:Send(frame(i), "RAID")
+            comms:Send(frame(i), "WHISPER", "Zed")
+        end
+        world:run(60)
+        eq(#sent, 40, "everything went")
+        local fine, why = withinRate(sent, Kit.Comms.SEND_BURST, Kit.Comms.SEND_RATE)
+        ok(fine, "within the shared rate: " .. tostring(why))
+        local party = {}
+        for _, entry in ipairs(sent) do
+            if entry.distribution == "PARTY" then party[#party + 1] = entry end
+        end
+        fine, why = withinRate(party, 4, 1)
+        ok(fine, "and each lane within its own: " .. tostring(why))
+    end)
+
+    test("is each instance's own", function()
+        local other = Kit.NewComms({ prefix = "NuuOther" })
+        other:SetEnabled(true)
+        for i = 1, 4 do comms:Send(frame(i), "PARTY") end
+        for i = 1, 4 do comms:Send(frame(i), "GUILD") end
+        for i = 1, 4 do other:Send(frame(i), "PARTY") end
+        for i = 1, 4 do other:Send(frame(i), "GUILD") end
+        eq(#sent, 16, "another prefix draws on its own bucket")
+    end)
+
+    test("is full again, and any hold lifted, after comms is switched off and on", function()
+        answers({ 3 })
+        comms:Send(frame(1), "PARTY")
+        comms:SetEnabled(false)
+        comms:SetEnabled(true)
+        for i = 1, 10 do comms:Send(frame(i), i % 2 == 0 and "PARTY" or "GUILD") end
+        eq(#sent, 9, "no hold, and a full burst (the lanes' four each, one refused before)")
+        world:run(30)
+        eq(#sent, 11, "the held message was dropped with the rest")
+    end)
+end)
+
+--------------------------------------------------------------------------------
+
+transportSuite("A lane", function()
+    test("is let go once idle, and a sender kept past it takes up the new one", function()
+        local a = comms:Sender("WHISPER", "Ann")
+        a:Send(frame(1))
+        world.clock:advance(10)
+        comms:Sender("WHISPER", "Zed")
+        ok(comms:Sender("WHISPER", "Ann").lane ~= a.lane, "a new lane let the idle one go")
+        a:Send(frame(2))
+        eq(comms:Sender("WHISPER", "Ann").lane, a.lane, "the kept sender shares the new lane")
+        eq(sent[2].target, "Ann", "and still whispers")
+    end)
+
+    test("is kept while its bucket is still refilling", function()
+        for i = 1, 4 do comms:Send(frame(i), "WHISPER", "Ann") end
+        world.clock:advance(1)
+        comms:Sender("WHISPER", "Zed")
+        comms:Send(frame(5), "WHISPER", "Ann")
+        comms:Send(frame(6), "WHISPER", "Ann")
+        eq(#sent, 5, "one token back, so one more goes, not a fresh burst")
+    end)
+
+    test("is kept while it has work queued", function()
+        local ann = comms:Sender("WHISPER", "Ann")
+        for i = 1, 5 do ann:Send(frame(i)) end
+        world.clock:advance(10)
+        comms:Sender("WHISPER", "Zed")
+        eq(comms:Sender("WHISPER", "Ann").lane, ann.lane, "the busy lane stays")
+        world:run(0)
+        eq(#sent, 5, "and its queued message goes")
+    end)
+end)
+
+--------------------------------------------------------------------------------
+
+transportSuite("A refused message", function()
+    before(answering)
+
+    test("holds every destination for a second when throttled, then goes as it was", function()
+        answers({ 3 })
+        comms:Send(frame(1), "PARTY")
+        comms:Send(frame(2), "GUILD")
+        eq(#sent, 1, "the throttle holds the guild message too")
+        eq(world.timers:lastTimer().delay, 1, "for a second")
+        world:run(1)
+        eq(#sent, 3, "both go after it")
+        eq(sent[2].payload, frame(1), "the refused payload, unchanged")
+        eq(sent[3].payload, frame(2), "and the guild one")
+    end)
+
+    test("keeps its place ahead of what was queued behind it", function()
+        answers({ 3 })
+        for i = 1, 3 do comms:Send(frame(i), "PARTY") end
+        world:run(5)
+        eq(#sent, 4, "three taken, one refused")
+        eq(sent[2].payload, frame(1), "the refused one first")
+        eq(sent[3].payload, frame(2), "then the second")
+        eq(sent[4].payload, frame(3), "then the third")
+    end)
+
+    test("from a producer is sent again without asking the producer twice", function()
+        answers({ 3 })
+        local calls = 0
+        comms:Sender("PARTY", nil, { repeatDelay = 5 }):SendMultiple(function()
+            calls = calls + 1
+            if calls <= 2 then return frame(calls) end
+        end)
+        world:run(1)
+        eq(calls, 1, "the producer ran once")
+        eq(sent[2].payload, frame(1), "its payload went again")
+        world:run(20)
+        eq(calls, 3, "then it went on as before")
+        eq(sent[3].payload, frame(2), "with its next payload")
+        eq(#sent, 3, "and nothing else")
+    end)
+
+    test("starts its tries afresh once a message goes", function()
+        local tries = Kit.Comms.SEND_TRIES
+        local list = {}
+        for _ = 1, tries - 1 do list[#list + 1] = 3 end
+        list[#list + 1] = 0
+        for _ = 1, tries - 1 do list[#list + 1] = 3 end
+        answers(list)
+        local calls = 0
+        comms:Sender("PARTY"):SendMultiple(function()
+            calls = calls + 1
+            if calls <= 2 then return frame(calls) end
+        end)
+        world:run(60)
+        eq(#sent, 2 * tries, "every try made, none past")
+        eq(sent[tries].payload, frame(1), "the first taken on its last try")
+        eq(sent[#sent].payload, frame(2), "the second taken on its last try")
+    end)
+
+    test("gives up once its tries run out, and the lane goes on", function()
+        answer = function(entry) if entry.payload == frame(1) then return 3 end end
+        comms:Send(frame(1), "PARTY")
+        comms:Send(frame(2), "PARTY")
+        world:run(60)
+        local first, second = 0, 0
+        for _, entry in ipairs(sent) do
+            if entry.payload == frame(1) then first = first + 1 else second = second + 1 end
+        end
+        eq(first, Kit.Comms.SEND_TRIES, "tried SEND_TRIES times")
+        eq(second, 1, "the one behind it went once")
+        eq(sent[#sent].payload, frame(2), "after it")
+    end)
+
+    test("is dropped at once when the client names a refusal that is not a throttle", function()
+        world:set("Enum", ENUM)
+        answers({ 5 })
+        comms:Send(frame(1), "PARTY")
+        comms:Send(frame(2), "GUILD")
+        eq(#sent, 2, "no hold: the next one goes")
+        world:run(30)
+        eq(#sent, 2, "and the refused one is not tried again")
+    end)
+
+    test("is tried again on the client's channel throttle too", function()
+        world:set("Enum", ENUM)
+        answers({ 8 })
+        comms:Send(frame(1), "PARTY")
+        world:run(1)
+        eq(#sent, 2, "tried again")
+    end)
+
+    test("is tried again on any refusal where the client names no throttle", function()
+        world:set("Enum", { SendAddonMessageResult = { Success = 0 } })
+        answers({ 5, false })
+        comms:Send(frame(1), "PARTY")
+        world:run(5)
+        eq(#sent, 3, "tried until taken")
+    end)
+
+    test("is taken when the client answers nothing or true, as older clients do", function()
+        answers({ true, nil, true })
+        for i = 1, 3 do comms:Send(frame(i), "PARTY") end
+        world:run(10)
+        eq(#sent, 3, "each sent once")
+    end)
+
+    test("spends no token when refused", function()
+        world:set("Enum", ENUM)
+        answers({ 5, 5, 5, 5 })
+        for i = 1, 8 do comms:Send(frame(i), "PARTY") end
+        eq(#sent, 8, "four refused and four taken, all at once")
+    end)
+
+    test("survives a send call that raises", function()
+        local raised = false
+        world:set("SendAddonMessage", function(prefix, payload, distribution, target)
+            sent[#sent + 1] = { payload = payload, at = world.clock.now }
+            if not raised then
+                raised = true
+                error("client boom")
+            end
+        end)
+        ok(pcall(comms.Send, comms, frame(1), "PARTY"), "the send does not raise")
+        world:run(5)
+        eq(#sent, 2, "it is tried again")
+    end)
+
+    test("from a producer that raises leaves the rest of its lane going", function()
+        for i = 1, 4 do comms:Send(frame(i), "PARTY") end
+        comms:Sender("PARTY"):SendMultiple(function() error("producer boom") end)
+        comms:Send(frame(9), "PARTY")
+        local timer = world.timers:lastTimer()
+        world.clock:advance(timer.delay)
+        timer.cancelled = true
+        ok(not pcall(timer.fn), "the producer's error is raised")
+        world:run(5)
+        eq(sent[#sent].payload, frame(9), "the message behind it still goes")
+    end)
+end)
+
+--------------------------------------------------------------------------------
 
 transportSuite("A producer job", function()
     test("runs again after its delay and retires on the first nil", function()
@@ -311,7 +591,7 @@ transportSuite("An inbound packet", function()
     end)
 
     test("with no listener is discarded before defenses", function()
-        inbound(string.char(2, 2, 1), "WHISPER", "Bob")
+        inbound(string.char(3, 2, 1), "WHISPER", "Bob")
         inbound(frame(3), "WHISPER", "Bob")
         alsoListen("WHISPER")
         inbound(frame(3), "WHISPER", "Bob")
@@ -367,7 +647,7 @@ transportSuite("An inbound packet", function()
 
     test("of another encoding mutes that source for the session", function()
         alsoListen("WHISPER")
-        inbound(string.char(2, 2, 1), "PARTY", "Bob")
+        inbound(string.char(3, 2, 1), "PARTY", "Bob")
         inbound(frame(3), "PARTY", "Bob")
         eq(#received, 0, "wrong version session-mutes that source")
         inbound(frame(4), "WHISPER", "Bob")
@@ -471,7 +751,7 @@ transportSuite("The log", function()
 
     test("names a dropped packet and a session mute", function()
         comms:RegisterReceiver(function() end)
-        inbound(string.char(2, 2, 1), "PARTY", "Bob")
+        inbound(string.char(3, 2, 1), "PARTY", "Bob")
         local found
         for _, line in ipairs(logs) do
             if line:find("session-muting bob on PARTY (version)", 1, true) then found = true end

@@ -7,9 +7,15 @@ ns.Kit = Kit
 -- defenses of one Kit.NewComms instance. From Sonar's Comms/Transport.lua.
 --
 -- Outbound payloads are Writer frames (version + COBS), throttled per
--- destination. Inbound, Transport accepts the comms version and rejects empty
+-- destination and, since the client throttles a prefix as a whole, across the
+-- instance too: every lane and every transfer draws on one shared bucket
+-- (Comms.SEND_RATE). A message the client refuses as throttled holds them all
+-- for a second and is tried again, Comms.SEND_TRIES times at most; any other
+-- refusal drops it. Inbound, Transport accepts the comms version and rejects empty
 -- frames before receivers run. Wrong versions and repeated violations mute
 -- that sender on that source until reload. Message types stay opaque.
+-- Transfer frames (Comms.TRANSFER) go to Core/Comms/Transfer.lua instead of
+-- the receivers, outside the budget: a transfer keeps its own.
 local Comms = Kit.Comms or {}
 Kit.Comms = Comms
 
@@ -21,12 +27,29 @@ local BUDGET_MAX = 20
 local VIOLATION_WINDOW = 300
 local VIOLATION_MAX = 10
 
+-- Across one instance (one prefix): every lane and transfer together. A guess
+-- until it is measured in the client (docs/api-compatibility.md).
+Comms.SEND_RATE = 4
+Comms.SEND_BURST = 10
+Comms.SEND_TRIES = 8
+
 local function Now()
     return (GetServerTime and GetServerTime()) or time()
 end
 
 local function SendAddonMessageFn()
     return (C_ChatInfo and C_ChatInfo.SendAddonMessage) or SendAddonMessage
+end
+
+-- Whether a refusal is the client's throttle, so worth trying again. Where the
+-- client names its results, only its throttles are; where it does not, any
+-- refusal might be, and the tries run out.
+local function Throttled(result)
+    local codes = Enum and Enum.SendAddonMessageResult
+    if type(codes) ~= "table" or (codes.AddonMessageThrottle == nil and codes.ChannelThrottle == nil) then
+        return true
+    end
+    return result == codes.AddonMessageThrottle or result == codes.ChannelThrottle
 end
 
 local Sender = {}
@@ -96,11 +119,53 @@ function Comms._attachTransport(C, P)
         end)
     end
 
+    -- The instance's shared bucket, and the time a throttle holds it to.
+    local shared = { tokens = Comms.SEND_BURST, refilled = nil, heldUntil = 0 }
+
+    local function _refillShared(now)
+        if shared.refilled then
+            shared.tokens = math.min(Comms.SEND_BURST, shared.tokens + (now - shared.refilled) * Comms.SEND_RATE)
+        end
+        shared.refilled = now
+    end
+
+    -- Whether the instance may send now; Transfer asks before each message.
+    function P.sendable(now)
+        _refillShared(now)
+        return shared.tokens >= 1 and now >= shared.heldUntil
+    end
+
+    -- When it may send next.
+    function P.sendableAt(now)
+        _refillShared(now)
+        return math.max(shared.heldUntil, now + math.max(0, 1 - shared.tokens) / Comms.SEND_RATE)
+    end
+
+    function P.spend()
+        shared.tokens = shared.tokens - 1
+    end
+
+    -- The client throttled us: nothing goes for a second.
+    function P.hold(now)
+        shared.heldUntil = now + 1
+    end
+
     -- A sender is only a reusable delay policy and destination. All senders
     -- for the same distribution/target share one lane and therefore one
     -- throttle.
     local function _laneKey(distribution, target)
         return distribution .. "\1" .. (target or "")
+    end
+
+    -- A lane with nothing queued whose bucket has refilled is the same as a
+    -- new one, so it is let go: whispers to many names leave nothing behind.
+    local function _pruneLanes(now)
+        for key, lane in pairs(lanes) do
+            if #lane.jobs == 0 and not lane.timer
+                and lane.tokens + (now - lane.lastRefill) * SEND_RATE >= SEND_BURST then
+                lanes[key] = nil
+            end
+        end
     end
 
     -- A whisper's lane is found by the name's key and sends to the spelling
@@ -109,9 +174,11 @@ function Comms._attachTransport(C, P)
         local key = _laneKey(distribution, target and P.key(target))
         local lane = lanes[key]
         if lane then return lane end
+        local now = GetTime()
+        _pruneLanes(now)
         lane = {
-            distribution = distribution, target = target, jobs = {},
-            tokens = SEND_BURST, lastRefill = GetTime(), timer = nil,
+            key = key, distribution = distribution, target = target, jobs = {},
+            tokens = SEND_BURST, lastRefill = now, timer = nil,
         }
         lanes[key] = lane
         return lane
@@ -124,6 +191,11 @@ function Comms._attachTransport(C, P)
         if not P.enabled then return false end
         if queued >= QUEUE_MAX then return false end
         local lane = sender.lane
+        -- A sender kept past its lane's pruning takes up the current one.
+        if lanes[lane.key] ~= lane then
+            lane = _lane(lane.distribution, lane.target)
+            sender.lane = lane
+        end
         lane.jobs[#lane.jobs + 1] = {
             producer = producer,
             readyAt = readyAt,
@@ -136,7 +208,32 @@ function Comms._attachTransport(C, P)
         return true
     end
 
-    local _transmit
+    local _send
+
+    -- The lane's next turn: when it has a token, the instance has one, and a
+    -- job is ready.
+    local function _later(lane, now)
+        if #lane.jobs == 0 then return end
+        local at = now + math.max(0, 1 - lane.tokens) / SEND_RATE
+        local jobAt
+        for i = 1, #lane.jobs do
+            local ready = lane.jobs[i].readyAt
+            if not jobAt or ready < jobAt then jobAt = ready end
+        end
+        _schedule(lane, math.max(at, jobAt, P.sendableAt(now)))
+    end
+
+    -- What is wrong with a producer's answer, or nil.
+    local function _problem(ok, payload)
+        if not ok then return "comms outbound producer failed: " .. tostring(payload) end
+        if payload == nil then return nil end
+        if type(payload) ~= "string" then return "comms outbound producer must return a string or nil" end
+        if #payload < MIN_PAYLOAD then return "comms outbound producer returned an empty payload" end
+        if #payload > MAX_PAYLOAD then
+            return ("comms outbound producer returned %d bytes; maximum is %d"):format(#payload, MAX_PAYLOAD)
+        end
+    end
+
     _pump = function(lane)
         if not P.enabled or #lane.jobs == 0 then return end
 
@@ -145,7 +242,7 @@ function Comms._attachTransport(C, P)
             lane.tokens + (now - lane.lastRefill) * SEND_RATE)
         lane.lastRefill = now
 
-        while #lane.jobs > 0 and lane.tokens >= 1 do
+        while #lane.jobs > 0 and lane.tokens >= 1 and P.sendable(now) do
             local readyIndex, nextReady
             for i = 1, #lane.jobs do
                 local at = lane.jobs[i].readyAt
@@ -155,61 +252,80 @@ function Comms._attachTransport(C, P)
                 end
                 if not nextReady or at < nextReady then nextReady = at end
             end
-            if not readyIndex then
-                _schedule(lane, nextReady)
-                return
+            if not readyIndex then break end
+
+            local job = lane.jobs[readyIndex]
+            -- A payload the client refused as throttled is sent again as it was.
+            local payload = job.pending
+            if payload == nil then
+                local ok
+                ok, payload = pcall(job.producer)
+                local problem = _problem(ok, payload)
+                if problem then
+                    table.remove(lane.jobs, readyIndex)
+                    queued = queued - 1
+                    -- The rest of the lane still goes.
+                    _later(lane, now)
+                    error(problem)
+                end
             end
 
-            local job = table.remove(lane.jobs, readyIndex)
-            local ok, payload = pcall(job.producer)
-            if not ok then
+            if payload == nil then
+                table.remove(lane.jobs, readyIndex)
                 queued = queued - 1
-                error("comms outbound producer failed: " .. tostring(payload))
-            elseif payload == nil then
-                queued = queued - 1
-            elseif type(payload) ~= "string" then
-                queued = queued - 1
-                error("comms outbound producer must return a string or nil")
-            elseif #payload < MIN_PAYLOAD then
-                queued = queued - 1
-                error("comms outbound producer returned an empty payload")
-            elseif #payload > MAX_PAYLOAD then
-                queued = queued - 1
-                error(("comms outbound producer returned %d bytes; maximum is %d")
-                    :format(#payload, MAX_PAYLOAD))
             else
-                _transmit(lane, payload)
-                lane.tokens = lane.tokens - 1
-                if job.oneShot then
-                    queued = queued - 1
+                local taken, result = _send(lane.distribution, lane.target, payload)
+                job.tries = (job.tries or 0) + 1
+                if not taken and Throttled(result) and job.tries < Comms.SEND_TRIES then
+                    job.pending = payload
+                    P.hold(now)
                 else
-                    job.readyAt = now + _draw(job.repeatDelay, job.repeatJitter)
-                    lane.jobs[#lane.jobs + 1] = job
+                    if taken then
+                        lane.tokens = lane.tokens - 1
+                        P.spend()
+                    end
+                    job.pending, job.tries = nil, nil
+                    table.remove(lane.jobs, readyIndex)
+                    if job.oneShot then
+                        queued = queued - 1
+                    else
+                        job.readyAt = now + _draw(job.repeatDelay, job.repeatJitter)
+                        lane.jobs[#lane.jobs + 1] = job
+                    end
                 end
             end
             now = GetTime()
         end
 
-        if #lane.jobs == 0 then return end
-        local tokenAt = now + math.max(0, 1 - lane.tokens) / SEND_RATE
-        local jobAt
-        for i = 1, #lane.jobs do
-            local at = lane.jobs[i].readyAt
-            if not jobAt or at < jobAt then jobAt = at end
-        end
-        _schedule(lane, math.max(tokenAt, jobAt))
+        _later(lane, now)
     end
 
     _draw = function(base, jitter)
         return (base or 0) + (jitter and jitter > 0 and math.random() * jitter or 0)
     end
 
-    _transmit = function(lane, payload)
-        SendAddonMessageFn()(P.prefix, payload, lane.distribution, lane.target)
+    -- Whether the client took the message, and what it answered:
+    -- SendAddonMessage answers nothing or true on older clients,
+    -- Enum.SendAddonMessageResult (0 is Success) on newer ones, and anything
+    -- else (throttled, not in a group) is refused.
+    _send = function(distribution, target, payload)
+        local ok, result = pcall(SendAddonMessageFn(), P.prefix, payload, distribution, target)
+        local taken = ok and (result == nil or result == true or result == 0)
         if P.log then
-            P.debug("-> %d bytes [%s]", #payload,
-                lane.distribution:lower() .. (lane.target and (":" .. lane.target) or ""))
+            P.debug("-> %d bytes [%s]%s", #payload,
+                distribution:lower() .. (target and (":" .. target) or ""),
+                taken and "" or (" refused: " .. tostring(result)))
         end
+        return taken, result
+    end
+
+    -- For transfers, which pace their own data: sends now, outside the lanes
+    -- (the caller asked P.sendable first), and says whether the client took
+    -- it and, if not, whether to try again (a throttle).
+    function P.transmit(distribution, target, payload)
+        local taken, result = _send(distribution, target, payload)
+        if taken then P.spend() end
+        return taken, not taken and Throttled(result)
     end
 
     function P.resetTransport()
@@ -221,8 +337,10 @@ function Comms._attachTransport(C, P)
             lane.lastRefill = GetTime()
         end
         queued = 0
+        shared.tokens, shared.refilled, shared.heldUntil = Comms.SEND_BURST, nil, 0
         wipe(budget)
         wipe(violations)
+        P.resetTransfers()
     end
 
     ----------------------------------------------------------------------------
@@ -237,11 +355,26 @@ function Comms._attachTransport(C, P)
     local none = {}
 
     local _dropped, _overBudget, _sessionMute, _sweep, _violation
+
+    -- Hands a message to each receiver in list; whether one called it a
+    -- violation.
+    local function _deliver(list, who, payload, source)
+        local violated = false
+        for i = 1, #list do
+            local ok, result = pcall(list[i], who, payload, source)
+            if not ok then
+                P.debug("receiver error from %s: %s", who.key, tostring(result))
+            elseif result == Comms.VIOLATION then
+                violated = true
+            end
+        end
+        return violated
+    end
     _onAddonMessage = function(prefix, payload, source, sender)
         if prefix ~= P.prefix or not P.enabled or not payload or not source then return end
         local listeners = P.receivers[source] or none
         local any = P.receivers["*"] or none
-        if #listeners == 0 and #any == 0 then return end
+        if #listeners == 0 and #any == 0 and not P.transferring() then return end
 
         -- Receivers get both forms: the key for every lookup and comparison,
         -- and the realm-less name for anything they store or show.
@@ -275,6 +408,19 @@ function Comms._attachTransport(C, P)
             return
         end
 
+        if payload:byte(1) == Comms.TRANSFER then
+            if not P.transferring() then return end
+            local ok, result = pcall(P.onTransfer, who, payload, source)
+            if not ok then
+                P.debug("transfer error from %s: %s", key, tostring(result))
+            elseif result == Comms.VIOLATION then
+                _dropped(key, "transfer violation", payload)
+                _violation(route, now)
+            end
+            return
+        end
+        if #listeners == 0 and #any == 0 then return end
+
         if _overBudget(route, now) then
             _dropped(key, "over budget", payload)
             _violation(route, now)
@@ -285,17 +431,8 @@ function Comms._attachTransport(C, P)
             P.debug("<- %s [%s] %d bytes", key, source:lower(), #payload)
         end
 
-        local violated = false
-        for _, list in ipairs({ listeners, any }) do
-            for i = 1, #list do
-                local ok, result = pcall(list[i], who, payload, source)
-                if not ok then
-                    P.debug("receiver error from %s: %s", key, tostring(result))
-                elseif result == Comms.VIOLATION then
-                    violated = true
-                end
-            end
-        end
+        local violated = _deliver(listeners, who, payload, source)
+        violated = _deliver(any, who, payload, source) or violated
         if violated then _violation(route, now) end
     end
 

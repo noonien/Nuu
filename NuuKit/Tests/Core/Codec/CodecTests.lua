@@ -1,5 +1,5 @@
--- Core/Codec: the plain writer and reader, base64url, Adler-32 and the
--- shared-string form around them. The comms frame on top of the same writer
+-- Core/Codec: the plain writer and reader, base64url, Adler-32, DEFLATE and
+-- the shared-string form around them. The comms frame on top of the same writer
 -- and reader is Tests/Core/Comms/FrameTests.lua's.
 local Kit = _G.LoadKit().Kit
 local W = dofile("Tests/Support/CommsWorld.lua")
@@ -45,13 +45,33 @@ suite("The writer", function()
 
     test("counts and restores", function()
         local w = Codec.Writer():U(9)
-        local mark = w:Mark()
+        local n, len = w:Mark()
         w:Bytes("nope"):U(300)
         eq(w:Len(), 8, "len")
-        w:Restore(mark)
+        w:Restore(n, len)
         eq(w:Len(), 1, "len after restore")
         w:U(1)
         eq(w:Finish(), "\9\1", "written after restore")
+    end)
+
+    test("restores nested marks, inner then outer", function()
+        local w = Codec.Writer():U(1)
+        local n1, l1 = w:Mark()
+        w:U(2)
+        local n2, l2 = w:Mark()
+        w:Bytes("abc")
+        w:Restore(n2, l2)
+        eq(w:Finish(), "\1\2", "inner")
+        w:U(3)
+        w:Restore(n1, l1)
+        eq(w:Len(), 1, "outer len")
+        eq(w:U(4):Finish(), "\1\4", "outer")
+    end)
+
+    test("refuses a restore with no mark", function()
+        local w = Codec.Writer():U(1)
+        errors(function() w:Restore() end, "nothing")
+        errors(function() w:Restore(1) end, "half a mark")
     end)
 end)
 
@@ -173,17 +193,109 @@ suite("Adler-32", function()
         end
         eq(Codec.Adler32(string.rep("\255", 100000)), b * 65536 + a, "100000 x FF")
     end)
+
+    test("agrees with the slow way at every length around a step and a chunk", function()
+        local bytes, x = {}, 7
+        for i = 1, 8300 do
+            x = (x * 1103515245 + 12345) % 2147483648
+            bytes[i] = string.char(x % 256)
+        end
+        local s = table.concat(bytes)
+        for _, n in ipairs({ 1, 15, 16, 17, 31, 32, 33, 4095, 4096, 4097, 4111, 4112, 4113, 8192, 8300 }) do
+            local a, b = 1, 0
+            for i = 1, n do
+                a = (a + s:byte(i)) % 65521
+                b = (b + a) % 65521
+            end
+            eq(Codec.Adler32(s:sub(1, n)), b * 65536 + a, n .. " bytes")
+        end
+    end)
+end)
+
+--------------------------------------------------------------------------------
+
+suite("DEFLATE", function()
+    -- Bytes that do not repeat: a linear congruential generator.
+    local function noise(n, seed)
+        local out, x = {}, seed
+        for i = 1, n do
+            x = (x * 1103515245 + 12345) % 2147483648
+            out[i] = string.char(math.floor(x / 65536) % 256)
+        end
+        return table.concat(out)
+    end
+
+    test("round trips empty, short, repeating, random and long input", function()
+        local all = {}
+        for i = 0, 255 do all[#all + 1] = string.char(i) end
+        local cases = {
+            "", "a", "ab", "abc", table.concat(all), string.rep("a", 1000), string.rep("abc", 5000),
+            noise(5000, 7), noise(70000, 3) .. string.rep("guide ", 20000),
+        }
+        for i, input in ipairs(cases) do
+            local packed = Codec.Deflate(input)
+            local back, problem = Codec.Inflate(packed)
+            ok(back == input, ("case %d (%d bytes) comes back: %s"):format(i, #input, tostring(problem)))
+        end
+    end)
+
+    test("stores what does not compress, at a few bytes' cost", function()
+        local input = noise(4000, 11)
+        local packed = Codec.Deflate(input)
+        ok(#packed <= #input + 10, "random bytes: " .. #packed .. " for " .. #input)
+    end)
+
+    test("inflates what zlib wrote, compressed and stored", function()
+        local zlib = "\243\206\204\201\81\176\80\240\206\79\202\207\73\81\8\75\45\202\205\204\211\83\240"
+            .. "\30\21\29\228\162\33\165\69\121\10\153\121\10\137\37\10\174\137\233\137\121\10\1\169\57"
+            .. "\37\197\217\153\121\121\169\69\122\0"
+        eq(Codec.Inflate(zlib), string.rep("Kill 8 Kobold Vermin. ", 20) .. "Turn in at Eagan Peltskinner.", "level 9")
+        eq(Codec.Inflate("\1\12\0\243\255stored bytes"), "stored bytes", "a stored block")
+    end)
+
+    test("refuses a stream that is damaged, cut short, too long or too big", function()
+        local packed = Codec.Deflate(string.rep("Turn in at Eagan Peltskinner. ", 30))
+        local value, problem = Codec.Inflate(packed:sub(1, -3))
+        ok(value == nil and problem == "damaged", "cut short: " .. tostring(problem))
+        value, problem = Codec.Inflate(packed .. "x")
+        ok(value == nil and problem == "bytes after the end", "a byte after: " .. tostring(problem))
+        value, problem = Codec.Inflate("\7")
+        ok(value == nil and problem == "damaged", "block type 3: " .. tostring(problem))
+        value, problem = Codec.Inflate("")
+        ok(value == nil and problem == "damaged", "nothing: " .. tostring(problem))
+        value, problem = Codec.Inflate(packed, 100)
+        ok(value == nil and problem == "too big", "past maxSize: " .. tostring(problem))
+        value, problem = Codec.Inflate("\1\12\0\243\255stored bytes", 5)
+        ok(value == nil and problem == "too big", "a stored block past maxSize: " .. tostring(problem))
+    end)
+
+    test("never raises on damaged input", function()
+        local packed = Codec.Deflate(noise(300, 5) .. string.rep("Kobold ", 200))
+        for i = 1, #packed do
+            local damaged = packed:sub(1, i - 1) .. string.char((packed:byte(i) + 37) % 256) .. packed:sub(i + 1)
+            local okCall = pcall(Codec.Inflate, damaged)
+            ok(okCall, "byte " .. i .. " changed")
+        end
+    end)
 end)
 
 --------------------------------------------------------------------------------
 
 suite("Shared strings", function()
-    test("are nuu: and base64url of version, schema, body and checksum", function()
+    test("are nuu: and base64url of version, schema, deflated body and checksum", function()
         local text = Codec.ToText(1, "body")
         ok(text:sub(1, 4) == "nuu:", "prefix")
         local bytes = Codec.FromBase64(text:sub(5))
-        eq(bytes:sub(1, 6), "\1\1body", "version, schema, body")
-        eq(Codec.Reader(bytes:sub(7)):U32(), Codec.Adler32("\1\1body"), "the checksum covers the rest")
+        local head = "\1\1" .. Codec.Deflate("body")
+        eq(bytes:sub(1, -5), head, "version, schema, deflated body")
+        eq(Codec.Reader(bytes:sub(-4)):U32(), Codec.Adler32(head), "the checksum covers the rest")
+    end)
+
+    test("are shorter than their body when it repeats", function()
+        local body = string.rep("Kill 8 Kobold Vermin. ", 40)
+        local text = Codec.ToText(1, body)
+        ok(#text < #body / 4, "compressed: " .. #text .. " characters for " .. #body .. " bytes")
+        eq(select(2, Codec.FromText(text)), body, "and read back")
     end)
 
     test("read back to their schema and body", function()
@@ -216,11 +328,67 @@ suite("Shared strings", function()
         ok(value == nil and problem:find("damaged", 1, true), "not base64: " .. tostring(problem))
     end)
 
+    test("refuse a body that inflates past the limit", function()
+        local head = "\1\1" .. Codec.Deflate(string.rep("x", Codec.TEXT_MAX_BODY + 1))
+        local text = "nuu:" .. Codec.ToBase64(head .. Codec.Writer():U32(Codec.Adler32(head)):Finish())
+        local value, problem = Codec.FromText(text)
+        ok(value == nil and problem:find("more than this version reads", 1, true), "too big: " .. tostring(problem))
+    end)
+
+    test("refuse a body that is not DEFLATE, though its checksum holds", function()
+        local head = "\1\1\255\255\255"
+        local text = "nuu:" .. Codec.ToBase64(head .. Codec.Writer():U32(Codec.Adler32(head)):Finish())
+        local value, problem = Codec.FromText(text)
+        ok(value == nil and problem:find("damaged", 1, true), "not deflate: " .. tostring(problem))
+    end)
+
     test("refuse a container version this kit does not know", function()
         local head = "\2\1body"
         local text = "nuu:" .. Codec.ToBase64(head .. Codec.Writer():U32(Codec.Adler32(head)):Finish())
         local value, problem = Codec.FromText(text)
         ok(value == nil and problem:find("newer version", 1, true), "version 2: " .. tostring(problem))
+    end)
+
+    test("never raise on a string cut short or changed anywhere", function()
+        local body = string.rep("kill ten boars, then return. ", 20)
+        local text = Codec.ToText(3, body)
+        local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+        for cut = 0, #text - 1 do
+            local good, value, problem = pcall(Codec.FromText, text:sub(1, cut))
+            ok(good, "cut at " .. cut .. " raised: " .. tostring(value))
+            ok(value == nil and type(problem) == "string", "cut at " .. cut .. " is refused")
+        end
+        for at = 5, #text do
+            local c = text:sub(at, at)
+            local i = alphabet:find(c, 1, true)
+            local other = alphabet:sub(i % 64 + 1, i % 64 + 1)
+            local changed = text:sub(1, at - 1) .. other .. text:sub(at + 1)
+            local good, value, problem = pcall(Codec.FromText, changed)
+            ok(good, "change at " .. at .. " raised: " .. tostring(value))
+            ok(value == nil and type(problem) == "string", "change at " .. at .. " is refused")
+        end
+    end)
+
+    test("read the largest schema number and an empty body", function()
+        local text = Codec.ToText(268435455, "")
+        local schema, body = Codec.FromText(text)
+        eq(schema, 268435455, "schema")
+        eq(body, "", "body")
+    end)
+
+    test("refuse what is not text at all", function()
+        for _, value in ipairs({ 1, true, {}, "", "nuu", "nuu:", " nuu: ", "NUU:abc" }) do
+            local good, schema, problem = pcall(Codec.FromText, value)
+            ok(good and schema == nil and type(problem) == "string", "refused: " .. tostring(value))
+        end
+        eq(Codec.IsText(nil), false, "nil is not text")
+    end)
+
+    test("call an older container version damaged, not newer", function()
+        local head = "\0\1body"
+        local text = "nuu:" .. Codec.ToBase64(head .. Codec.Writer():U32(Codec.Adler32(head)):Finish())
+        local value, problem = Codec.FromText(text)
+        ok(value == nil and problem:find("damaged", 1, true), "version 0: " .. tostring(problem))
     end)
 end)
 

@@ -12,11 +12,13 @@ ns.Kit = Kit
 --
 -- FromBase64 ignores whitespace, so text a chat or a forum wrapped onto
 -- several lines still reads. It takes only the canonical form: no padding,
--- no other characters, and no stray bits in the last character.
+-- no other characters, and no stray bits in the last character. Both pause
+-- every 4095 bytes, for a job (Core/Job.lua).
 local Codec = Kit.Codec or {}
 Kit.Codec = Codec
 
 local byte, char, sub, floor, concat = string.byte, string.char, string.sub, math.floor, table.concat
+local Pause = Kit.Job.Pause
 
 local ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 local ENC, DEC = {}, {}
@@ -37,6 +39,7 @@ function Codec.ToBase64(s)
         out[k + 2] = PAIR[v % 4096]
         k = k + 2
         i = i + 3
+        if i % 4095 == 1 then Pause() end
     end
     local left = n - i + 1
     if left == 1 then
@@ -65,6 +68,7 @@ function Codec.FromBase64(text)
         k = k + 1
         out[k] = char(floor(v / 65536), floor(v / 256) % 256, v % 256)
         i = i + 4
+        if i % 5460 == 1 then Pause() end
     end
     local left = n - i + 1
     if left == 2 then

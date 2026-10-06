@@ -9,7 +9,10 @@ ns.Kit = Kit
 -- Shared by every comms instance; it keeps no state between frames.
 --
 -- Wire: [version: u8] [COBS(fields)]. The version byte is raw (not a field,
--- not COBS'd) so a future encoding can still be identified.
+-- not COBS'd) so a future encoding can still be identified. Byte 1 is the
+-- addon's own messages; byte 2 (Comms.TRANSFER) is the kit's transfers
+-- (Core/Comms/Transfer.lua), which Transport hands to them and never to the
+-- addon's receivers.
 --
 --     local payload = Kit.Comms.Writer():U(MSG_HELLO):Bytes(name):Finish()
 --     local r = Kit.Comms.Reader(payload)
@@ -19,16 +22,18 @@ ns.Kit = Kit
 -- Writer is the codec's writer with the comms limits (U/I in four groups of
 -- 7 bits). Len() is the frame's length; Finish() is the SendAddonMessage
 -- payload, nil if the frame would exceed MAX_PAYLOAD, an error if no field
--- was written. Reader takes a frame apart: a frame that is not well-formed
--- COBS reads as not ok from its first field. The codec's reader does the
--- rest: field methods return 0, false or "" once a read fails, Ok() says so,
--- and an unread tail is not an error.
+-- was written. FinishTransfer() is the same with the transfer byte. Reader
+-- takes a frame apart: a frame that is not well-formed COBS reads as not ok
+-- from its first field. The codec's reader does the rest: field methods
+-- return 0, false or "" once a read fails, Ok() says so, and an unread tail
+-- is not an error.
 local Comms = Kit.Comms or {}
 Kit.Comms = Comms
 local Codec = Kit.Codec
 
 -- First wire byte, 1..255. An encoding version, not a message-schema version.
 Comms.VERSION = 1
+Comms.TRANSFER = 2
 -- The client's addon-message cap. A longer message is cut to it and still
 -- reported sent (WoW: Forever 1.60.1, 2026-10-05), so the cap is enforced here.
 Comms.MAX_PAYLOAD = 255
@@ -45,7 +50,8 @@ local COBS_FULL_BLOCK = 0xFF
 local COBS_MAX_RUN = COBS_FULL_BLOCK - 1
 
 local byte, char, sub, find, floor, concat = string.byte, string.char, string.sub, string.find, math.floor, table.concat
-local VERSION_CH, FULL_CH = char(VERSION), char(COBS_FULL_BLOCK)
+local TRANSFER = Comms.TRANSFER
+local VERSION_CH, TRANSFER_CH, FULL_CH = char(VERSION), char(TRANSFER), char(COBS_FULL_BLOCK)
 
 --------------------------------------------------------------------------------
 -- COBS. A run of up to 254 nonzero bytes follows a code byte of its length
@@ -123,17 +129,27 @@ function FrameWriter:Len()
     return n + 2 + floor((n - 1) / COBS_MAX_RUN)
 end
 
-function FrameWriter:Finish()
+local function finish(self, first)
     local n = self.len
     if n + 2 > MAX_PAYLOAD then return nil end
     assert(n >= 1, "comms payload is empty")
-    return VERSION_CH .. cobsEncode(Codec.WriterMethods.Finish(self))
+    return first .. cobsEncode(Codec.WriterMethods.Finish(self))
+end
+
+function FrameWriter:Finish()
+    return finish(self, VERSION_CH)
+end
+
+function FrameWriter:FinishTransfer()
+    return finish(self, TRANSFER_CH)
 end
 
 -- Wire header. nil = not this encoding (drop + session mute). VIOLATION = empty
--- COBS. true = ok. Transport calls this once before receivers; features do not.
+-- COBS. true = ok, for a message or a transfer (byte(s, 1) says which).
+-- Transport calls this once before receivers; features do not.
 function Comms.Accept(s)
-    if byte(s, 1) ~= VERSION then return nil end
+    local first = byte(s, 1)
+    if first ~= VERSION and first ~= TRANSFER then return nil end
     if #s < MIN_PAYLOAD then return Comms.VIOLATION end
     return true
 end

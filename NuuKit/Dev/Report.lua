@@ -562,6 +562,34 @@ step("kit parts", function()
     again:Release()
 end)
 
+-- The codec: a shared string of a guide's size made and read at once, and
+-- what Core/Job.lua needs to spread that over frames.
+step("codec", function()
+    add("")
+    add("Codec")
+    local Codec, Job = Kit.Codec, Kit.Job
+    local function yes(value) return value and "yes" or "NO" end
+    addf("  coroutine: %s, debugprofilestop: %s, C_Timer.After: %s (jobs spread over frames: %s)",
+        yes(type(coroutine) == "table" and type(coroutine.running) == "function"),
+        yes(type(debugprofilestop) == "function"), yes(C_Timer and type(C_Timer.After) == "function"),
+        yes(type(debugprofilestop) == "function" and C_Timer and C_Timer.After))
+    -- About the size and make of the largest guide's bytes (30 KB).
+    local parts = {}
+    for i = 1, 1100 do parts[i] = ("step %d: kill %d boars at %d, %d. "):format(i, i % 7, i % 97, i % 89) end
+    local body = table.concat(parts)
+    local text, back
+    local deflate = best(3, 1, function() Codec.Deflate(body) end)
+    local packed = Codec.Deflate(body)
+    local inflate = best(3, 1, function() Codec.Inflate(packed) end)
+    local toText = best(3, 1, function() text = Codec.ToText(1, body) end)
+    local fromText = best(3, 1, function() local _; _, back = Codec.FromText(text) end)
+    addf("  %d bytes -> %d deflated, %d as text; read back: %s", #body, #packed, #text, yes(back == body))
+    addf("  at once: Deflate %.1f ms, Inflate %.1f ms, ToText %.1f ms, FromText %.1f ms", deflate, inflate,
+        toText, fromText)
+    addf("  in a job: about %d and %d frames of %d ms", math.ceil(toText / Job.SLICE_MS),
+        math.ceil(fromText / Job.SLICE_MS), Job.SLICE_MS)
+end)
+
 -- Whole pixels: every shown widget of the open gallery.
 step("pixels", function()
     add("")

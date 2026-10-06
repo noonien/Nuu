@@ -29,6 +29,10 @@ ns.Kit = Kit
 -- calls fn whenever the destination can send, until fn returns nil. All
 -- senders to one destination share one throttle.
 --
+-- Data too big for one message goes with comms:Offer(target, info, bytes)
+-- and arrives through comms:OnOffer(fn), once the receiving player accepts
+-- it (Core/Comms/Transfer.lua).
+--
 -- Each instance keeps its own queues and mutes, so two addons sharing the kit
 -- in development stay apart; give each its own prefix. Nothing is sent or
 -- received until SetEnabled(true), and it refuses (returns false) on a client
@@ -159,6 +163,7 @@ function Kit.NewComms(spec)
     end
 
     Comms._attachTransport(C, P)
+    Comms._attachTransfer(C, P)
 
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, P.prefix)
