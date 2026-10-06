@@ -76,8 +76,31 @@ do
     assert(equal, "StepCommon is GuideDraft's common fields and item: " .. tostring(where))
 end
 
--- Every packaged guide and fixture, and the worked example, round trip.
+-- Every guide in Data/Guides is one the TOC lists, so the round trip below
+-- reaches it.
 do
+    local listed, files = {}, 0
+    for line in io.lines("NuuRoad.toc") do
+        local name = line:match("^%s*Data/Guides/([^%s/]+%.lua)%s*$")
+        if name then listed[name] = true end
+    end
+    local dir = io.popen and io.popen('ls "Data/Guides"')
+    if dir then
+        for name in dir:lines() do
+            if name:match("%.lua$") then
+                files = files + 1
+                assert(listed[name], "Data/Guides/" .. name .. " is in NuuRoad.toc")
+            end
+        end
+        dir:close()
+        assert(files >= 20, "the packaged guides are found on disk")
+    end
+end
+
+-- Every packaged guide and fixture, and the worked example, round trip:
+-- as bytes, as the nuu: string a player shares, and to the same bytes again.
+do
+    local Codec = ns.Kit.Codec
     local guides, ids = {}, {}
     for id, guide in pairs(ns.builtInGuides) do
         guides[id] = guide
@@ -98,6 +121,13 @@ do
         assert(back, id .. " decodes: " .. tostring(why))
         local equal, where = same(back, guide)
         assert(equal, id .. " comes back as it was: " .. tostring(where))
+        assert(GuideWire:Encode(back) == bytes, id .. ": the guide it comes back as encodes to the same bytes")
+        local shared = Codec.ToText(GuideCodec.SCHEMA, bytes)
+        assert(Codec.IsText(shared) and not shared:find("[^%w%-_:]"), id .. " shares as one plain line")
+        local schema, body = Codec.FromText(shared)
+        assert(schema == GuideCodec.SCHEMA and body == bytes, id .. " comes back from its string: " .. tostring(body))
+        local damaged = shared:sub(1, -2) .. (shared:sub(-1) == "A" and "B" or "A")
+        assert(Codec.FromText(damaged) == nil, id .. ": its string with a character changed is refused")
         text, binary = text + #GuideText:Write(guide), binary + #bytes
     end
     assert(#ids >= 30, "the packaged guides, the fixtures and the example")
