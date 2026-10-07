@@ -57,7 +57,8 @@ line commented out).
 `Core/Comms/Frame.lua`), base64url, Adler-32 and the `nuu:` string a player shares (`Text.lua`). A value's codec is
 generated, never written by hand: a schema built with the helpers in `NuuKit/Tools/Codec/Types.lua`, and from the
 addon's folder `lua ../NuuKit/Tools/Codec/Gen.lua Schema/<Name>.lua Data/<Name>Codec.lua`. The generated file is
-checked in, and a test fails when it is not its schema's. NuuRoad's guide schema is `NuuRoad/Schema/Guide.lua`, with
+checked in, and a test fails when it is not its schema's. What the codec and the comms cost, to compare before and
+after a change: from `NuuKit/`, `lua Tests/Bench/Codec.lua [file]` and `lua Tests/Bench/Comms.lua`. NuuRoad's guide schema is `NuuRoad/Schema/Guide.lua`, with
 `Data/GuideCodec.lua` and `Data/GuideWire.lua` (v1 to the schema's values); neither is in the TOC yet.
 
 ## UI kit
