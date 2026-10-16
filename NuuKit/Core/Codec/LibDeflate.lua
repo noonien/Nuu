@@ -22,7 +22,11 @@ ns.Kit = Kit
 --   * the compressor and decompressor call Kit.Job.Pause() every 256 bytes,
 --     so a job (Core/Job.lua) spreads them over frames;
 --   * decompressing stops at maxSize (Codec.INFLATE_MAX by default), so a
---     short string cannot grow without end.
+--     short string cannot grow without end;
+--   * for speed and garbage, with the same output: the compressor keeps
+--     zlib's hash chains (a head and a link per position) instead of a table
+--     per hash and skips a candidate whose byte at the best length differs;
+--     the decompressor reads codes of up to 9 bits through a lookup table.
 --
 -- Deflate compresses at level 9, the smallest and slowest. Inflate refuses a
 -- stream that is damaged, ends early, or has bytes after its end, with nil
@@ -940,11 +944,10 @@ end
 --			If dictionary is presented, the last 258 bytes of the dictionary
 --			needs to be loaded into sing_table[-257..0]
 --			(See more in the description of offset.)
--- @param hash_tables. The table key is the hash value (0<=hash<=16777216=256^3)
---			The table value is an array0 that stores the indexes of the
---			input data string to be compressed, such that
---			hash == str[index]*str[index+1]*str[index+2]
---			Indexes are ordered in this array.
+-- @param head [Nuu] The newest position of each hash value
+--			(0<=hash<=16777216=256^3), such that
+--			hash == str[index]*65536+str[index+1]*256+str[index+2]
+-- @param chain [Nuu] chain[p-offset] is the position before p with p's hash.
 -- @param block_start The indexes of the input data string to be compressed.
 --				that starts the LZ77 block.
 -- @param block_end The indexes of the input data string to be compressed.
@@ -959,8 +962,9 @@ end
 -- @return LZ77 distance deflate codes.
 -- @return the extra bits of LZ77 distance deflate codes.
 -- @return the count of each LZ77 distance deflate code.
-local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
+local function GetBlockLZ77Result(level, string_table, head, chain, block_start,
 		block_end, offset, dictionary)
+	assert(not dictionary, "no preset dictionaries") -- [Nuu]
 	local config = _compression_level_configs[level]
 	local config_use_lazy
 		, config_good_prev_length
@@ -974,36 +978,7 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 	local config_good_hash_chain =
 		(config_max_hash_chain-config_max_hash_chain%4/4)
 
-	local hash
-
-	local dict_hash_tables
-	local dict_string_table
-	local dict_string_len = 0
-
-	if dictionary then
-		dict_hash_tables = dictionary.hash_tables
-		dict_string_table = dictionary.string_table
-		dict_string_len = dictionary.strlen
-		assert(block_start == 1)
-		if block_end >= block_start and dict_string_len >= 2 then
-			hash = dict_string_table[dict_string_len-1]*65536
-				+ dict_string_table[dict_string_len]*256 + string_table[1]
-			local t = hash_tables[hash]
-			if not t then t = {}; hash_tables[hash] = t end
-			t[#t+1] = -1
-		end
-		if block_end >= block_start+1 and dict_string_len >= 1 then
-			hash = dict_string_table[dict_string_len]*65536
-				+ string_table[1]*256 + string_table[2]
-			local t = hash_tables[hash]
-			if not t then t = {}; hash_tables[hash] = t end
-			t[#t+1] = 0
-		end
-	end
-
-	local dict_string_len_plus3 = dict_string_len + 3
-
-	hash = (string_table[block_start-offset] or 0)*256
+	local hash = (string_table[block_start-offset] or 0)*256
 		+ (string_table[block_start+1-offset] or 0)
 
 	local lcodes = {}
@@ -1046,31 +1021,14 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 
 		hash = (hash*256+(string_table[string_table_index+2] or 0))%16777216
 
-		local chain_index
-		local cur_chain
-		local hash_chain = hash_tables[hash]
-		local chain_old_size
-		if not hash_chain then
-			chain_old_size = 0
-			hash_chain = {}
-			hash_tables[hash] = hash_chain
-			if dict_hash_tables then
-				cur_chain = dict_hash_tables[hash]
-				chain_index = cur_chain and #cur_chain or 0
-			else
-				chain_index = 0
-			end
-		else
-			chain_old_size = #hash_chain
-			cur_chain = hash_chain
-			chain_index = chain_old_size
-		end
+		-- [Nuu] The earlier positions with this hash, newest first: head[hash],
+		-- then chain[p-offset] from each p (zlib's head and prev). The first
+		-- of its hash writes no link (a nil written is a key kept in Lua
+		-- 5.1), so its slot is nil or an older position's link, which is
+		-- past the window and ends the search there just the same.
+		local newest = head[hash]
 
-		if index <= block_end then
-			hash_chain[chain_old_size+1] = index
-		end
-
-		if (chain_index > 0 and index + 2 <= block_end
+		if (newest and index + 2 <= block_end
 			and (not config_use_lazy or prev_len < config_max_lazy_match)) then
 
 			local depth =
@@ -1082,31 +1040,24 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 			max_len_minus_one = max_len_minus_one + string_table_index
 			local string_table_index_plus_three = string_table_index + 3
 
-			while chain_index >= 1 and depth > 0 do
-				local prev = cur_chain[chain_index]
-
+			local prev = newest
+			while prev and depth > 0 do
 				if index - prev > 32768 then
 					break
 				end
-				if prev < index then
+				-- [Nuu] A match longer than cur_len has the byte at cur_len
+				-- in common (zlib's scan_end), so one comparison skips most
+				-- candidates that could not take its place.
+				if prev < index and (cur_len < 3
+					or string_table[prev - offset + cur_len]
+					== string_table[string_table_index + cur_len]) then
 					local sj = string_table_index_plus_three
-
-					if prev >= -257 then
-						local pj = prev - offset_minus_three
-						while (sj <= max_len_minus_one
-								and string_table[pj]
-								== string_table[sj]) do
-							sj = sj + 1
-							pj = pj + 1
-						end
-					else
-						local pj = dict_string_len_plus3 + prev
-						while (sj <= max_len_minus_one
-								and dict_string_table[pj]
-								== string_table[sj]) do
-							sj = sj + 1
-							pj = pj + 1
-						end
+					local pj = prev - offset_minus_three
+					while (sj <= max_len_minus_one
+							and string_table[pj]
+							== string_table[sj]) do
+						sj = sj + 1
+						pj = pj + 1
 					end
 					local j = sj - string_table_index
 					if j > cur_len then
@@ -1118,13 +1069,16 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 					end
 				end
 
-				chain_index = chain_index - 1
+				prev = chain[prev - offset]
 				depth = depth - 1
-				if chain_index == 0 and prev > 0 and dict_hash_tables then
-					cur_chain = dict_hash_tables[hash]
-					chain_index = cur_chain and #cur_chain or 0
-				end
 			end
+		end
+
+		-- [Nuu] Only after the search, which reads the slots of the positions
+		-- before it.
+		if index <= block_end then
+			if newest then chain[string_table_index] = newest end
+			head[hash] = index
 		end
 
 		if not config_use_lazy then
@@ -1185,12 +1139,9 @@ local function GetBlockLZ77Result(level, string_table, hash_tables, block_start,
 			for i=index+1, index+prev_len-(config_use_lazy and 2 or 1) do
 				hash = (hash*256+(string_table[i-offset+2] or 0))%16777216
 				if prev_len <= config_max_insert_length then
-					hash_chain = hash_tables[hash]
-					if not hash_chain then
-						hash_chain = {}
-						hash_tables[hash] = hash_chain
-					end
-					hash_chain[#hash_chain+1] = i
+					local link = head[hash]
+					if link then chain[i-offset] = link end
+					head[hash] = i
 				end
 			end
 			index = index + prev_len - (config_use_lazy and 1 or 0)
@@ -1498,7 +1449,7 @@ end
 local function Deflate(configs, WriteBits, WriteString, FlushWriter, str
 	, dictionary)
 	local string_table = {}
-	local hash_tables = {}
+	local head, chain = {}, {} -- [Nuu] zlib's hash chains, not a table per hash
 	local is_last_block = nil
 	local block_start
 	local block_end
@@ -1589,7 +1540,7 @@ local function Deflate(configs, WriteBits, WriteString, FlushWriter, str
 			else
 				lcodes, lextra_bits, lcodes_counts, dcodes, dextra_bits
 				, dcodes_counts = GetBlockLZ77Result(level, string_table
-				, hash_tables, block_start, block_end, offset, dictionary
+				, head, chain, block_start, block_end, offset, dictionary
 				)
 			end
 
@@ -1660,26 +1611,14 @@ local function Deflate(configs, WriteBits, WriteString, FlushWriter, str
 			j = 1
 			for i = block_end-32767, block_end do
 				string_table[j] = string_table[i-offset]
+				chain[j] = chain[i-offset] -- [Nuu] keyed as string_table is
 				j = j + 1
 			end
 
-			for k, t in pairs(hash_tables) do
-				local tSize = #t
-				if tSize > 0 and block_end+1 - t[1] > 32768 then
-					if tSize == 1 then
-						hash_tables[k] = nil
-					else
-						local new = {}
-						local newSize = 0
-						for i = 2, tSize do
-							j = t[i]
-							if block_end+1 - j <= 32768 then
-								newSize = newSize + 1
-								new[newSize] = j
-							end
-						end
-						hash_tables[k] = new
-					end
+			-- [Nuu] A head past the window can never match again.
+			for k, p in pairs(head) do
+				if block_end+1 - p > 32768 then
+					head[k] = nil
 				end
 			end
 		end
@@ -1858,6 +1797,33 @@ local function CreateReader(input_string)
 		return -10
 	end
 
+	-- [Nuu] Decode through a table of the codes of up to 9 bits (see
+	-- BuildFastDecode): one lookup of the next 9 bits takes the commonest
+	-- codes whole. A longer or invalid code is left to Decode, which reads
+	-- it from the same place.
+	local function DecodeFast(fast, huffman_bitlen_counts, huffman_symbols
+		, min_bitlen)
+		if cache_bitlen < 15 then
+			local lshift_mask = _pow2[cache_bitlen]
+			local byte1, byte2, byte3, byte4 =
+				string_byte(input, input_next_byte_pos
+				, input_next_byte_pos+3)
+			cache = cache + ((byte1 or 0)+(byte2 or 0)*256
+				+(byte3 or 0)*65536+(byte4 or 0)*16777216)*lshift_mask
+			input_next_byte_pos = input_next_byte_pos + 4
+			cache_bitlen = cache_bitlen + 32
+		end
+		local entry = fast[cache % 512]
+		if entry then
+			local bitlen = entry % 16
+			local rshift_mask = _pow2[bitlen]
+			cache = (cache - cache % rshift_mask) / rshift_mask
+			cache_bitlen = cache_bitlen - bitlen
+			return (entry - bitlen) / 16
+		end
+		return Decode(huffman_bitlen_counts, huffman_symbols, min_bitlen)
+	end
+
 	local function ReaderBitlenLeft()
 		return (input_strlen - input_next_byte_pos + 1) * 8 + cache_bitlen
 	end
@@ -1870,6 +1836,7 @@ local function CreateReader(input_string)
 	end
 
 	return ReadBits, ReadBytes, Decode, ReaderBitlenLeft, SkipToByteBoundary
+		, DecodeFast
 end
 
 -- Create a deflate state, so I can pass in less arguments to functions.
@@ -1879,12 +1846,13 @@ end
 -- @return The decomrpess state.
 local function CreateDecompressState(str, dictionary, max_size)
 	local ReadBits, ReadBytes, Decode, ReaderBitlenLeft
-		, SkipToByteBoundary = CreateReader(str)
+		, SkipToByteBoundary, DecodeFast = CreateReader(str)
 	local state =
 	{
 		ReadBits = ReadBits,
 		ReadBytes = ReadBytes,
 		Decode = Decode,
+		DecodeFast = DecodeFast, -- [Nuu]
 		ReaderBitlenLeft = ReaderBitlenLeft,
 		SkipToByteBoundary = SkipToByteBoundary,
 		buffer_size = 0,
@@ -1949,6 +1917,28 @@ local function GetHuffmanForDecode(huffman_bitlens, max_symbol, max_bitlen)
 	return left, huffman_bitlen_counts, huffman_symbols, min_bitlen
 end
 
+-- [Nuu] The codes of up to 9 bits, by the next 9 bits of input (which hold
+-- a code's bits reversed, the first bit lowest): symbol * 16 + its length,
+-- at every index that starts with the code. The codes are canonical:
+-- consecutive within a length, in the order of huffman_symbols.
+local function BuildFastDecode(huffman_bitlen_counts, huffman_symbols)
+	local fast = {}
+	local code, index = 0, 0
+	for bitlen = 1, 9 do
+		local step = _pow2[bitlen]
+		for _ = 1, huffman_bitlen_counts[bitlen] or 0 do
+			local entry = huffman_symbols[index] * 16 + bitlen
+			for i = _reverse_bits_tbl[bitlen][code], 511, step do
+				fast[i] = entry
+			end
+			code = code + 1
+			index = index + 1
+		end
+		code = code * 2
+	end
+	return fast
+end
+
 -- Decode a fixed or dynamic huffman blocks, excluding last block identifier
 -- and block type identifer.
 -- @see puff.c:codes()
@@ -1959,11 +1949,12 @@ end
 local function DecodeUntilEndOfBlock(state, lcodes_huffman_bitlens
 	, lcodes_huffman_symbols, lcodes_huffman_min_bitlen
 	, dcodes_huffman_bitlens, dcodes_huffman_symbols
-	, dcodes_huffman_min_bitlen)
-	local buffer, buffer_size, ReadBits, Decode, ReaderBitlenLeft
+	, dcodes_huffman_min_bitlen, lcodes_huffman_fast, dcodes_huffman_fast)
+	local buffer, buffer_size, ReadBits, DecodeFast, ReaderBitlenLeft
 		, result_buffer =
-		state.buffer, state.buffer_size, state.ReadBits, state.Decode
+		state.buffer, state.buffer_size, state.ReadBits, state.DecodeFast
 		, state.ReaderBitlenLeft, state.result_buffer
+	local lcodes_fast, dcodes_fast = lcodes_huffman_fast, dcodes_huffman_fast
 	local dictionary = state.dictionary
 	local dict_string_table
 	local dict_strlen
@@ -1984,7 +1975,7 @@ local function DecodeUntilEndOfBlock(state, lcodes_huffman_bitlens
 	end
 
 	repeat
-		local symbol = Decode(lcodes_huffman_bitlens
+		local symbol = DecodeFast(lcodes_fast, lcodes_huffman_bitlens
 			, lcodes_huffman_symbols, lcodes_huffman_min_bitlen)
 		if symbol < 0 or symbol > 285 then
 		-- invalid literal/length or distance code in fixed or dynamic block
@@ -1999,8 +1990,8 @@ local function DecodeUntilEndOfBlock(state, lcodes_huffman_bitlens
 				 and (bitlen
 				 + ReadBits(_literal_deflate_code_to_extra_bitlen[symbol]))
 					or bitlen
-			symbol = Decode(dcodes_huffman_bitlens, dcodes_huffman_symbols
-				, dcodes_huffman_min_bitlen)
+			symbol = DecodeFast(dcodes_fast, dcodes_huffman_bitlens
+				, dcodes_huffman_symbols, dcodes_huffman_min_bitlen)
 			if symbol < 0 or symbol > 29 then
 			-- invalid literal/length or distance code in fixed or dynamic block
 				return -10
@@ -2117,12 +2108,22 @@ end
 -- Decompress a fixed block
 -- @param state decompression state that will be modified by this function.
 -- @return 0 if succeeds other value if fails.
+local _fix_block_literal_fast, _fix_block_dist_fast -- [Nuu] made on first use
 local function DecompressFixBlock(state)
+	if not _fix_block_literal_fast then
+		_fix_block_literal_fast = BuildFastDecode(
+			_fix_block_literal_huffman_bitlen_count
+			, _fix_block_literal_huffman_to_deflate_code)
+		_fix_block_dist_fast = BuildFastDecode(
+			_fix_block_dist_huffman_bitlen_count
+			, _fix_block_dist_huffman_to_deflate_code)
+	end
 	return DecodeUntilEndOfBlock(state
 		, _fix_block_literal_huffman_bitlen_count
 		, _fix_block_literal_huffman_to_deflate_code, 7
 		, _fix_block_dist_huffman_bitlen_count
-		, _fix_block_dist_huffman_to_deflate_code, 5)
+		, _fix_block_dist_huffman_to_deflate_code, 5
+		, _fix_block_literal_fast, _fix_block_dist_fast)
 end
 
 -- Decompress a dynamic block
@@ -2240,7 +2241,9 @@ local function DecompressDynamicBlock(state)
 	return DecodeUntilEndOfBlock(state, lcodes_huffman_bitlen_counts
 		, lcodes_huffman_symbols, lcodes_huffman_min_bitlen
 		, dcodes_huffman_bitlen_counts, dcodes_huffman_symbols
-		, dcodes_huffman_min_bitlen)
+		, dcodes_huffman_min_bitlen
+		, BuildFastDecode(lcodes_huffman_bitlen_counts, lcodes_huffman_symbols)
+		, BuildFastDecode(dcodes_huffman_bitlen_counts, dcodes_huffman_symbols))
 end
 
 -- Decompress a deflate stream

@@ -113,7 +113,9 @@ end
 -- Public API
 --------------------------------------------------------------------------------
 
-local FrameWriter = setmetatable({}, { __index = Codec.WriterMethods })
+-- The codec's methods copied in, not inherited, so a field is one lookup.
+local FrameWriter = {}
+for name, method in pairs(Codec.WriterMethods) do FrameWriter[name] = method end
 FrameWriter.__index = FrameWriter
 
 function Comms.Writer()

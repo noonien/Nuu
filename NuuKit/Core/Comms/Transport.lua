@@ -57,18 +57,10 @@ Sender.__index = Sender
 
 function Comms._attachTransport(C, P)
     local MIN_PAYLOAD, MAX_PAYLOAD = Comms.MIN_PAYLOAD, Comms.MAX_PAYLOAD
-    local _addJob, _draw, _lane
+    local _addJob, _draw, _lane, _queue
+    local NO_OPTIONS = {}
 
-    ----------------------------------------------------------------------------
-    -- Public API
-    ----------------------------------------------------------------------------
-
-    -- One message: comms:Send(payload, "PARTY"), comms:Send(payload, "WHISPER", name).
-    function C:Send(payload, distribution, target)
-        return self:Sender(distribution, target):Send(payload)
-    end
-
-    function C:Sender(distribution, target, options)
+    local function _destination(distribution, target)
         assert(type(distribution) == "string", "comms distribution is required")
         distribution = distribution:upper()
         assert(Comms.DISTRIBUTIONS[distribution], "comms cannot send to " .. distribution)
@@ -77,7 +69,24 @@ function Comms._attachTransport(C, P)
         else
             target = nil
         end
-        options = options or {}
+        return distribution, target
+    end
+
+    ----------------------------------------------------------------------------
+    -- Public API
+    ----------------------------------------------------------------------------
+
+    -- One message: comms:Send(payload, "PARTY"), comms:Send(payload, "WHISPER", name).
+    -- As a Sender's Send, without making the Sender.
+    function C:Send(payload, distribution, target)
+        Comms._checkPayload(payload)
+        distribution, target = _destination(distribution, target)
+        return _queue(_lane(distribution, target), nil, GetTime(), 0, 0, payload)
+    end
+
+    function C:Sender(distribution, target, options)
+        distribution, target = _destination(distribution, target)
+        options = options or NO_OPTIONS
         return setmetatable({
             lane = _lane(distribution, target),
             addJob = _addJob,
@@ -186,26 +195,33 @@ function Comms._attachTransport(C, P)
 
     -- The ordinary one-message path shares the destination throttle with
     -- producers, but bypasses their optional settle/jitter policy: it goes now
-    -- if the lane has a token, or waits only for that lane's throttle.
-    _addJob = function(sender, producer, readyAt, repeatDelay, repeatJitter, oneShot)
+    -- if the lane has a token, or waits only for that lane's throttle. A
+    -- single message is its payload, kept as pending (no producer), and goes
+    -- once.
+    _queue = function(lane, producer, readyAt, repeatDelay, repeatJitter, payload)
         if not P.enabled then return false end
         if queued >= QUEUE_MAX then return false end
+        lane.jobs[#lane.jobs + 1] = {
+            producer = producer,
+            pending = payload,
+            readyAt = readyAt,
+            repeatDelay = repeatDelay,
+            repeatJitter = repeatJitter,
+            oneShot = payload ~= nil,
+        }
+        queued = queued + 1
+        _pump(lane)
+        return true
+    end
+
+    _addJob = function(sender, producer, readyAt, repeatDelay, repeatJitter, payload)
         local lane = sender.lane
         -- A sender kept past its lane's pruning takes up the current one.
         if lanes[lane.key] ~= lane then
             lane = _lane(lane.distribution, lane.target)
             sender.lane = lane
         end
-        lane.jobs[#lane.jobs + 1] = {
-            producer = producer,
-            readyAt = readyAt,
-            repeatDelay = repeatDelay,
-            repeatJitter = repeatJitter,
-            oneShot = oneShot,
-        }
-        queued = queued + 1
-        _pump(lane)
-        return true
+        return _queue(lane, producer, readyAt, repeatDelay, repeatJitter, payload)
     end
 
     local _send
@@ -255,7 +271,8 @@ function Comms._attachTransport(C, P)
             if not readyIndex then break end
 
             local job = lane.jobs[readyIndex]
-            -- A payload the client refused as throttled is sent again as it was.
+            -- A single message, or a payload the client refused as throttled
+            -- and that is sent again as it was.
             local payload = job.pending
             if payload == nil then
                 local ok
@@ -493,10 +510,14 @@ function Sender:SendMultiple(producer)
         self.repeatDelay, self.repeatJitter)
 end
 
-function Sender:Send(payload)
+function Comms._checkPayload(payload)
     assert(type(payload) == "string", "comms payload must be a string")
     assert(#payload >= Comms.MIN_PAYLOAD, "comms payload is empty")
     assert(#payload <= Comms.MAX_PAYLOAD,
         ("comms payload is %d bytes; maximum is %d"):format(#payload, Comms.MAX_PAYLOAD))
-    return self.addJob(self, function() return payload end, GetTime(), 0, 0, true)
+end
+
+function Sender:Send(payload)
+    Comms._checkPayload(payload)
+    return self.addJob(self, nil, GetTime(), 0, 0, payload)
 end

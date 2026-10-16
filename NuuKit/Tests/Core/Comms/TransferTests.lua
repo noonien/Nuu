@@ -247,6 +247,42 @@ suite("A whispered transfer", function()
         eq(rh.result, bytes, "and has it all")
     end)
 
+    test("asks for more gaps than one frame holds, a frame at a time", function()
+        local alice, bob = newPlayer("Alice"), newPlayer("Bob")
+        local offers = collect(bob)
+        -- Bytes that do not compress, so the transfer is near its limit.
+        local x, parts = 7, {}
+        for i = 1, 60000 do
+            x = x * 48271 % 2147483647
+            parts[i] = string.char(x % 256)
+        end
+        local bytes = table.concat(parts)
+        -- Every other chunk of the stream is lost, once.
+        local lostAt = {}
+        drop = function(entry)
+            if entry.payload:byte(1) ~= Comms.TRANSFER then return false end
+            local r = Comms.Reader(entry.payload)
+            if r:U() ~= DATA then return false end
+            r:U()
+            local index = r:U()
+            if index % 2 == 1 and not lostAt[index] then
+                lostAt[index] = true
+                return true
+            end
+        end
+        alice.comms:Offer("Bob", "", bytes)
+        run(1)
+        local rh = receiveHandlers()
+        offers[1]:Accept(rh)
+        run(600)
+        local frames = sentOf(MISSING)
+        ok(#frames >= 2, "Bob asked in more than one frame: " .. #frames)
+        for _, entry in ipairs(frames) do
+            ok(#entry.payload <= Comms.MAX_PAYLOAD, "each one fits a message")
+        end
+        eq(rh.result, bytes, "and has it all")
+    end)
+
     test("waits out a client that refuses to send", function()
         local alice, bob = newPlayer("Alice"), newPlayer("Bob")
         local offers = collect(bob)

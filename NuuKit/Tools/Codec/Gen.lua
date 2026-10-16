@@ -126,7 +126,7 @@ function Gen.Generate(schema, header)
             if t.of.kind == "uint" then return ("putZU(w, %s, %s, %s)"):format(x, at, key) end
             return ("putZE(w, %s, E.%s, %s, %s)"):format(x, names[t.of], at, key)
         end
-        return ("W.%s(w, %s, { %s, %s })"):format(names[t], x, at, key)
+        return ("W.%s(w, %s, down(%s, %s))"):format(names[t], x, at, key)
     end
 
     -- The expression that reads a value of type t.
@@ -154,18 +154,26 @@ function Gen.Generate(schema, header)
 local type, pairs, tostring, error, pcall, concat, sort = type, pairs, tostring, error, pcall, table.concat, table.sort
 local MAX = 9007199254740992
 
--- Where a value is wrong: `at` is a chain of { parent, key }, built as the
--- encoder goes down into a part.
-local function fail(at, key, message) error({ codecAt = at, codecKey = key, codecMessage = message }, 0) end
+-- Where a value is wrong: `at` is how deep the encoder is, and PATH[1] to
+-- PATH[at] the keys it went down by. A part takes the slot its sibling had,
+-- so nothing is made unless a value is wrong.
+local PATH = {}
+local function down(at, key)
+    at = at + 1
+    PATH[at] = key
+    return at
+end
 
-local function where(at, key)
-    local keys = { key }
-    while at do
-        keys[#keys + 1] = at[2]
-        at = at[1]
-    end
+local function fail(at, key, message)
+    local keys = {}
+    for i = 1, at do keys[i] = PATH[i] end
+    if key ~= nil then keys[at + 1] = key end
+    error({ codecPath = keys, codecMessage = message }, 0)
+end
+
+local function where(keys)
     local parts = {}
-    for i = #keys, 1, -1 do
+    for i = 1, #keys do
         local k = keys[i]
         if type(k) == "number" then parts[#parts + 1] = "[" .. k .. "]"
         elseif #parts == 0 then parts[1] = tostring(k)
@@ -393,10 +401,10 @@ end]])
     emit("")
     emit("function M.Encode(value)")
     emit("    local w = ns.Kit.Codec.Writer()")
-    emit(("    local ok, err = pcall(function() %s end)"):format(write(root, "value", "nil", "nil"):gsub("{ nil, nil }", "nil")))
+    emit(("    local ok, err = pcall(function() %s end)"):format(write(root, "value", "0", "nil"):gsub("down%(0, nil%)", "0")))
     emit("    if ok then return w:Finish() end")
     emit("    if type(err) == \"table\" and err.codecMessage then")
-    emit("        local path = where(err.codecAt, err.codecKey)")
+    emit("        local path = where(err.codecPath)")
     emit("        return nil, (path ~= \"\" and path .. \" \" or \"\") .. err.codecMessage")
     emit("    end")
     emit("    return nil, tostring(err)")

@@ -62,16 +62,21 @@ local function varint(self)
     return n
 end
 
-local function readLE(self, k)
+-- Little-endian unsigned of 2 or 4 bytes, nil past the end.
+local function le16(self)
     local pos = self.pos
-    if pos + k - 1 > self.len then return nil end
-    local n, mul = 0, 1
-    for i = pos, pos + k - 1 do
-        n = n + byte(self.s, i) * mul
-        mul = mul * 256
-    end
-    self.pos = pos + k
-    return n
+    if pos + 1 > self.len then return nil end
+    local a, b = byte(self.s, pos, pos + 1)
+    self.pos = pos + 2
+    return a + b * 256
+end
+
+local function le32(self)
+    local pos = self.pos
+    if pos + 3 > self.len then return nil end
+    local a, b, c, d = byte(self.s, pos, pos + 3)
+    self.pos = pos + 4
+    return a + b * 256 + c * 65536 + d * 16777216
 end
 
 function Reader:Ok()
@@ -126,9 +131,10 @@ end
 
 function Reader:U8()
     if self.err then return 0 end
-    local n = readLE(self, 1)
-    if n == nil then self.err = true return 0 end
-    return n
+    local pos = self.pos
+    if pos > self.len then self.err = true return 0 end
+    self.pos = pos + 1
+    return byte(self.s, pos)
 end
 
 function Reader:I8()
@@ -139,7 +145,7 @@ end
 
 function Reader:U16()
     if self.err then return 0 end
-    local n = readLE(self, 2)
+    local n = le16(self)
     if n == nil then self.err = true return 0 end
     return n
 end
@@ -152,7 +158,7 @@ end
 
 function Reader:U32()
     if self.err then return 0 end
-    local n = readLE(self, 4)
+    local n = le32(self)
     if n == nil then self.err = true return 0 end
     return n
 end
@@ -165,8 +171,8 @@ end
 
 function Reader:U64()
     if self.err then return 0 end
-    local lo, hi = readLE(self, 4), nil
-    if lo then hi = readLE(self, 4) end
+    local lo, hi = le32(self), nil
+    if lo then hi = le32(self) end
     if hi == nil then self.err = true return 0 end
     -- 2^53 is Lua's last consecutive integer; hi==2097152 is that value iff lo==0.
     if hi > 2097152 or (hi == 2097152 and lo ~= 0) then self.err = true return 0 end
@@ -175,8 +181,8 @@ end
 
 function Reader:I64()
     if self.err then return 0 end
-    local lo, hi = readLE(self, 4), nil
-    if lo then hi = readLE(self, 4) end
+    local lo, hi = le32(self), nil
+    if lo then hi = le32(self) end
     if hi == nil then self.err = true return 0 end
     if hi < 2147483648 then
         if hi > 2097152 or (hi == 2097152 and lo ~= 0) then self.err = true return 0 end
