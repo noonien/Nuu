@@ -4,7 +4,7 @@
 -- neighbouring quest visits at the same NPC or a few steps apart, which is
 -- noisier: a chain handed from one NPC to the next reads well as separate
 -- steps. It only reports; whether a pair belongs on one card is the author's
--- call (NuuRoad/docs/guide-schema.md, groups). Run from the repository root:
+-- call (NuuRoad/docs/guide-source.md, groups). Run from the repository root:
 --
 --   lua Tools/GroupCheck.lua [--visits] [guide.lua ...]
 --

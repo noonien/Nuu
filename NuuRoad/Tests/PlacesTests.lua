@@ -3,11 +3,11 @@ local ns = { modules = {} }
 function ns:RegisterModule(name, module) self.modules[name] = module end
 ns.Kit = ns.Kit or LoadKit()
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/PlaceEditing.lua")
-local Steps, Schema = ns.modules.Steps, ns.modules.Schema
+local Steps, GuideCheck = ns.modules.Steps, ns.modules.GuideCheck
 
 local function copy(value)
     if type(value) ~= "table" then return value end
@@ -17,7 +17,7 @@ local function copy(value)
 end
 
 local base = {
-    kind = "guide", schema = 1, id = "test:places", updated = 1790121600,
+    kind = "guide", id = "test:places", updated = 1790121600,
     title = "Places", category = "test",
     data = {
         map = 1412,
@@ -46,7 +46,7 @@ local base = {
 local function expand(guide)
     local ok, result = pcall(Steps.Expand, Steps, guide)
     if not ok then return nil, { tostring(result) } end
-    local valid, errors = Schema:Validate(result)
+    local valid, errors = GuideCheck:Validate(result)
     if not valid then return nil, errors end
     return result
 end
@@ -90,12 +90,12 @@ local duplicate = copy(base)
 table.insert(duplicate.data.places[1].links, { from = "fork", to = "mouth" })
 local merged = expand(duplicate)
 assert(merged, "a repeated connection is not an error")
-local _, _, duplicates = Schema:PlaceConnections(merged.places[1])
+local _, _, duplicates = GuideCheck:PlaceConnections(merged.places[1])
 assert(#duplicates == 1 and duplicates[1] == 6, "and is listed as a duplicate")
 -- Fields the schema does not know are kept.
 local kept = expand(copy(base))
 kept.places[1].points[1].note = "kept"
-assert(Schema:Validate(kept) and kept.places[1].points[1].note == "kept")
+assert(GuideCheck:Validate(kept) and kept.places[1].points[1].note == "kept")
 
 -- The packaged cave fixture validates and every step resolves.
 ns.packagedGuides = {}
@@ -200,7 +200,7 @@ assert(step(cave, walk, 0.5, 29.5, true) == "point", "another level does not reu
 assert(joinedOnce(cave, 6, 8), "but the walk still joins up")
 walk.level = 1
 local problems = {}
-Schema:ValidatePlaces({ places = { cave }, nodes = {} }, problems)
+GuideCheck:ValidatePlaces({ places = { cave }, nodes = {} }, problems)
 assert(#problems == 0, table.concat(problems, "; "))
 
 -- Without any word from the client about indoors, the first point is the way in.
@@ -244,7 +244,7 @@ local dropped = false
 for _, c in ipairs(processed.connections) do if c[3] == true then dropped = true end end
 assert(dropped, "the fall made a one-way drop")
 problems = {}
-Schema:ValidatePlaces({ places = { processed }, nodes = {} }, problems)
+GuideCheck:ValidatePlaces({ places = { processed }, nodes = {} }, problems)
 assert(#problems == 0, table.concat(problems, "; "))
 -- The same trail, other settings: nothing outdoors-only, points further apart.
 local loose = Editing.Process(trail, { indoorsOnly = false, sampleYards = 30 })

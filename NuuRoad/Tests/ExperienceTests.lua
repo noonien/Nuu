@@ -68,12 +68,12 @@ UnitXP = function() return player.xp end
 
 -- `by`: the turn-ins between a level step and the step it names count as
 -- experience on the way.
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 local Steps = ns.modules.Steps
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:xp", updated = 1789862400, title = "XP", category = "test",
+    kind = "guide", id = "test:xp", updated = 1789862400, title = "XP", category = "test",
     data = { map = 1413, sections = { { title = "Grind", steps = {
         { type = "level", level = 11, by = "ratchet" },
         { type = "talk", turnin = { 871 }, accept = { 872 }, npc = { 3429 }, at = { { 5100, 3000 } } },
@@ -87,9 +87,9 @@ local guide = Steps:Expand({
 })
 eq(guide.nodes[1].completion.observed.by, 7, "by resolves to the labelled step")
 eq(Steps:Title(guide.nodes[1]), "Reach level 11 by step 7", "title")
-eq(ns.modules.Schema:Validate(guide), true, "validates")
+eq(ns.modules.GuideCheck:Validate(guide), true, "validates")
 local function expands(steps)
-    return (pcall(Steps.Expand, Steps, { kind = "guide", schema = 1, id = "t", updated = 1, title = "t", category = "t",
+    return (pcall(Steps.Expand, Steps, { kind = "guide", id = "t", updated = 1, title = "t", category = "t",
         data = { sections = { { title = "s", steps = steps } } } }))
 end
 eq(expands({ { type = "level", level = 3, by = "a" }, { type = "note", note = "x", label = "a" } }), true, "a well-formed by expands")

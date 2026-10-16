@@ -6,7 +6,7 @@ function ns:Log(message) table.insert(self.logs, message) end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/QuestIndex.lua")
@@ -14,7 +14,7 @@ Load(ns, "Domain/QuestSelection.lua")
 local Steps, QuestSelection = ns.modules.Steps, ns.modules.QuestSelection
 
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:selection", updated = 1789862400, title = "Selection", category = "test",
+    kind = "guide", id = "test:selection", updated = 1789862400, title = "Selection", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "accept", quests = { 869 }, npc = { 3464 } },

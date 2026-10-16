@@ -69,7 +69,7 @@ stored in SavedVariables. Keep guide data independent of UI and Blizzard API ret
 
 ```lua
 Guide = {
-  kind = "guide", schema = 1,
+  kind = "guide",
   id = "nuuroad:leveling:human-1-10",
   updated = 1789862400,                     -- seconds since the epoch
   title = "Human 1-10", author = "NuuRoad", category = "leveling",
@@ -89,7 +89,7 @@ Guide = {
 }
 ```
 
-This is guide format v1 (`docs/examples/guide-v1.lua`), not the runtime
+This is a guide source (`docs/examples/guide-source.lua`), not the runtime
 shape. `Steps:Expand` reads it once and builds everything derived - titles, step positions, section and group
 spans, references, completion rules - so the runtime is free to hold whatever
 serves the tracker. Steps run in order; a branch is a `choice` whose options
@@ -196,7 +196,7 @@ NuuRoad/
   Core.lua                     # bootstrap, event bus, module registry
   Config.lua                   # defaults and migrations
   Data/
-    Schema.lua                 # schema versions and validation
+    GuideCheck.lua             # checks a runtime guide
     BuiltIn/                   # curated guide packs, load on demand
   Domain/
     GuideRepository.lua        # packaged/user/draft lookup and lifecycle
@@ -214,7 +214,7 @@ NuuRoad/
   Tests/                       # pure-Lua test runner and fixtures
   docs/
     api-compatibility.md
-    guide-schema.md
+    guide-source.md
     authoring.md
 ```
 

@@ -1,16 +1,16 @@
-# Guide format v1
+# Guide sources
 
-v1 is the one format NuuRoad's guides are written in: the packaged guides in `Data/Guides`, the development fixtures in `Dev/Fixtures`, and the guide value an export will one day hand a player. [`docs/examples/guide-v1.lua`](examples/guide-v1.lua) is the field-by-field reference, with one worked example of every step type, condition and field; this document says how those parts behave once the addon reads them.
+A guide source is how NuuRoad writes and keeps a guide: the packaged guides in `Data/Guides`, the development fixtures in `Dev/Fixtures`, and the player's guides in `NuuRoadDB`. It is the addon's own: there is one, the current one, and it changes with the code, without versions. What players share is the share schema (`Schema/Guide.lua`), which `Data/GuideShare.lua` turns a source into and back; that is the one shape two players' addons must agree on. [`docs/examples/guide-source.lua`](examples/guide-source.lua) is the field-by-field reference, with one worked example of every step type, condition and field; this document says how those parts behave once the addon reads them.
 
-A guide is not the shape the addon runs on. `Steps:Expand` (`Data/Steps.lua`) reads it once, on the way in, and everything downstream sees runtime nodes. Anything derived - titles, step positions, section and group spans, reference lists, completion rules - is built during that read and never written in a guide. `Schema:Validate` (`Data/Schema.lua`) then checks the runtime guide. The packaged guides and fixtures put their values in `ns.packagedGuides` as they load, and `GuideRepository:Initialize` expands and validates each at login; one that fails is reported and left out.
+A guide is not the shape the addon runs on. `Steps:Expand` (`Data/Steps.lua`) reads it once, on the way in, and everything downstream sees runtime nodes. Anything derived - titles, step positions, section and group spans, reference lists, completion rules - is built during that read and never written in a guide. `GuideCheck:Validate` (`Data/GuideCheck.lua`) then checks the runtime guide. The packaged guides and fixtures put their values in `ns.packagedGuides` as they load, and `GuideRepository:Initialize` expands and validates each at login; one that fails is reported and left out.
 
-A guide is `kind = "guide"`, `schema = 1`, a stable `id`, `updated` (seconds since the epoch), a `title` and a `category`, and `data`, which holds the guide's `map`, its `sections`, and optionally `conds`, `places` and `npcs`. It may also carry `author`, `tags`, `levels = { from, to }`, `cond`, `source`, and `materials` (`"section"` or `"guide"`, see Materials).
+A guide is `kind = "guide"`, a stable `id`, `updated` (seconds since the epoch), a `title` and a `category`, and `data`, which holds the guide's `map`, its `sections`, and optionally `conds`, `places` and `npcs`. It may also carry `author`, `tags`, `levels = { from, to }`, `cond`, `source`, and `materials` (`"section"` or `"guide"`, see Materials).
 
 `category` is where the guide browser files the guide: a path of folders, outermost first, split on `/` and as deep as it needs to be (`"Leveling/Kalimdor/The Barrens"`, `"Dungeons/Wailing Caverns"`, or one word). Spaces around a `/` are ignored, folders match without regard to case, and every folder must have a name, so a leading, trailing, or doubled `/` is rejected. Packaged guides do not put the faction in the path: the browser checks the guide's `cond` against the character instead. Test and regression guides go under a top folder named `Fixtures`, which the browser hides unless the debug log is on.
 
 ```lua
 {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:leveling:horde-barrens-13-21",
     updated = 1789862400,
     title = "The Barrens", category = "Leveling/The Barrens", author = "NuuRoad",
@@ -35,7 +35,7 @@ Expand rejects an unknown step type, a field a section or group does not have, a
 
 ## Steps
 
-Every step has a `type`; `docs/examples/guide-v1.lua` lists each type's fields. What each becomes:
+Every step has a `type`; `docs/examples/guide-source.lua` lists each type's fields. What each becomes:
 
 | `type` | Runtime node |
 | --- | --- |
@@ -89,7 +89,7 @@ Both sit on the guide, a section, a group, or a step, and a step's own and every
 
 Expand turns a condition into a predicate tree on the node (`node.condition`). Two more terms come from a step's own fields, never from a condition: an `optional` turn-in passes unless one of its quests is ready to hand in, and an accept from an item passes when the item is not in the bags (the rare that drops it was never met). They are marked `derived = true`, and the editor keeps them as they are.
 
-Each predicate kind is evaluated by a function `API/Client.lua` registers with `Client:RegisterPredicate(kind, evaluate)`: `class`, `race`, `faction`, `season`, `hardcore`, `profession`, `auctionHouse`, `selfFound`, and `quest` and `item` for the derived terms. That registry is the list of what a condition may say: `Data/Schema.lua` validates conditions against it, so a kind nothing implements is refused at load rather than passing forever.
+Each predicate kind is evaluated by a function `API/Client.lua` registers with `Client:RegisterPredicate(kind, evaluate)`: `class`, `race`, `faction`, `season`, `hardcore`, `profession`, `auctionHouse`, `selfFound`, and `quest` and `item` for the derived terms. That registry is the list of what a condition may say: `Data/GuideCheck.lua` validates conditions against it, so a kind nothing implements is refused at load rather than passing forever.
 
 Evaluation is three-valued. `true` and `false` are answers; `nil` means the client cannot say, which on a beta client is the common case. `all` is false as soon as one child is and true only when every child is; `any` is its mirror; `not` leaves unknown alone. Progress treats unknown as met, so a check that could not run never hides a step. The realm answers stay unanswered until the player gives them, so a guide that branches on one shows both branches rather than hiding work behind a question nobody asked.
 
@@ -195,7 +195,7 @@ This produces four nodes, one section spanning them, and `groups = { { first = 1
 
 The tracker and NPC conveniences use the current member and the available members after it in that same range. Each member can complete independently; progress advances through finished leading members. Back/Forward and the arrow still refer to individual steps. Ungrouped steps stand alone, even when adjacent or at the same NPC. Distance, map APIs, and a fixed member limit never determine membership. A group does not imply that prerequisite quests are already offered.
 
-The editor keeps the player's guides as written (format v1, in `NuuRoadDB.account.guides`) and builds them like a packaged guide, leaving out a step it cannot read. Each change restamps `updated`, and the editor tells the tracker where every step went (`Progress:Rebuilt`), so the player stays on the step they were on. The character's saved resume point stores a step position and that stamp; a changed or missing stamp at login discards the position and allows a fresh scan.
+The editor keeps the player's guides as their sources (in `NuuRoadDB.account.guides`) and builds them like a packaged guide, leaving out a step it cannot read. Each change restamps `updated`, and the editor tells the tracker where every step went (`Progress:Rebuilt`), so the player stays on the step they were on. The character's saved resume point stores a step position and that stamp; a changed or missing stamp at login discards the position and allows a fresh scan.
 
 ## Materials
 
@@ -256,7 +256,7 @@ places = {
 - `links`: `{ from, to }` (both ways) or `{ from, to, oneway = true }` (`from` to `to` only), by point id. Links are the only walks inside a place; loops and junctions need no syntax.
 - A step stands on a point with `stand = "windfury.chamber"`: the point's coordinates become the step's. A step with its own coordinates can add `near = "windfury.chamber"`, which joins it to that point's passages rather than whichever passage is nearest, for levels that lie over each other on the map. An NPC's `at` may be `"windfury.chamber"`, or `"windfury"` for any point of the place.
 
-At runtime a place keeps its points (`at` in map percentages) and its links as `connections = { { a, b, oneWay } }`; that is the shape the editor's Places panel edits, on a copy the editor converts back to the guide's v1 places when the panel reports or closes. Validation, reported at load like a bad label: unique place IDs and point IDs, ASCII, no dots; every link end names a point, no point joined to itself, and the same two points joined both one way and both ways are errors (a plain repeat is merged, and the editor says so); at least one entrance; every point reachable from an entrance and able to reach an entrance or exit; width 5 to 60; every step `stand` or `near` names a place point.
+At runtime a place keeps its points (`at` in map percentages) and its links as `connections = { { a, b, oneWay } }`; that is the shape the editor's Places panel edits, on a copy the editor converts back to the source's places when the panel reports or closes. Validation, reported at load like a bad label: unique place IDs and point IDs, ASCII, no dots; every link end names a point, no point joined to itself, and the same two points joined both one way and both ways are errors (a plain repeat is merged, and the editor says so); at least one entrance; every point reachable from an entrance and able to reach an entrance or exit; width 5 to 60; every step `stand` or `near` names a place point.
 
 At runtime the location carries `point` (the `"place.point"` a step stands on) and `near` beside the usual fields.
 

@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- The Skyborne 1-14 Zephras Isle leveling route, the Skyborne starting zone new in
 -- WoW: Forever. Step order, quest IDs, item IDs, coordinates and grind loops are
@@ -79,7 +79,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:skyborne-zephras-isle",
     updated = 1790467200,

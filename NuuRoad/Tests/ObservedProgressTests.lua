@@ -6,7 +6,7 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
 Load(ns, "Data/IDNames.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
@@ -17,7 +17,7 @@ local Steps, Progress, ObservedProgress = ns.modules.Steps, ns.modules.Progress,
 -- Members of a quest group the game reports done are credited where they
 -- stand; the pointer moves only through the leading steps.
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:observed", updated = 1789862400, title = "Observed", category = "test",
+    kind = "guide", id = "test:observed", updated = 1789862400, title = "Observed", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { group = {
@@ -107,7 +107,7 @@ assert(Progress:IsHeld(guide), "landing on a done step keeps it")
 -- `now` term, jumped back to after training) keeps its hold: the flow would
 -- pass it over and walk on through every done step after it.
 local gated = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:gated", updated = 1789862400, title = "Gated", category = "test",
+    kind = "guide", id = "test:gated", updated = 1789862400, title = "Gated", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "buy", item = 159, count = 20, npc = { 2115 }, show = { ah = true } },
@@ -133,7 +133,7 @@ client.CouldOpen, client.MatchesCondition = nil, nil
 -- A quest accepted or handed in at a step further down the guide is called
 -- out in chat: the step card cannot show work that far ahead.
 local ahead = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:ahead", updated = 1789862400, title = "Ahead", category = "test",
+    kind = "guide", id = "test:ahead", updated = 1789862400, title = "Ahead", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { group = {
@@ -166,7 +166,7 @@ assert(not message(nil, "QUEST_ACCEPTED", 913), "a finished guide has nothing ah
 -- and runs the full refresh once the player is there.
 do
     local travel = Steps:Expand({
-        kind = "guide", schema = 1, id = "test:arrival", updated = 1789862400, title = "Arrival", category = "test",
+        kind = "guide", id = "test:arrival", updated = 1789862400, title = "Arrival", category = "test",
         data = { map = 1413, sections = { { title = "Steps", steps = {
             { type = "travel", to = "Ratchet", at = { { 6300, 3720 } } },
             { type = "note", note = "There." },
@@ -189,7 +189,7 @@ end
 -- Travel and notes are passed over once the quest step they lead to is done.
 do
     local passing = Steps:Expand({
-        kind = "guide", schema = 1, id = "test:passing", updated = 1789862400, title = "Passing", category = "test",
+        kind = "guide", id = "test:passing", updated = 1789862400, title = "Passing", category = "test",
         data = { map = 1413, sections = { { title = "Steps", steps = {
             { type = "travel", to = "The Crossroads", at = { { 5199, 2989 } } },
             { type = "note", note = "Hearth if it is up." },
@@ -268,7 +268,7 @@ do
         IsComplete = function(id) return ready[id] == true end,
     }
     local order = Steps:Expand({
-        kind = "guide", schema = 1, id = "test:order", updated = 1789862400, title = "Order", category = "test",
+        kind = "guide", id = "test:order", updated = 1789862400, title = "Order", category = "test",
         data = { map = 1413, sections = { { title = "Turning in", steps = {
             { type = "travel", to = "the path up the hill", at = { { 5032, 3544 } } },
             { type = "talk", turnin = { 6981 }, accept = { 3369 }, npc = { 8418 }, at = { { 4818, 3278 } } },
@@ -323,7 +323,7 @@ end
 -- A cast of the step's own spell counts on that step; any other cast, or one
 -- by another unit, does not, and says so so the event costs no refresh.
 local casting = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:cast", updated = 1789862400, title = "Cast", category = "test",
+    kind = "guide", id = "test:cast", updated = 1789862400, title = "Cast", category = "test",
     data = { map = 2521, sections = { { title = "Steps", steps = {
         { type = "cast", spell = 1259686, at = { { 3591, 3361 } } }, { type = "note", note = "After." },
     } } } },

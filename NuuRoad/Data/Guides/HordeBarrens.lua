@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 13-21 leveling route through The Barrens and Stonetalon Mountains. Step
 -- order, quest IDs, NPC IDs, item IDs, coordinates, and map markers cover the
@@ -31,7 +31,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-barrens-13-21",
     updated = 1789862400,

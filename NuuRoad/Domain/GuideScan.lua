@@ -199,8 +199,8 @@ end
 -- too. This is a display rule; the resume point is decided by Apply.
 function GuideScan:Settled(guide, node)
     if not guide or not node or self:BlocksResume(node) then return false end
-    local Progress, Schema = ns.modules.Progress, ns.modules.Schema
-    if not Progress or not Schema then return false end
+    local Progress, GuideCheck = ns.modules.Progress, ns.modules.GuideCheck
+    if not Progress or not GuideCheck then return false end
     local nodeMap = guide.nodes
     local nextIndex = Progress:NextIndex(guide, node)
     for _ = 1, #guide.nodes do
@@ -227,8 +227,8 @@ end
 -- game can still prove was done, and leaves the guide on the step after it.
 -- Returns how many steps were recorded as observed.
 function GuideScan:Apply(guide)
-    local Progress, Schema = ns.modules.Progress, ns.modules.Schema
-    if not guide or not Progress or not Schema or not ns.modules.Client then return 0 end
+    local Progress, GuideCheck = ns.modules.Progress, ns.modules.GuideCheck
+    if not guide or not Progress or not GuideCheck or not ns.modules.Client then return 0 end
     if Progress:IsHeld(guide) then return 0 end
     local nodeMap = guide.nodes
     local state = Progress:GetState(guide)

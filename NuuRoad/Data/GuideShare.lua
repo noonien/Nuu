@@ -1,13 +1,16 @@
 local _, ns = ...
 
--- A guide in format v1 (docs/examples/guide-v1.lua) as bytes and back,
--- through the codec Data/GuideCodec.lua generates from Schema/Guide.lua.
+-- A guide source (docs/examples/guide-source.lua) as the bytes players share
+-- and back, through the codec Data/GuideCodec.lua generates from the share
+-- schema, Schema/Guide.lua. The share schema is what two players' addons must
+-- agree on; the guide source is the addon's own and changes with it.
 --
---     local bytes, problem = GuideWire:Encode(guide)
---     local guide, problem = GuideWire:Decode(bytes)
+--     local bytes, problem = GuideShare:Encode(guide)
+--     local guide, problem = GuideShare:Decode(bytes)
 --
--- The codec knows the schema's values and nothing of v1; this is the one
--- place that knows v1's shapes and turns them into those values and back:
+-- The codec knows the share schema's values and nothing of guide sources;
+-- this is the one place that knows a source's shapes and turns them into
+-- those values and back:
 --
 --   * a step is { kind, common }: its type with that type's own fields, and
 --     the fields any step may carry (the codec's Keys.StepCommon);
@@ -18,13 +21,13 @@ local _, ns = ...
 --     is a name or a table and stands at a point, points or a place, are
 --     unions;
 --   * a point { x, y, map = } is the tuple { x, y, map };
---   * kind = "guide" and schema = 1 are the schema's id, not written.
+--   * kind = "guide" is the share schema's id, not written.
 --
--- Every other key goes through as it is, so a key v1 has no place for is
+-- Every other key goes through as it is, so a key the schema has no place for is
 -- refused by the codec, which names it. Decoding a guide that was encoded
--- gives back the same value. Touches no frame: Tests/GuideWireTests.lua runs
+-- gives back the same value. Touches no frame: Tests/GuideShareTests.lua runs
 -- it outside the client.
-local GuideWire = {}
+local GuideShare = {}
 
 local function codec() return ns.modules.GuideCodec end
 
@@ -206,10 +209,11 @@ local function sectionBack(s)
     return reshape(s, { cond = condBack, show = condBack, steps = each(entryBack) })
 end
 
--- The schema's value of a v1 guide. Raises on what cannot be turned into one.
-function GuideWire:ToWire(guide)
-    if type(guide) ~= "table" or guide.kind ~= "guide" or guide.schema ~= 1 then
-        error("it is not a guide in format v1 (kind = \"guide\", schema = 1)", 0)
+-- The share schema's value of a guide source. Raises on what cannot be turned
+-- into one.
+function GuideShare:ToWire(guide)
+    if type(guide) ~= "table" or guide.kind ~= "guide" then
+        error("it is not a guide source (kind = \"guide\")", 0)
     end
     local wire = reshape(guide, {
         cond = cond,
@@ -219,12 +223,12 @@ function GuideWire:ToWire(guide)
             })
         end,
     })
-    wire.kind, wire.schema = nil, nil
+    wire.kind = nil
     return wire
 end
 
--- The v1 guide of a value the codec decoded.
-function GuideWire:FromWire(wire)
+-- The guide source of a value the codec decoded.
+function GuideShare:FromWire(wire)
     local guide = reshape(wire, {
         cond = condBack,
         data = function(data)
@@ -234,22 +238,22 @@ function GuideWire:FromWire(wire)
             })
         end,
     })
-    guide.kind, guide.schema = "guide", 1
+    guide.kind = "guide"
     return guide
 end
 
 -- The guide as bytes, or nil and what is wrong with it.
-function GuideWire:Encode(guide)
+function GuideShare:Encode(guide)
     local ok, wire = pcall(self.ToWire, self, guide)
     if not ok then return nil, tostring(wire) end
     return codec().Encode(wire)
 end
 
 -- The guide the bytes hold, or nil and what is wrong with them.
-function GuideWire:Decode(bytes)
+function GuideShare:Decode(bytes)
     local wire, problem = codec().Decode(bytes)
     if not wire then return nil, problem end
     return self:FromWire(wire)
 end
 
-ns:RegisterModule("GuideWire", GuideWire)
+ns:RegisterModule("GuideShare", GuideShare)

@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- The Horde quests of the City of Dalaran, a five-player dungeon new in WoW: Forever, from
 -- the pickups in the Undercity, Tarren Mill and at the sewer entrance to the last turn-in.
@@ -54,7 +54,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:dungeon:horde-city-of-dalaran-quests",
     updated = 1790985600,                -- 2026-10-03

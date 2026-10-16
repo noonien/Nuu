@@ -10,18 +10,26 @@ local W, R, E, N, K, U, V = {}, {}, {}, {}, {}, {}, {}
 local type, pairs, tostring, error, pcall, concat, sort = type, pairs, tostring, error, pcall, table.concat, table.sort
 local MAX = 9007199254740992
 
--- Where a value is wrong: `at` is a chain of { parent, key }, built as the
--- encoder goes down into a part.
-local function fail(at, key, message) error({ codecAt = at, codecKey = key, codecMessage = message }, 0) end
+-- Where a value is wrong: `at` is how deep the encoder is, and PATH[1] to
+-- PATH[at] the keys it went down by. A part takes the slot its sibling had,
+-- so nothing is made unless a value is wrong.
+local PATH = {}
+local function down(at, key)
+    at = at + 1
+    PATH[at] = key
+    return at
+end
 
-local function where(at, key)
-    local keys = { key }
-    while at do
-        keys[#keys + 1] = at[2]
-        at = at[1]
-    end
+local function fail(at, key, message)
+    local keys = {}
+    for i = 1, at do keys[i] = PATH[i] end
+    if key ~= nil then keys[at + 1] = key end
+    error({ codecPath = keys, codecMessage = message }, 0)
+end
+
+local function where(keys)
     local parts = {}
-    for i = #keys, 1, -1 do
+    for i = 1, #keys do
         local k = keys[i]
         if type(k) == "number" then parts[#parts + 1] = "[" .. k .. "]"
         elseif #parts == 0 then parts[1] = tostring(k)
@@ -155,7 +163,7 @@ function W.Cond_class(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putE(w, v[2], E.Class, at, "one")
-    elseif i == 1 then W.Cond_class_list(w, v[2], { at, "list" })
+    elseif i == 1 then W.Cond_class_list(w, v[2], down(at, "list"))
     end
 end
 function R.Cond_class(r)
@@ -190,7 +198,7 @@ function W.Cond_faction(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putE(w, v[2], E.Faction, at, "one")
-    elseif i == 1 then W.Cond_faction_list(w, v[2], { at, "list" })
+    elseif i == 1 then W.Cond_faction_list(w, v[2], down(at, "list"))
     end
 end
 function R.Cond_faction(r)
@@ -225,7 +233,7 @@ function W.Cond_race(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putE(w, v[2], E.Race, at, "one")
-    elseif i == 1 then W.Cond_race_list(w, v[2], { at, "list" })
+    elseif i == 1 then W.Cond_race_list(w, v[2], down(at, "list"))
     end
 end
 function R.Cond_race(r)
@@ -260,7 +268,7 @@ function W.Cond_skill(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putU(w, v[2], at, "one")
-    elseif i == 1 then W.Cond_skill_list(w, v[2], { at, "list" })
+    elseif i == 1 then W.Cond_skill_list(w, v[2], down(at, "list"))
     end
 end
 function R.Cond_skill(r)
@@ -308,12 +316,12 @@ function W.CondTerm(w, v, at)
     if v["season"] ~= nil then bits = bits + 128 end
     x = v["hardcore"] if x ~= nil then if x ~= true then fail(at, "hardcore", "is not true") end bits = bits + 256 end
     w:U(bits)
-    x = v["class"] if x ~= nil then W.Cond_class(w, x, { at, "class" }) end
-    x = v["faction"] if x ~= nil then W.Cond_faction(w, x, { at, "faction" }) end
-    x = v["race"] if x ~= nil then W.Cond_race(w, x, { at, "race" }) end
-    x = v["skill"] if x ~= nil then W.Cond_skill(w, x, { at, "skill" }) end
+    x = v["class"] if x ~= nil then W.Cond_class(w, x, down(at, "class")) end
+    x = v["faction"] if x ~= nil then W.Cond_faction(w, x, down(at, "faction")) end
+    x = v["race"] if x ~= nil then W.Cond_race(w, x, down(at, "race")) end
+    x = v["skill"] if x ~= nil then W.Cond_skill(w, x, down(at, "skill")) end
     x = v["is"] if x ~= nil then putS(w, x, at, "is") end
-    x = v["season"] if x ~= nil then W.Cond_season(w, x, { at, "season" }) end
+    x = v["season"] if x ~= nil then W.Cond_season(w, x, down(at, "season")) end
 end
 function R.CondTerm(r)
     local v, bits, b = {}, r:U(), 0
@@ -335,7 +343,7 @@ function W.Cond_any_item_any(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.CondTerm(w, v[i], { at, i }) end
+    for i = 1, n do W.CondTerm(w, v[i], down(at, i)) end
 end
 function R.Cond_any_item_any(r)
     local n, v = r:U(), {}
@@ -349,7 +357,7 @@ function W.Cond_any_item_none(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.CondTerm(w, v[i], { at, i }) end
+    for i = 1, n do W.CondTerm(w, v[i], down(at, i)) end
 end
 function R.Cond_any_item_none(r)
     local n, v = r:U(), {}
@@ -363,7 +371,7 @@ function W.Cond_any_item_all(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.CondTerm(w, v[i], { at, i }) end
+    for i = 1, n do W.CondTerm(w, v[i], down(at, i)) end
 end
 function R.Cond_any_item_all(r)
     local n, v = r:U(), {}
@@ -390,15 +398,15 @@ function W.Cond_any_item(w, v, at)
     if v["none"] ~= nil then bits = bits + 1024 end
     if v["all"] ~= nil then bits = bits + 2048 end
     w:U(bits)
-    x = v["class"] if x ~= nil then W.Cond_class(w, x, { at, "class" }) end
-    x = v["faction"] if x ~= nil then W.Cond_faction(w, x, { at, "faction" }) end
-    x = v["race"] if x ~= nil then W.Cond_race(w, x, { at, "race" }) end
-    x = v["skill"] if x ~= nil then W.Cond_skill(w, x, { at, "skill" }) end
+    x = v["class"] if x ~= nil then W.Cond_class(w, x, down(at, "class")) end
+    x = v["faction"] if x ~= nil then W.Cond_faction(w, x, down(at, "faction")) end
+    x = v["race"] if x ~= nil then W.Cond_race(w, x, down(at, "race")) end
+    x = v["skill"] if x ~= nil then W.Cond_skill(w, x, down(at, "skill")) end
     x = v["is"] if x ~= nil then putS(w, x, at, "is") end
-    x = v["season"] if x ~= nil then W.Cond_season(w, x, { at, "season" }) end
-    x = v["any"] if x ~= nil then W.Cond_any_item_any(w, x, { at, "any" }) end
-    x = v["none"] if x ~= nil then W.Cond_any_item_none(w, x, { at, "none" }) end
-    x = v["all"] if x ~= nil then W.Cond_any_item_all(w, x, { at, "all" }) end
+    x = v["season"] if x ~= nil then W.Cond_season(w, x, down(at, "season")) end
+    x = v["any"] if x ~= nil then W.Cond_any_item_any(w, x, down(at, "any")) end
+    x = v["none"] if x ~= nil then W.Cond_any_item_none(w, x, down(at, "none")) end
+    x = v["all"] if x ~= nil then W.Cond_any_item_all(w, x, down(at, "all")) end
 end
 function R.Cond_any_item(r)
     local v, bits, b = {}, r:U(), 0
@@ -423,7 +431,7 @@ function W.Cond_any(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Cond_any_item(w, v[i], { at, i }) end
+    for i = 1, n do W.Cond_any_item(w, v[i], down(at, i)) end
 end
 function R.Cond_any(r)
     local n, v = r:U(), {}
@@ -437,7 +445,7 @@ function W.Cond_none(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Cond_any_item(w, v[i], { at, i }) end
+    for i = 1, n do W.Cond_any_item(w, v[i], down(at, i)) end
 end
 function R.Cond_none(r)
     local n, v = r:U(), {}
@@ -451,7 +459,7 @@ function W.Cond_all(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Cond_any_item(w, v[i], { at, i }) end
+    for i = 1, n do W.Cond_any_item(w, v[i], down(at, i)) end
 end
 function R.Cond_all(r)
     local n, v = r:U(), {}
@@ -478,15 +486,15 @@ function W.Cond(w, v, at)
     if v["none"] ~= nil then bits = bits + 1024 end
     if v["all"] ~= nil then bits = bits + 2048 end
     w:U(bits)
-    x = v["class"] if x ~= nil then W.Cond_class(w, x, { at, "class" }) end
-    x = v["faction"] if x ~= nil then W.Cond_faction(w, x, { at, "faction" }) end
-    x = v["race"] if x ~= nil then W.Cond_race(w, x, { at, "race" }) end
-    x = v["skill"] if x ~= nil then W.Cond_skill(w, x, { at, "skill" }) end
+    x = v["class"] if x ~= nil then W.Cond_class(w, x, down(at, "class")) end
+    x = v["faction"] if x ~= nil then W.Cond_faction(w, x, down(at, "faction")) end
+    x = v["race"] if x ~= nil then W.Cond_race(w, x, down(at, "race")) end
+    x = v["skill"] if x ~= nil then W.Cond_skill(w, x, down(at, "skill")) end
     x = v["is"] if x ~= nil then putS(w, x, at, "is") end
-    x = v["season"] if x ~= nil then W.Cond_season(w, x, { at, "season" }) end
-    x = v["any"] if x ~= nil then W.Cond_any(w, x, { at, "any" }) end
-    x = v["none"] if x ~= nil then W.Cond_none(w, x, { at, "none" }) end
-    x = v["all"] if x ~= nil then W.Cond_all(w, x, { at, "all" }) end
+    x = v["season"] if x ~= nil then W.Cond_season(w, x, down(at, "season")) end
+    x = v["any"] if x ~= nil then W.Cond_any(w, x, down(at, "any")) end
+    x = v["none"] if x ~= nil then W.Cond_none(w, x, down(at, "none")) end
+    x = v["all"] if x ~= nil then W.Cond_all(w, x, down(at, "all")) end
 end
 function R.Cond(r)
     local v, bits, b = {}, r:U(), 0
@@ -529,7 +537,7 @@ function W.StepKind_finish_next(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putS(w, v[2], at, "one")
-    elseif i == 1 then W.StepKind_finish_next_list(w, v[2], { at, "list" })
+    elseif i == 1 then W.StepKind_finish_next_list(w, v[2], down(at, "list"))
     end
 end
 function R.StepKind_finish_next(r)
@@ -548,7 +556,7 @@ function W.StepKind_finish(w, v, at)
     local bits, x = 0, nil
     if v["next"] ~= nil then bits = bits + 1 end
     w:U(bits)
-    x = v["next"] if x ~= nil then W.StepKind_finish_next(w, x, { at, "next" }) end
+    x = v["next"] if x ~= nil then W.StepKind_finish_next(w, x, down(at, "next")) end
 end
 function R.StepKind_finish(r)
     local v, bits, b = {}, r:U(), 0
@@ -605,9 +613,9 @@ function W.StepKind_accept(w, v, at)
     if v["level"] ~= nil then bits = bits + 2 end
     if v["kill"] ~= nil then bits = bits + 4 end
     w:U(bits)
-    x = v["quests"] if x ~= nil then W.IDs(w, x, { at, "quests" }) end
+    x = v["quests"] if x ~= nil then W.IDs(w, x, down(at, "quests")) end
     x = v["level"] if x ~= nil then putU(w, x, at, "level") end
-    x = v["kill"] if x ~= nil then W.IDs(w, x, { at, "kill" }) end
+    x = v["kill"] if x ~= nil then W.IDs(w, x, down(at, "kill")) end
 end
 function R.StepKind_accept(r)
     local v, bits, b = {}, r:U(), 0
@@ -626,7 +634,7 @@ function W.StepKind_turnin(w, v, at)
     if v["quests"] ~= nil then bits = bits + 1 end
     x = v["optional"] if x ~= nil then if x ~= true then fail(at, "optional", "is not true") end bits = bits + 2 end
     w:U(bits)
-    x = v["quests"] if x ~= nil then W.IDs(w, x, { at, "quests" }) end
+    x = v["quests"] if x ~= nil then W.IDs(w, x, down(at, "quests")) end
 end
 function R.StepKind_turnin(r)
     local v, bits, b = {}, r:U(), 0
@@ -647,9 +655,9 @@ function W.StepKind_talk(w, v, at)
     if v["level"] ~= nil then bits = bits + 8 end
     x = v["optional"] if x ~= nil then if x ~= true then fail(at, "optional", "is not true") end bits = bits + 16 end
     w:U(bits)
-    x = v["turnin"] if x ~= nil then W.IDs(w, x, { at, "turnin" }) end
-    x = v["accept"] if x ~= nil then W.IDs(w, x, { at, "accept" }) end
-    x = v["say"] if x ~= nil then W.IDs(w, x, { at, "say" }) end
+    x = v["turnin"] if x ~= nil then W.IDs(w, x, down(at, "turnin")) end
+    x = v["accept"] if x ~= nil then W.IDs(w, x, down(at, "accept")) end
+    x = v["say"] if x ~= nil then W.IDs(w, x, down(at, "say")) end
     x = v["level"] if x ~= nil then putU(w, x, at, "level") end
 end
 function R.StepKind_talk(r)
@@ -673,7 +681,7 @@ function W.StepKind_collect(w, v, at)
     if v["starts"] ~= nil then bits = bits + 4 end
     w:U(bits)
     x = v["count"] if x ~= nil then putU(w, x, at, "count") end
-    x = v["kill"] if x ~= nil then W.IDs(w, x, { at, "kill" }) end
+    x = v["kill"] if x ~= nil then W.IDs(w, x, down(at, "kill")) end
     x = v["starts"] if x ~= nil then putU(w, x, at, "starts") end
 end
 function R.StepKind_collect(r)
@@ -693,7 +701,7 @@ function W.StepKind_kill(w, v, at)
     if v["kill"] ~= nil then bits = bits + 1 end
     if v["count"] ~= nil then bits = bits + 2 end
     w:U(bits)
-    x = v["kill"] if x ~= nil then W.IDs(w, x, { at, "kill" }) end
+    x = v["kill"] if x ~= nil then W.IDs(w, x, down(at, "kill")) end
     x = v["count"] if x ~= nil then putU(w, x, at, "count") end
 end
 function R.StepKind_kill(r)
@@ -820,7 +828,7 @@ function W.StepKind_learn(w, v, at)
     local bits, x = 0, nil
     if v["spells"] ~= nil then bits = bits + 1 end
     w:U(bits)
-    x = v["spells"] if x ~= nil then W.IDs(w, x, { at, "spells" }) end
+    x = v["spells"] if x ~= nil then W.IDs(w, x, down(at, "spells")) end
 end
 function R.StepKind_learn(r)
     local v, bits, b = {}, r:U(), 0
@@ -964,7 +972,7 @@ function W.StepKind_choice_options(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.StepKind_choice_options_item(w, v[i], { at, i }) end
+    for i = 1, n do W.StepKind_choice_options_item(w, v[i], down(at, i)) end
 end
 function R.StepKind_choice_options(r)
     local n, v = r:U(), {}
@@ -982,7 +990,7 @@ function W.StepKind_choice(w, v, at)
     if v["options"] ~= nil then bits = bits + 2 end
     w:U(bits)
     x = v["text"] if x ~= nil then putS(w, x, at, "text") end
-    x = v["options"] if x ~= nil then W.StepKind_choice_options(w, x, { at, "options" }) end
+    x = v["options"] if x ~= nil then W.StepKind_choice_options(w, x, down(at, "options")) end
 end
 function R.StepKind_choice(r)
     local v, bits, b = {}, r:U(), 0
@@ -1001,30 +1009,30 @@ function W.StepKind(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then if v[2] ~= nil then fail(at, "note", "takes no value") end
-    elseif i == 1 then W.StepKind_finish(w, v[2], { at, "finish" })
-    elseif i == 2 then W.StepKind_travel(w, v[2], { at, "travel" })
-    elseif i == 3 then W.StepKind_accept(w, v[2], { at, "accept" })
-    elseif i == 4 then W.StepKind_turnin(w, v[2], { at, "turnin" })
-    elseif i == 5 then W.StepKind_talk(w, v[2], { at, "talk" })
+    elseif i == 1 then W.StepKind_finish(w, v[2], down(at, "finish"))
+    elseif i == 2 then W.StepKind_travel(w, v[2], down(at, "travel"))
+    elseif i == 3 then W.StepKind_accept(w, v[2], down(at, "accept"))
+    elseif i == 4 then W.StepKind_turnin(w, v[2], down(at, "turnin"))
+    elseif i == 5 then W.StepKind_talk(w, v[2], down(at, "talk"))
     elseif i == 6 then if v[2] ~= nil then fail(at, "escort", "takes no value") end
-    elseif i == 7 then W.StepKind_collect(w, v[2], { at, "collect" })
-    elseif i == 8 then W.StepKind_kill(w, v[2], { at, "kill" })
+    elseif i == 7 then W.StepKind_collect(w, v[2], down(at, "collect"))
+    elseif i == 8 then W.StepKind_kill(w, v[2], down(at, "kill"))
     elseif i == 9 then if v[2] ~= nil then fail(at, "interact", "takes no value") end
-    elseif i == 10 then W.StepKind_gather(w, v[2], { at, "gather" })
-    elseif i == 11 then W.StepKind_craft(w, v[2], { at, "craft" })
-    elseif i == 12 then W.StepKind_skillup(w, v[2], { at, "skillup" })
-    elseif i == 13 then W.StepKind_buy(w, v[2], { at, "buy" })
-    elseif i == 14 then W.StepKind_vendor(w, v[2], { at, "vendor" })
+    elseif i == 10 then W.StepKind_gather(w, v[2], down(at, "gather"))
+    elseif i == 11 then W.StepKind_craft(w, v[2], down(at, "craft"))
+    elseif i == 12 then W.StepKind_skillup(w, v[2], down(at, "skillup"))
+    elseif i == 13 then W.StepKind_buy(w, v[2], down(at, "buy"))
+    elseif i == 14 then W.StepKind_vendor(w, v[2], down(at, "vendor"))
     elseif i == 15 then if v[2] ~= nil then fail(at, "equip", "takes no value") end
-    elseif i == 16 then W.StepKind_train(w, v[2], { at, "train" })
-    elseif i == 17 then W.StepKind_learn(w, v[2], { at, "learn" })
-    elseif i == 18 then W.StepKind_cast(w, v[2], { at, "cast" })
-    elseif i == 19 then W.StepKind_skill(w, v[2], { at, "skill" })
-    elseif i == 20 then W.StepKind_reputation(w, v[2], { at, "reputation" })
-    elseif i == 21 then W.StepKind_hearth(w, v[2], { at, "hearth" })
-    elseif i == 22 then W.StepKind_flight(w, v[2], { at, "flight" })
-    elseif i == 23 then W.StepKind_level(w, v[2], { at, "level" })
-    elseif i == 24 then W.StepKind_choice(w, v[2], { at, "choice" })
+    elseif i == 16 then W.StepKind_train(w, v[2], down(at, "train"))
+    elseif i == 17 then W.StepKind_learn(w, v[2], down(at, "learn"))
+    elseif i == 18 then W.StepKind_cast(w, v[2], down(at, "cast"))
+    elseif i == 19 then W.StepKind_skill(w, v[2], down(at, "skill"))
+    elseif i == 20 then W.StepKind_reputation(w, v[2], down(at, "reputation"))
+    elseif i == 21 then W.StepKind_hearth(w, v[2], down(at, "hearth"))
+    elseif i == 22 then W.StepKind_flight(w, v[2], down(at, "flight"))
+    elseif i == 23 then W.StepKind_level(w, v[2], down(at, "level"))
+    elseif i == 24 then W.StepKind_choice(w, v[2], down(at, "choice"))
     end
 end
 function R.StepKind(r)
@@ -1078,7 +1086,7 @@ function W.StepCommon_at(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Point(w, v[i], { at, i }) end
+    for i = 1, n do W.Point(w, v[i], down(at, i)) end
 end
 function R.StepCommon_at(r)
     local n, v = r:U(), {}
@@ -1108,7 +1116,7 @@ function W.Quest(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putU(w, v[2], at, "quest")
-    elseif i == 1 then W.Quest_objective(w, v[2], { at, "objective" })
+    elseif i == 1 then W.Quest_objective(w, v[2], down(at, "objective"))
     end
 end
 function R.Quest(r)
@@ -1143,7 +1151,7 @@ function W.StepCommon_item(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putU(w, v[2], at, "one")
-    elseif i == 1 then W.StepCommon_item_list(w, v[2], { at, "list" })
+    elseif i == 1 then W.StepCommon_item_list(w, v[2], down(at, "list"))
     end
 end
 function R.StepCommon_item(r)
@@ -1182,7 +1190,7 @@ function W.StepCommon_needs(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.StepCommon_needs_item(w, v[i], { at, i }) end
+    for i = 1, n do W.StepCommon_needs_item(w, v[i], down(at, i)) end
 end
 function R.StepCommon_needs(r)
     local n, v = r:U(), {}
@@ -1237,24 +1245,24 @@ function W.StepCommon(w, v, at)
     x = v["loop"] if x ~= nil then if x ~= true then fail(at, "loop", "is not true") end bits = bits + 524288 end
     if v["near"] ~= nil then bits = bits + 1048576 end
     w:U(bits)
-    x = v["npc"] if x ~= nil then W.IDs(w, x, { at, "npc" }) end
+    x = v["npc"] if x ~= nil then W.IDs(w, x, down(at, "npc")) end
     x = v["note"] if x ~= nil then putS(w, x, at, "note") end
-    x = v["at"] if x ~= nil then W.StepCommon_at(w, x, { at, "at" }) end
-    x = v["cond"] if x ~= nil then W.Cond(w, x, { at, "cond" }) end
-    x = v["quest"] if x ~= nil then W.Quest(w, x, { at, "quest" }) end
+    x = v["at"] if x ~= nil then W.StepCommon_at(w, x, down(at, "at")) end
+    x = v["cond"] if x ~= nil then W.Cond(w, x, down(at, "cond")) end
+    x = v["quest"] if x ~= nil then W.Quest(w, x, down(at, "quest")) end
     x = v["radius"] if x ~= nil then putU(w, x, at, "radius") end
-    x = v["item"] if x ~= nil then W.StepCommon_item(w, x, { at, "item" }) end
+    x = v["item"] if x ~= nil then W.StepCommon_item(w, x, down(at, "item")) end
     x = v["object"] if x ~= nil then putS(w, x, at, "object") end
     x = v["from"] if x ~= nil then putS(w, x, at, "from") end
     x = v["label"] if x ~= nil then putS(w, x, at, "label") end
-    x = v["show"] if x ~= nil then W.Cond(w, x, { at, "show" }) end
-    x = v["use"] if x ~= nil then W.IDs(w, x, { at, "use" }) end
+    x = v["show"] if x ~= nil then W.Cond(w, x, down(at, "show")) end
+    x = v["use"] if x ~= nil then W.IDs(w, x, down(at, "use")) end
     x = v["with"] if x ~= nil then putS(w, x, at, "with") end
     x = v["wait"] if x ~= nil then putU(w, x, at, "wait") end
-    x = v["mark"] if x ~= nil then W.IDs(w, x, { at, "mark" }) end
-    x = v["needs"] if x ~= nil then W.StepCommon_needs(w, x, { at, "needs" }) end
+    x = v["mark"] if x ~= nil then W.IDs(w, x, down(at, "mark")) end
+    x = v["needs"] if x ~= nil then W.StepCommon_needs(w, x, down(at, "needs")) end
     x = v["stand"] if x ~= nil then putS(w, x, at, "stand") end
-    x = v["upto"] if x ~= nil then W.StepCommon_upto(w, x, { at, "upto" }) end
+    x = v["upto"] if x ~= nil then W.StepCommon_upto(w, x, down(at, "upto")) end
     x = v["near"] if x ~= nil then putS(w, x, at, "near") end
 end
 function R.StepCommon(r)
@@ -1287,8 +1295,8 @@ end
 function W.Step(w, v, at)
     isTable(v, at, "a table")
     onlyPositions(v, 2, at, "this tuple")
-    W.StepKind(w, v[1], { at, 1 })
-    W.StepCommon(w, v[2], { at, 2 })
+    W.StepKind(w, v[1], down(at, 1))
+    W.StepCommon(w, v[2], down(at, 2))
 end
 function R.Step(r)
     local x1 = R.StepKind(r)
@@ -1301,7 +1309,7 @@ function W.Group_steps(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Step(w, v[i], { at, i }) end
+    for i = 1, n do W.Step(w, v[i], down(at, i)) end
 end
 function R.Group_steps(r)
     local n, v = r:U(), {}
@@ -1320,10 +1328,10 @@ function W.Group(w, v, at)
     if v["cond"] ~= nil then bits = bits + 4 end
     if v["show"] ~= nil then bits = bits + 8 end
     w:U(bits)
-    x = v["steps"] if x ~= nil then W.Group_steps(w, x, { at, "steps" }) end
+    x = v["steps"] if x ~= nil then W.Group_steps(w, x, down(at, "steps")) end
     x = v["label"] if x ~= nil then putS(w, x, at, "label") end
-    x = v["cond"] if x ~= nil then W.Cond(w, x, { at, "cond" }) end
-    x = v["show"] if x ~= nil then W.Cond(w, x, { at, "show" }) end
+    x = v["cond"] if x ~= nil then W.Cond(w, x, down(at, "cond")) end
+    x = v["show"] if x ~= nil then W.Cond(w, x, down(at, "show")) end
 end
 function R.Group(r)
     local v, bits, b = {}, r:U(), 0
@@ -1343,8 +1351,8 @@ function W.Entry(w, v, at)
     local i = U.Entry[v[1]]
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
-    if i == 0 then W.Step(w, v[2], { at, "step" })
-    elseif i == 1 then W.Group(w, v[2], { at, "group" })
+    if i == 0 then W.Step(w, v[2], down(at, "step"))
+    elseif i == 1 then W.Group(w, v[2], down(at, "group"))
     end
 end
 function R.Entry(r)
@@ -1361,7 +1369,7 @@ function W.Section_steps(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Entry(w, v[i], { at, i }) end
+    for i = 1, n do W.Entry(w, v[i], down(at, i)) end
 end
 function R.Section_steps(r)
     local n, v = r:U(), {}
@@ -1383,11 +1391,11 @@ function W.Section(w, v, at)
     if v["show"] ~= nil then bits = bits + 32 end
     w:U(bits)
     x = v["title"] if x ~= nil then putS(w, x, at, "title") end
-    x = v["steps"] if x ~= nil then W.Section_steps(w, x, { at, "steps" }) end
+    x = v["steps"] if x ~= nil then W.Section_steps(w, x, down(at, "steps")) end
     x = v["map"] if x ~= nil then putU(w, x, at, "map") end
     x = v["label"] if x ~= nil then putS(w, x, at, "label") end
-    x = v["cond"] if x ~= nil then W.Cond(w, x, { at, "cond" }) end
-    x = v["show"] if x ~= nil then W.Cond(w, x, { at, "show" }) end
+    x = v["cond"] if x ~= nil then W.Cond(w, x, down(at, "cond")) end
+    x = v["show"] if x ~= nil then W.Cond(w, x, down(at, "show")) end
 end
 function R.Section(r)
     local v, bits, b = {}, r:U(), 0
@@ -1406,7 +1414,7 @@ function W.Guide_data_sections(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Section(w, v[i], { at, i }) end
+    for i = 1, n do W.Section(w, v[i], down(at, i)) end
 end
 function R.Guide_data_sections(r)
     local n, v = r:U(), {}
@@ -1420,7 +1428,7 @@ function W.Npc_npc_at_points(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Point(w, v[i], { at, i }) end
+    for i = 1, n do W.Point(w, v[i], down(at, i)) end
 end
 function R.Npc_npc_at_points(r)
     local n, v = r:U(), {}
@@ -1437,8 +1445,8 @@ function W.Npc_npc_at(w, v, at)
     local i = U.Npc_npc_at[v[1]]
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
-    if i == 0 then W.Point(w, v[2], { at, "point" })
-    elseif i == 1 then W.Npc_npc_at_points(w, v[2], { at, "points" })
+    if i == 0 then W.Point(w, v[2], down(at, "point"))
+    elseif i == 1 then W.Npc_npc_at_points(w, v[2], down(at, "points"))
     elseif i == 2 then putS(w, v[2], at, "place")
     end
 end
@@ -1463,7 +1471,7 @@ function W.Npc_npc(w, v, at)
     if v["instance"] ~= nil then bits = bits + 8 end
     w:U(bits)
     x = v["name"] if x ~= nil then putS(w, x, at, "name") end
-    x = v["at"] if x ~= nil then W.Npc_npc_at(w, x, { at, "at" }) end
+    x = v["at"] if x ~= nil then W.Npc_npc_at(w, x, down(at, "at")) end
     x = v["note"] if x ~= nil then putS(w, x, at, "note") end
     x = v["instance"] if x ~= nil then putU(w, x, at, "instance") end
 end
@@ -1486,7 +1494,7 @@ function W.Npc(w, v, at)
     if not i then fail(at, nil, missing(v[1], "has no variant " .. tostring(v[1]))) end
     w:U(i)
     if i == 0 then putS(w, v[2], at, "name")
-    elseif i == 1 then W.Npc_npc(w, v[2], { at, "npc" })
+    elseif i == 1 then W.Npc_npc(w, v[2], down(at, "npc"))
     end
 end
 function R.Npc(r)
@@ -1507,7 +1515,7 @@ function W.Guide_data_npcs_value(w, v, at)
     for i = 1, n do
         local key = keys[i]
         putU(w, key, at, key)
-        W.Npc(w, v[key], { at, key })
+        W.Npc(w, v[key], down(at, key))
     end
 end
 function R.Guide_data_npcs_value(r)
@@ -1530,7 +1538,7 @@ function W.Guide_data_npcs(w, v, at)
     for i = 1, n do
         local key = keys[i]
         putU(w, key, at, key)
-        W.Guide_data_npcs_value(w, v[key], { at, key })
+        W.Guide_data_npcs_value(w, v[key], down(at, key))
     end
 end
 function R.Guide_data_npcs(r)
@@ -1553,7 +1561,7 @@ function W.Guide_data_conds(w, v, at)
     for i = 1, n do
         local key = keys[i]
         putS(w, key, at, key)
-        W.Cond(w, v[key], { at, key })
+        W.Cond(w, v[key], down(at, key))
     end
 end
 function R.Guide_data_conds(r)
@@ -1578,7 +1586,7 @@ function W.Place_points_item(w, v, at)
     if v["label"] ~= nil then bits = bits + 8 end
     w:U(bits)
     x = v["id"] if x ~= nil then putS(w, x, at, "id") end
-    x = v["at"] if x ~= nil then W.Point(w, x, { at, "at" }) end
+    x = v["at"] if x ~= nil then W.Point(w, x, down(at, "at")) end
     x = v["kind"] if x ~= nil then putE(w, x, E.Place_points_item_kind, at, "kind") end
     x = v["label"] if x ~= nil then putS(w, x, at, "label") end
 end
@@ -1597,7 +1605,7 @@ function W.Place_points(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Place_points_item(w, v[i], { at, i }) end
+    for i = 1, n do W.Place_points_item(w, v[i], down(at, i)) end
 end
 function R.Place_points(r)
     local n, v = r:U(), {}
@@ -1632,7 +1640,7 @@ function W.Place_links(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Place_links_item(w, v[i], { at, i }) end
+    for i = 1, n do W.Place_links_item(w, v[i], down(at, i)) end
 end
 function R.Place_links(r)
     local n, v = r:U(), {}
@@ -1657,8 +1665,8 @@ function W.Place(w, v, at)
     x = v["name"] if x ~= nil then putS(w, x, at, "name") end
     x = v["width"] if x ~= nil then putU(w, x, at, "width") end
     x = v["map"] if x ~= nil then putU(w, x, at, "map") end
-    x = v["points"] if x ~= nil then W.Place_points(w, x, { at, "points" }) end
-    x = v["links"] if x ~= nil then W.Place_links(w, x, { at, "links" }) end
+    x = v["points"] if x ~= nil then W.Place_points(w, x, down(at, "points")) end
+    x = v["links"] if x ~= nil then W.Place_links(w, x, down(at, "links")) end
 end
 function R.Place(r)
     local v, bits, b = {}, r:U(), 0
@@ -1677,7 +1685,7 @@ function W.Guide_data_places(w, v, at)
     local n = #v
     onlyPositions(v, n, at, "a list")
     w:U(n)
-    for i = 1, n do W.Place(w, v[i], { at, i }) end
+    for i = 1, n do W.Place(w, v[i], down(at, i)) end
 end
 function R.Guide_data_places(r)
     local n, v = r:U(), {}
@@ -1698,10 +1706,10 @@ function W.Guide_data(w, v, at)
     if v["places"] ~= nil then bits = bits + 16 end
     w:U(bits)
     x = v["map"] if x ~= nil then putU(w, x, at, "map") end
-    x = v["sections"] if x ~= nil then W.Guide_data_sections(w, x, { at, "sections" }) end
-    x = v["npcs"] if x ~= nil then W.Guide_data_npcs(w, x, { at, "npcs" }) end
-    x = v["conds"] if x ~= nil then W.Guide_data_conds(w, x, { at, "conds" }) end
-    x = v["places"] if x ~= nil then W.Guide_data_places(w, x, { at, "places" }) end
+    x = v["sections"] if x ~= nil then W.Guide_data_sections(w, x, down(at, "sections")) end
+    x = v["npcs"] if x ~= nil then W.Guide_data_npcs(w, x, down(at, "npcs")) end
+    x = v["conds"] if x ~= nil then W.Guide_data_conds(w, x, down(at, "conds")) end
+    x = v["places"] if x ~= nil then W.Guide_data_places(w, x, down(at, "places")) end
 end
 function R.Guide_data(r)
     local v, bits, b = {}, r:U(), 0
@@ -1736,12 +1744,12 @@ function W.Guide(w, v, at)
     x = v["title"] if x ~= nil then putS(w, x, at, "title") end
     x = v["category"] if x ~= nil then putS(w, x, at, "category") end
     x = v["author"] if x ~= nil then putS(w, x, at, "author") end
-    x = v["tags"] if x ~= nil then W.Guide_tags(w, x, { at, "tags" }) end
-    x = v["levels"] if x ~= nil then W.Guide_levels(w, x, { at, "levels" }) end
-    x = v["cond"] if x ~= nil then W.Cond(w, x, { at, "cond" }) end
+    x = v["tags"] if x ~= nil then W.Guide_tags(w, x, down(at, "tags")) end
+    x = v["levels"] if x ~= nil then W.Guide_levels(w, x, down(at, "levels")) end
+    x = v["cond"] if x ~= nil then W.Cond(w, x, down(at, "cond")) end
     x = v["source"] if x ~= nil then putS(w, x, at, "source") end
     x = v["materials"] if x ~= nil then putS(w, x, at, "materials") end
-    x = v["data"] if x ~= nil then W.Guide_data(w, x, { at, "data" }) end
+    x = v["data"] if x ~= nil then W.Guide_data(w, x, down(at, "data")) end
 end
 function R.Guide(r)
     local v, bits, b = {}, r:U(), 0
@@ -1773,10 +1781,10 @@ M.Variants.StepKind = V.StepKind
 
 function M.Encode(value)
     local w = ns.Kit.Codec.Writer()
-    local ok, err = pcall(function() W.Guide(w, value, nil) end)
+    local ok, err = pcall(function() W.Guide(w, value, 0) end)
     if ok then return w:Finish() end
     if type(err) == "table" and err.codecMessage then
-        local path = where(err.codecAt, err.codecKey)
+        local path = where(err.codecPath)
         return nil, (path ~= "" and path .. " " or "") .. err.codecMessage
     end
     return nil, tostring(err)

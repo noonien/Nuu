@@ -5,7 +5,7 @@ function ns:Log(message) table.insert(self.logs, message) end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
@@ -14,7 +14,7 @@ Load(ns, "Domain/NPCTracking.lua")
 local Steps, Progress, NPCTracking = ns.modules.Steps, ns.modules.Progress, ns.modules.NPCTracking
 
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:npc", updated = 1789862400, title = "NPC", category = "test",
+    kind = "guide", id = "test:npc", updated = 1789862400, title = "NPC", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "kill", kill = { 3244, 3245 }, count = 2 },
@@ -298,7 +298,7 @@ assert(Steps:GoalStatus(Steps:Goals(Progress:GetCurrentNode(guide))[1], Progress
 -- once, a turn-in NPC waits for its quest, and a dialog credits every step
 -- that names the NPC.
 local hub = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:hub", updated = 1789862400, title = "Hub", category = "test",
+    kind = "guide", id = "test:hub", updated = 1789862400, title = "Hub", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { group = {
@@ -361,7 +361,7 @@ assert(stepChanges == 2 and #NPCTracking:Entries() == 0, "the objective step is 
 -- Kill steps in one camp can be grouped: every target is marked at once, and
 -- a kill counts for the step that names the creature, not the current one.
 local camp = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:camp", updated = 1789862400, title = "Camp", category = "test",
+    kind = "guide", id = "test:camp", updated = 1789862400, title = "Camp", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { group = {

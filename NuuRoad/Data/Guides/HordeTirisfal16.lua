@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 1-6 leveling route through Deathknell, ported from RestedXP's Forever
 -- "1-6 Tirisfal Glades". Step order follows the source; quest IDs, NPC IDs,
@@ -21,7 +21,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-tirisfal-1-6",
     updated = 1790640000,

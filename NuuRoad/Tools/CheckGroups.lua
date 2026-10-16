@@ -20,7 +20,7 @@
 --     one before it accepted is left out: the player does them in that order
 --     anyway, group or not.
 --
--- The guide itself never groups by distance (docs/guide-schema.md): a report
+-- The guide itself never groups by distance (docs/guide-source.md): a report
 -- is a candidate for an author to read, not a verdict. Two camps that happen
 -- to sit close, or a boss the player should kill only after clearing the way,
 -- can stay apart; record such a choice in the guide's header comment.
@@ -28,7 +28,7 @@ _G = _G or _ENV
 -- The addon's files take (addon name, ns), as the client runs them.
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
-Load(ns, "Data/Schema.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
+Load(ns, "Data/GuideCheck.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
 Load(ns, "Data/IDNames.lua")
 ns.packagedGuides, ns.builtInGuides = {}, {}
 local Names, Steps = ns.modules.Names, ns.modules.Steps

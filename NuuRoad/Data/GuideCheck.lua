@@ -1,6 +1,6 @@
 local _, ns = ...
 
-local Schema = { currentVersion = 1 }
+local GuideCheck = {}
 
 local nodeKinds = {
     section = true, action = true, note = true, choice = true, checkpoint = true, ["end"] = true,
@@ -54,7 +54,7 @@ local predicateKinds = {
 -- Exposed so PredicateTests can hold this list and the client's registry to
 -- each other; a name here that nothing implements is the drift the registry
 -- was introduced to stop.
-Schema.predicateKinds = predicateKinds
+GuideCheck.predicateKinds = predicateKinds
 
 local function supportedPredicate(kind)
     local Client = ns.modules and ns.modules.Client
@@ -220,16 +220,13 @@ local function validateObservedCompletion(observed, path, errors)
     end
 end
 
-function Schema:Validate(guide)
+function GuideCheck:Validate(guide)
     local errors = {}
     validateNoExecutableValues(guide, "guide", errors)
     if #errors > 0 then return false, errors end
     if type(guide) ~= "table" then
         addError(errors, "guide", "must be a table")
         return false, errors
-    end
-    if guide.schema ~= self.currentVersion then
-        addError(errors, "guide.schema", "must be " .. self.currentVersion)
     end
     if not isNonEmptyString(guide.id) then addError(errors, "guide.id", "must be a non-empty string") end
     -- Seconds since the epoch: it says which copy is newer and when the guide
@@ -364,7 +361,7 @@ function Schema:Validate(guide)
 end
 
 
--- Guide places (caves, tunnels, one-door buildings): see docs/guide-schema.md.
+-- Guide places (caves, tunnels, one-door buildings): see docs/guide-source.md.
 -- Points and connections are plain lists, so a connection names a point by its
 -- position or by its `id`. Fields this does not know are left alone.
 local function isASCII(value)
@@ -386,7 +383,7 @@ end
 -- A place's connections as { a, b, oneWay } with duplicates merged, plus
 -- the problems found, and the duplicates (the editor reports those as a
 -- warning; they change nothing).
-function Schema:PlaceConnections(place)
+function GuideCheck:PlaceConnections(place)
     local list, problems, duplicates, seen = {}, {}, {}, {}
     for index, connection in ipairs(isArray(place.connections) and place.connections or {}) do
         local path = ".connections[" .. index .. "]"
@@ -455,7 +452,7 @@ end
 
 -- The guide's names for its IDs: { npcs = { [id] = "Name" }, ... }.
 local nameKinds = { npcs = true, quests = true, items = true, factions = true, spells = true }
-function Schema:ValidateNames(guide, errors)
+function GuideCheck:ValidateNames(guide, errors)
     local names = guide.names
     if names == nil then return end
     if type(names) ~= "table" then
@@ -482,7 +479,7 @@ function Schema:ValidateNames(guide, errors)
     end
 end
 
-function Schema:ValidatePlaces(guide, errors)
+function GuideCheck:ValidatePlaces(guide, errors)
     local places = guide.places
     if places == nil then return end
     if not isArray(places) then
@@ -608,24 +605,24 @@ function Schema:ValidatePlaces(guide, errors)
     end
 end
 
-function Schema:IsStepIndex(guide, index)
+function GuideCheck:IsStepIndex(guide, index)
     return type(index) == "number" and index % 1 == 0 and index >= 1 and index <= #guide.nodes
 end
 
 -- Derived positions, never authored identities. Refresh after structural edits.
-function Schema:IndexNodes(guide)
+function GuideCheck:IndexNodes(guide)
     for index, node in ipairs(guide.nodes) do node.index = index end
     return guide
 end
 
-function Schema:IsQuestVisit(node)
+function GuideCheck:IsQuestVisit(node)
     return type(node) == "table" and (node.kind == "acceptQuest" or node.kind == "turnInQuest" or node.kind == "talk")
 end
 
 -- What a group may hold: quest visits, and the quest work done in one place
 -- (three kinds of mob in one camp) that the player does in whatever order
 -- the mobs come.
-Schema.groupKinds = { acceptQuest = true, turnInQuest = true, talk = true,
+GuideCheck.groupKinds = { acceptQuest = true, turnInQuest = true, talk = true,
     kill = true, collect = true, interact = true, questObjective = true }
 
 -- Any other step that finishes a quest objective is quest work too: the
@@ -639,20 +636,20 @@ local function finishesObjective(observed)
     return false
 end
 
-function Schema:IsGroupMember(node)
+function GuideCheck:IsGroupMember(node)
     if type(node) ~= "table" or node["next"] ~= nil or node.choices ~= nil then return false end
     if self.groupKinds[node.kind] == true then return true end
     return node.completion ~= nil and node.completion.type == "observed" and finishesObjective(node.completion.observed)
 end
 
-function Schema:GroupAt(guide, index)
+function GuideCheck:GroupAt(guide, index)
     if not index then return nil end
     for _, group in ipairs(guide.groups or {}) do
         if index >= group.first and index <= group.last then return group end
     end
 end
 
-function Schema:ValidateGroups(guide, errors)
+function GuideCheck:ValidateGroups(guide, errors)
     if guide.groups == nil then return end
     if not isArray(guide.groups) then
         addError(errors, "guide.groups", "must be an array of step ranges")
@@ -690,4 +687,4 @@ function Schema:ValidateGroups(guide, errors)
     end
 end
 
-ns:RegisterModule("Schema", Schema)
+ns:RegisterModule("GuideCheck", GuideCheck)

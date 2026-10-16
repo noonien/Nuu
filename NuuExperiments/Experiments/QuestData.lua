@@ -1,10 +1,10 @@
 local _, ns = ...
 
 -- Whether the client gives a quest's objectives (type, numRequired) for a
--- quest that is not in the log, once asked to load it. Guide format v1
+-- quest that is not in the log, once asked to load it. A guide source
 -- leaves `count` off steps tied to an objective and expects the number from
 -- the client, also for steps ahead of the quest being taken
--- (NuuRoad/docs/examples/guide-v1.lua, QUEST WORK).
+-- (NuuRoad/docs/examples/guide-source.lua, QUEST WORK).
 --
 -- Every quest is read three times: before anything is asked, when
 -- QUEST_DATA_LOAD_RESULT answers for it, and once more at the end whether or

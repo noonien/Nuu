@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- The Horde quests of Excavation Site: Wetlands, a dungeon new in WoW: Forever, from the
 -- pickups in Orgrimmar and Hammerfall to the last turn-in in Mulgore. No recorded session
@@ -65,7 +65,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:dungeon:horde-excavation-site-quests",
     updated = 1790985600,

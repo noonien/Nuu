@@ -515,7 +515,7 @@ function PlaceEditing.Process(trail, options)
 end
 
 -- A place as guide source, ready to paste into a guide's `places` list, in
--- the shape docs/guide-schema.md shows: one point a line with its position
+-- the shape docs/guide-source.md shows: one point a line with its position
 -- as a comment, so connections can be read against it.
 local function quote(text) return string.format("%q", tostring(text)) end
 

@@ -9,12 +9,12 @@ ns.Kit = ns.Kit or LoadKit()
 -- showing, for the wrong character.
 Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
 Load(ns, "Data/IDNames.lua")
--- The guide file puts its guide (format v1) in ns.packagedGuides, as at
+-- The guide file puts its guide source in ns.packagedGuides, as at
 -- login; Steps:Expand reads it directly.
 ns.packagedGuides = {}
 Load(ns, "Data/Guides/SkyborneZephrasIsle.lua")
@@ -86,7 +86,7 @@ assert(not Progress:IsRuledOut(warrior) and not Progress:IsBypassed(warrior) and
 
 -- The crystals are clicked while the Agitators are killed: one group.
 local crystals = find(function(node) return Steps:Title(node):find("Windstone Cluster") end)
-local range = ns.modules.Schema:GroupAt(guide, crystals.index)
+local range = ns.modules.GuideCheck:GroupAt(guide, crystals.index)
 assert(range, "the Windstone Cluster step is in a group")
 local convert = find(function(node) return Steps:Title(node):find("Al'Aketh Convert") end)
 assert(convert.index >= range.first and convert.index <= range.last, "with the Al'Aketh Converts")

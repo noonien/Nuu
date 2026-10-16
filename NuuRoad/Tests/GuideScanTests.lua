@@ -6,7 +6,7 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
 Load(ns, "Data/IDNames.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
@@ -36,7 +36,7 @@ ns.modules.Client = {
 }
 
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:scan", updated = 1789862400, title = "Scan", category = "test",
+    kind = "guide", id = "test:scan", updated = 1789862400, title = "Scan", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "accept", quests = { 870 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 1 accepted long ago, quest turned in
@@ -53,7 +53,7 @@ local guide = Steps:Expand({
     } },
 } },
 })
-assert(select(1, ns.modules.Schema:Validate(guide)), "fixture guide must validate")
+assert(select(1, ns.modules.GuideCheck:Validate(guide)), "fixture guide must validate")
 local byIndex = guide.nodes
 
 Progress.store, Progress.session = {}, {}
@@ -114,7 +114,7 @@ assert(GuideScan:NodeCompleted(byIndex[10]), "a level target the player has pass
 -- An outstanding step stops the resume even when finished steps lie past it:
 -- the guide opens on the first step still to do, never on the last one done.
 local outOfOrder = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:scan-order", updated = 1789862400, title = "Out of order", category = "test",
+    kind = "guide", id = "test:scan-order", updated = 1789862400, title = "Out of order", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "accept", quests = { 900 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 1 done
@@ -144,7 +144,7 @@ assert(GuideScan:BlocksResume(outOfOrder.nodes[3]) and not GuideScan:BlocksResum
 -- and a quest item is moot when the player has no such quest - which holds
 -- the resume point too, since the player may still pick the quest up.
 local items = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:scan-items", updated = 1789862400, title = "Items", category = "test",
+    kind = "guide", id = "test:scan-items", updated = 1789862400, title = "Items", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "turnin", quests = { 905 }, npc = { 3448 }, at = { { 5200, 3100 } } },                        -- 1 done
@@ -182,7 +182,7 @@ game.questLogRead = nil
 -- travel step skipped onto, with the quest at its destination already in the
 -- log, is passed over to the first step still to do. Plain SKIP holds instead.
 local settle = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:scan-settle", updated = 1789862400, title = "Settle", category = "test",
+    kind = "guide", id = "test:scan-settle", updated = 1789862400, title = "Settle", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "accept", quests = { 910 }, npc = { 3448 }, at = { { 5200, 3100 } } }, -- 1 never accepted: outstanding
@@ -210,7 +210,7 @@ assert(settleState.statuses[settle.nodes[2].index] == "skipped" and settleState.
 -- hearth steps are passed over as superseded, and a later matching step is
 -- contained by the first outstanding quest step before it.
 local hearths = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:scan-hearth", updated = 1789862400, title = "Hearths", category = "test",
+    kind = "guide", id = "test:scan-hearth", updated = 1789862400, title = "Hearths", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "hearth", area = 380, npc = { 3934 }, at = { { 5200, 3000 } } },       -- 1
@@ -262,7 +262,7 @@ assert(not GuideScan:Settled(outOfOrder, outOfOrder.nodes[2]),
 -- things stand. The scan refuses to guess before the client has handed over a
 -- quest log.
 local dropped = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:scan-moot", updated = 1789862400, title = "Moot", category = "test",
+    kind = "guide", id = "test:scan-moot", updated = 1789862400, title = "Moot", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "accept", quests = { 930 }, npc = { 3448 }, at = { { 5200, 3100 } } },                 -- 1 never accepted: outstanding
@@ -354,7 +354,7 @@ ns.modules.Client.MatchesObservedCompletion = matcher
 -- A turn-in with nothing to hand in is not a member of the group: it joins
 -- once its quest is accepted, here at the group's first member.
 local hub = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:moot-member", updated = 1789862400, title = "Moot member", category = "test",
+    kind = "guide", id = "test:moot-member", updated = 1789862400, title = "Moot member", category = "test",
     data = { map = 1413, sections = { { title = "Hub", steps = {
         { group = {
             { type = "accept", quests = { 950 }, npc = { 3448 }, at = { { 5200, 3100 } } },

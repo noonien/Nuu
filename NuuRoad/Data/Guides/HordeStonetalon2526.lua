@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 25-26 leveling route through the Stonetalon Mountains: Sun Rock
 -- Retreat, the Venture Co. sky port at Windshear Crag, Mirkfallon Lake, the
@@ -54,7 +54,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-stonetalon-25-26",
     updated = 1790985600,

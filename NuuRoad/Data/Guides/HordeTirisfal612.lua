@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 6-12 leveling route through Brill, Tirisfal Glades and the Undercity,
 -- ported from RestedXP's Forever "6-12 Tirisfal Glades". Step order follows the
@@ -36,7 +36,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-tirisfal-6-12",
     updated = 1790640000,

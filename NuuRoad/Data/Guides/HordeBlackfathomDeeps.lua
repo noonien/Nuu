@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Every Horde quest of Blackfathom Deeps, from Tsunaman at Sun Rock Retreat to the last
 -- turn-ins at Zoram'gar Outpost and Thunder Bluff. The quest list and chains follow
@@ -59,7 +59,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:dungeon:horde-blackfathom-deeps-quests",
     updated = 1790985600,

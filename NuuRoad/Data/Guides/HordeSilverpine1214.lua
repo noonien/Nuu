@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 12-14 leveling route through Silverpine Forest and the Sepulcher, with the
 -- turn-ins in the Undercity and the walk to Far Watch Post, ported from RestedXP's
@@ -33,7 +33,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-silverpine-12-14",
     updated = 1790726400,                -- 2026-09-30

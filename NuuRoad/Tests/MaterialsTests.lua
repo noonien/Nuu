@@ -4,12 +4,12 @@ function ns:RegisterModule(name, module) self.modules[name] = module end
 function ns:Log() end
 ns.Kit = ns.Kit or LoadKit()
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
 Load(ns, "Domain/Materials.lua")
-local Steps, Schema, Progress, Materials = ns.modules.Steps, ns.modules.Schema, ns.modules.Progress, ns.modules.Materials
+local Steps, GuideCheck, Progress, Materials = ns.modules.Steps, ns.modules.GuideCheck, ns.modules.Progress, ns.modules.Materials
 
 local bags = {}
 ns.modules.Client = {
@@ -21,7 +21,7 @@ ns.modules.Client = {
 }
 
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:materials", updated = 1789862400, title = "Materials", category = "test",
+    kind = "guide", id = "test:materials", updated = 1789862400, title = "Materials", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "travel", to = "The Crossroads", at = { { 5150, 3030 } } }, -- 1 no materials
@@ -35,7 +35,7 @@ local guide = Steps:Expand({
     } },
 } },
 })
-local ok, errors = Schema:Validate(guide)
+local ok, errors = GuideCheck:Validate(guide)
 assert(ok, table.concat(errors, "; "))
 
 local needs = guide.nodes[2].needs
@@ -47,7 +47,7 @@ assert(#items == 3, "the crafted item and its materials are all referenced for n
 
 -- A bad source or a missing item ID is refused at load, not silently dropped.
 local function expands(needs)
-    return (pcall(Steps.Expand, Steps, { kind = "guide", schema = 1, id = "t", updated = 1, title = "t", category = "t",
+    return (pcall(Steps.Expand, Steps, { kind = "guide", id = "t", updated = 1, title = "t", category = "t",
         data = { sections = { { title = "s", steps = { { type = "craft", item = 1, needs = needs } } } } } }))
 end
 assert(expands({ { item = 2835, count = 5 } }), "a well-formed list expands")
@@ -95,7 +95,7 @@ assert(total == 2 and missing == 0, "carrying everything leaves nothing missing"
 
 -- A guide listed by section asks only for the section it is in.
 local sectioned = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:materials:sections", updated = 1789862400,
+    kind = "guide", id = "test:materials:sections", updated = 1789862400,
     title = "Materials by section", category = "test", materials = "section",
     data = { map = 1413, sections = {
         { title = "Stones", steps = {
@@ -108,7 +108,7 @@ local sectioned = Steps:Expand({
         } },
     } },
 })
-assert(Schema:Validate(sectioned))
+assert(GuideCheck:Validate(sectioned))
 bags = {}
 outstanding = Materials:Outstanding(sectioned, 1)
 assert(#outstanding == 1 and outstanding[1].itemID == 2835, "only the first section's stones")
@@ -118,7 +118,7 @@ local last, section = Materials:ListEnd(sectioned, 2)
 assert(last == 2 and section.title == "Stones")
 assert(Materials:ListEnd(guide, 1) == #guide.nodes, "an ordinary guide lists to its end")
 sectioned.meta.materials = "sometimes"
-assert(not Schema:Validate(sectioned), "only section or guide")
+assert(not GuideCheck:Validate(sectioned), "only section or guide")
 
 assert(Materials:GuideHasMaterials(guide))
 assert(not Materials:GuideHasMaterials({ nodes = { { kind = "note", title = "n" } } }), "a guide with no materials shows no list")

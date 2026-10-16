@@ -1,5 +1,7 @@
--- Guide format v1 (docs/examples/guide-v1.lua) on the wire, as Data/GuideWire.lua
--- shapes it. Never loaded in game: NuuKit/Tools/Codec/Gen.lua reads it and
+-- The share schema: a guide as players share it (a nuu: string or a comms
+-- transfer), the one guide shape two players' addons must agree on. Its
+-- values are guide sources (docs/examples/guide-source.lua) as
+-- Data/GuideShare.lua shapes them. Never loaded in game: NuuKit/Tools/Codec/Gen.lua reads it and
 -- writes Data/GuideCodec.lua (NuuKit/Tools/Codec/Types.lua says what each
 -- helper is and how it is written). After a change here, from NuuRoad/:
 --
@@ -8,7 +10,7 @@
 -- The reader and the writer of a string always have the same schema, so
 -- anything may be reordered or renumbered: keys and variants are written by
 -- position. The most used keys come first, where an object's bitmap is
--- shortest. Tests/GuideWireTests.lua checks the step kinds and the fields
+-- shortest. Tests/GuideShareTests.lua checks the step kinds and the fields
 -- any step may carry against GuideDraft's, and that the generated file is
 -- this schema's.
 local T = ...
@@ -104,7 +106,7 @@ local StepKind = T.Union {
 }
 
 local Step = T.Tuple { StepKind, StepCommon }
--- v1's `group` is `steps` here: a group is not a step.
+-- A source's `group` is `steps` here: a group is not a step.
 local Group = T.Object { { "steps", T.List(Step) }, { "label", T.String }, { "cond", Cond }, { "show", Cond } }
 local Entry = T.Union { { "step", Step }, { "group", Group } }
 
@@ -140,8 +142,8 @@ local Npc = T.Union {
     } },
 }
 
--- kind = "guide" and schema = 1 are what the schema's id says; GuideWire
--- leaves them out and puts them back.
+-- kind = "guide" is what the schema's id says; GuideShare leaves it out and
+-- puts it back.
 local Guide = T.Object {
     { "id", T.String },
     { "updated", T.UInt },

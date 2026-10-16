@@ -8,7 +8,7 @@ local _, ns = ...
 -- every character on the account.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:level-by", updated = 1790380800,
     title = "Fixture: Level By Step", category = "Fixtures/Levels", author = "NuuRoad",
     tags = { "fixture", "level", "horde" },

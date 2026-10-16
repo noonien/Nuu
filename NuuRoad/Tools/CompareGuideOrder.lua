@@ -37,7 +37,7 @@ _G = _G or _ENV
 -- The addon's files take (addon name, ns), as the client runs them.
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
-Load(ns, "Data/Schema.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
+Load(ns, "Data/GuideCheck.lua"); Load(ns, "Data/Names.lua"); Load(ns, "Data/Steps.lua")
 Load(ns, "Data/IDNames.lua")
 ns.packagedGuides, ns.builtInGuides = {}, {}
 Load(ns, arg[1])

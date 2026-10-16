@@ -5,11 +5,11 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/IDNames.lua")
 Load(ns, "Data/Steps.lua")
-local Client, Schema, Steps = ns.modules.Client, ns.modules.Schema, ns.modules.Steps
+local Client, GuideCheck, Steps = ns.modules.Client, ns.modules.GuideCheck, ns.modules.Steps
 
 -- The suites share one Lua state, so a stub left behind by an earlier one
 -- would answer before these do. Start from nothing and leave nothing behind.
@@ -39,13 +39,13 @@ assert(not Client:HasPredicate("nonsense"))
 assert(Client:HasPredicate("all") and Client:HasPredicate("any") and Client:HasPredicate("not") and Client:HasPredicate("now"),
     "the combinators are always available")
 
--- Anti-drift: Schema's list (what it accepts without the client loaded) and
+-- Anti-drift: GuideCheck's list (what it accepts without the client loaded) and
 -- the client's registry are the same set, both ways.
-for kind in pairs(Schema.predicateKinds) do
-    assert(Client:HasPredicate(kind), "Schema names a predicate nothing implements: " .. kind)
+for kind in pairs(GuideCheck.predicateKinds) do
+    assert(Client:HasPredicate(kind), "GuideCheck names a predicate nothing implements: " .. kind)
 end
 for _, kind in ipairs(Client:PredicateKinds()) do
-    assert(Schema.predicateKinds[kind], "the client implements a predicate Schema does not name: " .. kind)
+    assert(GuideCheck.predicateKinds[kind], "the client implements a predicate GuideCheck does not name: " .. kind)
 end
 
 Client:RegisterPredicate("fixture", function(predicate) return predicate.answer end)
@@ -87,7 +87,7 @@ assert(Client:EvaluateCondition({ type = "item", id = 2495, count = 3 }) == fals
 -- A guide's `cond` and `show`, every key: each becomes a registered kind and
 -- the guide validates.
 local function guide(steps, conds)
-    return { kind = "guide", schema = 1, id = "nuuroad:test:kinds", updated = 1,
+    return { kind = "guide", id = "nuuroad:test:kinds", updated = 1,
         title = "Predicate fixture", category = "test",
         data = { map = 1412, conds = conds, sections = { { title = "S", steps = steps } } } }
 end
@@ -104,7 +104,7 @@ local expanded = Steps:Expand(guide({
     { type = "note", note = "race", cond = { race = { "orc", "troll" } } },
     { type = "note", note = "named", cond = { is = "orcs" } },
 }, { orcs = { race = "orc" } }))
-local ok, problems = Schema:Validate(expanded)
+local ok, problems = GuideCheck:Validate(expanded)
 assert(ok, table.concat(problems or {}, "; "))
 local nodes = expanded.nodes
 assert(nodes[1].condition.type == "class" and nodes[1].condition.values[1] == "WARRIOR")
@@ -231,7 +231,7 @@ ns.packagedGuides = {}
 Load(ns, "Dev/Fixtures/ConditionFixture.lua")
 local fixture = Steps:Expand(ns.packagedGuides[1])
 ns.packagedGuides = nil
-ok, problems = Schema:Validate(fixture)
+ok, problems = GuideCheck:Validate(fixture)
 assert(ok, "condition fixture: " .. table.concat(problems or {}, "; "))
 -- Every step is checked before the suite fails, so one run names them all;
 -- the failures are raised at the end of the suite.
@@ -271,7 +271,7 @@ local derivedGuide = Steps:Expand(guide({
     { type = "talk", turnin = { 872 }, accept = { 873 }, npc = { 3429 }, optional = true, show = { ah = true } },
     { type = "turnin", quests = { 874 }, optional = true },
 }))
-ok, problems = Schema:Validate(derivedGuide)
+ok, problems = GuideCheck:Validate(derivedGuide)
 assert(ok, table.concat(problems or {}, "; "))
 local turnin = derivedGuide.nodes[1].condition
 local written, derived = Steps:SplitCondition(turnin)

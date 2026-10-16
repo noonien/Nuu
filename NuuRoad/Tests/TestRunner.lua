@@ -8,7 +8,7 @@ dofile("Tests/Support/Namespace.lua")
 local suites = {
     { "load order", "Tests/LoadTests.lua" },
     { "settings", "Tests/SettingsTests.lua" },
-    { "schema", "Tests/SchemaTests.lua" },
+    { "guide check", "Tests/GuideCheckTests.lua" },
     { "groups", "Tests/GroupTests.lua" },
     { "guide draft", "Tests/GuideDraftTests.lua" },
     { "progress", "Tests/ProgressTests.lua" },
@@ -31,7 +31,7 @@ local suites = {
     { "quest marks", "Tests/QuestMarksTests.lua" },
     { "built-in guide", "Tests/BuiltInGuideTests.lua" },
     { "guide format", "Tests/GuideFormatTests.lua" },
-    { "guide wire", "Tests/GuideWireTests.lua" },
+    { "guide share", "Tests/GuideShareTests.lua" },
     { "guide audit", "Tests/GuideAuditTests.lua" },
     { "guide scan", "Tests/GuideScanTests.lua" },
     { "observed progress", "Tests/ObservedProgressTests.lua" },

@@ -16,7 +16,7 @@ local _, ns = ...
 -- fixture as much as the arrow is.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:cave-place", updated = 1790121600,
     title = "Fixture: Cave place", category = "Fixtures/Travel", author = "NuuRoad", tags = { "fixture", "travel", "places" },
     data = {

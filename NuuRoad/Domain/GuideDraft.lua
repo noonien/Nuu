@@ -1,12 +1,12 @@
 local _, ns = ...
 
--- A guide being edited, in guide format v1 (docs/examples/guide-v1.lua): the
--- model under the editor (UI/Editor.lua). It holds the v1 value itself, not
+-- A guide being edited, as its guide source (docs/examples/guide-source.lua): the
+-- model under the editor (UI/Editor.lua). It holds the source itself, not
 -- the runtime guide, so what the editor shows and keeps is what a guide file
 -- says, and a guide made in game can be copied out as text.
 --
 -- Every change goes through Change(): the value before it is kept for Undo,
--- the guide is built again (Steps:Expand, then Schema:Validate) and what is
+-- the guide is built again (Steps:Expand, then GuideCheck:Validate) and what is
 -- wrong is put on the step it is about, never in one status line. A step
 -- that cannot be built is left out of the runtime guide until it is fixed,
 -- so the rest of the guide still plays. Then `onChanged` is told, which is
@@ -14,7 +14,7 @@ local _, ns = ...
 --
 -- Steps are tables of the value, so a step keeps its identity while steps
 -- around it come and go; that is how the tracker keeps the player on the
--- same step when the guide is saved (Map). Labels, which v1 uses to point at
+-- same step when the guide is saved (Map). Labels, which a source uses to point at
 -- a step, are made here when something needs one (EnsureLabel) and never
 -- typed by the author.
 --
@@ -123,7 +123,7 @@ end
 -- A new guide with one empty step, filed under Personal.
 function GuideDraft:New(title, map)
     local guide = {
-        kind = "guide", schema = 1, id = ns.modules.GuideRepository.pendingID,
+        kind = "guide", id = ns.modules.GuideRepository.pendingID,
         title = trim(title) ~= "" and trim(title) or "Untitled guide", category = "Personal",
         author = "Player", tags = { "personal" },
         data = { map = map, sections = { { title = "Start", steps = { { type = "note" } } } } },
@@ -236,7 +236,7 @@ local function empty(value)
     return value == nil or value == "" or (type(value) == "table" and next(value) == nil)
 end
 
--- Sets one field of a step; nil, "" or {} takes it out, as v1 has no empty
+-- Sets one field of a step; nil, "" or {} takes it out, as a source has no empty
 -- values. A field is changed in place, so the step keeps its identity.
 function Draft:SetField(step, key, value, what)
     if empty(value) then value = nil end
@@ -1012,13 +1012,13 @@ function Draft:Rebuild()
         end
         if #section.steps == 0 then table.remove(trial.data.sections, sectionIndex) end
     end
-    local Steps, Schema = ns.modules.Steps, ns.modules.Schema
+    local Steps, GuideCheck = ns.modules.Steps, ns.modules.GuideCheck
     local built
     for _ = 1, 40 do
         if #trial.data.sections == 0 then break end
         local ok, result = pcall(Steps.Expand, Steps, trial)
         if ok then
-            local valid, errors = Schema:Validate(result)
+            local valid, errors = GuideCheck:Validate(result)
             if valid then built = result break end
             local index = tonumber(tostring(errors[1]):match("nodes%[(%d+)%]"))
             local where = index and trialEntries()[index]
@@ -1059,7 +1059,7 @@ function Draft:Rebuild()
     self:Lint(problems)
     self.problems, self.guideProblems = problems, guideProblems
     if built then
-        ns.modules.Schema:IndexNodes(built)
+        ns.modules.GuideCheck:IndexNodes(built)
         self.built, self.builtFrom = built, origin
     else
         self.built, self.builtFrom = nil, nil
@@ -1105,7 +1105,7 @@ function Draft:Text()
 end
 
 -- Replaces the guide with one read from text, keeping its ID: the editor's
--- Edit as text. The value must be a v1 guide.
+-- Edit as text. The value must be a guide source.
 function Draft:ReplaceFromText(text)
     local value, problem = ns.modules.GuideText:Read(text)
     if not value then return false, problem end

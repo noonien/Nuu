@@ -17,7 +17,7 @@ CreateFrame = function()
     return frame
 end
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/QuestIndex.lua")
@@ -25,7 +25,7 @@ Load(ns, "Domain/POILog.lua")
 local Steps, POILog = ns.modules.Steps, ns.modules.POILog
 
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:poi", updated = 1789862400, title = "POI", category = "test",
+    kind = "guide", id = "test:poi", updated = 1789862400, title = "POI", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "accept", quests = { 869 }, npc = { 3464 }, at = { { 4400, 5900 } } },
@@ -353,7 +353,7 @@ ns.modules.QuestIndex:Invalidate()
 -- has to read as a pin on the other cluster rather than as a bad pin.
 POILog:Clear()
 local clusterGuide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:clusters", updated = 1789862400, title = "Clusters", category = "test",
+    kind = "guide", id = "test:clusters", updated = 1789862400, title = "Clusters", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "kill", quest = 890, at = { { 4000, 3000 } } },   -- north side of the zone
@@ -421,7 +421,7 @@ assert(ns.db.poi.session ~= nil, "and the session is stamped")
 -- is actually pinning.
 POILog:Clear()
 local handInGuide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:handin", updated = 1789862400, title = "Hand in", category = "test",
+    kind = "guide", id = "test:handin", updated = 1789862400, title = "Hand in", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "accept", quests = { 891 }, npc = { 3464 }, at = { { 4800, 2800 } } },
@@ -460,7 +460,7 @@ mapQuests[1413] = { { questID = 869, x = 0.46, y = 0.62 } }
 -- shape, measured rather than eyeballed.
 POILog:Clear()
 local spreadGuide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:centre", updated = 1789862400, title = "Centre", category = "test",
+    kind = "guide", id = "test:centre", updated = 1789862400, title = "Centre", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "kill", quest = 892, at = { { 2000, 2000 } } },
@@ -497,7 +497,7 @@ mapQuests[1413] = { { questID = 869, x = 0.46, y = 0.62 } }
 -- said things happened - the player's own position at the moment it did.
 POILog:Clear()
 local portedGuide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:ported", updated = 1789862400, title = "Ported", category = "test",
+    kind = "guide", id = "test:ported", updated = 1789862400, title = "Ported", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "kill", quest = 893, at = { { 2000, 2000 } } }, -- a wrong coordinate, as a bad port gives

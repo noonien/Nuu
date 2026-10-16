@@ -62,7 +62,7 @@ function ObservedProgress:AheadOfStepMessage(guide, currentIndex, event, questID
     local QuestIndex = ns.modules.QuestIndex
     if not QuestIndex then return nil end
     -- Steps carried with the current one are on the step card already.
-    local group = ns.modules.Schema:GroupAt(guide, currentIndex)
+    local group = ns.modules.GuideCheck:GroupAt(guide, currentIndex)
     local last = group and group.last or currentIndex
     local ahead
     for _, entry in ipairs(QuestIndex:GuidesFor(questID)) do

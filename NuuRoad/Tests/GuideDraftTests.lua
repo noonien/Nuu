@@ -1,18 +1,18 @@
 -- The editor's model (Domain/GuideDraft.lua) and the guide as text
 -- (Data/GuideText.lua), outside the client: steps added, moved, grouped and
--- deleted in a v1 guide, labels made when something points at a step, undo
+-- deleted in a guide source, labels made when something points at a step, undo
 -- and redo, problems put on their step while the rest still builds, the
 -- step map that keeps the tracker's place, saving through the repository,
 -- and text written and read back.
 local ns = NewNamespace()
 ns.db = { account = { guides = {}, nextUserGuideNumber = 0 } }
 Load(ns, "Data/IDNames.lua")
-for _, file in ipairs({ "Data/Schema.lua", "Data/Names.lua", "Data/Steps.lua", "Data/GuideText.lua",
+for _, file in ipairs({ "Data/GuideCheck.lua", "Data/Names.lua", "Data/Steps.lua", "Data/GuideText.lua",
     "Domain/GuideDraft.lua", "Domain/GuideRepository.lua", "Domain/Progress.lua" }) do Load(ns, file) end
 local Draft, Text, Repository = ns.modules.GuideDraft, ns.modules.GuideText, ns.modules.GuideRepository
 
 local function source()
-    return { kind = "guide", schema = 1, id = "test:draft", updated = 1789862400, title = "Draft", category = "Test",
+    return { kind = "guide", id = "test:draft", updated = 1789862400, title = "Draft", category = "Test",
         data = { map = 1413,
             npcs = { [1413] = { [3448] = { name = "Tonga Runetotem", at = { 5226, 3193 } } } },
             sections = {
@@ -169,14 +169,14 @@ local steps = copy.builtSteps
 copy:Insert(nil, { type = "note", note = "Before everything" })
 local old, new = Repository:SaveDraft(copy)
 assert(old == packaged and new and new.id == "user:guide-1", "a copy of its own")
-assert(copy.guide.title == "Draft (my copy)" and ns.db.account.guides["user:guide-1"].kind == "guide", "kept as v1")
+assert(copy.guide.title == "Draft (my copy)" and ns.db.account.guides["user:guide-1"].kind == "guide", "kept as a source")
 Progress:Rebuilt(old, new, copy:Map(steps))
 assert(Progress.store.activeGuideID == "user:guide-1" and Progress.store.openGuides[1] == "user:guide-1", "the tab follows the copy")
 assert(Progress:GetState(new).currentStep == 5, "still on the same step, one further down")
 assert(Repository:Get("test:draft") == packaged, "the packaged guide is untouched")
 -- Built again at login from what was kept.
 Repository:BuildUserGuides()
-assert(Repository:Get("user:guide-1") and #Repository:Get("user:guide-1").nodes == 7, "rebuilt from v1")
+assert(Repository:Get("user:guide-1") and #Repository:Get("user:guide-1").nodes == 7, "rebuilt from its source")
 
 -- Text: written, read back, the same guide.
 local text = Text:Write(source())

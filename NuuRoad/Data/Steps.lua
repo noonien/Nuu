@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- Guides are written in guide format v1 (docs/examples/guide-v1.lua, which
+-- Guides are written as guide sources (docs/examples/guide-source.lua, which
 -- documents every field). Expand() reads one once, here, and everything
 -- downstream sees ordinary runtime nodes; anything derived -- titles, step
 -- positions, section and group spans, reference lists, completion rules -- is
@@ -748,7 +748,7 @@ end
 
 -- READING A GUIDE
 --
--- Expand() reads a guide in format v1 and builds the runtime guide. Errors
+-- Expand() reads a guide source and builds the runtime guide. Errors
 -- name the field they are about: "NuuRoad: data.sections[2].steps[4].quest:
 -- must be { quest, objective }".
 
@@ -1760,9 +1760,8 @@ local groupKeys = { label = true, cond = true, show = true, group = true }
 -- indexed.
 function Steps:Expand(value)
     if type(value) ~= "table" then return value end
-    if value.kind ~= "guide" and type(value.nodes) == "table" then return ns.modules.Schema:IndexNodes(value) end
+    if value.kind ~= "guide" and type(value.nodes) == "table" then return ns.modules.GuideCheck:IndexNodes(value) end
     if value.kind ~= "guide" then fail("guide", "is not a guide") end
-    if value.schema ~= 1 then fail("guide.schema", "must be 1") end
     local data = value.data
     if type(data) ~= "table" or type(data.sections) ~= "table" then fail("guide.data", "has no sections") end
     local conds = data.conds
@@ -1771,7 +1770,7 @@ function Steps:Expand(value)
         fail("guide.levels", "is { from, to }")
     end
     local expanded = {
-        schema = ns.modules.Schema.currentVersion, id = value.id, updated = value.updated,
+        id = value.id, updated = value.updated,
         meta = {
             title = value.title, author = value.author, category = value.category, tags = value.tags,
             levels = levels and { levels.from, levels.to } or nil,
@@ -1812,7 +1811,7 @@ function Steps:Expand(value)
     local function addStep(step, path, inGroup, sectionMap, inherited)
         if type(step) ~= "table" then fail(path, "a step is a table") end
         local node = build(step, path, sectionMap)
-        if inGroup and not ns.modules.Schema:IsGroupMember(node) then
+        if inGroup and not ns.modules.GuideCheck:IsGroupMember(node) then
             fail(path, "group members are quest visits or quest objectives")
         end
         local terms = append(append(inherited, conditions(step, conds, path)), markDerived(derivedTerms(step, path)))

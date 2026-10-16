@@ -10,7 +10,7 @@ ns.packagedGuides = ns.packagedGuides or {}
 
 local function fixture(id, title, map, sections, npcs)
     table.insert(ns.packagedGuides, {
-        kind = "guide", schema = 1, id = id, updated = 1790208000,
+        kind = "guide", id = id, updated = 1790208000,
         title = title, category = "Fixtures/Travel tests", author = "NuuRoad", tags = { "fixture", "travel" },
         data = { map = map, sections = sections, npcs = npcs },
     })

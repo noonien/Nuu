@@ -3,11 +3,11 @@ local ns = { modules = {}, builtInGuides = {} }
 function ns:RegisterModule(name, module) self.modules[name] = module end
 ns.Kit = ns.Kit or LoadKit()
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 -- Every packaged guide listed in the real addon manifest, as the guide
--- (format v1) its file holds, and the development fixtures.
+-- source its file holds, and the development fixtures.
 LoadBuiltIns(ns)
 
 -- The guide's own condition, holding one key: as the guide writes it
@@ -28,7 +28,7 @@ local function onlyFor(guide, kind, value)
 end
 for _, source in pairs(ns.builtInGuides) do
     local expanded = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(expanded)
+    local valid, problems = ns.modules.GuideCheck:Validate(expanded)
     assert(valid, source.id .. ": " .. table.concat(problems, "; "))
 end
 
@@ -42,7 +42,7 @@ for id, source in pairs(ns.builtInGuides) do
     -- any guide.
     local alone = { modules = {}, Kit = ns.Kit, idNames = ns.idNames }
     function alone:RegisterModule(name, module) self.modules[name] = module end
-    Load(alone, "Data/Schema.lua")
+    Load(alone, "Data/GuideCheck.lua")
     Load(alone, "Data/Names.lua")
     Load(alone, "Data/Steps.lua")
     local Steps, Names = alone.modules.Steps, alone.modules.Names
@@ -152,7 +152,7 @@ end
 local compact = ns.builtInGuides["nuuroad:leveling:horde-barrens-13-21"]
 assert(compact, "Horde Barrens guide must register")
 local guide = ns.modules.Steps:Expand(compact)
-local ok, errors = ns.modules.Schema:Validate(guide)
+local ok, errors = ns.modules.GuideCheck:Validate(guide)
 assert(ok, table.concat(errors, "; "))
 assert(#guide.groups == 26, "Barrens has fifteen visit groups and eleven camps of kills and pickups")
 assert(#guide.sections == 15, "Horde Barrens guide keeps its fifteen sections, got " .. #guide.sections)
@@ -176,7 +176,7 @@ for _, node in ipairs(guide.nodes) do
 end
 assert(onlyFor(compact, "faction", "Horde") and guide.condition.type == "faction", "the Barrens guide is Horde-only")
 for _, source in pairs(ns.builtInGuides) do
-    assert(source.kind == "guide" and source.schema == 1, source.id .. " must be a guide in format 1")
+    assert(source.kind == "guide", source.id .. " must be a guide source")
     assert(type(source.updated) == "number", source.id .. " must carry an updated stamp")
     assert(type(source.data) == "table" and type(source.data.sections) == "table", source.id .. " must hold its sections in data")
     for _, section in ipairs(source.data.sections) do
@@ -202,7 +202,7 @@ assert(byItem[4926].completion.observed.startsQuestID == 819, "Chen's Empty Keg 
 assert(byItem[4986].completion.observed.questID == 924, "the Flawed Power Stone is a quest item for The Demon Seed")
 
 local fixture = ns.modules.Steps:Expand(ns.builtInGuides["nuuroad:fixture:quest-items"])
-ok, errors = ns.modules.Schema:Validate(fixture)
+ok, errors = ns.modules.GuideCheck:Validate(fixture)
 assert(ok, table.concat(errors, "; "))
 assert(fixture.nodes[1].completion.observed.startsQuestID == 819 and fixture.nodes[3].completion.observed.questID == 924)
 
@@ -213,7 +213,7 @@ for _, id in ipairs({ "nuuroad:leveling:horde-mulgore-1-6", "nuuroad:leveling:ho
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1412, id .. " is a Horde guide on the Mulgore map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     for _, node in ipairs(ported.nodes) do
@@ -242,7 +242,7 @@ for _, id in ipairs({ "nuuroad:leveling:horde-tirisfal-1-6", "nuuroad:leveling:h
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1420, id .. " is a Horde guide on the Tirisfal map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     local maps = { [1420] = true, [1458] = true }
@@ -271,7 +271,7 @@ do
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1421, id .. " is a Horde guide on the Silverpine map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     local maps = { [1421] = true, [1458] = true, [1420] = true, [1411] = true, [1413] = true }
@@ -298,7 +298,7 @@ do
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1424, id .. " is a Horde guide on the Hillsbrad map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     local maps = { [1424] = true, [1421] = true, [1420] = true, [1411] = true }
@@ -325,7 +325,7 @@ do
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1413, id .. " is a Horde guide on the Barrens map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     local maps = { [1413] = true, [1456] = true }
@@ -352,7 +352,7 @@ do
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1442, id .. " is a Horde guide on the Stonetalon map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     for _, node in ipairs(ported.nodes) do
@@ -378,7 +378,7 @@ do
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1441, id .. " is a Horde guide on the Thousand Needles map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     local maps = { [1441] = true, [1456] = true, [1413] = true, [1444] = true, [1446] = true, [1434] = true, [1454] = true }
@@ -661,7 +661,7 @@ do
     assert(source, id .. " must register")
     assert(onlyFor(source, "faction", "Horde") and source.data.map == 1440, id .. " is a Horde guide on the Ashenvale map")
     local ported = ns.modules.Steps:Expand(source)
-    local valid, problems = ns.modules.Schema:Validate(ported)
+    local valid, problems = ns.modules.GuideCheck:Validate(ported)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     assert(#ported.groups > 0, id .. " keeps the source's shared quest visits as groups")
     local maps = { [1440] = true, [1454] = true, [1450] = true }

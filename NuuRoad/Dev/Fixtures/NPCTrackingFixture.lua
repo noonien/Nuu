@@ -7,7 +7,7 @@ local _, ns = ...
 -- once. Plainstriders and the quest givers are around the Crossroads.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:npc-tracking", updated = 1789862400,
     title = "Fixture: NPC Tracking", category = "Fixtures/NPCs", author = "NuuRoad",
     tags = { "fixture", "npc", "kill", "horde" },

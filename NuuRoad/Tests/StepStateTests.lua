@@ -7,7 +7,7 @@ function ns:Record(channel, data) local row = { at = #rows, d = data, channel = 
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
@@ -18,7 +18,7 @@ local Steps, Progress, ObservedProgress, StepState = ns.modules.Steps, ns.module
 
 -- Snapshots of what the flow sees, recorded only when they change.
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:stepstate", updated = 1789862400, title = "Step state", category = "test",
+    kind = "guide", id = "test:stepstate", updated = 1789862400, title = "Step state", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "accept", quests = { 870 }, npc = { 3448 } },

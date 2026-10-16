@@ -1,7 +1,7 @@
 # Guide port pipeline
 
 Developer tooling for porting authorized guide content into NuuRoad's guide
-format v1 (`docs/examples/guide-v1.lua`). None of it is in `NuuRoad.toc`, none of it ships, and the addon
+sources (`docs/examples/guide-source.lua`). None of it is in `NuuRoad.toc`, none of it ships, and the addon
 never reads a source addon's directory at runtime.
 
 ## Running it

@@ -5,13 +5,13 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/IDNames.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
 Load(ns, "Domain/Navigation.lua")
-local Client, Schema, Steps = ns.modules.Client, ns.modules.Schema, ns.modules.Steps
+local Client, GuideCheck, Steps = ns.modules.Client, ns.modules.GuideCheck, ns.modules.Steps
 local Progress, Navigation = ns.modules.Progress, ns.modules.Navigation
 
 local stubbed = { "C_Item", "C_QuestLog", "C_Map", "GetItemCount", "UnitLevel", "GetRealZoneText",
@@ -19,14 +19,14 @@ local stubbed = { "C_Item", "C_QuestLog", "C_Map", "GetItemCount", "UnitLevel", 
 local function clearStubs() for _, name in ipairs(stubbed) do _G[name] = nil end end
 clearStubs()
 
-local function v1(steps)
-    return { kind = "guide", schema = 1, id = "nuuroad:test:port", updated = 1,
+local function guideSource(steps)
+    return { kind = "guide", id = "nuuroad:test:port", updated = 1,
         title = "Port constructs", category = "test",
         data = { map = 1412, sections = { { title = "S", steps = steps } } } }
 end
 local function expand(steps)
-    local expanded = Steps:Expand(v1(steps))
-    local ok, problems = Schema:Validate(expanded)
+    local expanded = Steps:Expand(guideSource(steps))
+    local ok, problems = GuideCheck:Validate(expanded)
     assert(ok, table.concat(problems or {}, "; "))
     return expanded
 end
@@ -47,7 +47,7 @@ local carriedCompletion = guide.nodes[1].completion.observed
 assert(carriedCompletion.type == "any" and #carriedCompletion.children == 2)
 assert(carriedCompletion.children[2].type == "step" and carriedCompletion.children[2].index == 2)
 
-local badForward, message = pcall(Steps.Expand, Steps, v1({
+local badForward, message = pcall(Steps.Expand, Steps, guideSource({
     { type = "note", note = "target", label = "earlier" },
     { type = "note", note = "carried", with = "earlier" },
 }))
@@ -55,10 +55,10 @@ assert(not badForward and message:find("steps[2].with: a step is carried alongsi
     "a step cannot be carried alongside an earlier one")
 
 local badLabel
-badLabel, message = pcall(Steps.Expand, Steps, v1({ { type = "note", note = "carried", with = "nowhere" }, { type = "note", note = "other" } }))
+badLabel, message = pcall(Steps.Expand, Steps, guideSource({ { type = "note", note = "carried", with = "nowhere" }, { type = "note", note = "other" } }))
 assert(not badLabel and message:find("no step is labelled 'nowhere'", 1, true), "`with` naming no label is refused at load")
 -- `with = "next"` is gone: it names a label like any other.
-badLabel, message = pcall(Steps.Expand, Steps, v1({ { type = "note", note = "carried", with = "next" }, { type = "note", note = "other" } }))
+badLabel, message = pcall(Steps.Expand, Steps, guideSource({ { type = "note", note = "carried", with = "next" }, { type = "note", note = "other" } }))
 assert(not badLabel and message:find("no step is labelled 'next'", 1, true))
 
 -- The flow never stops on a carried step, and the step that carries it
@@ -149,7 +149,7 @@ assert(Steps:Title(misc.nodes[1]):find("Sell your junk"), Steps:Title(misc.nodes
 assert(Steps:Title(misc.nodes[2]):find("^Repair at "), Steps:Title(misc.nodes[2]))
 assert(misc.nodes[3].wait == 8)
 assert(Steps:Title(misc.nodes[4]):find("^Sell and repair at "), Steps:Title(misc.nodes[4]))
-assert(not pcall(Steps.Expand, Steps, v1({ { type = "vendor", npc = { 3080 } } })), "a vendor step sells, repairs, or both")
+assert(not pcall(Steps.Expand, Steps, guideSource({ { type = "vendor", npc = { 3080 } } })), "a vendor step sells, repairs, or both")
 
 -- Arrival by zone (a map ID) or by area (an AreaTable ID, named) ----------
 local byName = expand({
@@ -167,9 +167,9 @@ assert(Client:MatchesObservedCompletion(byName.nodes[2].completion.observed))
 here = 1413
 assert(Client:MatchesObservedCompletion(byName.nodes[1].completion.observed))
 C_Map = nil
-local badArea, areaMessage = pcall(Steps.Expand, Steps, v1({ { type = "travel", to = "Nowhere", area = 999999 } }))
+local badArea, areaMessage = pcall(Steps.Expand, Steps, guideSource({ { type = "travel", to = "Nowhere", area = 999999 } }))
 assert(not badArea and areaMessage:find("steps[1].area: no name for areas 999999", 1, true), tostring(areaMessage))
-badArea, areaMessage = pcall(Steps.Expand, Steps, v1({ { type = "travel", to = "Bloodhoof", area = "Bloodhoof Village" } }))
+badArea, areaMessage = pcall(Steps.Expand, Steps, guideSource({ { type = "travel", to = "Bloodhoof", area = "Bloodhoof Village" } }))
 assert(not badArea and areaMessage:find("an area is an AreaTable ID", 1, true), "areas are IDs, not names")
 
 -- The realm answers behind #ah and #ssf: `show` keys, read as they stand -----
@@ -199,7 +199,7 @@ ns.packagedGuides = {}
 Load(ns, "Dev/Fixtures/PortConstructFixture.lua")
 local fixture = Steps:Expand(ns.packagedGuides[1])
 ns.packagedGuides = nil
-local valid, fixtureProblems = Schema:Validate(fixture)
+local valid, fixtureProblems = GuideCheck:Validate(fixture)
 assert(valid, table.concat(fixtureProblems or {}, "; "))
 local fn = fixture.nodes
 assert(fn[1].companionOf == 2 and fn[4].companionOf == 7, "steps 1 and 4 are carried")

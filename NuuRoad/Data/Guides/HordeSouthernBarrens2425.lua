@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 24-25 leveling route through the southern Barrens: Thunder Bluff's
 -- trainers, Camp Taurajo, the Razormane at Blackthorn Ridge, the Bael'dun
@@ -51,7 +51,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-southern-barrens-24-25",
     updated = 1791025067,

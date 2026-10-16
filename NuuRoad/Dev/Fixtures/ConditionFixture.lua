@@ -11,7 +11,7 @@ local _, ns = ...
 -- step, read the condition back as the same text, save, and reopen unchanged.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:conditions", updated = 1789862400,
     title = "Fixture: Conditions", category = "Fixtures/Conditions", author = "NuuRoad",
     tags = { "fixture", "condition", "predicate" },

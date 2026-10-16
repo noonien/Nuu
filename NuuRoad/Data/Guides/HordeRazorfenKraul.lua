@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Every Horde quest of Razorfen Kraul a character at the level 30 cap can take, from
 -- Master Apothecary Faranell in the Undercity to the last turn-in. The quest list, quest
@@ -52,7 +52,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:dungeon:horde-razorfen-kraul-quests",
     updated = 1790985600,

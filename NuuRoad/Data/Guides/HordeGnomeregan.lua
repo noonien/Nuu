@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Every Horde quest of Gnomeregan, from Nogg and Sovik in Orgrimmar to the last turn-in
 -- with Nogg. Quest, NPC and item IDs, quest levels, prerequisites, the drops of the quest
@@ -51,7 +51,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:dungeon:horde-gnomeregan-quests",
     updated = 1790985600,

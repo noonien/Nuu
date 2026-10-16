@@ -3,9 +3,9 @@ local _, ns = ...
 -- `version` moves whenever the set of guides changes, so indexes built over
 -- the guides (QuestIndex) know when to rebuild.
 -- `session` holds guides built while playing: they run like any other guide but are never saved.
--- `sources` keeps each packaged guide as written (format v1), which the
+-- `sources` keeps each packaged guide's source, as written, which the
 -- editor copies; `user` holds the player's guides built for play, from the
--- v1 values kept in NuuRoadDB.account.guides.
+-- sources kept in NuuRoadDB.account.guides.
 local Repository = { builtIns = {}, session = {}, sources = {}, user = {}, pendingID = "user:pending", version = 0 }
 
 local function copy(value, seen)
@@ -19,7 +19,7 @@ local function copy(value, seen)
 end
 
 -- The packaged guides (and, in development, the fixtures) put themselves in
--- ns.packagedGuides as they load, in guide format v1; each is expanded and
+-- ns.packagedGuides as they load, as guide sources; each is expanded and
 -- checked here. One that cannot be read is reported and left out.
 function Repository:Initialize()
     for _, source in ipairs(ns.packagedGuides or {}) do
@@ -27,7 +27,7 @@ function Repository:Initialize()
         local expanded, result = pcall(ns.modules.Steps.Expand, ns.modules.Steps, source)
         local valid, errors
         if expanded then
-            valid, errors = ns.modules.Schema:Validate(result)
+            valid, errors = ns.modules.GuideCheck:Validate(result)
         else
             errors = { tostring(result) }
         end
@@ -48,7 +48,7 @@ end
 
 -- The player's guides, each built the way the editor builds it: a step
 -- that cannot be read is left out and the rest plays. A guide kept by an
--- older editor (a runtime guide, not v1) plays as it is.
+-- older editor (a runtime guide, not a source) plays as it is.
 function Repository:BuildUserGuides()
     self.user = {}
     local Draft = ns.modules.GuideDraft
@@ -57,7 +57,7 @@ function Repository:BuildUserGuides()
             local built = Draft:Open(value).built
             if built then self.user[id] = built else ns:Log("user guide '" .. tostring(id) .. "' has no step that can be read") end
         elseif type(value) == "table" and type(value.nodes) == "table" then
-            self.user[id] = ns.modules.Schema:IndexNodes(value) or value
+            self.user[id] = ns.modules.GuideCheck:IndexNodes(value) or value
         end
     end
 end
@@ -66,7 +66,7 @@ function Repository:Get(id)
     return self.builtIns[id] or self.session[id] or self.user[id]
 end
 
--- The guide as written, in format v1, for the editor: a packaged guide's
+-- The guide's source, as written, for the editor: a packaged guide's
 -- source or a guide of the player's. Nil for a session guide or one kept by
 -- an older editor.
 function Repository:Source(id)
@@ -90,15 +90,15 @@ function Repository:IsSessionGuide(id)
     return self.session[id] ~= nil
 end
 
--- Registers a guide (format v1) for this session only, replacing one with the same ID.
+-- Registers a guide source for this session only, replacing one with the same ID.
 -- Returns the runtime guide, or nil and the problems found.
 function Repository:SetSessionGuide(guide)
     local expanded, result = pcall(ns.modules.Steps.Expand, ns.modules.Steps, guide)
     if not expanded then return nil, { tostring(result) } end
-    local valid, errors = ns.modules.Schema:Validate(result)
+    local valid, errors = ns.modules.GuideCheck:Validate(result)
     if not valid then return nil, errors end
     if self.builtIns[result.id] then return nil, { "guide.id: packaged guide IDs are immutable" } end
-    ns.modules.Schema:IndexNodes(result)
+    ns.modules.GuideCheck:IndexNodes(result)
     self.session[result.id] = result
     self.sources[result.id] = guide
     self.version = self.version + 1
@@ -128,7 +128,7 @@ local function now()
     return clock and clock() or 0
 end
 
--- Keeps a draft (Domain/GuideDraft.lua): its v1 value on the account, and
+-- Keeps a draft (Domain/GuideDraft.lua): its source on the account, and
 -- its runtime guide for play. A draft of a packaged guide becomes a guide
 -- of the player's own here, with an ID of its own, on its first save.
 -- Answers the runtime guide that was played before (nil for a new guide)
@@ -169,7 +169,7 @@ function Repository:DeleteUserGuide(id)
     return true
 end
 
--- A guide read from text (format v1), kept as a guide of the player's own
+-- A guide source read from text, kept as a guide of the player's own
 -- under a new ID. Answers the runtime guide, or nil and what is wrong.
 function Repository:Import(value)
     local Draft = ns.modules.GuideDraft

@@ -2145,7 +2145,7 @@ end
 -- enters a guide table. A guide's `cond` and `show` keys become class, race,
 -- faction, season, hardcore, profession, auctionHouse and selfFound; quest
 -- and item are the terms a step works out from its own fields (Steps:Expand).
--- Schema validates conditions against this same registry, so the two cannot
+-- GuideCheck validates conditions against this same registry, so the two cannot
 -- drift apart.
 --
 -- Evaluation is three-valued. `true` and `false` are answers; `nil` means the

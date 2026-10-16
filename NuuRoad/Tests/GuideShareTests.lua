@@ -1,17 +1,17 @@
 _G = _G or _ENV
--- Guides as bytes: Schema/Guide.lua, the codec Data/GuideCodec.lua that
--- NuuKit/Tools/Codec/Gen.lua generates from it, and Data/GuideWire.lua
--- between it and format v1. Every packaged guide, fixture and the format's
--- worked example must come back from its bytes as the same value; the
+-- Guides as players share them: the share schema Schema/Guide.lua, the codec
+-- Data/GuideCodec.lua that NuuKit/Tools/Codec/Gen.lua generates from it, and
+-- Data/GuideShare.lua between it and guide sources. Every packaged guide,
+-- fixture and the worked example must come back from its bytes as the same value; the
 -- schema must match the step types and fields GuideDraft knows; the
 -- generated file must be the schema's.
 local ns = NewNamespace()
 Load(ns, "Data/GuideText.lua")
 Load(ns, "Domain/GuideDraft.lua")
 Load(ns, "Data/GuideCodec.lua")
-Load(ns, "Data/GuideWire.lua")
+Load(ns, "Data/GuideShare.lua")
 LoadBuiltIns(ns)
-local GuideWire, GuideCodec, GuideText = ns.modules.GuideWire, ns.modules.GuideCodec, ns.modules.GuideText
+local GuideShare, GuideCodec, GuideText = ns.modules.GuideShare, ns.modules.GuideCodec, ns.modules.GuideText
 local GuideDraft = ns.modules.GuideDraft
 local Gen = dofile("../NuuKit/Tools/Codec/Gen.lua")
 
@@ -106,7 +106,7 @@ do
         guides[id] = guide
         ids[#ids + 1] = id
     end
-    local example = dofile("docs/examples/guide-v1.lua")
+    local example = dofile("docs/examples/guide-source.lua")
     guides[example.id] = example
     ids[#ids + 1] = example.id
     table.sort(ids)
@@ -114,14 +114,14 @@ do
     for _, id in ipairs(ids) do
         local guide = guides[id]
         local before = copy(guide)
-        local bytes, problem = GuideWire:Encode(guide)
+        local bytes, problem = GuideShare:Encode(guide)
         assert(bytes, id .. " encodes: " .. tostring(problem))
         assert(same(guide, before), id .. ": encoding leaves the guide as it was")
-        local back, why = GuideWire:Decode(bytes)
+        local back, why = GuideShare:Decode(bytes)
         assert(back, id .. " decodes: " .. tostring(why))
         local equal, where = same(back, guide)
         assert(equal, id .. " comes back as it was: " .. tostring(where))
-        assert(GuideWire:Encode(back) == bytes, id .. ": the guide it comes back as encodes to the same bytes")
+        assert(GuideShare:Encode(back) == bytes, id .. ": the guide it comes back as encodes to the same bytes")
         local shared = Codec.ToText(GuideCodec.SCHEMA, bytes)
         assert(Codec.IsText(shared) and not shared:find("[^%w%-_:]"), id .. " shares as one plain line")
         local schema, body = Codec.FromText(shared)
@@ -132,22 +132,22 @@ do
     end
     assert(#ids >= 30, "the packaged guides, the fixtures and the example")
     -- Guide text is the editor's Copy as text; bytes are the codec's.
-    print(("NuuRoad guide wire: %d guides, %d KB as guide text, %d KB as bytes"):format(#ids, text / 1024, binary / 1024))
+    print(("NuuRoad guide share: %d guides, %d KB as guide text, %d KB as bytes"):format(#ids, text / 1024, binary / 1024))
 end
 
 -- What a guide holds that the format has no place for is refused, by name.
 do
     local function guide(step, extra)
-        local value = { kind = "guide", schema = 1, id = "test:wire", title = "Wire",
+        local value = { kind = "guide", id = "test:wire", title = "Wire",
             data = { map = 1411, sections = { { title = "One", steps = { step } } } } }
         for key, v in pairs(extra or {}) do value[key] = v end
         return value
     end
     local function refused(value, expect, name)
-        local bytes, problem = GuideWire:Encode(value)
+        local bytes, problem = GuideShare:Encode(value)
         assert(bytes == nil and problem and problem:find(expect, 1, true), name .. ": " .. tostring(problem))
     end
-    assert(GuideWire:Encode(guide({ type = "note", note = "Fine." })), "a plain note encodes")
+    assert(GuideShare:Encode(guide({ type = "note", note = "Fine." })), "a plain note encodes")
     refused(guide({ type = "note", colour = "red" }), "steps[1].step[2].colour is not a field here", "a key no step has")
     refused(guide({ type = "travel", quests = { 1 } }), "steps[1].step[1].travel.quests is not a field here",
         "a field of another type")
@@ -156,17 +156,17 @@ do
     refused(guide({ type = "note", at = { { 10.5, 20 } } }), "at[1][1] is not a whole number", "a point off the grid")
     refused(guide({ type = "note", cond = { any = { { none = { { any = { { ah = true } } } } } } } }),
         "conditions nest two deep at most", "conditions three deep")
-    refused({ kind = "place" }, "not a guide in format v1", "not a guide")
+    refused({ kind = "place" }, "not a guide source", "not a guide")
     refused(guide({ type = "note" }, { colour = "red" }), "colour is not a field here", "a key the wrapper does not have")
 end
 
 -- Damaged bytes are refused, never read as a guide.
 do
-    local bytes = assert(GuideWire:Encode(ns.builtInGuides[next(ns.builtInGuides)]))
-    assert(GuideWire:Decode(bytes:sub(1, -2)) == nil, "cut short")
-    assert(GuideWire:Decode(bytes .. "x") == nil, "a byte too many")
-    assert(GuideWire:Decode("") == nil, "nothing")
+    local bytes = assert(GuideShare:Encode(ns.builtInGuides[next(ns.builtInGuides)]))
+    assert(GuideShare:Decode(bytes:sub(1, -2)) == nil, "cut short")
+    assert(GuideShare:Decode(bytes .. "x") == nil, "a byte too many")
+    assert(GuideShare:Decode("") == nil, "nothing")
 end
 
-print("NuuRoad guide wire tests passed")
+print("NuuRoad guide share tests passed")
 return true

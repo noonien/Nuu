@@ -6,7 +6,7 @@ function ns:Log(message) table.insert(self.logs, message) end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
@@ -15,7 +15,7 @@ Load(ns, "Domain/QuestDialog.lua")
 local Steps, Progress, QuestDialog = ns.modules.Steps, ns.modules.Progress, ns.modules.QuestDialog
 
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:dialog", updated = 1789862400, title = "Dialog", category = "test",
+    kind = "guide", id = "test:dialog", updated = 1789862400, title = "Dialog", category = "test",
     -- Objective steps between the quest steps keep each one its own group.
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
@@ -172,7 +172,7 @@ assert(QuestDialog:OnComplete() == nil and QuestDialog:OnProgress() == nil, "the
 -- once, so a hub can be worked in any order, while a member already recorded
 -- done drops out.
 local hub = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:hub", updated = 1789862400, title = "Hub", category = "test",
+    kind = "guide", id = "test:hub", updated = 1789862400, title = "Hub", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { group = {

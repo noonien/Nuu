@@ -5,7 +5,7 @@
 --
 -- Every guide NuuRoad.toc lists (fixtures included) and the format's worked
 -- example, as its file on disk, as guide text (the editor's Copy as text),
--- as the codec's bytes (Data/GuideWire.lua) and as the nuu: string a player
+-- as the codec's bytes (Data/GuideShare.lua) and as the nuu: string a player
 -- shares. Fails on a guide that does not encode.
 dofile("Tests/Support/Namespace.lua")
 local ns = NewNamespace()
@@ -13,8 +13,8 @@ Load(ns, "Data/IDNames.lua")
 Load(ns, "Data/GuideText.lua")
 Load(ns, "Domain/GuideDraft.lua")
 Load(ns, "Data/GuideCodec.lua")
-Load(ns, "Data/GuideWire.lua")
-local GuideWire, GuideCodec, GuideText = ns.modules.GuideWire, ns.modules.GuideCodec, ns.modules.GuideText
+Load(ns, "Data/GuideShare.lua")
+local GuideShare, GuideCodec, GuideText = ns.modules.GuideShare, ns.modules.GuideCodec, ns.modules.GuideText
 local Codec = ns.Kit.Codec
 
 local function size(path)
@@ -27,7 +27,7 @@ end
 
 local rows, files = {}, {}
 local function add(guide, path)
-    local bytes, problem = GuideWire:Encode(guide)
+    local bytes, problem = GuideShare:Encode(guide)
     assert(bytes, guide.id .. " encodes: " .. tostring(problem))
     local steps = 0
     for _, section in ipairs(guide.data and guide.data.sections or {}) do
@@ -51,7 +51,7 @@ for line in io.lines("NuuRoad.toc") do
         for i = before + 1, #ns.packagedGuides do add(ns.packagedGuides[i], path) end
     end
 end
-add(dofile("docs/examples/guide-v1.lua"), "docs/examples/guide-v1.lua")
+add(dofile("docs/examples/guide-source.lua"), "docs/examples/guide-source.lua")
 table.sort(rows, function(a, b) return a.bytes > b.bytes end)
 
 local function kb(n) return n and ("%.1f"):format(n / 1024) or "-" end

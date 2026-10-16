@@ -2,7 +2,7 @@ local _, ns = ...
 
 -- The guide editor (docs/authoring.md): the guide's steps on the left, in
 -- their sections, and the page of the selected step on the right. It edits
--- the guide as written, in format v1, through a draft (Domain/GuideDraft.lua)
+-- the guide's source, as written, through a draft (Domain/GuideDraft.lua)
 -- that keeps every change as it is made: there is no Save and no Cancel, and
 -- Undo goes back. What is wrong with a step is said on the step, with the
 -- fix as a button where there is one.
@@ -212,7 +212,7 @@ local function sortedOptions(names, extra)
     return options
 end
 
--- Where the player stands, as a v1 point (hundredths of a percent), and the
+-- Where the player stands, as a guide source's point (hundredths of a percent), and the
 -- map it is on. Nil off any map.
 local function whereIStand()
     local client = Client()
@@ -2072,7 +2072,7 @@ end
 function Editor:EditGuideAsText()
     local draft = self.draft
     self:TextWindow("Edit as text", draft:Text(),
-        "The guide as a guide file writes it (docs/examples/guide-v1.lua). Apply replaces it; Undo brings it back.",
+        "The guide as a guide file writes it (docs/examples/guide-source.lua). Apply replaces it; Undo brings it back.",
         function(text)
             local ok, problem = self:Hard(draft.ReplaceFromText, draft, text)
             return ok, problem
@@ -2097,7 +2097,7 @@ end
 
 function Editor:ImportFromText()
     self:TextWindow("Import from text", "",
-        "Paste a guide someone shared (format v1). It becomes a new guide of your own; nothing you have is changed.",
+        "Paste a guide someone shared. It becomes a new guide of your own; nothing you have is changed.",
         function(text)
             local value, problem = M("GuideText"):Read(text)
             if not value then return false, problem end

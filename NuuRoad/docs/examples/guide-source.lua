@@ -1,15 +1,17 @@
--- Guide format v1, worked example. NOT LOADED: this file is not in
+-- A guide source, worked example. NOT LOADED: this file is not in
 -- NuuRoad.toc, does not touch `ns`, and registers nothing. It returns a guide
 -- value, so it can be read, diffed, or required by a scratch script.
 --
--- v1 is the one format NuuRoad's guides are written in: the packaged guides
--- in Data/Guides, the development fixtures in Dev/Fixtures, and, once there
--- is an export, a guide a player shares. A guide is a Lua value, not text:
--- how that value is turned into something a player can share is a later
--- step. It holds what the author decided and nothing that can be worked out
+-- A guide source is how NuuRoad writes and keeps a guide: the packaged guides
+-- in Data/Guides, the development fixtures in Dev/Fixtures, and the player's
+-- guides in NuuRoadDB. It is the addon's own: there is one, the current one,
+-- and it changes with the code, without versions. What players share is not
+-- this but the share schema (Schema/Guide.lua), which Data/GuideShare.lua
+-- turns a source into and back. A source is a Lua value, not text, and holds
+-- what the author decided and nothing that can be worked out
 -- again: no titles, no completion rules, no refs, no indexes. Steps:Expand
--- builds those from each step's type and its facts, then Schema:Validate
--- checks the result. docs/guide-schema.md says how each part behaves.
+-- builds those from each step's type and its facts, then GuideCheck:Validate
+-- checks the result. docs/guide-source.md says how each part behaves.
 --
 -- The guide below is made up to use every feature once; its IDs are
 -- illustrative and its route makes no sense on the map.
@@ -60,7 +62,7 @@
 --
 -- WRAPPER
 --
---   kind = "guide", schema = 1, then the preview (id, updated, title,
+--   kind = "guide", then the preview (id, updated, title,
 --   category, author, tags, levels, cond, source, materials), then `data`.
 --   An import can show the guide, check `cond` against the character, and
 --   compare `updated` with the copy it has without reading `data`.
@@ -290,7 +292,7 @@
 -- HOW THE ADDON READS IT
 --
 -- Steps:Expand (Data/Steps.lua) reads a guide into the runtime guide, and
--- Schema:Validate checks it; the packaged guides in Data/Guides put their
+-- GuideCheck:Validate checks it; the packaged guides in Data/Guides put their
 -- values in ns.packagedGuides as they load, and GuideRepository expands them
 -- at login. What Expand does beyond the plain mapping:
 --
@@ -341,7 +343,6 @@
 
 return {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:example:every-feature",
     updated = 1790985600,                -- 2026-10-03
@@ -351,7 +352,7 @@ return {
     tags = { "example" },
     levels = { from = 13, to = 16 },
     cond = { faction = "Horde" },
-    source = "Hand-written example of guide format v1.",
+    source = "Hand-written example of a guide source.",
     materials = "section",
 
     data = {

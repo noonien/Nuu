@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- The Horde Druid Cat Form quests, new in WoW: Forever. Classic taught Cat Form at the
 -- trainer at level 20; Forever sends the Druid to the Great Cat Spirit in Moonglade, the
@@ -29,7 +29,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:class:horde-druid-cat-form",
     updated = 1790208000,

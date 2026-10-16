@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Every Horde quest of Wailing Caverns, from the Barrens chains that unlock them to the
 -- last turn-in at Thunder Bluff. Quest, NPC and item IDs, coordinates, the waypoints up
@@ -26,7 +26,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:dungeon:horde-wailing-caverns-quests",
     updated = 1790208000,

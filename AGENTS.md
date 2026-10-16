@@ -58,8 +58,10 @@ line commented out).
 generated, never written by hand: a schema built with the helpers in `NuuKit/Tools/Codec/Types.lua`, and from the
 addon's folder `lua ../NuuKit/Tools/Codec/Gen.lua Schema/<Name>.lua Data/<Name>Codec.lua`. The generated file is
 checked in, and a test fails when it is not its schema's. What the codec and the comms cost, to compare before and
-after a change: from `NuuKit/`, `lua Tests/Bench/Codec.lua [file]` and `lua Tests/Bench/Comms.lua`. NuuRoad's guide schema is `NuuRoad/Schema/Guide.lua`, with
-`Data/GuideCodec.lua` and `Data/GuideWire.lua` (v1 to the schema's values); neither is in the TOC yet.
+after a change: from `NuuKit/`, `lua Tests/Bench/Codec.lua [file]` and `lua Tests/Bench/Comms.lua`. NuuRoad's share schema is `NuuRoad/Schema/Guide.lua`: what
+players' addons exchange, the one guide shape they must agree on. `Data/GuideCodec.lua` is generated from it and
+`Data/GuideShare.lua` turns a guide source (how the addon writes and keeps guides, `docs/examples/guide-source.lua`;
+internal, no versions) into its values and back; neither is in the TOC yet.
 
 ## UI kit
 

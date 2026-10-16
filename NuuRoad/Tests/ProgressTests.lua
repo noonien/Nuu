@@ -3,11 +3,11 @@ local ns = { modules = {} }
 function ns:RegisterModule(name, module) self.modules[name] = module end
 ns.Kit = ns.Kit or LoadKit()
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Domain/Progress.lua")
 
 local guide = {
-    schema = 2, id = "test:progress", updated = 1789862400,
+    id = "test:progress", updated = 1789862400,
     meta = { title = "Progress", category = "test" },
     sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3, 4, 5 } } },
     nodes = {
@@ -71,7 +71,7 @@ assert(Progress:CompletedCount(state) == 2, "skipped steps are not counted as co
 
 -- Steps whose condition fails are passed over in the flow and the upcoming list.
 local gated = {
-    schema = 2, id = "test:gated", updated = 1789862400,
+    id = "test:gated", updated = 1789862400,
     meta = { title = "Gated", category = "test" },
     sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3, 4 } } },
     nodes = {
@@ -142,7 +142,7 @@ assert((Progress:GetCurrentNode(guide)).index == 1)
 -- Quest groups: the current and remaining available members of an authored range.
 local hub = {
     groups = { { first = 1, last = 4 }, { first = 6, last = 7 } },
-    schema = 2, id = "test:hub", updated = 1789862400,
+    id = "test:hub", updated = 1789862400,
     meta = { title = "Hub", category = "test" },
     sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3, 4, 5, 6, 7, 8 } } },
     nodes = {
@@ -196,7 +196,7 @@ ns.modules.Client = nil
 -- Farming circuits: an edge back to an earlier step starts a new lap, and the
 -- steps it covers go back to undone so the loop can be run again.
 local circuit = {
-    schema = 2, id = "test:circuit", updated = 1789862400,
+    id = "test:circuit", updated = 1789862400,
     meta = { title = "Circuit", category = "test" },
     sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3, 4, 5 } } },
     nodes = {
@@ -207,7 +207,7 @@ local circuit = {
         { kind = "end", title = "Finish" },
     },
 }
-ns.modules.Schema:IndexNodes(circuit)
+ns.modules.GuideCheck:IndexNodes(circuit)
 Progress.session[circuit.id] = nil
 assert(Progress:Complete(circuit) and Progress:Complete(circuit) and Progress:Complete(circuit))
 Progress:RecordKill(circuit, 3); Progress:RecordCraft(circuit, 3); Progress:RecordTalk(circuit, 3, 3357)
@@ -234,7 +234,7 @@ assert((Progress:GetCurrentNode(circuit)).index == 5 and Progress:LapCount(circu
 -- log yet), the guide must land on the next step the flow does reach, not
 -- walk the pointer off the end of the guide and read as finished.
 local gated = {
-    schema = 2, id = "test:landon", updated = 1789862400,
+    id = "test:landon", updated = 1789862400,
     meta = { title = "Land", category = "test" },
     sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3, 4, 5 } } },
     nodes = {
@@ -245,7 +245,7 @@ local gated = {
         { kind = "end", title = "E" },
     },
 }
-ns.modules.Schema:IndexNodes(gated)
+ns.modules.GuideCheck:IndexNodes(gated)
 ns.modules.Client = { MatchesCondition = function(_, predicate) return predicate.values[1] ~= "tauren" end }
 Progress.session = {}
 assert(Progress:LandOn(gated, 3), "a gated step lands on the step after it")
@@ -284,7 +284,7 @@ assert(Progress.store.resumes == nil, "no open guide saves no step")
 -- Tabs: a guide shown is open; shutting one moves to the tab in its place.
 do
     local function tabGuide(id)
-        return { schema = 2, id = id, updated = 1789862400, meta = { title = id, category = "test" },
+        return { id = id, updated = 1789862400, meta = { title = id, category = "test" },
             sections = { { id = "one", title = "One", nodeIndexes = { 1, 2, 3 } } },
             nodes = { { kind = "action", title = "A" }, { kind = "action", title = "B" }, { kind = "end", title = "C" } } }
     end
@@ -334,7 +334,7 @@ assert(Progress:GetActiveGuide() == nil)
 -- A guide rebuilt under the same ID keeps the progress of the steps it still
 -- has, found by what they are, not where they sit; counts may change.
 local function planned(nodes)
-    return { schema = 2, id = "test:planned", updated = 1, meta = { title = "Planned", category = "test" }, nodes = nodes }
+    return { id = "test:planned", updated = 1, meta = { title = "Planned", category = "test" }, nodes = nodes }
 end
 local first = planned({
     { kind = "train", auto = { verb = "train", skill = "Leatherworking" } },

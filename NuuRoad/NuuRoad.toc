@@ -12,7 +12,7 @@
 Core.lua
 Config.lua
 API/Client.lua
-Data/Schema.lua
+Data/GuideCheck.lua
 Data/Names.lua
 Data/Steps.lua
 Data/GuideText.lua

@@ -1,5 +1,5 @@
--- The versioned mapping table: what every RestedXP construct becomes in the
--- NuuRoad guide format v1. This file is the definition of "fully ported".
+-- The versioned mapping table: what every RestedXP construct becomes in a
+-- NuuRoad guide source. This file is the definition of "fully ported".
 --
 -- Each entry carries a status:
 --   mapped     the converter can emit it today
@@ -39,23 +39,23 @@ Mapping.commands = {
     train = entry("mapped", "train for a profession; a class rank is a note naming the trainer"),
     trainer = entry("mapped", "note naming the trainer"),
     isQuestComplete = entry("mapped", "optional = true on a turn-in: passed unless the quest is ready"),
-    isQuestAvailable = entry("todo", "a condition on a quest not taken", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    isOnQuest = entry("todo", "a condition on a quest in the log", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    isQuestTurnedIn = entry("todo", "a condition on a finished quest", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    isQuestNotComplete = entry("todo", "a condition on a quest not ready", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    isNotOnQuest = entry("todo", "a condition on a quest not in the log", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    money = entry("todo", "a condition on gold", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isQuestAvailable = entry("todo", "a condition on a quest not taken", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isOnQuest = entry("todo", "a condition on a quest in the log", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isQuestTurnedIn = entry("todo", "a condition on a finished quest", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isQuestNotComplete = entry("todo", "a condition on a quest not ready", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    isNotOnQuest = entry("todo", "a condition on a quest not in the log", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    money = entry("todo", "a condition on gold", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
     itemcount = entry("todo", "a condition on an item count",
         "only an accept from an item reads the bags (passed when the item is not there); otherwise the step is written for everyone"),
-    aura = entry("todo", "a condition on an aura", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    cooldown = entry("todo", "a condition on a cooldown", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    aura = entry("todo", "a condition on an aura", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    cooldown = entry("todo", "a condition on a cooldown", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
 
     -- Still to build.
-    itemStat = entry("todo", "a condition on worn gear", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    itemStat = entry("todo", "a condition on worn gear", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
     vendor = entry("mapped", "a vendor step: { type = \"vendor\", sell = true, npc = { N } }"),
-    bindlocation = entry("todo", "a condition on where the hearthstone is bound", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    zoneskip = entry("todo", "a condition on the zone the player is in", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
-    subzoneskip = entry("todo", "a condition on the subzone the player is in", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    bindlocation = entry("todo", "a condition on where the hearthstone is bound", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    zoneskip = entry("todo", "a condition on the zone the player is in", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
+    subzoneskip = entry("todo", "a condition on the subzone the player is in", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
     zone = entry("mapped", '{ type = "travel", to = "...", zone = 1413 }', nil),
     subzone = entry("mapped", '{ type = "travel", to = "...", area = 222 }'),
     line = entry("todo", "a drawn route on the world map",
@@ -107,7 +107,7 @@ Mapping.directives = {
     include = entry("mapped", "the included registration's steps, written in place"),
     hidewindow = entry("ignored", "nothing", "hides the source's step frame while the step runs"),
     arrowtext = entry("ignored", "nothing", "the source's arrow caption; NuuRoad's arrow shows the step title"),
-    xprate = entry("todo", "a condition on the realm's experience rate", "guide format v1 has no condition for it: the step is written for everyone, and the note says when it applies"),
+    xprate = entry("todo", "a condition on the realm's experience rate", "a guide source has no condition for it: the step is written for everyone, and the note says when it applies"),
     ah = entry("mapped", "show = { ah = true }",
         "reads the answer the player gives in Options; unknown until they do"),
     ssf = entry("mapped", "show = { selffound = true }",

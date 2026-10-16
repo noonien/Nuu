@@ -11,7 +11,7 @@ local _, ns = ...
 -- and the gather steps finish on the items however they arrive.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:materials-by-section", updated = 1789862400,
     title = "Fixture: Materials by Section", category = "Fixtures/Professions", author = "NuuRoad",
     tags = { "fixture", "profession" }, materials = "section",

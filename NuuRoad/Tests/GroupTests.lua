@@ -2,14 +2,14 @@ local ns = { modules = {} }
 function ns:RegisterModule(name, module) self.modules[name] = module end
 function ns:Log() end
 ns.Kit = ns.Kit or LoadKit()
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
-local Schema, Steps, Progress = ns.modules.Schema, ns.modules.Steps, ns.modules.Progress
+local GuideCheck, Steps, Progress = ns.modules.GuideCheck, ns.modules.Steps, ns.modules.Progress
 
 local function compact(sections)
-    return { kind = "guide", schema = 1, id = "test:groups", updated = 1789862400,
+    return { kind = "guide", id = "test:groups", updated = 1789862400,
         title = "Groups", category = "test", data = { map = 1413, sections = sections } }
 end
 local source = compact({
@@ -26,7 +26,7 @@ local source = compact({
     } },
 })
 local guide = Steps:Expand(source)
-local ok, errors = Schema:Validate(guide)
+local ok, errors = GuideCheck:Validate(guide)
 assert(ok, table.concat(errors, "; "))
 assert(#guide.nodes == 8 and #guide.groups == 2)
 assert(guide.groups[1].first == 2 and guide.groups[1].last == 4)
@@ -66,7 +66,7 @@ local camp = Steps:Expand(oneSection({ { group = {
     { type = "collect", item = 5087, count = 7, kill = { 3244 } },
     { type = "accept", quests = { 870 }, npc = { 3448 } },
 } } }))
-assert(Schema:Validate(camp) and #camp.groups == 1, "kills, objectives, and collects can share a group")
+assert(GuideCheck:Validate(camp) and #camp.groups == 1, "kills, objectives, and collects can share a group")
 assert(#Progress:QuestGroup(camp, camp.nodes[1]) == 4)
 
 local accept870 = { type = "accept", quests = { 870 } }
@@ -86,11 +86,11 @@ for _, case in ipairs(invalid) do
     local fine, message = pcall(Steps.Expand, Steps, oneSection({ case[1] }))
     assert(not fine and tostring(message):find(case[2], 1, true), "invalid wrappers are rejected: " .. tostring(message))
 end
--- v1 has no authored positions: a step carries no edge or ID of its own (an
+-- A guide source has no authored positions: a step carries no edge or ID of its own (an
 -- unknown field is not read), a branch goes to a label, and two things
 -- cannot share one label.
 local plain = Steps:Expand(oneSection({ { type = "accept", quests = { 870 }, id = "old", ["next"] = 5 } }))
-assert(plain.nodes[1].id == nil and plain.nodes[1]["next"] == nil and Schema:Validate(plain))
+assert(plain.nodes[1].id == nil and plain.nodes[1]["next"] == nil and GuideCheck:Validate(plain))
 assert(not pcall(Steps.Expand, Steps, oneSection({
     { type = "choice", text = "?", options = { { text = "Go", go = 2 } } }, { type = "finish", note = "." } })))
 assert(not pcall(Steps.Expand, Steps, oneSection({ { type = "choice", text = "?", options = { { text = "Go", go = "nowhere" } } } })))
@@ -114,7 +114,7 @@ assert(#mapped.sections == 2 and mapped.sections[2].title == "Orgrimmar")
 local function invalidRanges(ranges)
     local candidate = Steps:Expand(source)
     candidate.groups = ranges
-    assert(not Schema:Validate(candidate), "invalid ranges are rejected")
+    assert(not GuideCheck:Validate(candidate), "invalid ranges are rejected")
 end
 invalidRanges({ { first = 2, last = 9 } })
 invalidRanges({ { first = 2, last = 2 } })
@@ -125,9 +125,9 @@ invalidRanges({ { first = 2, last = 4, id = "old" } })
 local split = Steps:Expand(source)
 split.sections = { { id = "a", title = "A", nodeIndexes = { 1, 2 } },
     { id = "b", title = "B", nodeIndexes = { 3, 4, 5, 6, 7, 8 } } }
-assert(not Schema:Validate(split), "groups cannot cross sections")
+assert(not GuideCheck:Validate(split), "groups cannot cross sections")
 local branch = Steps:Expand(source)
 branch.nodes[7].choices[1]["next"] = "8"
-assert(not Schema:Validate(branch), "branch indexes must be numbers")
+assert(not GuideCheck:Validate(branch), "branch indexes must be numbers")
 
 return true

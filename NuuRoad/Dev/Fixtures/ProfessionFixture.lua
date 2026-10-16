@@ -11,7 +11,7 @@ local _, ns = ...
 -- the server names differently.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:professions", updated = 1789862400,
     title = "Fixture: Professions and Circuits", category = "Fixtures/Professions", author = "NuuRoad",
     tags = { "fixture", "profession", "reputation", "gold", "horde" },

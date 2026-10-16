@@ -12,7 +12,7 @@ local _, ns = ...
 -- not the tools.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:quest-items", updated = 1789862400,
     title = "Fixture: Quest Items", category = "Fixtures/Quest items", author = "NuuRoad",
     tags = { "fixture", "item", "quest", "horde" },

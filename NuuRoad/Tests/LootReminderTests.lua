@@ -6,7 +6,7 @@ function ns:Log() end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/Progress.lua")
@@ -16,7 +16,7 @@ local Steps, Progress, LootReminder = ns.modules.Steps, ns.modules.Progress, ns.
 -- Two Fanglords the way the Wailing Caverns guide has them, a step counting
 -- turtle shells, and a boss whose drop begins a quest.
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "test:loot", updated = 1789862400, title = "Loot", category = "test",
+    kind = "guide", id = "test:loot", updated = 1789862400, title = "Loot", category = "test",
     data = { map = 1413, sections = {
     { title = "Steps", steps = {
         { type = "collect", item = 9739, kill = { 3671 }, quest = { 914, 2 } },

@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 6-12 leveling route through Mulgore and Thunder Bluff. Step order, quest
 -- IDs, NPC IDs, item IDs, coordinates, and grind loops are NuuRoad's own.
@@ -17,7 +17,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-mulgore-6-12",
     updated = 1789862400,

@@ -12,7 +12,7 @@ local _, ns = ...
 -- carries them does. The sticky step stays on that card until you mark it.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:port-constructs", updated = 1789862400,
     title = "Fixture: Ported Constructs", category = "Fixtures/Ported constructs", author = "NuuRoad",
     tags = { "fixture", "carried", "loop", "vendor" },

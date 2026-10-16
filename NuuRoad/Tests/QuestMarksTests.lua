@@ -6,7 +6,7 @@ ns.recorded = {}
 function ns:Record(channel, data) table.insert(self.recorded, { channel = channel, d = data }) end
 ns.Kit = ns.Kit or LoadKit()
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Domain/QuestIndex.lua")
@@ -17,7 +17,7 @@ local Steps, Marks = ns.modules.Steps, ns.modules.QuestMarks
 -- Quest 900 has an objective spot at 20, 20 and its turn-in at 30, 30; quest
 -- 901 is only accepted in the guide; quest 902 is in no guide.
 local guide = Steps:Expand({
-    kind = "guide", schema = 1, id = "nuuroad:test:marks", updated = 1789862400, title = "Marks", category = "test",
+    kind = "guide", id = "nuuroad:test:marks", updated = 1789862400, title = "Marks", category = "test",
     data = { map = 1413, sections = {
         { title = "Steps", steps = {
             { type = "accept", quests = { 900, 901 }, npc = { 3464 }, at = { { 5000, 5000 } } },

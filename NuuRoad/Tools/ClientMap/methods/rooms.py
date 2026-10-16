@@ -1125,7 +1125,7 @@ def numbers(values, per_line, indent):
 
 def lua(result):
     """The place as a guide would carry it, one entry of a guide's `places`
-    (docs/guide-schema.md) with rooms in place of points and connections:
+    (docs/guide-source.md) with rooms in place of points and connections:
 
       * `rooms`: a list of rooms, each one list of numbers: its first
         corner, then each next corner as the step from the one before (x, y

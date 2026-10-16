@@ -1,4 +1,4 @@
--- A packaged guide, in guide format v1 (docs/examples/guide-v1.lua).
+-- A packaged guide: a guide source (docs/examples/guide-source.lua).
 --
 -- Horde 28-30 leveling route through Thousand Needles, from Thunder Bluff to the
 -- Shimmering Flats, with a run to Feralas and Tanaris for their flight paths and
@@ -84,7 +84,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-thousand-needles-28-30",
     updated = 1790974800,

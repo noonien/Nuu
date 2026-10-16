@@ -110,7 +110,7 @@ a tested schema/UI/API implementation; no converter fallback silently degrades i
    maps, professions, and reputation. Report unknown, mismatched, removed, and ambiguous IDs with source line spans.
    Do not guess missing IDs from names.
 7. Emit four artifacts: native pack Lua files; a human-readable conversion report; a machine-readable unresolved-items
-   report; and a provenance manifest. Generated Lua must be static tables only and pass `Schema:Validate` before it is
+   report; and a provenance manifest. Generated Lua must be static tables only and pass `GuideCheck:Validate` before it is
    copied into `Data/Packs/`.
 8. Require deterministic output: same approved snapshot and converter version produce byte-identical generated pack
    data and reports. Check this in CI.

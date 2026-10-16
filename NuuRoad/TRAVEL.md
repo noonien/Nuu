@@ -468,7 +468,7 @@ Each stage can ship on its own and has tests.
 5. **Areas:** the wall rule in the planner with its tests (the nearest door is chosen, an `"exit"` door is never
    used inwards, nested areas pass both doors, flights ignore walls), then the Horde cities and Thunder Bluff's
    lifts.
-6. **Guide places:** the `places` schema and validation (in `Data/Schema.lua`, imported by `Data/Steps.lua`
+6. **Guide places:** the `places` schema and validation (in `Data/GuideCheck.lua`, imported by `Data/Steps.lua`
    alongside the steps), step `at = "place.point"`, import into the planner as areas, the arrow following the connection the
    player stands on, the indoors check, and the editor panel with recording and branching. Also the cave fixture,
    and a place for the Bristleback cave in `HordeMulgore16`. Tests: led in through an entrance; never led in
@@ -517,4 +517,4 @@ Record each result in `docs/api-compatibility.md`. Every item has a fallback, so
 ## Documentation
 
 When stages land, update `docs/authoring.md` (the route line, the walk toggle, and the Places panel),
-`docs/guide-schema.md` (`places`, step `at = "place.point"`, and `route` if it is added), and `docs/api-compatibility.md` (the table above).
+`docs/guide-source.md` (`places`, step `at = "place.point"`, and `route` if it is added), and `docs/api-compatibility.md` (the table above).

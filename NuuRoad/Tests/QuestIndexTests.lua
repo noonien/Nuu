@@ -6,7 +6,7 @@ function ns:Log(message) table.insert(self.logs, message) end
 ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
@@ -17,7 +17,7 @@ Load(ns, "Domain/QuestIndex.lua")
 local Steps, Repository, QuestIndex, Names = ns.modules.Steps, ns.modules.GuideRepository, ns.modules.QuestIndex, ns.modules.Names
 
 ns.packagedGuides = {
-    { kind = "guide", schema = 1, id = "test:barrens", updated = 1789862400, title = "Barrens", category = "test",
+    { kind = "guide", id = "test:barrens", updated = 1789862400, title = "Barrens", category = "test",
         data = { map = 1413, sections = {
             { title = "Steps", steps = {
                 { type = "accept", quests = { 869 }, npc = { 3464 } },
@@ -28,7 +28,7 @@ ns.packagedGuides = {
                 { type = "turnin", quests = { 871 }, npc = { 3464 } },
             } },
         } } },
-    { kind = "guide", schema = 1, id = "test:alpha", updated = 1789862400, title = "Alpha", category = "test",
+    { kind = "guide", id = "test:alpha", updated = 1789862400, title = "Alpha", category = "test",
         data = { map = 1413, sections = {
             { title = "Steps", steps = {
                 { type = "accept", quests = { 871 }, npc = { 3464 } },
@@ -92,7 +92,7 @@ assert(QuestIndex:SearchText({ id = "nope" }) == "" and QuestIndex:SearchText(ni
 
 -- The index follows the repository: saving a personal guide is picked up.
 local personal = ns.modules.GuideDraft:Open({
-    kind = "guide", schema = 1, id = Repository.pendingID, updated = 1789862400, title = "Personal", category = "custom",
+    kind = "guide", id = Repository.pendingID, updated = 1789862400, title = "Personal", category = "custom",
     data = { map = 1413, sections = {
         { title = "Steps", steps = { { type = "accept", quests = { 264 }, npc = { 3464 } } } },
     } },

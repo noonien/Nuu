@@ -7,7 +7,7 @@ ns.Kit = ns.Kit or LoadKit()
 
 Load(ns, "Config.lua")
 Load(ns, "API/Client.lua")
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 AddBuiltInNames(ns)
 Load(ns, "Data/Steps.lua")
@@ -72,7 +72,7 @@ GuideAudit:ScanBags()
 assert(count() == before + 1 and last():find("guide expects item 5086 for 'Zhevra Hooves', but the item in your bags 'Zhevra Hooves' is item 66666", 1, true), last())
 
 -- Node IDs are gathered from completion rules, refs, and auto titles, and audited against live names.
-local guide = Steps:Expand({ kind = "guide", schema = 1, id = "test:audit", updated = 1789862400, title = "Audit", category = "test",
+local guide = Steps:Expand({ kind = "guide", id = "test:audit", updated = 1789862400, title = "Audit", category = "test",
     data = { map = 1413, sections = { { title = "Steps", steps = {
         { type = "talk", turnin = { 871 }, accept = { 872, 5041 }, npc = { 3429 }, at = { { 5150, 3087 } } },
         { type = "collect", item = 5087, count = 7, kill = { 3244, 3246 }, quest = { 844, 1 }, at = { { 5300, 2240 } } },
@@ -148,7 +148,7 @@ end
 assert(GuideAudit:CheckObjective(objectiveNode))
 assert(last():find("objective 1 of quest 844 'Plainstrider Menace' reads 'Zhevra Hooves: 0/4', but step 'Collect 7 Plainstrider Beak from Greater Plainstrider and Fleeting Plainstrider' is about 'Greater Plainstrider', 'Fleeting Plainstrider', 'Plainstrider Beak' (that is objective 2)", 1, true), last())
 C_QuestLog.GetQuestObjectives = function(id) return id == 844 and { { text = "Plainstrider Beak: 0/7", finished = false } } or nil end
-local partThree = Steps:Expand({ kind = "guide", schema = 1, id = "test:part", updated = 1789862400, title = "Part", category = "test",
+local partThree = Steps:Expand({ kind = "guide", id = "test:part", updated = 1789862400, title = "Part", category = "test",
     data = { map = 1413, sections = { { title = "Steps", steps = {
         { type = "kill", kill = { 3244 }, quest = { 844, 3 }, at = { { 5300, 2240 } } },
     } } } } }).nodes[1]
@@ -157,7 +157,7 @@ assert(last():find("is about objective 3 of quest 844 'Plainstrider Menace', whi
 
 -- A line the client calls an item, on a step that only names kills. The
 -- step names no count, so its title takes the objective's 7.
-local killOnly = Steps:Expand({ kind = "guide", schema = 1, id = "test:loot", updated = 1789862400, title = "Loot", category = "test",
+local killOnly = Steps:Expand({ kind = "guide", id = "test:loot", updated = 1789862400, title = "Loot", category = "test",
     data = { map = 1413, sections = { { title = "Steps", steps = {
         { type = "kill", kill = { 3244 }, quest = { 844, 1 }, at = { { 5300, 2240 } } },
     } } } } }).nodes[1]
@@ -172,7 +172,7 @@ assert(count() == before)
 C_QuestLog.GetQuestObjectives = function(id) return id == 844 and { { text = "Plainstrider Beak: 0/7", finished = false } } or nil end
 
 -- A world object is named for itself, not for the objective it serves.
-local objectNode = Steps:Expand({ kind = "guide", schema = 1, id = "test:object", updated = 1789862400, title = "Object", category = "test",
+local objectNode = Steps:Expand({ kind = "guide", id = "test:object", updated = 1789862400, title = "Object", category = "test",
     data = { map = 1413, sections = { { title = "Steps", steps = {
         { type = "interact", object = "The Altar of Fire", quest = { 924, 1 }, at = { { 4796, 1907 } } },
     } } } } }).nodes[1]
@@ -210,7 +210,7 @@ GuideAudit:CheckProgressPosition(objectiveNode)
 assert(last():find("progress 'Plainstrider Beak: 1/7' at 80.0, 60.0, but step 'Collect 7 Plainstrider Beak from Greater Plainstrider and Fleeting Plainstrider' points to 53.0, 22.4", 1, true), last())
 
 -- Hearth and flight path names.
-local hearthGuide = Steps:Expand({ kind = "guide", schema = 1, id = "test:hearth", updated = 1789862400, title = "Hearth", category = "test",
+local hearthGuide = Steps:Expand({ kind = "guide", id = "test:hearth", updated = 1789862400, title = "Hearth", category = "test",
     data = { map = 1413, sections = { { title = "Steps", steps = {
         { type = "hearth", area = 380, npc = { 3934 }, at = { { 5199, 2990 } } },
         { type = "flight", node = 80, npc = { 16227 }, at = { { 6309, 3716 } } },

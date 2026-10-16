@@ -1,5 +1,5 @@
 _G = _G or _ENV
--- Guide format v1 on its worked example (docs/examples/guide-v1.lua), which
+-- Guide sources on the worked example (docs/examples/guide-source.lua), which
 -- uses every feature once: Steps:Expand reads it directly, it must validate
 -- like a packaged guide, and each feature must land where the runtime reads
 -- it.
@@ -7,13 +7,13 @@ local ns = { modules = {}, idNames = nil }
 function ns:RegisterModule(name, module) self.modules[name] = module end
 ns.Kit = ns.Kit or LoadKit()
 
-Load(ns, "Data/Schema.lua")
+Load(ns, "Data/GuideCheck.lua")
 Load(ns, "Data/Names.lua")
 Load(ns, "Data/Steps.lua")
 Load(ns, "Data/IDNames.lua")
-local Steps, Schema = ns.modules.Steps, ns.modules.Schema
+local Steps, GuideCheck = ns.modules.Steps, ns.modules.GuideCheck
 
-local EXAMPLE = "docs/examples/guide-v1.lua"
+local EXAMPLE = "docs/examples/guide-source.lua"
 local example = dofile(EXAMPLE)
 -- The example's IDs are made up; the areas, flight node and skills it names
 -- are real ones the packaged guides use, but not every one is in the table.
@@ -22,11 +22,11 @@ ns.idNames.areas[392] = ns.idNames.areas[392] or "Ratchet"
 ns.idNames.taxiNodes[25] = ns.idNames.taxiNodes[25] or "Crossroads, The Barrens"
 
 local guide = Steps:Expand(example)
-local ok, errors = Schema:Validate(guide)
+local ok, errors = GuideCheck:Validate(guide)
 assert(ok, table.concat(errors or {}, "; "))
 
 -- The wrapper.
-assert(guide.schema == 1 and guide.id == "nuuroad:example:every-feature" and guide.updated == 1790985600)
+assert(guide.id == "nuuroad:example:every-feature" and guide.updated == 1790985600)
 assert(guide.meta.title == "Example: every feature" and guide.meta.category == "Fixtures/Examples")
 assert(guide.meta.levels[1] == 13 and guide.meta.levels[2] == 16, "levels { from, to } -> { 13, 16 }")
 assert(guide.meta.materials == "section")
@@ -172,7 +172,6 @@ local function refuses(mutate, expected)
     assert(not fine and tostring(message) == "NuuRoad: " .. expected, tostring(message))
 end
 refuses(function(value) value.kind = nil end, "guide: is not a guide")
-refuses(function(value) value.schema = 2 end, "guide.schema: must be 1")
 refuses(function(value) value.levels = { 13, 16 } end, "guide.levels: is { from, to }")
 refuses(function(value) value.data.sections[1].steps[1].type = "teleport" end,
     "data.sections[1].steps[1].type: unknown step type 'teleport'")
@@ -195,19 +194,19 @@ refuses(function(value) value.data.sections[1].steps[9].group[2].type = "travel"
 refuses(function(value) value.data.sections[1].colour = "red" end,
     "data.sections[1].colour: is not a field of a section")
 
--- Every packaged guide (and every fixture) is v1, and expands and validates.
+-- Every packaged guide (and every fixture) is a guide source, and expands and validates.
 local packaged = { modules = {}, Kit = ns.Kit }
 function packaged:RegisterModule(name, module) self.modules[name] = module end
-Load(packaged, "Data/Schema.lua")
+Load(packaged, "Data/GuideCheck.lua")
 Load(packaged, "Data/Names.lua")
 Load(packaged, "Data/Steps.lua")
 LoadBuiltIns(packaged)
 local count = 0
 for id, source in pairs(packaged.builtInGuides) do
-    assert(source.kind == "guide" and source.schema == 1, id .. " is a guide in format v1")
+    assert(source.kind == "guide", id .. " is a guide source")
     local expanded = packaged.modules.Steps:Expand(source)
-    assert(expanded.schema == 1 and expanded.id == id and #expanded.nodes > 0, id)
-    local valid, problems = packaged.modules.Schema:Validate(expanded)
+    assert(expanded.id == id and #expanded.nodes > 0, id)
+    local valid, problems = packaged.modules.GuideCheck:Validate(expanded)
     assert(valid, id .. ": " .. table.concat(problems or {}, "; "))
     if not id:find("^nuuroad:fixture:") then count = count + 1 end
 end

@@ -3,9 +3,9 @@
 Practical advice for writing NuuRoad guides, by hand in `NuuRoad/Data/Guides/` or in the in-game editor.
 This is not the reference. For what every field means, see:
 
-- [`NuuRoad/docs/examples/guide-v1.lua`](../NuuRoad/docs/examples/guide-v1.lua): guide format v1, the one format
-  guides are written in: every step type, condition and field, with one worked example of each.
-- [`NuuRoad/docs/guide-schema.md`](../NuuRoad/docs/guide-schema.md): how each part of the format behaves once the
+- [`NuuRoad/docs/examples/guide-source.lua`](../NuuRoad/docs/examples/guide-source.lua): the guide source, how
+  guides are written: every step type, condition and field, with one worked example of each.
+- [`NuuRoad/docs/guide-source.md`](../NuuRoad/docs/guide-source.md): how each part of a source behaves once the
   addon reads it, and the runtime shapes under it.
 - [`NuuRoad/docs/authoring.md`](../NuuRoad/docs/authoring.md): the editor, the tracker, and how a step behaves in play.
 - [`NuuRoad/GUIDE_PORTING_PLAN.md`](../NuuRoad/GUIDE_PORTING_PLAN.md): the rules for porting from RestedXP and Zygor.
@@ -41,7 +41,6 @@ local _, ns = ...
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
     kind = "guide",
-    schema = 1,
 
     id = "nuuroad:leveling:horde-tirisfal-6-12",
     updated = 1790640000,

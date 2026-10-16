@@ -1,6 +1,6 @@
 local _, ns = ...
 
--- A guide in format v1 (docs/examples/guide-v1.lua) as Lua text and back:
+-- A guide source (docs/examples/guide-source.lua) as Lua text and back:
 -- the editor's Copy as text, Import from text and Edit as text. The text is
 -- the same value a file in Data/Guides holds, written the way those files
 -- are: the wrapper's fields one to a line, a section's steps one to a line,
@@ -12,7 +12,7 @@ local _, ns = ...
 local GuideText = {}
 
 -- The order fields are written in; anything else follows, sorted.
-local WRAPPER = { "kind", "schema", "id", "updated", "title", "category", "author", "tags", "levels", "cond", "source",
+local WRAPPER = { "kind", "id", "updated", "title", "category", "author", "tags", "levels", "cond", "source",
     "materials", "data" }
 local DATA = { "map", "conds", "sections", "places", "npcs" }
 local SECTION = { "title", "map", "label", "cond", "show", "steps" }
@@ -148,7 +148,7 @@ function GuideText:WriteStep(step)
     return stepText(step, "")
 end
 
--- A value v1 allows: strings, whole numbers, true, and tables of those.
+-- A value a guide source allows: strings, whole numbers, true, and tables of those.
 local function checkValue(value, path, seen)
     local kind = type(value)
     if kind == "string" or kind == "boolean" and value == true then return nil end

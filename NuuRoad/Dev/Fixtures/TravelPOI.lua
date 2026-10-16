@@ -4,7 +4,7 @@ local _, ns = ...
 -- destination is wherever they are standing, whichever zone that is.
 ns.packagedGuides = ns.packagedGuides or {}
 table.insert(ns.packagedGuides, {
-    kind = "guide", schema = 1,
+    kind = "guide",
     id = "nuuroad:fixture:travel-poi", updated = 1789862400,
     title = "Fixture: Travel POI", category = "Fixtures/Travel", author = "NuuRoad", tags = { "fixture", "travel" },
     data = {

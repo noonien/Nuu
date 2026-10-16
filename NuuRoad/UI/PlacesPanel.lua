@@ -298,8 +298,8 @@ end
 -- will merge, in the tab's footer.
 function PlacesPanel:Problems(place)
     local errors = {}
-    ns.modules.Schema:ValidatePlaces({ places = { place }, nodes = {} }, errors)
-    local _, _, duplicates = ns.modules.Schema:PlaceConnections(place)
+    ns.modules.GuideCheck:ValidatePlaces({ places = { place }, nodes = {} }, errors)
+    local _, _, duplicates = ns.modules.GuideCheck:PlaceConnections(place)
     local lines = {}
     for index = 1, math.min(3, #errors) do
         table.insert(lines, (errors[index]:gsub("^guide%.places%[1%]%.?", "")))

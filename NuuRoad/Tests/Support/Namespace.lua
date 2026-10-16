@@ -53,7 +53,7 @@ function Load(ns, path)
 end
 
 -- Every packaged guide NuuRoad.toc lists (fixtures included), in its order,
--- in ns.builtInGuides by ID, as the guide (format v1) the file holds: what
+-- in ns.builtInGuides by ID, as the guide source the file holds: what
 -- GuideRepository expands at login.
 function LoadBuiltIns(ns)
     if not ns.idNames then Load(ns, "Data/IDNames.lua") end

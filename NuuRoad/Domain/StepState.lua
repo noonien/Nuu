@@ -96,8 +96,8 @@ end
 -- card shows each or leaves it out - the same rules as `Progress:QuestGroup`
 -- and the card's own filter in `MainWindow`.
 function StepState:Group(guide, node, state)
-    local Schema, Progress, GuideScan = modules().Schema, modules().Progress, modules().GuideScan
-    local range = Schema and Schema.GroupAt and Schema:GroupAt(guide, node.index)
+    local GuideCheck, Progress, GuideScan = modules().GuideCheck, modules().Progress, modules().GuideScan
+    local range = GuideCheck and GuideCheck.GroupAt and GuideCheck:GroupAt(guide, node.index)
     if not range then return nil end
     local members = {}
     for index = range.first, range.last do

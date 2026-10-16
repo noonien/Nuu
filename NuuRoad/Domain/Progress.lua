@@ -3,7 +3,7 @@ local _, ns = ...
 local Progress = { schemaVersion = 1, session = {} }
 
 local function newState(guide)
-    ns.modules.Schema:IndexNodes(guide)
+    ns.modules.GuideCheck:IndexNodes(guide)
     -- `trail` is the ordered list of step indexes the player has moved past; Back
     -- walks it. `holdStep` pauses observed auto-advance on a node the player
     -- navigated to by hand (Back or Forward), until they leave it again.
@@ -361,14 +361,14 @@ end
 -- group. The step the guide is on always leads, however it reads, and the
 -- flow stops on a moot member when it gets there.
 function Progress:IsQuestVisit(node)
-    return ns.modules.Schema:IsQuestVisit(node)
+    return ns.modules.GuideCheck:IsQuestVisit(node)
 end
 
 function Progress:QuestGroup(guide, node)
     node = node or self:GetCurrentNode(guide)
     if not node then return {} end
     local group = { node }
-    local range = ns.modules.Schema:GroupAt(guide, node.index)
+    local range = ns.modules.GuideCheck:GroupAt(guide, node.index)
     if not range then return group end
     local GuideScan = ns.modules.GuideScan
     for index = node.index + 1, range.last do
